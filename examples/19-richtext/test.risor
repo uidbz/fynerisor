@@ -1,0 +1,5 @@
+require(["v0.2", "@gui"])
+
+let richText = widget.NewRichText("# Hello\n\nThis is a test")
+
+window.SetContent(richText)

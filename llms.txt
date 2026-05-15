@@ -1,0 +1,1089 @@
+# Fynerisor - Risor GUI Framework
+
+Build cross-platform desktop GUIs using Risor v2 scripts with Fyne widgets.
+
+Version: 0.4.1
+Risor: v2.x (arrow functions, no for loops, functional iteration)
+Fyne: v2.7+
+
+## Features
+- 34+ widgets (60% of Fyne, all high/medium priority complete)
+- Data binding system (reactive UIs)
+- Custom Go type integration (WithGlobal)
+- Application versioning (SetAppVersion)
+- Modules: HTTP, SQL, OS, Time, Strings, Filepath, IO
+
+## Quick Start
+
+```risor
+// Specify requirements (optional but recommended)
+require(["v0.4", "@sql", "@http"])
+
+// Create a simple button with counter
+let count = 0
+let label = widget.NewLabel(sprintf("Count: %d", count))
+
+let btn = widget.NewButton("Click Me", () => {
+    count = count + 1
+    label.SetText(sprintf("Count: %d", count))
+})
+
+window.SetContent(container.NewVBox(label, btn))
+```
+
+**With Data Binding (Reactive UI):**
+```risor
+let count = binding.NewInt(0)
+let label = widget.NewLabelWithData(
+    count.map(x => sprintf("Count: %d", x))
+)
+
+let btn = widget.NewButton("Click Me", () => {
+    count.Set(count.Get() + 1)
+})
+
+window.SetContent(container.NewVBox(label, btn))
+```
+
+## Import and Require Functions
+
+### Import Function
+
+Import external Risor scripts (local files or URLs):
+
+```risor
+// Single import
+import("utils.risor")                    // Local file (relative to script)
+import("https://example.com/lib.risor")  // Remote URL
+
+// Multiple imports
+import(["utils.risor", "helpers.risor"])
+
+// Imports are loaded in order before script execution
+```
+
+**Important**: `import()` is a no-op at runtime. The actual importing is handled
+by the Go application before script execution via `fynerisor.AnalyzeRequirements()`
+and `Window.ImportScript()`.
+
+### Require Function
+
+Declare version and module requirements:
+
+```risor
+// Single requirement
+require("v0.4.1")         // Minimum version
+require("@sql")           // Module must be enabled
+
+// Multiple requirements
+require(["v0.4", "@sql", "@http", "@os"])
+
+// Version formats
+require("v0.4")           // Minimum version (>=)
+require("==v0.4.1")       // Exact version
+
+// Module names
+require("@sql")           // SQL module
+require("@http")          // HTTP module
+require("@os")            // OS module
+require("@strings")       // Strings module
+require("@filepath")      // Filepath module
+require("@time")          // Time module
+require("@io")            // File I/O module
+```
+
+### Combined Example
+
+```risor
+// Imports first (loaded before execution)
+import(["utils.risor", "validators.risor"])
+
+// Then requirements
+require(["v0.4", "@sql", "@http"])
+
+// Now use imported functions and required modules
+let validated = validate(userInput)
+let data = http.get("https://api.example.com").json()
+```
+
+## Critical Risor v2 Syntax Rules
+
+**Function Declarations** - Two styles available:
+```risor
+// Arrow functions (assigned to variables)
+let onClick = () => { print("clicked") }
+let process = (x) => x * 2
+
+// Traditional function declarations (Risor v2 uses 'function' keyword)
+function onClick() {
+    print("clicked")
+}
+
+function process(x) {
+    return x * 2
+}
+
+// Note: Risor v1 used 'func', Risor v2 uses 'function'
+// ✗ Wrong - v1 syntax
+func onClick() { print("clicked") }
+```
+
+**When to use each style:**
+- **Arrow functions:** For callbacks, inline functions, and function values
+- **Traditional functions:** For top-level named functions, better readability for complex functions
+- Both styles work identically, choose based on preference and context
+
+**No For/While Loops** - Use functional methods:
+```risor
+// ✓ Correct
+let doubled = [1, 2, 3].map(x => x * 2)
+list.each(item => print(item))
+
+// ✗ Wrong
+for i in list { }
+while (condition) { }
+```
+
+**SQL Iterators** - Support streaming `.map()` and `.each()`:
+```risor
+// Streaming (efficient, single-pass)
+let result = conn.query("SELECT * FROM users").map(row => [row["id"], row["name"]])
+
+// Or collect first (double-pass, loads all into memory)
+let rows = conn.query("SELECT * FROM users").collect()
+let result = rows.map(row => [row["id"], row["name"]])
+```
+
+## Global Objects
+
+**window** - Main window control
+- `window.SetContent(widget)` - Set window content
+- `window.SetStatus(string)` - Update status text
+- `window.Title` - Get/set window title (read/write)
+- `window.Do(func)` - Execute function on UI thread (for goroutine safety)
+
+**widget** - Factory for all widgets
+**container** - Factory for layouts
+**canvas** - Factory for canvas objects
+**chart** - Factory for charts
+**binding** - Factory for data bindings (reactive UIs)
+**constants** - Fyne constants (ImportanceHigh, TextWrapWord, etc.)
+
+## Data Binding (Reactive UIs)
+
+Create reactive UIs where widget updates automatically when data changes:
+
+### String Binding
+```risor
+let text = binding.NewString("Hello")
+let label = widget.NewLabelWithData(text)
+
+// Label updates automatically
+text.Set("World")
+```
+
+### Int Binding
+```risor
+let count = binding.NewInt(0)
+let progressBar = widget.NewProgressBarWithData(
+    count.map(x => float(x) / 100.0)  // Convert to 0.0-1.0
+)
+
+count.Set(50)  // Progress bar updates to 50%
+```
+
+### Float Binding
+```risor
+let temperature = binding.NewFloat(20.5)
+let slider = widget.NewSliderWithData(0, 100, temperature)
+let label = widget.NewLabelWithData(
+    temperature.map(x => sprintf("%.1f°C", x))
+)
+
+slider.OnChanged = (value) => {
+    // temperature binding updates automatically
+}
+```
+
+### Bool Binding
+```risor
+let enabled = binding.NewBool(false)
+let checkbox = widget.NewCheckWithData("Enable", enabled)
+let statusLabel = widget.NewLabelWithData(
+    enabled.map(x => x ? "Enabled" : "Disabled")
+)
+
+// Both widgets update when binding changes
+enabled.Set(true)
+```
+
+### Binding Methods
+- `binding.Get()` - Get current value
+- `binding.Set(value)` - Set new value (triggers updates)
+- `binding.map(func)` - Transform binding (returns new binding)
+- `binding.AddListener(func)` - Listen for changes
+
+### Widgets Supporting Data Binding
+- `widget.NewLabelWithData(stringBinding)`
+- `widget.NewCheckWithData(text, boolBinding)`
+- `widget.NewSliderWithData(min, max, floatBinding)`
+- `widget.NewProgressBarWithData(floatBinding)`
+- `widget.NewEntryWithData(stringBinding)` (bi-directional)
+
+## Common Widgets
+
+### Button
+```risor
+let btn = widget.NewButton("Label", () => {
+    // callback code
+})
+btn.SetText("New Label")  // Method variant (v0.4.0+)
+btn.Disable()
+btn.Enable()
+
+// Button importance (v0.4.0+)
+btn.Importance = constants.ImportanceHigh
+btn.Importance = constants.ImportanceLow
+```
+
+### Entry (Text Input)
+```risor
+let entry = widget.NewEntry()
+entry.SetPlaceHolder("Enter text...")
+
+// OnChanged fires on every keystroke (v0.4.0+)
+entry.OnChanged((text) => {
+    print("Current:", text)
+})
+
+// OnSubmit fires when user presses Enter
+entry.OnSubmit(() => {
+    print("Submitted:", entry.Text)
+})
+
+// Multiline variant
+let multiline = widget.NewMultiLineEntry()
+```
+
+### Label
+```risor
+let label = widget.NewLabel("Text")
+label.SetText("New text")  // Method variant
+
+// Properties (v0.4.0+)
+label.Wrapping = constants.TextWrapWord
+label.Truncation = constants.TextTruncateEllipsis
+label.Alignment = constants.TextAlignCenter
+label.Importance = constants.ImportanceHigh
+```
+
+### Check (Checkbox)
+```risor
+let check = widget.NewCheck("Enable feature", (checked) => {
+    print("Checked:", checked)
+})
+```
+
+### Select (Dropdown)
+```risor
+let select = widget.NewSelect(["Option 1", "Option 2"], (value) => {
+    print("Selected:", value)
+})
+```
+
+### RadioGroup
+```risor
+let radio = widget.NewRadioGroup(["A", "B", "C"], (value) => {
+    print("Selected:", value)
+})
+```
+
+### Slider
+```risor
+let slider = widget.NewSlider(0, 100)
+slider.OnChanged = (value) => {
+    print("Value:", value)
+}
+```
+
+### Form
+```risor
+let name = widget.NewEntry()
+let email = widget.NewEntry()
+let submit = widget.NewButton("Submit", () => {
+    print("Name:", name.Text, "Email:", email.Text)
+})
+
+let form = widget.NewForm(
+    widget.NewFormItem("Name", name),
+    widget.NewFormItem("Email", email),
+    widget.NewFormItem("", submit)
+)
+```
+
+### Table (Paginated)
+```risor
+let table = widget.NewTable("mydata", 20)
+
+table.Columns(() => ["ID", "Name", "Email"])
+
+table.RowCount(() => {
+    return database.count()  // total rows
+})
+
+table.Data((offset, limit) => {
+    let rows = database.query(offset, limit)
+    return rows.map(row => [
+        string(row["id"]),
+        row["name"],
+        row["email"]
+    ])
+})
+
+table.SetColumnWidth(0, 60)   // ID column
+table.SetColumnWidth(1, 150)  // Name column
+table.SetColumnWidth(2, 200)  // Email column
+
+table.Refresh()  // trigger update
+```
+
+### Tree (Hierarchical Data)
+```risor
+let treeData = {
+    "": ["root1", "root2"],
+    "root1": ["child1", "child2"],
+    "root2": ["child3"]
+}
+
+let tree = widget.NewTree()
+
+tree.ChildUIDs((uid) => {
+    let children = treeData.get(uid)
+    return children != nil ? children : []
+})
+
+tree.IsBranch((uid) => {
+    return treeData.get(uid) != nil
+})
+
+tree.CreateNode((branch) => {
+    return widget.NewLabel(branch ? "📁" : "📄")
+})
+
+tree.UpdateNode((uid, branch, node) => {
+    node.Text = uid
+})
+
+tree.OnSelected((uid) => {
+    print("Selected:", uid)
+})
+```
+
+### List (Scrolling List)
+```risor
+let items = ["Item 1", "Item 2", "Item 3"]
+let list = widget.NewList()
+
+list.Length(() => len(items))
+
+list.CreateItem(() => widget.NewLabel("template"))
+
+list.UpdateItem((id, obj) => {
+    obj.Text = items[id]
+})
+
+list.OnSelected((id) => {
+    print("Selected:", items[id])
+})
+```
+
+### ProgressBar
+```risor
+let progress = widget.NewProgressBar()
+progress.SetValue(0.5)  // 0.0 to 1.0
+
+// Indeterminate
+let spinner = widget.NewProgressBarInfinite()
+spinner.Start()
+spinner.Stop()
+```
+
+### Activity Indicator
+```risor
+let activity = widget.NewActivity()
+activity.Start()
+activity.Stop()
+```
+
+### Card
+```risor
+let card = widget.NewCard("Title", "Subtitle", content_widget)
+card.SetImage(icon)
+```
+
+### Accordion
+```risor
+let accordion = widget.NewAccordion(
+    widget.NewAccordionItem("Section 1", content1),
+    widget.NewAccordionItem("Section 2", content2)
+)
+```
+
+### Markdown
+```risor
+let md = widget.NewMarkdown(`# Title\n\nContent here`)
+```
+
+## Containers (Layouts)
+
+### VBox (Vertical Stack)
+```risor
+let vbox = container.NewVBox(widget1, widget2, widget3)
+```
+
+### HBox (Horizontal Stack)
+```risor
+let hbox = container.NewHBox(widget1, widget2, widget3)
+```
+
+### Border (5 Region Layout)
+```risor
+let border = container.NewBorder(
+    top_widget,     // can be nil
+    bottom_widget,  // can be nil
+    left_widget,    // can be nil
+    right_widget,   // can be nil
+    center_widget   // fills remaining space
+)
+```
+
+### HSplit / VSplit
+```risor
+let hsplit = container.NewHSplit(left, right)
+let vsplit = container.NewVSplit(top, bottom)
+```
+
+### Scroll (Scrollable Container)
+```risor
+let scroll = container.NewScroll(content)
+```
+
+### More Containers (v0.4.0+)
+```risor
+// Center alignment
+let centered = container.NewCenter(widget)
+
+// Fill available space
+let maxed = container.NewMax(widget)
+
+// Layered stack (z-order)
+let stack = container.NewStack(bg, fg)
+
+// With padding
+let padded = container.NewPadded(widget)
+
+// Grid with fixed columns
+let grid = container.NewGridWithColumns(3, w1, w2, w3, w4, w5, w6)
+
+// Grid with fixed rows
+let grid = container.NewGridWithRows(2, w1, w2, w3, w4)
+```
+
+## Constants (v0.4.0+)
+
+The `constants` global provides Fyne enums:
+
+### Button/Label Importance
+```risor
+button.Importance = constants.ImportanceHigh
+button.Importance = constants.ImportanceMedium
+button.Importance = constants.ImportanceLow
+button.Importance = constants.DangerImportance
+button.Importance = constants.WarningImportance
+button.Importance = constants.SuccessImportance
+```
+
+### Text Wrapping
+```risor
+label.Wrapping = constants.TextWrapOff
+label.Wrapping = constants.TextWrapBreak
+label.Wrapping = constants.TextWrapWord
+```
+
+### Text Truncation
+```risor
+label.Truncation = constants.TextTruncateOff
+label.Truncation = constants.TextTruncateClip
+label.Truncation = constants.TextTruncateEllipsis
+```
+
+### Text Alignment
+```risor
+label.Alignment = constants.TextAlignLeading
+label.Alignment = constants.TextAlignCenter
+label.Alignment = constants.TextAlignTrailing
+```
+
+## Modules
+
+### SQL Module
+
+Enable with `fynerisor.WithSQL()` option. Declare requirement with `require("@sql")`.
+
+```risor
+require("@sql")  // Ensure SQL module is enabled
+
+// Connect
+let conn = sql.connect("sqlite3::memory:")
+let conn = sql.connect("mysql://user:pass@host:3306/dbname")
+let conn = sql.connect("postgres://user:pass@host:5432/dbname")
+let conn = sql.connect("sqlserver://user:pass@host:1433/dbname")
+
+// Execute
+conn.exec("CREATE TABLE users (id INT, name TEXT)")
+conn.exec("INSERT INTO users VALUES (?, ?)", 1, "Alice")
+
+// Query - returns streaming iterator
+let names = conn.query("SELECT * FROM users").map(row => row["name"])
+
+// Or iterate with .each()
+conn.query("SELECT * FROM users").each(row => {
+    print(row["id"], row["name"])
+})
+
+// Or collect all to list first (uses more memory)
+let rows = conn.query("SELECT * FROM users").collect()
+
+// Close
+conn.close()
+```
+
+### HTTP Module
+
+Enable with `fynerisor.WithHTTP()` option. Declare requirement with `require("@http")`.
+
+```risor
+require("@http")  // Ensure HTTP module is enabled
+
+// GET request
+let response = http.get("https://api.example.com/data")
+print(response.status)      // 200
+print(response.body)         // response body string
+let data = response.json()   // parse JSON response
+
+// POST request
+let response = http.post("https://api.example.com/create",
+    {"Content-Type": "application/json"},
+    `{"name": "Alice"}`)
+```
+
+### OS Module
+
+Enable with `fynerisor.WithOS()`. Provides OS-level operations.
+
+```risor
+require("@os")
+
+let platform = os.goos()           // "linux", "windows", "darwin"
+let user = os.current_user()       // Current username
+os.open_browser("https://example.com")  // Open URL in browser
+```
+
+### Time Module
+
+Enable with `fynerisor.WithTime()`. Date and time operations.
+
+```risor
+require("@time")
+
+let now = time.now()
+let date = time.date(2026, 5, 7)
+let parsed = time.parse("2026-05-07")
+```
+
+### Strings Module
+
+Enable with `fynerisor.WithStrings()`. String manipulation utilities.
+
+```risor
+require("@strings")
+
+let upper = strings.upper("hello")
+let contains = strings.contains("hello world", "world")
+let split = strings.split("a,b,c", ",")
+```
+
+### Filepath Module
+
+Enable with `fynerisor.WithFilepath()`. File path operations.
+
+```risor
+require("@filepath")
+
+let joined = filepath.join("/home", "user", "file.txt")
+let dir = filepath.dir("/home/user/file.txt")
+let base = filepath.base("/home/user/file.txt")
+```
+
+### IO Module
+
+Enable with `fynerisor.WithIO()`. File I/O operations.
+
+```risor
+require("@io")
+
+io.cp("source.txt", "destination.txt")  // Copy file
+```
+
+## Canvas Objects
+
+```risor
+// Image from file
+let img = canvas.NewImageFromFile("/path/to/image.png")
+
+// Line
+let line = canvas.NewLine()
+```
+
+## Charts
+
+```risor
+let chart = chart.NewBarChart([10, 20, 15, 30])
+```
+
+## Example Prompts for LLMs
+
+### Prompt 1: Simple Form Application
+```
+Create a Risor GUI application with a form that collects a user's name and email,
+then displays the information in a label when submitted.
+```
+
+### Prompt 2: Data Table with SQL
+```
+Create a Risor GUI that connects to an SQLite database, displays user data in a
+paginated table with columns for ID, Name, and Email, and includes a form to add
+new users.
+```
+
+### Prompt 3: File Browser with Tree
+```
+Create a Risor GUI with a tree widget showing a hierarchical file structure.
+When a file is selected, display its contents in a text area.
+```
+
+### Prompt 4: Progress Tracker
+```
+Create a Risor GUI with a list of tasks on the left and a progress bar showing
+completion percentage. Include buttons to mark tasks as complete.
+```
+
+### Prompt 5: API Dashboard
+```
+Create a Risor GUI that fetches data from a REST API using http.get(), displays
+the results in a card layout, and updates every 30 seconds.
+```
+
+## Common Patterns
+
+### Update UI from Callback
+```risor
+let label = widget.NewLabel("Click the button")
+let btn = widget.NewButton("Update", () => {
+    label.Text = "Button was clicked!"
+})
+```
+
+### Build Dynamic List
+```risor
+let items = []
+let list = widget.NewList()
+
+list.Length(() => len(items))
+list.CreateItem(() => widget.NewLabel(""))
+list.UpdateItem((id, obj) => {
+    obj.Text = items[id]
+})
+
+let addBtn = widget.NewButton("Add Item", () => {
+    items = items + ["Item " + string(len(items) + 1)]
+    list.Refresh()
+})
+```
+
+### Form with Validation
+```risor
+let entry = widget.NewEntry()
+let errorLabel = widget.NewLabel("")
+
+let submit = widget.NewButton("Submit", () => {
+    if (entry.Text == "") {
+        errorLabel.Text = "Field is required"
+    } else {
+        errorLabel.Text = ""
+        // process entry.Text
+    }
+})
+```
+
+### Refresh Table from Database
+```risor
+let table = widget.NewTable("data", 10)
+
+table.Data((offset, limit) => {
+    let query = "SELECT * FROM items LIMIT " + string(limit) +
+                " OFFSET " + string(offset)
+    // Streaming map - single pass, efficient
+    return conn.query(query).map(row => [row["id"], row["name"]])
+})
+
+let refreshBtn = widget.NewButton("Refresh", () => {
+    table.Refresh()
+})
+```
+
+## Important Constraints
+
+**Thread Safety**: All widget callbacks execute synchronously in the UI thread.
+Never spawn goroutines or use async patterns inside callbacks.
+
+**No While Loops**: Risor v2 has no while/for loops. Use `.each()`, `.map()`,
+`.filter()`, `.reduce()` for iteration.
+
+**Iterator Collections**: SQL query results return iterators with `.map()` and
+`.each()` methods for efficient streaming. Use `.collect()` only if you need
+the full result set in memory.
+
+**Callback Signatures**: Match expected callback arguments:
+- Button: `() => { }`
+- Check: `(checked) => { }`
+- Select: `(value) => { }`
+- Table.Data: `(offset, limit) => [ ]`
+- Tree.ChildUIDs: `(uid) => [ ]`
+
+## Non-GUI Usage (Headless Scripts)
+
+For CLI tools, server applications, or headless scripts that need Risor with modules but no GUI:
+
+```go
+package main
+
+import (
+    "log"
+    "os"
+    "github.com/uidbz/fynerisor"
+)
+
+func main() {
+    // Create context with desired modules (same options as Window)
+    ctx := fynerisor.NewContext(
+        fynerisor.WithHTTP(),
+        fynerisor.WithSQL(),
+        fynerisor.WithOS(),
+    )
+
+    script := `
+        require(["v0.4", "@http", "@sql"])
+
+        let platform = os.goos()
+        print("Running on:", platform)
+
+        let conn = sql.connect("sqlite3::memory:")
+        conn.exec("CREATE TABLE users (id INT, name TEXT)")
+        conn.exec("INSERT INTO users VALUES (?, ?)", 1, "Alice")
+
+        let rows = conn.query("SELECT * FROM users").collect()
+        rows
+    `
+
+    result, err := ctx.Eval(script)
+    if err != nil {
+        log.Fatal(err)
+    }
+    log.Println("Result:", result)
+}
+```
+
+**With imports:**
+
+```go
+fetchFunc := func(path string) (string, error) {
+    data, err := os.ReadFile(path)
+    return string(data), err
+}
+
+script := `
+    import("utils.risor")
+    require("@http")
+    let result = myUtil(42)
+`
+
+result, err := ctx.EvalWithImports(script, fetchFunc)
+```
+
+**Available options (same as Window):**
+- `WithHTTP()`, `WithSQL()`, `WithOS()`, `WithStrings()`, `WithFilepath()`, `WithTime()`, `WithGlobals()`
+- Window-specific options (`WithStatusCallback`, `WithResultCallback`) are silently ignored
+
+## Custom Global Objects
+
+Expose custom Go types with methods as globals in scripts:
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "github.com/deepnoodle-ai/risor/v2/pkg/object"
+    "github.com/deepnoodle-ai/risor/v2/pkg/op"
+    "github.com/uidbz/fynerisor"
+)
+
+// Define your Go type
+type MyDatabase struct {
+    data map[string]string
+}
+
+// Wrap for Risor - implement object.Object interface
+type MyDatabaseObject struct {
+    db *MyDatabase
+}
+
+func (obj *MyDatabaseObject) Type() object.Type { return "my_database" }
+func (obj *MyDatabaseObject) Inspect() string { return "my_database" }
+func (obj *MyDatabaseObject) Interface() interface{} { return obj.db }
+func (obj *MyDatabaseObject) IsTruthy() bool { return true }
+func (obj *MyDatabaseObject) Cost() int { return 0 }
+func (obj *MyDatabaseObject) Equals(other object.Object) bool { return obj == other }
+func (obj *MyDatabaseObject) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
+    return nil, fmt.Errorf("unsupported operation")
+}
+func (obj *MyDatabaseObject) MarshalJSON() ([]byte, error) {
+    return nil, fmt.Errorf("cannot marshal")
+}
+func (obj *MyDatabaseObject) SetAttr(name string, value object.Object) error {
+    return fmt.Errorf("no settable attributes")
+}
+func (obj *MyDatabaseObject) Attrs() []object.AttrSpec { return nil }
+
+// Expose methods via GetAttr
+func (obj *MyDatabaseObject) GetAttr(name string) (object.Object, bool) {
+    switch name {
+    case "set":
+        return object.NewBuiltin("db.set", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+            key, _ := object.AsString(args[0])
+            value, _ := object.AsString(args[1])
+            obj.db.data[key] = value
+            return object.Nil, nil
+        }), true
+    case "get":
+        return object.NewBuiltin("db.get", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+            key, _ := object.AsString(args[0])
+            value := obj.db.data[key]
+            return object.NewString(value), nil
+        }), true
+    }
+    return nil, false
+}
+
+func main() {
+    // Create and register custom global
+    db := &MyDatabaseObject{db: &MyDatabase{data: make(map[string]string)}}
+
+    fw := fynerisor.NewApp("My App",
+        fynerisor.WithGlobal("mydb", db),  // Register as global
+    )
+
+    script := `
+        // Use custom global in script
+        mydb.set("user", "Alice")
+        let user = mydb.get("user")
+
+        let label = widget.NewLabel(user)
+        window.SetContent(label)
+    `
+
+    fw.LoadScript(script)
+    fw.Execute()
+    fw.ShowAndRun()
+}
+```
+
+## Application Versioning
+
+Set your application's version for script compatibility checking:
+
+```go
+package main
+
+import "github.com/uidbz/fynerisor"
+
+func main() {
+    // Set your application version
+    fynerisor.SetAppVersion("2.5.1")
+
+    fw := fynerisor.NewApp("My App v2.5.1")
+
+    script := `
+        // Scripts can check your app version
+        require(["v2.5"])  // Requires your app >= v2.5
+
+        let btn = widget.NewButton("Hello", () => {
+            window.SetStatus("App version compatible!")
+        })
+        window.SetContent(btn)
+    `
+
+    fw.LoadScript(script)
+    fw.Execute()
+    fw.ShowAndRun()
+}
+```
+
+This separates your application version from fynerisor library version.
+
+## File Structure for Go Applications
+
+### Simple Approach (Recommended)
+
+```go
+package main
+
+import (
+    "github.com/uidbz/fynerisor"
+)
+
+func main() {
+    // NewApp creates both Fyne app and window in one call
+    fw := fynerisor.NewApp("My Application",
+        fynerisor.WithHTTP(),
+        fynerisor.WithSQL(),
+    )
+
+    script := `
+        require(["v0.4", "@sql", "@http"])
+
+        let btn = widget.NewButton("Hello", () => {
+            window.SetStatus("Clicked!")
+        })
+        window.SetContent(btn)
+    `
+
+    fw.LoadScript(script)
+    fw.Execute()
+    fw.ShowAndRun()
+}
+```
+
+### Advanced Approach (More Control)
+
+```go
+package main
+
+import (
+    "log"
+    "fyne.io/fyne/v2/app"
+    "fyne.io/fyne/v2/theme"
+    "github.com/uidbz/fynerisor"
+)
+
+func main() {
+    script := `
+        require(["v0.4", "@sql", "@http"])
+        let btn = widget.NewButton("Hello", () => {
+            window.SetStatus("Clicked!")
+        })
+        window.SetContent(btn)
+    `
+
+    // Analyze requirements
+    reqs, err := fynerisor.AnalyzeRequirements(script)
+    if err != nil {
+        log.Fatal(err)
+    }
+    log.Println("Script requirements:", reqs)
+
+    // Create Fyne app with custom settings
+    a := app.New()
+    a.Settings().SetTheme(theme.DarkTheme())
+    w := a.NewWindow("My App")
+
+    // Create fynerisor window with required modules
+    fw := fynerisor.NewWindow(w,
+        fynerisor.WithHTTP(),
+        fynerisor.WithSQL(),
+    )
+
+    fw.LoadScript(script)
+    fw.Execute()
+    fw.ShowAndRun()
+}
+```
+
+## Analyzing Script Requirements
+
+External tools can analyze Risor scripts without executing them:
+
+```go
+script := `
+import(["utils.risor", "helpers.risor"])
+require(["v0.4", "@sql", "@http"])
+`
+
+reqs, err := fynerisor.AnalyzeRequirements(script)
+if err != nil {
+    log.Fatal(err)
+}
+
+fmt.Println("Min Version:", reqs.MinVersion)           // "0.2"
+fmt.Println("Required Modules:", reqs.RequiredModules) // ["sql", "http"]
+fmt.Println("Imports:", reqs.Imports)                  // ["utils.risor", "helpers.risor"]
+fmt.Println("Description:", reqs.String())
+// "version >=v0.2; modules: sql, http; imports: utils.risor, helpers.risor"
+
+// Load imports before executing
+fw := fynerisor.NewApp("My App")
+for _, imp := range reqs.Imports {
+    fw.ImportScript(imp)  // Loads each import in order
+}
+fw.LoadScript(script)
+fw.Execute()
+```
+
+**CLI Automatic Import Handling**
+
+The fynerisor CLI automatically analyzes and imports dependencies:
+
+```bash
+fynerisor app.risor  # Automatically imports any import() declarations
+```
+
+## CLI Usage
+
+```bash
+# Run script
+fynerisor app.risor
+
+# Watch mode (auto-reload on changes)
+fynerisor --watch app.risor
+
+# Custom window size
+fynerisor --width 1024 --height 768 app.risor
+
+# Headless mode (for testing)
+fynerisor --headless app.risor
+
+# Pass arguments to script
+fynerisor app.risor arg1 arg2
+# Access in script via: args[0], args[1]
+```
+
+## Error Handling
+
+Errors are logged with `[ERROR]` prefix:
+```
+2026/05/04 12:00:00 [ERROR] ERROR: type error: undefined variable "foo"
+```
+
+Use `--verbose` flag for detailed execution status.

@@ -1,0 +1,41 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Binary executables
+fynerisor
+cmd/fynerisor/fynerisor
+examples/*/[0-9][0-9]-*
+01-hello-world
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build artifacts
+dist/
+build/
+
+# Test files
+*.risor.tmp
+test-*.risor

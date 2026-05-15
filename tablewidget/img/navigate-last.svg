@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="24"
+   height="24"
+   viewBox="0 0 6.3499998 6.3500002"
+   version="1.1"
+   id="svg1541"
+   inkscape:version="1.1.2 (0a00cf5339, 2022-02-04)"
+   sodipodi:docname="navigate-last.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1543"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:document-units="mm"
+     showgrid="false"
+     width="24mm"
+     units="px"
+     inkscape:zoom="24.886869"
+     inkscape:cx="6.5295479"
+     inkscape:cy="22.220554"
+     inkscape:window-width="2556"
+     inkscape:window-height="1383"
+     inkscape:window-x="1440"
+     inkscape:window-y="427"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg1541"
+     inkscape:snap-text-baseline="true"
+     inkscape:snap-center="true"
+     inkscape:snap-midpoints="true"
+     inkscape:snap-smooth-nodes="true"
+     inkscape:snap-object-midpoints="true"
+     inkscape:snap-bbox="true"
+     inkscape:bbox-paths="true"
+     inkscape:bbox-nodes="true"
+     inkscape:snap-bbox-edge-midpoints="true"
+     inkscape:snap-bbox-midpoints="true" />
+  <defs
+     id="defs1538" />
+  <g
+     id="g3321"
+     transform="translate(0.20366589,-0.03257455)">
+    <path
+       d="M 4.82117,5.3225452 4.83015,1.091476 5.3503415,1.093736 5.3413615,5.3248052"
+       id="path1202"
+       style="stroke-width:0.300707"
+       inkscape:label="bar" />
+    <path
+       d="M 2.7089933,1.0903439 2.3359308,1.4634064 3.8123059,2.9424272 H 0.59232671 V 3.4715938 H 3.8123059 L 2.3359308,4.9506147 2.7089933,5.3236772 4.82566,3.2070106 Z"
+       id="path754"
+       sodipodi:nodetypes="cccccccccc"
+       inkscape:label="arrow"
+       style="stroke-width:0.264583" />
+  </g>
+</svg>

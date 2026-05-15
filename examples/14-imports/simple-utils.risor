@@ -1,0 +1,19 @@
+// simple-utils.risor - Utility functions loaded before main script
+
+// Greeting function
+let greet = (name) => {
+    return `Hello, ${name}!`
+}
+
+// Math utilities
+let square = (x) => { return x * x }
+let cube = (x) => { return x * x * x }
+let add = (a, b) => { return a + b }
+
+// Create a labeled widget helper
+let createLabeledWidget = (label, widgetObj) => {
+    return container.NewVBox(
+        widget.NewLabel(label),
+        widgetObj
+    )
+}

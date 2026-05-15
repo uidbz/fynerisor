@@ -1,0 +1,101 @@
+package widget
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/widget"
+
+	"github.com/deepnoodle-ai/risor/v2/pkg/object"
+	"github.com/deepnoodle-ai/risor/v2/pkg/op"
+)
+
+var _ object.Object = &ProgressBarInfinite{}
+
+const ProgressBarInfiniteType object.Type = "widget.ProgressBarInfinite"
+
+// ProgressBarInfinite wraps widget.ProgressBarInfinite for Risor scripting
+type ProgressBarInfinite struct {
+	instance *widget.ProgressBarInfinite
+}
+
+// NewProgressBarInfinite creates a new infinite progress bar
+func NewProgressBarInfinite() *ProgressBarInfinite {
+	return &ProgressBarInfinite{instance: widget.NewProgressBarInfinite()}
+}
+
+func (obj *ProgressBarInfinite) Type() object.Type {
+	return ProgressBarInfiniteType
+}
+
+func (obj *ProgressBarInfinite) Inspect() string {
+	return "widget.ProgressBarInfinite()"
+}
+
+func (obj *ProgressBarInfinite) Interface() interface{} {
+	return obj.instance
+}
+
+func (obj *ProgressBarInfinite) IsTruthy() bool {
+	return true
+}
+
+func (obj *ProgressBarInfinite) Cost() int {
+	return 0
+}
+
+func (obj *ProgressBarInfinite) CanvasObject() fyne.CanvasObject {
+	return obj.instance
+}
+
+func (obj *ProgressBarInfinite) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("type error: unable to marshal 'widget.ProgressBarInfinite'")
+}
+
+func (obj *ProgressBarInfinite) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
+	err := errors.New("eval error: unsupported operation for " + string(ProgressBarInfiniteType))
+	errObj := object.Errorf("eval error: unsupported operation for %s: %v", ProgressBarInfiniteType, opType)
+	return errObj, err
+}
+
+func (obj *ProgressBarInfinite) Equals(other object.Object) bool {
+	return obj == other
+}
+
+func (obj *ProgressBarInfinite) Attrs() []object.AttrSpec {
+	return nil
+}
+
+func (obj *ProgressBarInfinite) GetAttr(name string) (object.Object, bool) {
+	switch name {
+	case "Start":
+		return object.NewBuiltin("widget.ProgressBarInfinite.Start", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			fyne.Do(func() {
+				obj.instance.Start()
+			})
+			return object.Nil, nil
+		}), true
+	case "Stop":
+		return object.NewBuiltin("widget.ProgressBarInfinite.Stop", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			fyne.Do(func() {
+				obj.instance.Stop()
+			})
+			return object.Nil, nil
+		}), true
+	case "Running":
+		return object.NewBool(obj.instance.Running()), true
+	}
+	return nil, false
+}
+
+func (obj *ProgressBarInfinite) SetAttr(name string, value object.Object) error {
+	return fmt.Errorf("attribute error: %s object has no attribute %q", ProgressBarInfiniteType, name)
+}

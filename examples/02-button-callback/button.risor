@@ -1,0 +1,27 @@
+// Button with callback example
+// Demonstrates interactive widgets and state updates
+
+require("v0.2")
+
+let clickCount = 0
+
+let label = widget.NewLabel("Click the button below")
+
+let button = widget.NewButton("Click me!", () => {
+    clickCount = clickCount + 1
+    label.Text = `Button clicked ${clickCount} times`
+})
+
+let resetButton = widget.NewButton("Reset", () => {
+    clickCount = 0
+    label.Text = "Click the button below"
+})
+
+// Create vertical layout with widgets
+let layout = container.NewVBox(
+    label,
+    button,
+    resetButton
+)
+
+window.SetContent(layout)

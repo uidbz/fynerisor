@@ -1,0 +1,170 @@
+require("@gui")
+
+// The 'users' global is our custom Go type (UserDatabase)
+// It has methods defined in Go: add, get, list, count, delete
+
+// Status label
+let statusLabel = widget.NewLabel("User Database: 0 users")
+
+// Update status function
+let updateStatus = () => {
+    let count = users.count()
+    statusLabel.SetText(sprintf("User Database: %d users", count))
+}
+
+// Form for adding users
+let nameEntry = widget.NewEntry()
+nameEntry.PlaceHolder = "Name"
+
+let emailEntry = widget.NewEntry()
+emailEntry.PlaceHolder = "Email"
+
+let ageEntry = widget.NewEntry()
+ageEntry.PlaceHolder = "Age"
+
+let addBtn = widget.NewButton("Add User", () => {
+    let name = nameEntry.Text
+    let email = emailEntry.Text
+    let ageStr = ageEntry.Text
+
+    if (name == "" || email == "" || ageStr == "") {
+        statusLabel.SetText("Error: All fields required")
+        return
+    }
+
+    let age = int(ageStr)
+
+    // Call custom Go method
+    users.add(name, email, age)
+
+    nameEntry.SetText("")
+    emailEntry.SetText("")
+    ageEntry.SetText("")
+
+    updateStatus()
+})
+addBtn.Importance = constants.ImportanceHigh
+
+// List to display users
+let userListLabel = widget.NewLabel("No users yet")
+
+let refreshList = () => {
+    let userList = users.list()
+
+    if (len(userList) == 0) {
+        userListLabel.SetText("No users yet")
+        return
+    }
+
+    let text = ""
+    userList.each(user => {
+        text = text + sprintf("• %s (%s) - Age %d\n", user["name"], user["email"], user["age"])
+    })
+
+    userListLabel.SetText(text)
+}
+
+let refreshBtn = widget.NewButton("Refresh List", () => {
+    refreshList()
+    updateStatus()
+})
+
+// Search for specific user
+let searchEntry = widget.NewEntry()
+searchEntry.PlaceHolder = "Search by name"
+
+let searchBtn = widget.NewButton("Search", () => {
+    let name = searchEntry.Text
+    if (name == "") {
+        statusLabel.SetText("Enter a name to search")
+        return
+    }
+
+    let user = users.get(name)
+    if (user == nil) {
+        statusLabel.SetText(sprintf("User '%s' not found", name))
+    } else {
+        statusLabel.SetText(sprintf("Found: %s (%s) - Age %d",
+            user["name"], user["email"], user["age"]))
+    }
+})
+
+// Delete user
+let deleteEntry = widget.NewEntry()
+deleteEntry.PlaceHolder = "Name to delete"
+
+let deleteBtn = widget.NewButton("Delete User", () => {
+    let name = deleteEntry.Text
+    if (name == "") {
+        statusLabel.SetText("Enter a name to delete")
+        return
+    }
+
+    let deleted = users.delete(name)
+    if (deleted) {
+        statusLabel.SetText(sprintf("Deleted user: %s", name))
+        deleteEntry.SetText("")
+        refreshList()
+        updateStatus()
+    } else {
+        statusLabel.SetText(sprintf("User '%s' not found", name))
+    }
+})
+deleteBtn.Importance = constants.ImportanceLow
+
+// Demo button to add sample data
+let demoBtn = widget.NewButton("Add Demo Data", () => {
+    users.add("Alice Smith", "alice@example.com", 28)
+    users.add("Bob Johnson", "bob@example.com", 35)
+    users.add("Charlie Brown", "charlie@example.com", 42)
+
+    refreshList()
+    updateStatus()
+})
+
+// Info section
+let infoLabel = widget.NewLabel(`Custom Go Type Demo:
+
+This example shows how to expose custom Go types
+to Risor scripts as global variables.
+
+The 'users' global is a UserDatabase struct implemented
+in Go with methods like add(), get(), list(), count(),
+and delete() that are callable from scripts.
+
+Try:
+1. Click "Add Demo Data" to populate
+2. Click "Refresh List" to see users
+3. Search for a user by name
+4. Delete users`)
+infoLabel.Wrapping = constants.TextWrapWord
+
+let layout = container.NewVBox(
+    infoLabel,
+    widget.NewSeparator(),
+    statusLabel,
+    widget.NewSeparator(),
+
+    widget.NewLabel("Add User:"),
+    nameEntry,
+    emailEntry,
+    ageEntry,
+    addBtn,
+    widget.NewSeparator(),
+
+    widget.NewLabel("Search User:"),
+    container.NewHBox(searchEntry, searchBtn),
+    widget.NewSeparator(),
+
+    widget.NewLabel("Delete User:"),
+    container.NewHBox(deleteEntry, deleteBtn),
+    widget.NewSeparator(),
+
+    container.NewHBox(demoBtn, refreshBtn),
+    widget.NewSeparator(),
+
+    widget.NewLabel("User List:"),
+    userListLabel
+)
+
+window.SetContent(container.NewScroll(layout))

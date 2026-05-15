@@ -1,0 +1,88 @@
+// SQL Module Test
+// Tests the SQL module with an in-memory SQLite database
+
+require(["v0.2", "@sql"])
+
+// Connect to in-memory SQLite database
+let conn = sql.connect("sqlite3::memory:")
+
+// Create a test table
+conn.exec("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, email TEXT)")
+
+// Insert test data
+conn.exec("INSERT INTO users (name, email) VALUES (?, ?)", "Alice", "alice@example.com")
+conn.exec("INSERT INTO users (name, email) VALUES (?, ?)", "Bob", "bob@example.com")
+conn.exec("INSERT INTO users (name, email) VALUES (?, ?)", "Charlie", "charlie@example.com")
+
+// Query the data - use .map() for efficient streaming
+let tableData = conn.query("SELECT * FROM users ORDER BY id").map(row => {
+    return [string(row["id"]), row["name"], row["email"]]
+})
+
+// Display results
+let title = widget.NewLabel("SQL Module Test - Users Table")
+title.TextStyle.Bold = true
+
+let resultLabel = widget.NewLabel(`Found ${len(tableData)} users`)
+
+// Create a simple table to display results
+let table = widget.NewTable("users", 10)
+
+table.Columns(() => {
+    return ["ID", "Name", "Email"]
+})
+
+table.RowCount(() => {
+    return len(tableData)
+})
+
+table.Data((offset, limit) => {
+    let start = offset
+    let end = offset + limit
+    if (end > len(tableData)) {
+        end = len(tableData)
+    }
+
+    return tableData[start:end]
+})
+
+table.Refresh()
+
+// Add user form
+let nameEntry = widget.NewEntry()
+let emailEntry = widget.NewEntry()
+
+let addBtn = widget.NewButton("Add User", () => {
+    if (nameEntry.Text != "" && emailEntry.Text != "") {
+        conn.exec("INSERT INTO users (name, email) VALUES (?, ?)", nameEntry.Text, emailEntry.Text)
+
+        // Refresh data
+        tableData = conn.query("SELECT * FROM users ORDER BY id").map(row => {
+            return [string(row["id"]), row["name"], row["email"]]
+        })
+
+        resultLabel.Text = `Found ${len(tableData)} users`
+        table.Refresh()
+
+        // Clear form
+        nameEntry.Text = ""
+        emailEntry.Text = ""
+    }
+})
+
+let form = widget.NewForm(
+    widget.NewFormItem("Name", nameEntry),
+    widget.NewFormItem("Email", emailEntry),
+    widget.NewFormItem("", addBtn)
+)
+
+// Layout
+let content = container.NewBorder(
+    container.NewVBox(title, widget.NewSeparator(), resultLabel, form, widget.NewSeparator()),
+    nil,
+    nil,
+    nil,
+    table
+)
+
+window.SetContent(content)

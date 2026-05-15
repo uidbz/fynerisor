@@ -1,0 +1,117 @@
+require(["v0.2", "@gui"])
+
+let statusLabel = widget.NewLabel("Fill out the form and click Submit")
+
+// Email entry with validation
+let emailEntry = widget.NewEntry()
+emailEntry.PlaceHolder = "user@example.com"
+emailEntry.SetValidator((text) => {
+	if (text == "") {
+		return "Email is required"
+	}
+	if (!text.contains("@")) {
+		return "Invalid email format"
+	}
+	if (!text.contains(".")) {
+		return "Invalid email format"
+	}
+	return nil  // Valid
+})
+
+// Age entry with validation
+let ageEntry = widget.NewEntry()
+ageEntry.PlaceHolder = "18"
+ageEntry.SetValidator((text) => {
+	if (text == "") {
+		return "Age is required"
+	}
+	let age = int(text)
+	if (age < 18) {
+		return "Must be 18 or older"
+	}
+	if (age > 120) {
+		return "Invalid age"
+	}
+	return nil  // Valid
+})
+
+// Username entry with validation
+let usernameEntry = widget.NewEntry()
+usernameEntry.PlaceHolder = "username123"
+usernameEntry.SetValidator((text) => {
+	if (text == "") {
+		return "Username is required"
+	}
+	if (text.length() < 3) {
+		return "Username must be at least 3 characters"
+	}
+	if (text.length() > 20) {
+		return "Username must be less than 20 characters"
+	}
+	return nil  // Valid
+})
+
+// Submit button
+let submitBtn = widget.NewButton("Submit", () => {
+	// Check if any field has validation errors
+	// Fyne will show red borders on invalid fields
+
+	let email = emailEntry.Text
+	let age = ageEntry.Text
+	let username = usernameEntry.Text
+
+	if (email == "" || age == "" || username == "") {
+		statusLabel.SetText("Error: Please fill out all fields")
+		return
+	}
+
+	// Manual validation check
+	if (!email.contains("@") || !email.contains(".")) {
+		statusLabel.SetText("Error: Invalid email")
+		return
+	}
+
+	let ageNum = int(age)
+	if (ageNum < 18 || ageNum > 120) {
+		statusLabel.SetText("Error: Invalid age")
+		return
+	}
+
+	if (username.length() < 3) {
+		statusLabel.SetText("Error: Username too short")
+		return
+	}
+
+	// All validations passed
+	statusLabel.SetText(sprintf("Success! Welcome %s (age %s, email: %s)", username, age, email))
+})
+submitBtn.Importance = constants.SuccessImportance
+
+// Clear button
+let clearBtn = widget.NewButton("Clear", () => {
+	emailEntry.Text = ""
+	ageEntry.Text = ""
+	usernameEntry.Text = ""
+	statusLabel.SetText("Form cleared")
+})
+clearBtn.Importance = constants.ImportanceLow
+
+let formItems = [
+	widget.NewFormItem("Username:", usernameEntry),
+	widget.NewFormItem("Email:", emailEntry),
+	widget.NewFormItem("Age:", ageEntry),
+]
+
+let form = widget.NewForm(formItems)
+
+let buttons = container.NewHBox(submitBtn, clearBtn)
+
+let layout = container.NewVBox(
+	widget.NewLabel("Registration Form"),
+	form,
+	buttons,
+	widget.NewSeparator(),
+	statusLabel
+)
+
+window.SetContent(layout)

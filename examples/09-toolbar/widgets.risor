@@ -1,0 +1,230 @@
+// Toolbar widget demonstration
+
+require("v0.2")
+
+let title = widget.NewLabel("Toolbar Widget Demo")
+title.TextStyle.Bold = true
+
+let statusLabel = widget.NewLabel("Click toolbar buttons to see actions")
+
+// ===== BASIC TOOLBAR =====
+let basicTitle = widget.NewLabel("Basic Toolbar")
+
+let action1 = widget.NewToolbarAction("documentSave", () => {
+    statusLabel.Text = "Save clicked"
+})
+
+let action2 = widget.NewToolbarAction("folder", () => {
+    statusLabel.Text = "Open folder clicked"
+})
+
+let action3 = widget.NewToolbarAction("documentPrint", () => {
+    statusLabel.Text = "Print clicked"
+})
+
+let basicToolbar = widget.NewToolbar(action1, action2, action3)
+
+let basicSection = container.NewVBox(
+    basicTitle,
+    basicToolbar,
+    statusLabel
+)
+
+let separator1 = widget.NewSeparator()
+
+// ===== TOOLBAR WITH SEPARATORS =====
+let separatorTitle = widget.NewLabel("Toolbar with Separators")
+
+let sep1 = widget.NewToolbarAction("file", () => {
+    statusLabel.Text = "New file"
+})
+
+let sep2 = widget.NewToolbarAction("folderOpen", () => {
+    statusLabel.Text = "Open file"
+})
+
+let sep3 = widget.NewToolbarAction("documentSave", () => {
+    statusLabel.Text = "Save file"
+})
+
+let separator = widget.NewToolbarSeparator()
+
+let sep4 = widget.NewToolbarAction("cut", () => {
+    statusLabel.Text = "Cut"
+})
+
+let sep5 = widget.NewToolbarAction("copy", () => {
+    statusLabel.Text = "Copy"
+})
+
+let sep6 = widget.NewToolbarAction("paste", () => {
+    statusLabel.Text = "Paste"
+})
+
+let separatorToolbar = widget.NewToolbar(
+    sep1, sep2, sep3,
+    separator,
+    sep4, sep5, sep6
+)
+
+let separatorSection = container.NewVBox(
+    separatorTitle,
+    separatorToolbar
+)
+
+let separator2 = widget.NewSeparator()
+
+// ===== TOOLBAR WITH SPACER =====
+let spacerTitle = widget.NewLabel("Toolbar with Spacer")
+let spacerInfo = widget.NewLabel("(Spacer pushes items to the right)")
+
+let left1 = widget.NewToolbarAction("home", () => {
+    statusLabel.Text = "Home"
+})
+
+let left2 = widget.NewToolbarAction("search", () => {
+    statusLabel.Text = "Search"
+})
+
+let spacer = widget.NewToolbarSpacer()
+
+let right1 = widget.NewToolbarAction("settings", () => {
+    statusLabel.Text = "Settings"
+})
+
+let right2 = widget.NewToolbarAction("help", () => {
+    statusLabel.Text = "Help"
+})
+
+let spacerToolbar = widget.NewToolbar(
+    left1, left2,
+    spacer,
+    right1, right2
+)
+
+let spacerSection = container.NewVBox(
+    spacerTitle,
+    spacerInfo,
+    spacerToolbar
+)
+
+let separator3 = widget.NewSeparator()
+
+// ===== DYNAMIC TOOLBAR =====
+let dynamicTitle = widget.NewLabel("Dynamic Toolbar")
+
+let dynamicToolbar = widget.NewToolbar()
+
+let prependButton = widget.NewButton("Prepend Action", () => {
+    let newAction = widget.NewToolbarAction("add", () => {
+        statusLabel.Text = "New action clicked"
+    })
+    dynamicToolbar.Prepend(newAction)
+})
+
+let appendButton = widget.NewButton("Append Action", () => {
+    let newAction = widget.NewToolbarAction("remove", () => {
+        statusLabel.Text = "Remove action clicked"
+    })
+    dynamicToolbar.Append(newAction)
+})
+
+let addSeparatorButton = widget.NewButton("Add Separator", () => {
+    let sep = widget.NewToolbarSeparator()
+    dynamicToolbar.Append(sep)
+})
+
+let dynamicSection = container.NewVBox(
+    dynamicTitle,
+    dynamicToolbar,
+    widget.NewSeparator(),
+    container.NewHBox(prependButton, appendButton, addSeparatorButton)
+)
+
+let separator4 = widget.NewSeparator()
+
+// ===== COMPREHENSIVE TOOLBAR =====
+let compTitle = widget.NewLabel("Comprehensive Toolbar Example")
+
+let fileNew = widget.NewToolbarAction("document", () => {
+    statusLabel.Text = "New document"
+})
+
+let fileOpen = widget.NewToolbarAction("folderOpen", () => {
+    statusLabel.Text = "Open document"
+})
+
+let fileSave = widget.NewToolbarAction("documentSave", () => {
+    statusLabel.Text = "Save document"
+})
+
+let sep1a = widget.NewToolbarSeparator()
+
+let editCut = widget.NewToolbarAction("cut", () => {
+    statusLabel.Text = "Cut selection"
+})
+
+let editCopy = widget.NewToolbarAction("copy", () => {
+    statusLabel.Text = "Copy selection"
+})
+
+let editPaste = widget.NewToolbarAction("paste", () => {
+    statusLabel.Text = "Paste clipboard"
+})
+
+let sep2a = widget.NewToolbarSeparator()
+
+let editUndo = widget.NewToolbarAction("undo", () => {
+    statusLabel.Text = "Undo last action"
+})
+
+let editRedo = widget.NewToolbarAction("redo", () => {
+    statusLabel.Text = "Redo last action"
+})
+
+let spacerComp = widget.NewToolbarSpacer()
+
+let viewSearch = widget.NewToolbarAction("search", () => {
+    statusLabel.Text = "Search"
+})
+
+let viewSettings = widget.NewToolbarAction("settings", () => {
+    statusLabel.Text = "Settings"
+})
+
+let viewHelp = widget.NewToolbarAction("help", () => {
+    statusLabel.Text = "Help"
+})
+
+let compToolbar = widget.NewToolbar(
+    fileNew, fileOpen, fileSave,
+    sep1a,
+    editCut, editCopy, editPaste,
+    sep2a,
+    editUndo, editRedo,
+    spacerComp,
+    viewSearch, viewSettings, viewHelp
+)
+
+let compSection = container.NewVBox(
+    compTitle,
+    compToolbar
+)
+
+// Main layout
+let content = container.NewVBox(
+    title,
+    widget.NewSeparator(),
+    basicSection,
+    separator1,
+    separatorSection,
+    separator2,
+    spacerSection,
+    separator3,
+    dynamicSection,
+    separator4,
+    compSection
+)
+
+let scrollable = container.NewScroll(content)
+window.SetContent(scrollable)

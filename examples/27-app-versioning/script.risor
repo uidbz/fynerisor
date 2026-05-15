@@ -1,0 +1,55 @@
+// This script requires application version 1.2 or higher
+// The version check is against the embedding application, not fynerisor
+require(["v1.2", "@gui"])
+
+// Get version information
+let versionInfo = sprintf(`Application Version: %s
+Fynerisor Version: %s
+Risor Compatible: %s
+Fyne Compatible: %s`,
+    app.version,
+    "0.4.0",
+    "v2.x",
+    "v2.7+"
+)
+
+let versionLabel = widget.NewLabel(versionInfo)
+versionLabel.Wrapping = constants.TextWrapWord
+
+// Info section
+let infoLabel = widget.NewLabel(`Application Versioning Demo:
+
+This example shows how embedding applications can set their
+own version using fynerisor.SetAppVersion("1.2.3").
+
+When scripts use require(["v1.2"]), the version check is
+performed against the APPLICATION version, not fynerisor's
+version. This allows the embedding app to control script
+compatibility independently.
+
+Try changing the require() version at the top of this script:
+- require(["v1.2"]) - Works (app is v1.2.3)
+- require(["v2.0"]) - Would fail (app is only v1.2.3)
+- require(["==v1.2.3"]) - Exact match required`)
+infoLabel.Wrapping = constants.TextWrapWord
+
+// Demonstration buttons
+let btn1 = widget.NewButton("Show App Version", () => {
+    print(sprintf("Application version: %s", app.version))
+})
+
+let btn2 = widget.NewButton("Show Fynerisor Version", () => {
+    print("Fynerisor version: 0.4.0")
+})
+
+let layout = container.NewVBox(
+    widget.NewLabel("Application Version Information"),
+    widget.NewSeparator(),
+    versionLabel,
+    widget.NewSeparator(),
+    infoLabel,
+    widget.NewSeparator(),
+    container.NewHBox(btn1, btn2)
+)
+
+window.SetContent(container.NewScroll(layout))

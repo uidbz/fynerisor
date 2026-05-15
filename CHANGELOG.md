@@ -1,0 +1,308 @@
+# Changelog
+
+## [0.4.1] - 2026-05-07
+
+### Added
+
+**Custom Struct Support:**
+- **WithGlobal(name, object)** - Expose custom Go types with methods as global variables in Risor scripts
+  - Implement `object.Object` interface on your Go types
+  - Scripts can call methods on your custom objects (e.g., `db.query("SELECT * FROM users")`)
+  - Example: 28-custom-struct - Complete pattern with UserDatabase
+
+**Application Versioning:**
+- **SetAppVersion(version)** - Allow embedding applications to control their own version checking
+  - Separates application version from fynerisor library version
+  - Scripts can use `require(["v2.5"])` to check compatibility with the host application
+  - Example: 27-app-versioning
+
+### Fixed
+- Fixed custom-struct example to use Risor v2 syntax (`.each()` instead of for loops)
+- Fixed example numbering - moved 28-imports to 14-imports to fill gap
+- Added status callback to custom-struct example for better error visibility
+
+### Documentation
+- Added comprehensive custom struct integration guide
+- Documented Risor v2 functional iteration patterns
+- Added debugging section with status callback examples
+- Updated WithGlobal() documentation in options.go
+
+### Examples
+- All 29 examples tested and working
+- 28 widget/feature examples
+- 1 custom struct integration example
+
+### Summary
+**Backward Compatible Release**
+- ✅ Custom Go type integration via WithGlobal()
+- ✅ Application versioning support via SetAppVersion()
+- ✅ All examples updated and verified working
+- ✅ Fully backward compatible with v0.4.0
+
+## [0.4.0] - 2026-05-06
+
+### Added
+
+**🎉 Data Binding System (Complete):**
+- **binding.NewString()** - String data binding with optional initial value
+- **binding.NewBool()** - Boolean data binding with optional initial value
+- **binding.NewInt()** - Integer data binding with optional initial value
+- **binding.NewFloat()** - Float data binding with optional initial value
+- All bindings support: `Get()`, `Set(value)`, `AddListener(callback)`
+
+**Widgets with Data Binding:**
+- **widget.NewLabelWithData(binding.String)** - Auto-updating labels
+- **widget.NewCheckWithData(label, binding.Bool)** - Bound checkboxes
+- **widget.NewSliderWithData(min, max, binding.Float)** - Bound sliders
+- Enables automatic two-way synchronization between data and UI
+
+**Container Types (Complete 100% Coverage):**
+- **container.NewCenter** - Center-aligned content layout
+- **container.NewMax** - Maximum size layout (fills available space)
+- **container.NewStack** - Layered stack of widgets
+- **container.NewPadded** - Padded container with standard spacing
+- **container.NewGridWithColumns** - Fixed column grid layout
+- **container.NewGridWithRows** - Fixed row grid layout
+- All 10 standard Fyne container types now available
+
+**Widget Enhancements:**
+- **Label.SetText()** - Method variant for setting label text
+- **Button.SetText()** - Method variant for setting button text
+- **Entry.OnChanged()** - Callback fires on every text change
+- **Label Properties** - Wrapping, Truncation, Alignment, Importance now fully supported
+
+**Constants & Enums:**
+- **TextAlign** - Leading, Center, Trailing constants
+- Complete constants example (example 24-constants)
+
+**Examples:**
+- 25-data-binding: Basic data binding with Label + Entry
+- 26-data-binding-types: Comprehensive demo of all binding types
+
+### Fixed
+- Menu example (23-menu): Simplified to use button trigger instead of right-click
+- Popup example (22-popup): Fixed variable scope issues in closures
+- Constants example (24-constants): Added missing Label properties
+- GridWrap example (17-gridwrap): Fixed overlapping text with proper Button sizing
+- All 26 examples now working correctly
+
+### Summary
+**100% Feature Complete!**
+- ✅ All high, medium, and low priority widgets (37 widgets)
+- ✅ All container types (10/10)
+- ✅ Complete data binding system (4 types)
+- ✅ 26 working examples
+- ✅ Production ready!
+
+## [0.3.0] - 2026-05-06
+
+### Added
+
+**Advanced Widgets (95% Coverage Complete):**
+- **GridWrap Widget** - Grid layout with virtualized rendering
+  - `Length()`, `CreateItem()`, `UpdateItem()` callbacks
+  - `Select()`, `Unselect()`, `UnselectAll()` methods
+  - `OnSelected()`, `OnUnselected()` event handlers
+  - Example: 17-gridwrap
+  
+- **TextGrid Widget** - Monospace text grid for code/tabular data
+  - Line numbers and whitespace display options
+  - Row operations: `SetRow()`, `Row()`, `RowCount()`
+  - Configurable tab width
+  - Example: 18-textgrid
+  
+- **RichText Widget** - Formatted text with markdown support
+  - `ParseMarkdown()` for dynamic content
+  - Text wrapping and truncation control
+  - Scrollable content
+  - Note: Direct segment manipulation not exposed (use markdown)
+  - Example: 19-richtext
+
+**Widget Enhancements:**
+- **Button.Importance** - Visual hierarchy and semantic meaning
+  - Standard levels: `ImportanceHigh`, `ImportanceMedium`, `ImportanceLow`
+  - Semantic levels: `SuccessImportance`, `WarningImportance`, `DangerImportance`
+  - Example: 20-button-importance
+  
+- **Button.Disabled** - Enable/disable button state programmatically
+  
+- **Entry.SetValidator()** - Custom validation with visual feedback
+  - Return error string for invalid input
+  - Return `nil` for valid input
+  - Fyne shows red border automatically
+  - Example: 21-form-validation
+
+**Constants Global:**
+- New global object `constants` for Fyne enums
+- Currently provides button importance values
+- Extensible for future constants
+
+### Changed
+- CLI module renamed from `fynerisor-cli` to `fynerisor`
+- Installation instructions updated with `go install` command
+- Documentation examples fixed for current API
+
+### Fixed
+- Module options (WithOS, WithHTTP, etc.) now work correctly in NewContext
+- SQL query example no longer uses `.collect()` incorrectly
+- Non-GUI usage examples corrected
+
+## [0.2.1] - 2026-05-05
+
+### Added
+- **IO Module**: File operations support
+  - `io.cp(src, dst)` - Copy files
+  - Enabled via `WithIO()` option
+  - Require with `@io` in scripts
+  
+- **App Metadata Object**: `app.name` global
+  - Exposes embedding application name to scripts
+  - Set via `WithAppName("myapp")` option
+  - Default value: `"fynerisor"`
+  - Enables conditional logic based on runtime environment
+  
+- **Go Function**: Spawn goroutines from scripts
+  - `go(() => { ... })` - Run closure in background
+  - Replaces removed `go` keyword from Risor v1
+  - Safe for long-running operations
+  
+- **Window.Do()**: Queue GUI updates from background threads
+  - `window.Do(() => { ... })` - Execute on GUI thread
+  - Matches Fyne's threading model
+  - Safe alternative to direct widget updates from goroutines
+  
+- **Window.Clear()**: Clear accumulated scripts
+  - Clears all loaded scripts and imports
+  - Critical for navigation-based apps (like goto)
+  - Prevents script accumulation when loading new pages
+
+### Fixed
+- **window.OnDropped()**: Now properly registers with Fyne window
+  - Fixed missing `SetOnDropped()` call
+  - Drag-and-drop now works correctly
+  
+- **Options application order**: Fixed initialization sequence
+  - AppName and callbacks applied before globals
+  - Module options applied after base globals
+  - Fixes issue where custom globals weren't available
+
+### Changed
+- Documentation restructured to `docs/` directory
+- Updated README with current API and examples
+
+## [0.2.0] - 2026-05-04
+
+### Breaking Changes
+- **Risor v2 Migration**: All scripts must use arrow function syntax
+  - `func()` keyword removed, use `() => {}` or `(x) => x`
+  - No `for`/`while` loops, use `.map()`, `.each()`, `.filter()`, `.reduce()`
+
+### Added
+- **ContextBuilder for non-GUI usage**
+  - `NewContext()` creates Risor contexts without GUI dependencies
+  - Access to all modules (HTTP, SQL, OS, etc.) and import system
+  - `.Eval()` and `.EvalWithImports()` methods
+  - Context-specific options: `WithContextHTTP()`, `WithContextSQL()`, etc.
+  - Enables headless scripts, CLI tools, and server applications
+  - Example: 16-context-builder
+- **SQL Module**: Database connectivity support
+  - MySQL, PostgreSQL, SQLite, SQL Server drivers
+  - Connection via `sql.connect(dsn)`
+  - Query execution: `conn.query()`, `conn.exec()`
+  - Row iterator with `.collect()` method for list conversion
+  - Example: 15-sql-test
+  - Integrated into CLI with `fynerisor.WithSQL()` option
+
+- **Tree widget** with hierarchical data support
+  - ChildUIDs, IsBranch, CreateNode, UpdateNode callbacks
+  - OpenBranch, CloseBranch, Select, Unselect methods
+  - Example: 12-tree
+
+- **List widget** for scrolling lists
+  - Length, CreateItem, UpdateItem, OnSelected callbacks
+  - Example: 13-list
+
+- **SQL row iterator streaming methods**
+  - `.map(fn)` - Transform rows in single pass (efficient)
+  - `.each(fn)` - Iterate with side effects
+  - `.collect()` - Load all rows into list (when needed)
+
+- **Enhanced require() function**
+  - Accepts string or list of requirements
+  - Version requirements: `require("v0.2.0")` or `require("==v0.2.0")`
+  - Module requirements: `require("@sql")`, `require("@http")`, etc.
+  - Combined: `require(["v0.2", "@sql", "@http"])`
+  - Validates enabled modules at script startup
+
+- **AnalyzeRequirements() function**
+  - Parse script source to extract requirements
+  - Returns Requirements struct with version and module info
+  - Useful for external tools and script validation
+  - Example: `reqs, _ := fynerisor.AnalyzeRequirements(script)`
+
+- **NewApp() convenience function**
+  - One-line creation of Fyne app and fynerisor window
+  - Simplifies common use case of creating a new application
+  - Example: `fw := fynerisor.NewApp("My App", fynerisor.WithHTTP())`
+  - Use NewWindow() for advanced scenarios requiring app customization
+
+- **Window.Resize() method**
+  - Set custom window size after creation
+  - Example: `fw.Resize(800, 600)`
+  - Works with both NewApp and NewWindow
+
+- **import() global function**
+  - Scripts can declare imports: `import("utils.risor")` or `import(["a.risor", "b.risor"])`
+  - Supports local files and HTTP URLs
+  - No-op at runtime (marker for static analysis)
+  - CLI automatically handles imports via AnalyzeRequirements
+  - Imports loaded in declaration order before script execution
+
+- **AnalyzeRequirements() returns imports**
+  - Requirements.Imports field lists all import paths/URLs
+  - Enables automatic dependency resolution
+  - Example: `reqs.Imports = ["utils.risor", "http://..."]`
+
+- CLI error reporting without --verbose flag
+  - All ERROR messages now display by default
+  - --verbose still shows full execution status
+
+- Comprehensive llms.txt for LLM code generation
+  - Complete widget reference
+  - Risor v2 syntax examples
+  - Example prompts for GUI creation
+  - Common patterns and constraints
+
+### Fixed
+- **CRITICAL**: Fixed race condition in Tree and List widgets causing VM stack corruption
+  - Changed UpdateNode, OnSelected, OnUnselected in Tree to synchronous calls
+  - Changed UpdateItem, OnSelected in List to synchronous calls
+  - Issue: Mixed sync/async callbacks caused concurrent VM access
+  - Symptom: `panic: index out of range [-1]` at `vm.pop()` after 30-100 interactions
+  - See CONCURRENCY.md for details and guidelines
+  
+- Fixed Tree widget map access for Risor v2
+  - Use `.get()` method instead of direct indexing (which throws errors)
+  - Risor v2 throws errors on missing keys, unlike Risor v1
+  
+- Fixed accordion example (08-accordion)
+  - Removed `while` loops (not supported in Risor)
+  - Risor only supports functional iteration (for...in, map, filter)
+  - Simplified example to focus on core accordion features
+
+### Changed
+- All Tree and List widget callbacks now use synchronous pattern
+- Updated version requirement system
+  - `require("v0.2")` for minimum version
+  - `require("==v0.2.0")` for exact match
+  - Added clear error messages for version mismatches
+
+### Documentation
+- Added CONCURRENCY.md with threading guidelines for widget development
+- Added comprehensive widget audit (all 28 widgets checked)
+- Updated examples with Risor v2 syntax
+- Added version checking to relevant examples
+
+## Previous Releases
+
+See git history for earlier changes.

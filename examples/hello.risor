@@ -1,0 +1,98 @@
+// Hello fynerisor - A simple example showcasing widgets
+require(["v0.2", "@gui"])
+
+// State
+let counter = 0
+let statusText = binding.NewString()
+statusText.Set("Welcome! Try entering your name or clicking buttons")
+let nameEntry = widget.NewEntry()
+nameEntry.PlaceHolder = "Enter your name..."
+
+// Title
+let title = widget.NewLabel("👋 Welcome to fynerisor!")
+title.TextStyle.Bold = true
+title.Alignment = 1  // Center alignment
+
+// Greeting label
+let greeting = widget.NewLabel("Hello, World!")
+greeting.Alignment = 1
+
+// Counter display
+let counterLabel = widget.NewLabel(`Count: ${counter}`)
+counterLabel.Alignment = 1
+
+// Increment button
+let incrementBtn = widget.NewButton("➕ Increment", () => {
+    counter = counter + 1
+    counterLabel.Text = `Count: ${counter}`
+    statusText.Set(`Counter increased to ${counter}`)
+})
+incrementBtn.Importance = 1  // High importance (primary button)
+
+// Reset button
+let resetBtn = widget.NewButton("🔄 Reset", () => {
+    counter = 0
+    counterLabel.Text = `Count: ${counter}`
+    nameEntry.Text = ""
+    greeting.Text = "Hello, World!"
+    statusText.Set("Counter and name reset")
+})
+
+// Info button
+let infoBtn = widget.NewButton("ℹ️ About", () => {
+    statusText.Set("Built with fynerisor + Risor v2 + Fyne")
+})
+
+// Greet button
+let greetBtn = widget.NewButton("👋 Say Hello", () => {
+    let name = nameEntry.Text || "World"
+    greeting.Text = `Hello, ${name}! 🎉`
+    statusText.Set(`Greeted ${name}`)
+})
+greetBtn.Importance = 1  // High importance
+
+// Layout with nice spacing
+let nameSection = container.NewVBox(
+    widget.NewLabel("What's your name?"),
+    nameEntry,
+    greetBtn,
+    widget.NewSeparator()
+)
+
+let greetingSection = container.NewCenter(
+    container.NewVBox(
+        greeting,
+        widget.NewSeparator()
+    )
+)
+
+let counterSection = container.NewVBox(
+    counterLabel,
+    container.NewHBox(incrementBtn, resetBtn)
+)
+
+let footer = container.NewVBox(
+    widget.NewSeparator(),
+    container.NewCenter(infoBtn)
+)
+
+// Status bar with binding
+let statusBar = widget.NewLabelWithData(statusText)
+statusBar.Alignment = 1  // Center alignment
+
+// Main layout with padding
+let content = container.NewBorder(
+    container.NewVBox(title, widget.NewSeparator()),
+    container.NewVBox(footer, widget.NewSeparator(), statusBar),
+    nil,
+    nil,
+    container.NewVBox(
+        nameSection,
+        greetingSection,
+        counterSection
+    )
+)
+
+// Set window properties
+window.SetContent(content)
+window.Resize(500, 420)

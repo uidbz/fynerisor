@@ -1,0 +1,232 @@
+// RadioGroup widget demonstration
+
+require("v0.2")
+
+let title = widget.NewLabel("RadioGroup Widget Demo")
+title.TextStyle.Bold = true
+
+let separator1 = widget.NewSeparator()
+
+// ===== BASIC RADIO GROUP =====
+let basicTitle = widget.NewLabel("Basic RadioGroup (Vertical)")
+
+let selectedAnimal = widget.NewLabel("Selected: (none)")
+
+let animalRadio = widget.NewRadioGroup(
+    ["Dog", "Cat", "Bird", "Fish", "Rabbit"],
+    (selected) => {
+        selectedAnimal.Text = `Selected: ${selected}`
+    }
+)
+
+let basicSection = container.NewVBox(
+    basicTitle,
+    animalRadio,
+    selectedAnimal
+)
+
+let separator2 = widget.NewSeparator()
+
+// ===== HORIZONTAL RADIO GROUP =====
+let horizontalTitle = widget.NewLabel("Horizontal RadioGroup")
+
+let selectedSize = widget.NewLabel("Selected size: Medium")
+
+let sizeRadio = widget.NewRadioGroup(
+    ["Small", "Medium", "Large"],
+    (selected) => {
+        selectedSize.Text = `Selected size: ${selected}`
+    }
+)
+
+// Set to horizontal layout
+sizeRadio.Horizontal = true
+sizeRadio.Selected = "Medium"
+
+let horizontalSection = container.NewVBox(
+    horizontalTitle,
+    sizeRadio,
+    selectedSize
+)
+
+let separator3 = widget.NewSeparator()
+
+// ===== REQUIRED RADIO GROUP =====
+let requiredTitle = widget.NewLabel("Required RadioGroup")
+let requiredInfo = widget.NewLabel("(Must select an option - shows validation)")
+
+let selectedPriority = widget.NewLabel("Selected: (required)")
+
+let priorityRadio = widget.NewRadioGroup(
+    ["Low", "Normal", "High", "Critical"],
+    (selected) => {
+        selectedPriority.Text = `Selected: ${selected}`
+    }
+)
+
+// Mark as required
+priorityRadio.Required = true
+
+let requiredSection = container.NewVBox(
+    requiredTitle,
+    requiredInfo,
+    priorityRadio,
+    selectedPriority
+)
+
+let separator4 = widget.NewSeparator()
+
+// ===== DYNAMIC OPTIONS =====
+let dynamicTitle = widget.NewLabel("Dynamic Options")
+
+let selectedColor = widget.NewLabel("Selected: (none)")
+
+let colorRadio = widget.NewRadioGroup(
+    ["Red", "Green", "Blue"],
+    (selected) => {
+        selectedColor.Text = `Selected: ${selected}`
+    }
+)
+
+let newColorEntry = widget.NewEntry()
+newColorEntry.Text = "Purple"
+
+let addColorButton = widget.NewButton("Add Color", () => {
+    if (newColorEntry.Text != "") {
+        colorRadio.Append(newColorEntry.Text)
+        newColorEntry.Text = ""
+    }
+})
+
+let resetColorsButton = widget.NewButton("Reset Colors", () => {
+    colorRadio.Options = ["Red", "Green", "Blue"]
+    colorRadio.Selected = ""
+    selectedColor.Text = "Selected: (none)"
+})
+
+let dynamicSection = container.NewVBox(
+    dynamicTitle,
+    colorRadio,
+    selectedColor,
+    widget.NewSeparator(),
+    widget.NewLabel("Add new option:"),
+    container.NewHBox(newColorEntry, addColorButton),
+    resetColorsButton
+)
+
+let separator5 = widget.NewSeparator()
+
+// ===== PROGRAMMATIC CONTROL =====
+let controlTitle = widget.NewLabel("Programmatic Control")
+
+let selectedDay = widget.NewLabel("Selected: Monday")
+
+let dayRadio = widget.NewRadioGroup(
+    ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+    (selected) => {
+        selectedDay.Text = `Selected: ${selected}`
+    }
+)
+
+dayRadio.Selected = "Monday"
+
+let selectWednesdayButton = widget.NewButton("Select Wednesday", () => {
+    dayRadio.SetSelected("Wednesday")
+})
+
+let selectWeekendButton = widget.NewButton("Select Saturday", () => {
+    dayRadio.SetSelected("Saturday")
+})
+
+let clearSelectionButton = widget.NewButton("Clear Selection", () => {
+    dayRadio.SetSelected("")
+})
+
+let disableButton = widget.NewButton("Disable", () => {
+    dayRadio.Disable()
+})
+
+let enableButton = widget.NewButton("Enable", () => {
+    dayRadio.Enable()
+})
+
+let controlSection = container.NewVBox(
+    controlTitle,
+    dayRadio,
+    selectedDay,
+    widget.NewSeparator(),
+    widget.NewLabel("Control buttons:"),
+    container.NewHBox(selectWednesdayButton, selectWeekendButton, clearSelectionButton),
+    container.NewHBox(disableButton, enableButton)
+)
+
+let separator6 = widget.NewSeparator()
+
+// ===== FORM INTEGRATION =====
+let formTitle = widget.NewLabel("RadioGroup in Forms")
+
+let selectedPayment = ""
+
+let paymentRadio = widget.NewRadioGroup(
+    ["Credit Card", "PayPal", "Bank Transfer", "Cash"],
+    (selected) => {
+        selectedPayment = selected
+    }
+)
+
+paymentRadio.Required = true
+
+let selectedShipping = ""
+
+let shippingRadio = widget.NewRadioGroup(
+    ["Standard", "Express", "Next Day"],
+    (selected) => {
+        selectedShipping = selected
+    }
+)
+
+shippingRadio.Horizontal = true
+shippingRadio.Selected = "Standard"
+selectedShipping = "Standard"
+
+let resultLabel = widget.NewLabel("")
+
+let submitButton = widget.NewButton("Submit Order", () => {
+    if (selectedPayment == "") {
+        resultLabel.Text = "Error: Payment method is required"
+    } else {
+        resultLabel.Text = `Order submitted!\nPayment: ${selectedPayment}\nShipping: ${selectedShipping}`
+    }
+})
+
+let form = container.NewVBox(
+    formTitle,
+    widget.NewLabel("Payment Method (required):"),
+    paymentRadio,
+    widget.NewSeparator(),
+    widget.NewLabel("Shipping Method:"),
+    shippingRadio,
+    widget.NewSeparator(),
+    submitButton,
+    resultLabel
+)
+
+// Main layout
+let content = container.NewVBox(
+    title,
+    separator1,
+    basicSection,
+    separator2,
+    horizontalSection,
+    separator3,
+    requiredSection,
+    separator4,
+    dynamicSection,
+    separator5,
+    controlSection,
+    separator6,
+    form
+)
+
+let scrollable = container.NewScroll(content)
+window.SetContent(scrollable)

@@ -1,0 +1,35 @@
+// Table display example
+// Demonstrates table widget with paginated data
+
+require("v0.2")
+
+let table = widget.NewTable("People Directory", 5)
+
+// Define columns
+table.Columns(() => {
+    return ["ID", "Name", "Email", "Status"]
+})
+
+table.SetColumnWidth(0, 100)
+table.SetColumnWidth(1, 200)
+table.SetColumnWidth(2, 200)
+table.SetColumnWidth(3, 100)
+
+// Provide total row count
+table.RowCount(() => {
+    return data.getCount()
+})
+
+// Provide data for current page
+table.Data((offset, limit) => {
+    return data.getPage(offset, limit)
+})
+
+// Handle row clicks
+table.SetOnClick((row, col) => {
+    print(`Clicked row ${row}, column ${col}`)
+})		
+
+table.Refresh()
+
+window.SetContent(table)

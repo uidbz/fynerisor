@@ -1,0 +1,105 @@
+// Progress and Slider widgets demonstration
+
+require("v0.2")
+
+// Title section
+let title = widget.NewLabel("Progress & Slider Widgets")
+
+// ProgressBar with adjustable value
+let progressLabel = widget.NewLabel("ProgressBar (0%)")
+let progressBar = widget.NewProgressBar()
+progressBar.Min = 0
+progressBar.Max = 100
+progressBar.Value = 0
+
+// Slider to control progress bar
+let slider = widget.NewSlider(0, 100)
+slider.Value = 0
+slider.OnChanged((value) => {
+    progressBar.Value = value
+    let percent = math.round(value)
+    progressLabel.Text = `ProgressBar (${percent}%)`
+})
+
+// Separator
+let separator1 = widget.NewSeparator()
+
+// ProgressBarInfinite
+let infiniteLabel = widget.NewLabel("ProgressBarInfinite (Click button to start)")
+let infiniteProgress = widget.NewProgressBarInfinite()
+let infiniteRunning = false
+
+let infiniteToggle = widget.NewButton("Toggle Infinite Progress", () => {
+    if (infiniteRunning) {
+        infiniteProgress.Stop()
+        infiniteLabel.Text = "ProgressBarInfinite (Stopped)"
+        infiniteRunning = false
+    } else {
+        infiniteProgress.Start()
+        infiniteLabel.Text = "ProgressBarInfinite (Running...)"
+        infiniteRunning = true
+    }
+})
+
+// Another separator
+let separator2 = widget.NewSeparator()
+
+// Activity indicator
+let activityLabel = widget.NewLabel("Activity Indicator (Click button to start)")
+let activity = widget.NewActivity()
+let activityRunning = false
+
+let activityToggle = widget.NewButton("Toggle Activity", () => {
+    if (activityRunning) {
+        activity.Stop()
+        activityLabel.Text = "Activity Indicator (Stopped)"
+        activityRunning = false
+    } else {
+        activity.Start()
+        activityLabel.Text = "Activity Indicator (Running...)"
+        activityRunning = true
+    }
+})
+
+// Another separator
+let separator3 = widget.NewSeparator()
+
+// Value slider demonstration
+let valueLabel = widget.NewLabel("Slider Value: 50.0")
+let valueSlider = widget.NewSlider(0, 100)
+valueSlider.Value = 50
+valueSlider.Step = 1
+
+valueSlider.OnChanged((value) => {
+    valueLabel.Text = `Slider Value: ${value.toFixed(1)}`
+})
+
+// Layout everything
+let content = container.NewVBox(
+    title,
+    separator1,
+
+    progressLabel,
+    progressBar,
+    widget.NewLabel("Use slider to adjust:"),
+    slider,
+
+    separator2,
+
+    infiniteLabel,
+    infiniteProgress,
+    infiniteToggle,
+
+    separator3,
+
+    activityLabel,
+    activity,
+    activityToggle,
+
+    separator3,
+
+    valueLabel,
+    valueSlider
+)
+
+window.SetContent(content)
