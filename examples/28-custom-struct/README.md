@@ -69,7 +69,7 @@ w := fynerisor.NewApp("My App",
 ### Script Side (script.risor)
 
 **Use the Global:**
-```risor
+```js
 // The 'users' global is now available
 users.add("Alice", "alice@example.com", 28)
 let user = users.get("Alice")

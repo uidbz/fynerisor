@@ -41,7 +41,7 @@ Comprehensive demonstration of all Fyne constants and enums available through th
 
 All constants are accessed via the global `constants` object:
 
-```risor
+```js
 btn.Importance = constants.ImportanceHigh
 label.Wrapping = constants.TextWrapWord
 label.Truncation = constants.TextTruncateEllipsis

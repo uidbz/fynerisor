@@ -40,7 +40,7 @@ All bindings support:
 
 ### Without Data Binding
 Regular widgets can still interact with bindings using Get/Set:
-```risor
+```js
 let data = binding.NewInt(0)
 let btn = widget.NewButton("Click", () => {
     data.Set(data.Get() + 1)

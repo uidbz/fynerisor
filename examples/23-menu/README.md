@@ -19,7 +19,7 @@ Demonstrates Menu and PopUpMenu widgets - context menus and menu systems.
 
 ## Creating Menus
 
-```risor
+```js
 // Create menu items
 let item1 = fyne.NewMenuItem("Copy", () => { print("Copy") })
 let item2 = fyne.NewMenuItem("Paste", () => { print("Paste") })

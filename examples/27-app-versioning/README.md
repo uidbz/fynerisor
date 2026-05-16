@@ -24,7 +24,7 @@ func main() {
 
 ### In Scripts (script.risor)
 
-```risor
+```js
 // Version check is now against YOUR app (1.2.3), not fynerisor (0.4.0)
 require(["v1.2"])  // Checks: app version >= 1.2
 ```
@@ -32,13 +32,13 @@ require(["v1.2"])  // Checks: app version >= 1.2
 ## Version Check Rules
 
 ### Minimum Version (>=)
-```risor
+```js
 require(["v1.2"])      // Requires app v1.2.0 or higher
 require(["v1.2.3"])    // Requires app v1.2.3 or higher
 ```
 
 ### Exact Version
-```risor
+```js
 require(["==v1.2.3"])  // Requires exactly app v1.2.3
 ```
 
@@ -76,7 +76,7 @@ require(["v3.0"])  // ✅ Passes
 
 Scripts can access version information via the `app` object:
 
-```risor
+```js
 print(app.version)  // Your app's version (if set)
 ```
 

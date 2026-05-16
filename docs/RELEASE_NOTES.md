@@ -26,7 +26,7 @@ Fynerisor v0.4.1 is the **initial open source release** of a complete Risor lang
 
 Create reactive UIs with automatic data-widget synchronization:
 
-```risor
+```js
 // String binding
 let nameData = binding.NewString("Alice")
 let nameLabel = widget.NewLabelWithData(nameData)
@@ -132,7 +132,7 @@ This separates application version from fynerisor library version, allowing scri
 
 ### Containers (10 total - 100% coverage)
 
-```risor
+```js
 // Layout containers
 container.NewVBox(widgets...)      // Vertical stack
 container.NewHBox(widgets...)      // Horizontal stack
@@ -228,7 +228,7 @@ func main() {
 
 ### With Data Binding
 
-```risor
+```js
 require(["v0.4"])
 
 // Create data binding

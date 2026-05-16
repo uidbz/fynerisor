@@ -19,7 +19,7 @@ Fynerisor provides Risor script bindings for the Fyne GUI toolkit, allowing you 
 
 ### GUI Application
 
-```risor
+```js
 require(["v0.2", "@gui"])
 
 let count = 0
@@ -36,7 +36,7 @@ window.SetContent(vbox)
 
 ### Headless Script
 
-```risor
+```js
 require(["v0.2", "@http"])
 
 let response = http.get("https://api.github.com/users/octocat")
@@ -116,7 +116,7 @@ func main() {
 ```
 
 In scripts:
-```risor
+```js
 // Checks YOUR app version (2.5.1), not fynerisor (0.4.0)
 require(["v2.5"])      // Minimum version: 2.5.0+
 require(["==v2.5.1"])  // Exact version: 2.5.1 only
@@ -218,7 +218,7 @@ fw := fynerisor.NewApp("My App",
 
 Core window functionality (GUI mode only):
 
-```risor
+```js
 window.SetContent(widget)  // Update window content
 window.SetStatus(text)      // Set status message
 window.OnDropped(callback)  // Handle file drops
@@ -230,7 +230,7 @@ window.DroppedPaths         // List of dropped file paths
 
 Application metadata:
 
-```risor
+```js
 app.name  // Application name (set via WithAppName)
 ```
 
@@ -238,7 +238,7 @@ app.name  // Application name (set via WithAppName)
 
 Widget factory:
 
-```risor
+```js
 widget.NewButton(text, callback)
 widget.NewLabel(text)
 widget.NewEntry()
@@ -252,7 +252,7 @@ widget.NewCheckGroup(items, callback)
 
 Layout containers:
 
-```risor
+```js
 container.NewVBox(widgets)
 container.NewHBox(widgets)
 container.NewBorder(top, bottom, left, right, center)
@@ -264,7 +264,7 @@ container.NewHSplit(left, right)
 
 Canvas objects:
 
-```risor
+```js
 canvas.NewLine(color)
 canvas.NewImageFromURI(url)
 canvas.NewImageFromFile(path)
@@ -274,7 +274,7 @@ canvas.NewImageFromFile(path)
 
 Charting (experimental):
 
-```risor
+```js
 chart.NewBarChart(data, title, xlabel, ylabel)
 ```
 
@@ -284,7 +284,7 @@ chart.NewBarChart(data, title, xlabel, ylabel)
 
 Use `go()` for long-running operations:
 
-```risor
+```js
 go(() => {
     // Heavy computation here
     print("Processing...")
@@ -295,7 +295,7 @@ go(() => {
 
 Use `window.Do()` to safely update GUI from background threads:
 
-```risor
+```js
 go(() => {
     // Do work in background
     let result = processData()
@@ -311,7 +311,7 @@ go(() => {
 
 Load reusable code:
 
-```risor
+```js
 import("utils.risor")           // Local file
 import("https://example.com/helpers.risor")  // HTTP(S) URL
 import("../shared/common.risor") // Relative path
