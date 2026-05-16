@@ -1,0 +1,7 @@
+// Simple hello world example
+// Creates a label widget and sets it as the window content
+
+require("v0.2")
+
+let label = widget.NewLabel("Hello World")
+window.SetContent(container.NewHBox(label))
