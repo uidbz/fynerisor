@@ -1,0 +1,3 @@
+let text = "Args: " + string(args)
+let label = widget.NewLabel(text)
+window.SetContent(label)

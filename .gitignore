@@ -16,7 +16,7 @@ go.work
 go.work.sum
 
 # Binary executables
-fynerisor
+/fynerisor
 cmd/fynerisor/fynerisor
 examples/*/[0-9][0-9]-*
 01-hello-world

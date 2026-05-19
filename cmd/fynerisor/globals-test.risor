@@ -1,0 +1,3 @@
+let text = config.appName + " v" + config.version + "\nAPI: " + apiURL
+let label = widget.NewLabel(text)
+window.SetContent(label)

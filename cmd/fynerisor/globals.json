@@ -1,0 +1,7 @@
+{
+    "config": {
+        "appName": "My Application",
+        "version": "1.2.3"
+    },
+    "apiURL": "https://api.example.com"
+}

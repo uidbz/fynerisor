@@ -1,0 +1,33 @@
+// Example fynerisor script
+// Run with: fynerisor example.risor
+
+let title = widget.NewLabel("fynerisor CLI Demo")
+let info = widget.NewLabel("Edit this file and save to see auto-reload with --watch")
+
+let counter = 0
+let countLabel = widget.NewLabel("Count: 0")
+let btn = widget.NewButton("Increment", () => {
+    counter = counter + 1
+    countLabel.Text = "Count: " + string(counter)
+})
+
+// Show script arguments if any
+let argsText = "Arguments: " + string(len(args))
+if (len(args) > 0) {
+    argsText = argsText + "\n" + string(args)
+}
+let argsLabel = widget.NewLabel(argsText)
+
+let layout = container.NewVBox(
+    title,
+    info,
+    widget.NewSeparator(),
+    countLabel,
+    btn,
+    widget.NewSeparator(),
+    argsLabel
+)
+
+window.SetContent(layout)
+// Edit 1
+// Edit 2
