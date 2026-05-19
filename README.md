@@ -7,13 +7,12 @@ Fynerisor provides Risor script bindings for the Fyne GUI toolkit, allowing you 
 ## Features
 
 - 🎨 **Comprehensive Widget Support** - 34 widgets (60% of Fyne), all high/medium priority complete
+- 🔧 **Embeddable** - Use as a library in your Go applications
 - 📦 **Module System** - HTTP, SQL, OS, File I/O, Time, and String utilities
 - 🔄 **Import System** - Load scripts from local files or HTTP(S) URLs
-- 🎯 **Type-Safe API** - Risor v2 with proper type checking
 - 🧵 **Concurrency** - `go()` function for background tasks, `window.Do()` for GUI updates
 - 🎨 **Widget Enhancements** - Button importance, entry validation, styling
-- 📱 **Cross-Platform** - Linux, Windows, macOS
-- 🔧 **Embeddable** - Use as a library in your Go applications
+- 📱 **Cross-Platform** - Linux, Windows, macOS, Android
 
 ## Quick Start
 
@@ -45,6 +44,11 @@ print(sprintf("Name: %s", data.name))
 ```
 
 ## Installation
+
+**Prerequisites:**
+
+Before installing fynerisor, ensure you have the Fyne prerequisites for your platform:
+- [Fyne Getting Started Guide](https://docs.fyne.io/started/quick/) - Install required system dependencies
 
 **As a library:**
 ```bash
