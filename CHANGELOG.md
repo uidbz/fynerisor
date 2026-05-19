@@ -1,6 +1,66 @@
 # Changelog
 
-## [0.4.1] - 2026-05-07
+## [0.4.2] - 2026-05-19
+
+### Fixed
+- **CLI installation** - Fixed `go install github.com/uidbz/fynerisor/cmd/fynerisor@latest` 
+  - Previous v0.4.1 tag was cached incorrectly by Go proxy
+  - CLI tool now properly installable via go install
+- **Missing example** - Added 01-hello-world example that was blocked by .gitignore
+- **Documentation** - Added syntax highlighting to all Risor code blocks (using js highlighting)
+- **Git author** - Fixed commit attribution for GitHub
+
+### Added
+- **CLI theme flag** - Added `--theme` flag to CLI for dark/light theme selection
+- **Logo and screenshot** - Added visual assets to README
+- **Prerequisites documentation** - Added link to Fyne prerequisites in installation section
+
+### Summary
+**Patch Release - CLI Installation Fix**
+- ✅ CLI tool now works with `go install`
+- ✅ All 29 examples included
+- ✅ Complete and production-ready
+
+## [0.4.1] - 2026-05-07 [YANKED]
+
+**Note:** This version had issues with Go module proxy caching. Use v0.4.2 instead.
+
+### Added
+
+**Custom Struct Support:**
+- **WithGlobal(name, object)** - Expose custom Go types with methods as global variables in Risor scripts
+  - Implement `object.Object` interface on your Go types
+  - Scripts can call methods on your custom objects (e.g., `db.query("SELECT * FROM users")`)
+  - Example: 28-custom-struct - Complete pattern with UserDatabase
+
+**Application Versioning:**
+- **SetAppVersion(version)** - Allow embedding applications to control their own version checking
+  - Separates application version from fynerisor library version
+  - Scripts can use `require(["v2.5"])` to check compatibility with the host application
+  - Example: 27-app-versioning
+
+### Fixed
+- Fixed custom-struct example to use Risor v2 syntax (`.each()` instead of for loops)
+- Fixed example numbering - moved 28-imports to 14-imports to fill gap
+- Added status callback to custom-struct example for better error visibility
+
+### Documentation
+- Added comprehensive custom struct integration guide
+- Documented Risor v2 functional iteration patterns
+- Added debugging section with status callback examples
+- Updated WithGlobal() documentation in options.go
+
+### Examples
+- All 29 examples tested and working
+- 28 widget/feature examples
+- 1 custom struct integration example
+
+### Summary
+**Backward Compatible Release**
+- ✅ Custom Go type integration via WithGlobal()
+- ✅ Application versioning support via SetAppVersion()
+- ✅ All examples updated and verified working
+- ✅ Fully backward compatible with v0.4.0
 
 ### Added
 
