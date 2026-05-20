@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -81,6 +82,20 @@ func (obj *Entry) SetAttr(name string, value object.Object) error {
 			obj.instance.Refresh()
 		})
 		return nil
+
+	case "Disabled":
+		b, err := object.AsBool(value)
+		if err != nil {
+			return fmt.Errorf("type error: %v", err)
+		}
+		fyne.Do(func() {
+			if b {
+				obj.instance.Disable()
+			} else {
+				obj.instance.Enable()
+			}
+		})
+		return nil
 	}
 	return fmt.Errorf("attribute error: %s object has no attribute %q", EntryType, name)
 }
@@ -92,6 +107,9 @@ func (obj *Entry) GetAttr(name string) (object.Object, bool) {
 
 	case "PlaceHolder":
 		return object.NewString(obj.instance.PlaceHolder), true
+
+	case "Disabled":
+		return object.NewBool(obj.instance.Disabled()), true
 
 	case "SetText":
 		return object.NewBuiltin("widget.Entry.SetText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
@@ -106,6 +124,25 @@ func (obj *Entry) GetAttr(name string) (object.Object, bool) {
 
 			fyne.Do(func() {
 				obj.instance.SetText(val)
+			})
+
+			return object.Nil, nil
+		}), true
+
+	case "SetPlaceHolder":
+		return object.NewBuiltin("widget.Entry.SetPlaceHolder", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 1 {
+				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+			}
+
+			val, err := object.AsString(args[0])
+			if err != nil {
+				return nil, err
+			}
+
+			obj.instance.PlaceHolder = val
+			fyne.Do(func() {
+				obj.instance.Refresh()
 			})
 
 			return object.Nil, nil
@@ -211,12 +248,46 @@ func (obj *Entry) GetAttr(name string) (object.Object, bool) {
 
 			return object.Nil, nil
 		}), true
+
+	case "Disable":
+		return object.NewBuiltin("widget.Entry.Disable", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			fyne.Do(func() {
+				obj.instance.Disable()
+			})
+			return object.Nil, nil
+		}), true
+
+	case "Enable":
+		return object.NewBuiltin("widget.Entry.Enable", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			fyne.Do(func() {
+				obj.instance.Enable()
+			})
+			return object.Nil, nil
+		}), true
 	}
 	return nil, false
 }
 
 func NewEntry(w WindowInterface) *Entry {
 	return &Entry{instance: widget.NewEntry(), w: w}
+}
+
+// NewEntryWithData creates a new entry bound to a string data binding (bi-directional)
+func NewEntryWithData(data interface{ Get() (string, error) }, w WindowInterface) *Entry {
+	// Cast to binding.String
+	bindingStr, ok := data.(binding.String)
+	if !ok {
+		// Fallback: create a regular entry
+		return &Entry{instance: widget.NewEntry(), w: w}
+	}
+
+	return &Entry{instance: widget.NewEntryWithData(bindingStr), w: w}
 }
 
 func NewMultiLineEntry() *Entry {

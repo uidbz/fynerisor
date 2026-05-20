@@ -310,6 +310,21 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 			return risorwidget.NewEntry(obj.w), nil
 		}), true
 
+	case "NewEntryWithData":
+		return object.NewBuiltin("widget.NewEntryWithData", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 1 {
+				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+			}
+
+			// Get the binding.String object
+			bindingStr, ok := args[0].Interface().(interface{ Get() (string, error) })
+			if !ok {
+				return object.Errorf("type error: expected binding.String"), nil
+			}
+
+			return risorwidget.NewEntryWithData(bindingStr, obj.w), nil
+		}), true
+
 	case "NewMultiLineEntry":
 		return object.NewBuiltin("widget.NewMuliLineEntry", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
@@ -428,6 +443,21 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
 			return risorwidget.NewProgressBar(), nil
+		}), true
+
+	case "NewProgressBarWithData":
+		return object.NewBuiltin("widget.NewProgressBarWithData", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 1 {
+				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+			}
+
+			// Get the binding.Float object
+			bindingFloat, ok := args[0].Interface().(interface{ Get() (float64, error) })
+			if !ok {
+				return object.Errorf("type error: expected binding.Float"), nil
+			}
+
+			return risorwidget.NewProgressBarWithData(bindingFloat), nil
 		}), true
 
 	case "NewProgressBarInfinite":

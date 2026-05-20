@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -23,6 +24,18 @@ type ProgressBar struct {
 // NewProgressBar creates a new progress bar (default Min=0, Max=1)
 func NewProgressBar() *ProgressBar {
 	return &ProgressBar{instance: widget.NewProgressBar()}
+}
+
+// NewProgressBarWithData creates a new progress bar bound to a float data binding
+func NewProgressBarWithData(data interface{ Get() (float64, error) }) *ProgressBar {
+	// Cast to binding.Float
+	bindingFloat, ok := data.(binding.Float)
+	if !ok {
+		// Fallback: create a regular progress bar
+		return &ProgressBar{instance: widget.NewProgressBar()}
+	}
+
+	return &ProgressBar{instance: widget.NewProgressBarWithData(bindingFloat)}
 }
 
 func (obj *ProgressBar) Type() object.Type {

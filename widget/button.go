@@ -119,6 +119,26 @@ func (obj *Button) GetAttr(name string) (object.Object, bool) {
 			})
 			return object.Nil, nil
 		}), true
+	case "Disable":
+		return object.NewBuiltin("widget.Button.Disable", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			fyne.Do(func() {
+				obj.instance.Disable()
+			})
+			return object.Nil, nil
+		}), true
+	case "Enable":
+		return object.NewBuiltin("widget.Button.Enable", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			fyne.Do(func() {
+				obj.instance.Enable()
+			})
+			return object.Nil, nil
+		}), true
 	}
 	return nil, false
 }

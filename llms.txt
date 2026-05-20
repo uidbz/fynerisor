@@ -256,9 +256,9 @@ entry.OnChanged((text) => {
     print("Current:", text)
 })
 
-// OnSubmit fires when user presses Enter
-entry.OnSubmit(() => {
-    print("Submitted:", entry.Text)
+// OnSubmitted fires when user presses Enter
+entry.OnSubmitted((text) => {
+    print("Submitted:", text)
 })
 
 // Multiline variant
