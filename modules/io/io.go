@@ -88,6 +88,26 @@ func (i *IO) GetAttr(name string) (object.Object, bool) {
 
 			return object.Nil, nil
 		}), true
+
+	case "ReadAll":
+		return object.NewBuiltin("io.ReadAll", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 1 {
+				return nil, object.NewArgsError("io.ReadAll", 1, len(args))
+			}
+			path, err := object.AsString(args[0])
+			if err != nil {
+				return nil, err
+			}
+
+			// Read file contents
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return nil, err
+			}
+
+			// Return as string
+			return object.NewString(string(data)), nil
+		}), true
 	}
 	return nil, false
 }
@@ -99,5 +119,6 @@ func (i *IO) SetAttr(name string, value object.Object) error {
 func (i *IO) Attrs() []object.AttrSpec {
 	return []object.AttrSpec{
 		{Name: "cp", Doc: "Copy a file from src to dst"},
+		{Name: "ReadAll", Doc: "Read entire file and return contents as string"},
 	}
 }

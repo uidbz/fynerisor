@@ -142,6 +142,7 @@ func main() {
 			fynerisor.WithFilepath(),
 			fynerisor.WithTime(),
 			fynerisor.WithSQL(),
+			fynerisor.WithIO(),
 			fynerisor.WithGlobals(customGlobals...),
 			fynerisor.WithStatusCallback(func(status string) {
 				log.Printf("[STATUS] %s", status)
@@ -158,6 +159,7 @@ func main() {
 			fynerisor.WithFilepath(),
 			fynerisor.WithTime(),
 			fynerisor.WithSQL(),
+			fynerisor.WithIO(),
 			fynerisor.WithGlobals(customGlobals...),
 			fynerisor.WithStatusCallback(func(status string) {
 				if strings.HasPrefix(status, "ERROR:") {
