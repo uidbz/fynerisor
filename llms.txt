@@ -633,7 +633,7 @@ Enable with `fynerisor.WithIO()`. File I/O operations.
 require("@io")
 
 io.cp("source.txt", "destination.txt")  // Copy file
-let contents = io.ReadAll("file.txt")    // Read entire file as string
+let contents = io.read_all("file.txt")  // Read entire file as string
 ```
 
 ## Canvas Objects
