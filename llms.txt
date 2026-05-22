@@ -587,6 +587,12 @@ require("@os")
 let platform = os.goos()           // "linux", "windows", "darwin"
 let user = os.current_user()       // Current username
 os.open_browser("https://example.com")  // Open URL in browser
+
+// File operations
+os.write_file("example.txt", "Hello, World!")  // Write string to file
+let data = os.read_file("example.txt")          // Read file as bytes
+let text = string(data)                          // Convert to string
+os.write_file("copy.txt", data)                 // Can also write bytes
 ```
 
 ### Time Module
@@ -634,6 +640,9 @@ require("@io")
 
 io.cp("source.txt", "destination.txt")  // Copy file
 let contents = io.read_all("file.txt")  // Read entire file as string
+
+// Note: io.read_all returns string, os.read_file returns bytes
+// Use io.read_all for text files, os.read_file for binary data
 ```
 
 ## Canvas Objects

@@ -3,6 +3,7 @@ package os
 
 import (
 	"context"
+	"os"
 	"os/exec"
 	"os/user"
 	"runtime"
@@ -16,6 +17,8 @@ func Module() *object.Module {
 		"goos":         object.NewBuiltin("os.goos", goos),
 		"current_user": object.NewBuiltin("os.current_user", currentUser),
 		"open_browser": object.NewBuiltin("os.open_browser", openBrowser),
+		"read_file":    object.NewBuiltin("os.read_file", readFile),
+		"write_file":   object.NewBuiltin("os.write_file", writeFile),
 	})
 }
 
@@ -73,6 +76,54 @@ func openBrowser(ctx context.Context, args ...object.Object) (object.Object, err
 	}
 
 	if err := cmd.Start(); err != nil {
+		return object.NewError(err), nil
+	}
+
+	return object.Nil, nil
+}
+
+// readFile reads the named file and returns bytes
+func readFile(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) != 1 {
+		return object.Errorf("os.read_file: expected 1 argument, got %d", len(args)), nil
+	}
+
+	path, err := object.AsString(args[0])
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return object.NewError(err), nil
+	}
+
+	return object.NewBytes(data), nil
+}
+
+// writeFile writes data (bytes or string) to the named file
+func writeFile(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) != 2 {
+		return object.Errorf("os.write_file: expected 2 arguments, got %d", len(args)), nil
+	}
+
+	path, err := object.AsString(args[0])
+	if err != nil {
+		return nil, err
+	}
+
+	var data []byte
+	switch v := args[1].(type) {
+	case *object.Bytes:
+		data = v.Value()
+	case *object.String:
+		data = []byte(v.Value())
+	default:
+		return object.Errorf("os.write_file: expected bytes or string as second argument, got %s", args[1].Type()), nil
+	}
+
+	err = os.WriteFile(path, data, 0644)
+	if err != nil {
 		return object.NewError(err), nil
 	}
 
