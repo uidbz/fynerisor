@@ -593,6 +593,14 @@ os.write_file("example.txt", "Hello, World!")  // Write string to file
 let data = os.read_file("example.txt")          // Read file as bytes
 let text = string(data)                          // Convert to string
 os.write_file("copy.txt", data)                 // Can also write bytes
+
+// Directory operations
+os.read_dir("/path/to/dir").each((entry) => {
+    print(entry.name, entry.is_dir, entry.size)
+    if (filepath.ext(entry.name) == ".txt") {
+        print("Found text file:", entry.name)
+    }
+})
 ```
 
 ### Time Module

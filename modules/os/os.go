@@ -19,6 +19,7 @@ func Module() *object.Module {
 		"open_browser": object.NewBuiltin("os.open_browser", openBrowser),
 		"read_file":    object.NewBuiltin("os.read_file", readFile),
 		"write_file":   object.NewBuiltin("os.write_file", writeFile),
+		"read_dir":     object.NewBuiltin("os.read_dir", readDir),
 	})
 }
 
@@ -128,4 +129,38 @@ func writeFile(ctx context.Context, args ...object.Object) (object.Object, error
 	}
 
 	return object.Nil, nil
+}
+
+// readDir reads the directory and returns an iterator of directory entries
+func readDir(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) != 1 {
+		return object.Errorf("os.read_dir: expected 1 argument, got %d", len(args)), nil
+	}
+
+	path, err := object.AsString(args[0])
+	if err != nil {
+		return nil, err
+	}
+
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return object.NewError(err), nil
+	}
+
+	// Convert entries to a list of maps
+	items := make([]object.Object, len(entries))
+	for i, entry := range entries {
+		info, _ := entry.Info()
+		entryMap := map[string]object.Object{
+			"name":   object.NewString(entry.Name()),
+			"is_dir": object.NewBool(entry.IsDir()),
+		}
+		if info != nil {
+			entryMap["size"] = object.NewInt(info.Size())
+			entryMap["mode"] = object.NewInt(int64(info.Mode()))
+		}
+		items[i] = object.NewMap(entryMap)
+	}
+
+	return object.NewList(items), nil
 }
