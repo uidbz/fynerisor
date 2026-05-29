@@ -5,13 +5,13 @@ import (
 	"log"
 	"os"
 
-	"github.com/uidbz/fynerisor"
+	"github.com/uidbz/fynerisor/gui"
 )
 
 func main() {
 	// Create fynerisor window using NewApp convenience function
-	fyneWindow := fynerisor.NewApp("Tree Widget Example",
-		fynerisor.WithStatusCallback(func(status string) {
+	fyneWindow := gui.NewApp("Tree Widget Example",
+		gui.WithStatusCallback(func(status string) {
 			fmt.Println("Status:", status)
 		}),
 	)

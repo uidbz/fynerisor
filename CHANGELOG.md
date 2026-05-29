@@ -6,8 +6,8 @@
 
 **Package Restructure for Static Compilation:**
 - Split fynerisor into `core` (headless) and `gui` (GUI) packages
-- Root package re-exports `gui` for backward compatibility
-- Existing code continues to work unchanged
+- **All imports must be updated** - root package no longer provides functionality
+- Use explicit package imports: `github.com/uidbz/fynerisor/gui` or `github.com/uidbz/fynerisor/core`
 
 ### Added
 
@@ -32,26 +32,29 @@
 
 ### Migration Guide
 
-**For GUI applications (no changes needed):**
+**Update all imports - REQUIRED:**
+
 ```go
-// This still works (uses gui package)
+// OLD (v0.4.x)
 import "github.com/uidbz/fynerisor"
 fw := fynerisor.NewApp("My App", fynerisor.WithHTTP())
+core.SetAppVersion("1.0.0")
+
+// NEW (v0.5.0) - GUI applications
+import (
+    "github.com/uidbz/fynerisor/core"
+    "github.com/uidbz/fynerisor/gui"
+)
+fw := gui.NewApp("My App", gui.WithHTTP())
+core.SetAppVersion("1.0.0")
 ```
 
 **For headless/static compilation:**
 ```go
-// Use core package directly
+// Use core package for CLI tools and server-side scripts
 import "github.com/uidbz/fynerisor/core"
 ctx := core.NewContext(core.WithHTTP(), core.WithSQL())
 result, err := ctx.Eval(`print("Hello!")`)
-```
-
-**For explicit GUI usage:**
-```go
-// Use gui package directly
-import "github.com/uidbz/fynerisor/gui"
-fw := gui.NewApp("My App", gui.WithHTTP())
 ```
 
 ## [0.4.2] - 2026-05-19

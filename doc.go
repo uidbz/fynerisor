@@ -6,13 +6,12 @@
 //
 // # Package Structure
 //
-// Fynerisor is split into two packages for flexibility:
+// Fynerisor is split into two packages:
 //
 //   - core: Headless Risor execution with no GUI dependencies (enables static compilation)
 //   - gui: Full GUI capabilities with Fyne (requires dynamic linking for OpenGL/X11)
 //
-// The root package (github.com/uidbz/fynerisor) re-exports gui functionality for
-// backward compatibility with existing code.
+// Always import the specific package you need: core for headless, gui for desktop applications.
 //
 // # Version
 //
@@ -39,16 +38,16 @@
 //
 //	package main
 //
-//	import "github.com/uidbz/fynerisor"
+//	import "github.com/uidbz/fynerisor/gui"
 //
 //	func main() {
-//	    fw := fynerisor.NewApp("Hello",
-//	        fynerisor.WithHTTP(),
-//	        fynerisor.WithSQL(),
+//	    fw := gui.NewApp("Hello",
+//	        gui.WithHTTP(),
+//	        gui.WithSQL(),
 //	    )
 //
 //	    script := `
-//	        require(["v0.3", "@gui", "@http"])
+//	        require(["v0.5", "@gui", "@http"])
 //
 //	        let btn = widget.NewButton("Click Me", () => {
 //	            window.SetStatus("Button clicked!")
@@ -116,18 +115,18 @@
 //
 // Enable additional modules using options:
 //
-//	fw := fynerisor.NewApp("My App",
-//	    fynerisor.WithHTTP(),      // HTTP client
-//	    fynerisor.WithSQL(),       // Database connectivity
-//	    fynerisor.WithOS(),        // OS utilities
-//	    fynerisor.WithIO(),        // File I/O (cp, etc.)
-//	    fynerisor.WithStrings(),   // String manipulation
-//	    fynerisor.WithFilepath(),  // Path utilities
-//	    fynerisor.WithTime(),      // Time operations
-//	    fynerisor.WithStatusCallback(func(status string) {
+//	fw := gui.NewApp("My App",
+//	    gui.WithHTTP(),      // HTTP client
+//	    gui.WithSQL(),       // Database connectivity
+//	    gui.WithOS(),        // OS utilities
+//	    gui.WithIO(),        // File I/O (cp, etc.)
+//	    gui.WithStrings(),   // String manipulation
+//	    gui.WithFilepath(),  // Path utilities
+//	    gui.WithTime(),      // Time operations
+//	    gui.WithStatusCallback(func(status string) {
 //	        log.Println("Status:", status)
 //	    }),
-//	    fynerisor.WithAppName("myapp"),
+//	    gui.WithAppName("myapp"),
 //	)
 //
 // # Risor v2 Syntax
@@ -220,15 +219,18 @@
 //
 // Inject custom data or functions into scripts:
 //
-//	import "github.com/deepnoodle-ai/risor/v2"
+//	import (
+//	    "github.com/deepnoodle-ai/risor/v2"
+//	    "github.com/uidbz/fynerisor/gui"
+//	)
 //
 //	customData := risor.WithEnv(map[string]any{
 //	    "api": myAPIObject,
 //	    "config": configData,
 //	})
 //
-//	fw := fynerisor.NewApp("My App",
-//	    fynerisor.WithGlobals(customData),
+//	fw := gui.NewApp("My App",
+//	    gui.WithGlobals(customData),
 //	)
 //
 // Scripts can then access: api.someMethod() and config.someProperty

@@ -3,11 +3,11 @@ package main
 import (
 	"os"
 
-	"github.com/uidbz/fynerisor"
+	"github.com/uidbz/fynerisor/gui"
 )
 
 func main() {
-	fw := fynerisor.NewApp("PopUp Example")
+	fw := gui.NewApp("PopUp Example")
 
 	script, err := os.ReadFile("script.risor")
 	if err != nil {

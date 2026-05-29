@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/uidbz/fynerisor"
+	"github.com/uidbz/fynerisor/gui"
 )
 
 const AppVersion = "1.2.3"
@@ -12,10 +12,10 @@ const AppVersion = "1.2.3"
 func main() {
 	// Set the application version
 	// Scripts can now use require(["v1.2"]) to check against this version
-	fynerisor.SetAppVersion(AppVersion)
+	gui.SetAppVersion(AppVersion)
 
 	// Create fynerisor window
-	w := fynerisor.NewApp("App Versioning Example v" + AppVersion)
+	w := gui.NewApp("App Versioning Example v" + AppVersion)
 
 	// Load Risor script from file
 	script, err := os.ReadFile("script.risor")

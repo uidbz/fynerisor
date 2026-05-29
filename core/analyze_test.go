@@ -1,4 +1,4 @@
-package fynerisor
+package core
 
 import (
 	"testing"

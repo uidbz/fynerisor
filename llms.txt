@@ -13,7 +13,7 @@ Fynerisor is split into two packages:
 - **`core`** - Headless Risor execution with no GUI dependencies (enables static compilation)
 - **`gui`** - Full GUI capabilities with Fyne framework
 
-Root package (`github.com/uidbz/fynerisor`) re-exports `gui` for backward compatibility.
+Always import the specific package you need.
 
 ## Features
 - 34+ widgets (60% of Fyne, all high/medium priority complete)
@@ -866,7 +866,7 @@ import (
     "fmt"
     "github.com/deepnoodle-ai/risor/v2/pkg/object"
     "github.com/deepnoodle-ai/risor/v2/pkg/op"
-    "github.com/uidbz/fynerisor"
+    "github.com/uidbz/fynerisor/gui"
 )
 
 // Define your Go type
@@ -920,8 +920,8 @@ func main() {
     // Create and register custom global
     db := &MyDatabaseObject{db: &MyDatabase{data: make(map[string]string)}}
 
-    fw := fynerisor.NewApp("My App",
-        fynerisor.WithGlobal("mydb", db),  // Register as global
+    fw := gui.NewApp("My App",
+        gui.WithGlobal("mydb", db),  // Register as global
     )
 
     script := `
@@ -946,13 +946,16 @@ Set your application's version for script compatibility checking:
 ```go
 package main
 
-import "github.com/uidbz/fynerisor"
+import (
+    "github.com/uidbz/fynerisor/core"
+    "github.com/uidbz/fynerisor/gui"
+)
 
 func main() {
     // Set your application version
-    fynerisor.SetAppVersion("2.5.1")
+    core.SetAppVersion("2.5.1")
 
-    fw := fynerisor.NewApp("My App v2.5.1")
+    fw := gui.NewApp("My App v2.5.1")
 
     script := `
         // Scripts can check your app version
@@ -1058,24 +1061,29 @@ func main() {
 External tools can analyze Risor scripts without executing them:
 
 ```go
+import (
+    "github.com/uidbz/fynerisor/core"
+    "github.com/uidbz/fynerisor/gui"
+)
+
 script := `
 import(["utils.risor", "helpers.risor"])
-require(["v0.4", "@sql", "@http"])
+require(["v0.5", "@sql", "@http"])
 `
 
-reqs, err := fynerisor.AnalyzeRequirements(script)
+reqs, err := core.AnalyzeRequirements(script)
 if err != nil {
     log.Fatal(err)
 }
 
-fmt.Println("Min Version:", reqs.MinVersion)           // "0.2"
+fmt.Println("Min Version:", reqs.MinVersion)           // "0.5"
 fmt.Println("Required Modules:", reqs.RequiredModules) // ["sql", "http"]
 fmt.Println("Imports:", reqs.Imports)                  // ["utils.risor", "helpers.risor"]
 fmt.Println("Description:", reqs.String())
-// "version >=v0.2; modules: sql, http; imports: utils.risor, helpers.risor"
+// "version >=v0.5; modules: sql, http; imports: utils.risor, helpers.risor"
 
 // Load imports before executing
-fw := fynerisor.NewApp("My App")
+fw := gui.NewApp("My App")
 for _, imp := range reqs.Imports {
     fw.ImportScript(imp)  // Loads each import in order
 }

@@ -22,13 +22,10 @@ Fynerisor is split into two packages:
 - **`core`** - Headless Risor execution with no GUI dependencies (enables static compilation)
 - **`gui`** - Full GUI capabilities with Fyne framework
 
-The root package (`github.com/uidbz/fynerisor`) re-exports `gui` functionality for backward compatibility.
-
 **When to use each:**
 
 - Use `core` for CLI tools, batch processing, server-side scripts (static compilation)
 - Use `gui` for desktop applications with UI (requires dynamic linking)
-- Use root package for backward compatibility with existing code
 
 ## Quick Start
 
@@ -75,9 +72,6 @@ go get github.com/uidbz/fynerisor/gui
 
 # For headless/static compilation
 go get github.com/uidbz/fynerisor/core
-
-# For backward compatibility (re-exports gui)
-go get github.com/uidbz/fynerisor
 ```
 
 **As a CLI tool:**
@@ -99,20 +93,21 @@ fynerisor script.risor
 package main
 
 import (
-    "github.com/uidbz/fynerisor"
+    "github.com/uidbz/fynerisor/core"
+    "github.com/uidbz/fynerisor/gui"
 )
 
 func main() {
     // Set your application version (optional)
     // Scripts will check against this version, not fynerisor's version
-    fynerisor.SetAppVersion("1.2.3")
+    core.SetAppVersion("1.2.3")
     
     // Create fynerisor app with modules
-    fw := fynerisor.NewApp("My App",
-        fynerisor.WithAppName("myapp"),
-        fynerisor.WithHTTP(),
-        fynerisor.WithOS(),
-        fynerisor.WithTime(),
+    fw := gui.NewApp("My App",
+        gui.WithAppName("myapp"),
+        gui.WithHTTP(),
+        gui.WithOS(),
+        gui.WithTime(),
     )
     
     // Load and execute script
@@ -133,13 +128,18 @@ func main() {
 When embedding fynerisor, you can set your application's version so scripts check compatibility against **your app**, not fynerisor:
 
 ```go
+import (
+    "github.com/uidbz/fynerisor/core"
+    "github.com/uidbz/fynerisor/gui"
+)
+
 const AppVersion = "2.5.1"
 
 func main() {
     // Scripts will now check against YOUR version
-    fynerisor.SetAppVersion(AppVersion)
+    core.SetAppVersion(AppVersion)
     
-    w := fynerisor.NewApp("My App v" + AppVersion)
+    w := gui.NewApp("My App v" + AppVersion)
     // ...
 }
 ```

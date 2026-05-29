@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/uidbz/fynerisor"
+	"github.com/uidbz/fynerisor/gui"
 )
 
 func main() {
@@ -15,9 +15,9 @@ func main() {
 	}
 
 	// Create fynerisor window using NewApp convenience function
-	window := fynerisor.NewApp("HTTP Fetch Example",
-		fynerisor.WithHTTP(),
-		fynerisor.WithStatusCallback(func(status string) {
+	window := gui.NewApp("HTTP Fetch Example",
+		gui.WithHTTP(),
+		gui.WithStatusCallback(func(status string) {
 			log.Printf("[STATUS] %s", status)
 		}),
 	)

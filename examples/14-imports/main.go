@@ -4,12 +4,12 @@ import (
 	"log"
 	"os"
 
-	"github.com/uidbz/fynerisor"
+	"github.com/uidbz/fynerisor/gui"
 )
 
 func main() {
 	// Create fynerisor window using NewApp convenience function
-	fyneWindow := fynerisor.NewApp("Simple Imports Example")
+	fyneWindow := gui.NewApp("Simple Imports Example")
 	fyneWindow.Resize(600, 400)
 
 	// Import utility functions first

@@ -4,13 +4,13 @@ import (
 	"log"
 	"os"
 
-	"github.com/uidbz/fynerisor"
+	"github.com/uidbz/fynerisor/gui"
 )
 
 func main() {
 	// Create fynerisor window using NewApp convenience function
-	fyneWindow := fynerisor.NewApp("Calendar Example",
-		fynerisor.WithTime(),
+	fyneWindow := gui.NewApp("Calendar Example",
+		gui.WithTime(),
 	)
 	fyneWindow.Resize(600, 500)
 

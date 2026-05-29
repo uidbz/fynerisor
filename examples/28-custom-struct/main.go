@@ -4,19 +4,19 @@ import (
 	"log"
 	"os"
 
-	"github.com/uidbz/fynerisor"
+	"github.com/uidbz/fynerisor/gui"
 )
 
 func main() {
-	fynerisor.SetAppVersion("1.0.0")
+	gui.SetAppVersion("1.0.0")
 
 	// Create the custom user database object
 	userDB := NewUserDatabaseObject()
 
 	// Create fynerisor window with custom global and status callback
-	w := fynerisor.NewApp("Custom Struct Example",
-		fynerisor.WithGlobal("users", userDB),
-		fynerisor.WithStatusCallback(func(status string) {
+	w := gui.NewApp("Custom Struct Example",
+		gui.WithGlobal("users", userDB),
+		gui.WithStatusCallback(func(status string) {
 			log.Printf("Status: %s", status)
 		}),
 	)

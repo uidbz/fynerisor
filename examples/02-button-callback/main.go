@@ -5,16 +5,16 @@ import (
 	"log"
 	"os"
 
-	"github.com/uidbz/fynerisor"
+	"github.com/uidbz/fynerisor/gui"
 )
 
 func main() {
 	// Create fynerisor window using NewApp convenience function
-	fyneWindow := fynerisor.NewApp("Button Callback Example",
-		fynerisor.WithStatusCallback(func(status string) {
+	fyneWindow := gui.NewApp("Button Callback Example",
+		gui.WithStatusCallback(func(status string) {
 			fmt.Printf("Status: %s\n", status)
 		}),
-		fynerisor.WithResultCallback(func(result string) {
+		gui.WithResultCallback(func(result string) {
 			fmt.Printf("Result: %s\n", result)
 		}),
 	)

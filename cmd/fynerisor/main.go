@@ -19,7 +19,8 @@ import (
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/theme"
 
-	"github.com/uidbz/fynerisor"
+	"github.com/uidbz/fynerisor/core"
+	"github.com/uidbz/fynerisor/gui"
 )
 
 const version = "0.2.0"
@@ -133,35 +134,35 @@ func main() {
 	}
 
 	// Create fynerisor window with standard modules enabled
-	var fyneWindow *fynerisor.Window
+	var fyneWindow *gui.Window
 	if *verbose {
-		fyneWindow = fynerisor.NewWindow(w,
-			fynerisor.WithHTTP(),
-			fynerisor.WithOS(),
-			fynerisor.WithStrings(),
-			fynerisor.WithFilepath(),
-			fynerisor.WithTime(),
-			fynerisor.WithSQL(),
-			fynerisor.WithIO(),
-			fynerisor.WithGlobals(customGlobals...),
-			fynerisor.WithStatusCallback(func(status string) {
+		fyneWindow = gui.NewWindow(w,
+			gui.WithHTTP(),
+			gui.WithOS(),
+			gui.WithStrings(),
+			gui.WithFilepath(),
+			gui.WithTime(),
+			gui.WithSQL(),
+			gui.WithIO(),
+			gui.WithGlobals(customGlobals...),
+			gui.WithStatusCallback(func(status string) {
 				log.Printf("[STATUS] %s", status)
 			}),
-			fynerisor.WithResultCallback(func(result string) {
+			gui.WithResultCallback(func(result string) {
 				log.Printf("[RESULT] %s", result)
 			}),
 		)
 	} else {
-		fyneWindow = fynerisor.NewWindow(w,
-			fynerisor.WithHTTP(),
-			fynerisor.WithOS(),
-			fynerisor.WithStrings(),
-			fynerisor.WithFilepath(),
-			fynerisor.WithTime(),
-			fynerisor.WithSQL(),
-			fynerisor.WithIO(),
-			fynerisor.WithGlobals(customGlobals...),
-			fynerisor.WithStatusCallback(func(status string) {
+		fyneWindow = gui.NewWindow(w,
+			gui.WithHTTP(),
+			gui.WithOS(),
+			gui.WithStrings(),
+			gui.WithFilepath(),
+			gui.WithTime(),
+			gui.WithSQL(),
+			gui.WithIO(),
+			gui.WithGlobals(customGlobals...),
+			gui.WithStatusCallback(func(status string) {
 				if strings.HasPrefix(status, "ERROR:") {
 					log.Printf("[ERROR] %s", status)
 				}
@@ -170,7 +171,7 @@ func main() {
 	}
 
 	// Analyze script requirements and handle imports
-	reqs, err := fynerisor.AnalyzeRequirements(script)
+	reqs, err := core.AnalyzeRequirements(script)
 	if err != nil {
 		log.Fatalf("Error analyzing script: %v", err)
 	}
@@ -221,12 +222,12 @@ func readScript(path string) (string, error) {
 	return string(data), nil
 }
 
-func executeScript(fw *fynerisor.Window, script string) {
+func executeScript(fw *gui.Window, script string) {
 	fw.LoadScript(script)
 	fw.Execute()
 }
 
-func watchScript(path string, fw *fynerisor.Window) {
+func watchScript(path string, fw *gui.Window) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Printf("Failed to create file watcher: %v", err)

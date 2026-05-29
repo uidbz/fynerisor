@@ -3,11 +3,11 @@ package main
 import (
 	"os"
 
-	"github.com/uidbz/fynerisor"
+	"github.com/uidbz/fynerisor/gui"
 )
 
 func main() {
-	fw := fynerisor.NewApp("Button Importance Example")
+	fw := gui.NewApp("Button Importance Example")
 
 	script, err := os.ReadFile("script.risor")
 	if err != nil {

@@ -4,12 +4,12 @@ import (
 	"log"
 	"os"
 
-	"github.com/uidbz/fynerisor"
+	"github.com/uidbz/fynerisor/gui"
 )
 
 func main() {
 	// Create fynerisor window
-	w := fynerisor.NewApp("Data Binding Example")
+	w := gui.NewApp("Data Binding Example")
 
 	// Load Risor script from file
 	script, err := os.ReadFile("script.risor")

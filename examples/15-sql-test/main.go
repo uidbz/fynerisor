@@ -5,16 +5,16 @@ import (
 	"log"
 	"os"
 
-	"github.com/uidbz/fynerisor"
+	"github.com/uidbz/fynerisor/gui"
 )
 
 func main() {
 	// Create fynerisor window using NewApp convenience function
-	fyneWindow := fynerisor.NewApp("SQL Module Test",
-		fynerisor.WithStatusCallback(func(status string) {
+	fyneWindow := gui.NewApp("SQL Module Test",
+		gui.WithStatusCallback(func(status string) {
 			fmt.Println("Status:", status)
 		}),
-		fynerisor.WithSQL(), // Enable SQL module
+		gui.WithSQL(), // Enable SQL module
 	)
 
 	// Load Risor script from file

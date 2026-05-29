@@ -7,7 +7,7 @@ import (
 
 	"github.com/deepnoodle-ai/risor/v2"
 
-	"github.com/uidbz/fynerisor"
+	"github.com/uidbz/fynerisor/gui"
 )
 
 // Sample data structure for the table
@@ -65,9 +65,9 @@ func main() {
 	}
 
 	// Create fynerisor window using NewApp convenience function
-	fyneWindow := fynerisor.NewApp("Table Display Example",
-		fynerisor.WithGlobals(risor.WithEnv(dataFuncs)),
-		fynerisor.WithStatusCallback(func(status string) {
+	fyneWindow := gui.NewApp("Table Display Example",
+		gui.WithGlobals(risor.WithEnv(dataFuncs)),
+		gui.WithStatusCallback(func(status string) {
 			fmt.Println("Status:", status)
 		}),
 	)
