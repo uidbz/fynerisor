@@ -5,14 +5,14 @@ import (
 	"log"
 	"os"
 
-	"github.com/uidbz/fynerisor"
+	"github.com/uidbz/fynerisor/core"
 )
 
 func main() {
 	// Example 1: Simple eval without imports
-	ctx := fynerisor.NewContext(
-		fynerisor.WithHTTP(),
-		fynerisor.WithOS(),
+	ctx := core.NewContext(
+		core.WithHTTP(),
+		core.WithOS(),
 	)
 
 	script1 := `

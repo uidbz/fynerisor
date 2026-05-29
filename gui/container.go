@@ -1,4 +1,4 @@
-package fynerisor
+package gui
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 
 	"fyne.io/fyne/v2"
 
-	risorcontainer "github.com/uidbz/fynerisor/container"
+	risorcontainer "github.com/uidbz/fynerisor/gui/container"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 )

@@ -4,9 +4,19 @@
 // scripts with full access to Fyne's widget and container system. Create interactive
 // GUIs with buttons, forms, tables, charts, and more through simple factory functions.
 //
+// # Package Structure
+//
+// Fynerisor is split into two packages for flexibility:
+//
+//   - core: Headless Risor execution with no GUI dependencies (enables static compilation)
+//   - gui: Full GUI capabilities with Fyne (requires dynamic linking for OpenGL/X11)
+//
+// The root package (github.com/uidbz/fynerisor) re-exports gui functionality for
+// backward compatibility with existing code.
+//
 // # Version
 //
-// Current Version: 0.3.0
+// Current Version: 0.4.1
 // Risor Compatibility: v2.1+ (arrow functions required)
 // Fyne Compatibility: v2.7+
 //
@@ -52,6 +62,35 @@
 //	    fw.Execute()
 //	    fw.ShowAndRun()
 //	}
+//
+// # Headless Mode
+//
+// Use the core package for headless execution without GUI dependencies.
+// This enables static compilation and is useful for CLI tools, batch processing,
+// or server-side scripting:
+//
+//	package main
+//
+//	import "github.com/uidbz/fynerisor/core"
+//
+//	func main() {
+//	    ctx := core.NewContext(
+//	        core.WithHTTP(),
+//	        core.WithSQL(),
+//	    )
+//
+//	    script := `
+//	        require(["v0.4", "@http", "@sql"])
+//	        let response = http.get("https://api.example.com/data")
+//	        print(response.json())
+//	    `
+//
+//	    ctx.LoadScript(script)
+//	    ctx.Eval()
+//	}
+//
+// The core package excludes all GUI code, allowing your binary to be statically linked
+// without OpenGL, X11, or other GUI dependencies.
 //
 // # Requirements
 //

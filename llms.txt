@@ -2,9 +2,18 @@
 
 Build cross-platform desktop GUIs using Risor v2 scripts with Fyne widgets.
 
-Version: 0.4.1
+Version: 0.5.0
 Risor: v2.x (arrow functions, no for loops, functional iteration)
 Fyne: v2.7+
+
+## Package Structure
+
+Fynerisor is split into two packages:
+
+- **`core`** - Headless Risor execution with no GUI dependencies (enables static compilation)
+- **`gui`** - Full GUI capabilities with Fyne framework
+
+Root package (`github.com/uidbz/fynerisor`) re-exports `gui` for backward compatibility.
 
 ## Features
 - 34+ widgets (60% of Fyne, all high/medium priority complete)
@@ -12,6 +21,7 @@ Fyne: v2.7+
 - Custom Go type integration (WithGlobal)
 - Application versioning (SetAppVersion)
 - Modules: HTTP, SQL, OS, Time, Strings, Filepath, IO
+- Static compilation support (core package)
 
 ## Quick Start
 
@@ -779,9 +789,9 @@ the full result set in memory.
 - Table.Data: `(offset, limit) => [ ]`
 - Tree.ChildUIDs: `(uid) => [ ]`
 
-## Non-GUI Usage (Headless Scripts)
+## Non-GUI Usage (Headless Scripts with Static Compilation)
 
-For CLI tools, server applications, or headless scripts that need Risor with modules but no GUI:
+For CLI tools, server applications, or headless scripts that need Risor with modules but no GUI, use the `core` package. This enables static compilation without Fyne/OpenGL/X11 dependencies:
 
 ```go
 package main
@@ -789,19 +799,19 @@ package main
 import (
     "log"
     "os"
-    "github.com/uidbz/fynerisor"
+    "github.com/uidbz/fynerisor/core"
 )
 
 func main() {
-    // Create context with desired modules (same options as Window)
-    ctx := fynerisor.NewContext(
-        fynerisor.WithHTTP(),
-        fynerisor.WithSQL(),
-        fynerisor.WithOS(),
+    // Create context with desired modules (no GUI dependencies)
+    ctx := core.NewContext(
+        core.WithHTTP(),
+        core.WithSQL(),
+        core.WithOS(),
     )
 
     script := `
-        require(["v0.4", "@http", "@sql"])
+        require(["v0.5", "@http", "@sql"])
 
         let platform = os.goos()
         print("Running on:", platform)
@@ -839,9 +849,10 @@ script := `
 result, err := ctx.EvalWithImports(script, fetchFunc)
 ```
 
-**Available options (same as Window):**
-- `WithHTTP()`, `WithSQL()`, `WithOS()`, `WithStrings()`, `WithFilepath()`, `WithTime()`, `WithGlobals()`
-- Window-specific options (`WithStatusCallback`, `WithResultCallback`) are silently ignored
+**Available options in core package:**
+- `core.WithHTTP()`, `core.WithSQL()`, `core.WithOS()`, `core.WithStrings()`, `core.WithFilepath()`, `core.WithTime()`, `core.WithIO()`, `core.WithGlobals()`
+- GUI-specific options (`WithStatusCallback`, `WithResultCallback`) are not available in core
+- Scripts using `require("@gui")` will fail in core (headless mode)
 
 ## Custom Global Objects
 
@@ -969,18 +980,20 @@ This separates your application version from fynerisor library version.
 package main
 
 import (
-    "github.com/uidbz/fynerisor"
+    "github.com/uidbz/fynerisor/gui"
+    // Or use root package for backward compatibility:
+    // "github.com/uidbz/fynerisor"
 )
 
 func main() {
     // NewApp creates both Fyne app and window in one call
-    fw := fynerisor.NewApp("My Application",
-        fynerisor.WithHTTP(),
-        fynerisor.WithSQL(),
+    fw := gui.NewApp("My Application",
+        gui.WithHTTP(),
+        gui.WithSQL(),
     )
 
     script := `
-        require(["v0.4", "@sql", "@http"])
+        require(["v0.5", "@sql", "@http"])
 
         let btn = widget.NewButton("Hello", () => {
             window.SetStatus("Clicked!")
@@ -1003,20 +1016,21 @@ import (
     "log"
     "fyne.io/fyne/v2/app"
     "fyne.io/fyne/v2/theme"
-    "github.com/uidbz/fynerisor"
+    "github.com/uidbz/fynerisor/gui"
+    "github.com/uidbz/fynerisor/core"
 )
 
 func main() {
     script := `
-        require(["v0.4", "@sql", "@http"])
+        require(["v0.5", "@sql", "@http"])
         let btn = widget.NewButton("Hello", () => {
             window.SetStatus("Clicked!")
         })
         window.SetContent(btn)
     `
 
-    // Analyze requirements
-    reqs, err := fynerisor.AnalyzeRequirements(script)
+    // Analyze requirements (from core package)
+    reqs, err := core.AnalyzeRequirements(script)
     if err != nil {
         log.Fatal(err)
     }
@@ -1028,9 +1042,9 @@ func main() {
     w := a.NewWindow("My App")
 
     // Create fynerisor window with required modules
-    fw := fynerisor.NewWindow(w,
-        fynerisor.WithHTTP(),
-        fynerisor.WithSQL(),
+    fw := gui.NewWindow(w,
+        gui.WithHTTP(),
+        gui.WithSQL(),
     )
 
     fw.LoadScript(script)

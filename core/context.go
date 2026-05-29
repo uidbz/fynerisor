@@ -1,4 +1,6 @@
-package fynerisor
+// Package core provides headless Risor execution without GUI dependencies.
+// This enables static compilation and smaller binaries for CLI tools and servers.
+package core
 
 import (
 	"context"
@@ -6,33 +8,33 @@ import (
 	"github.com/deepnoodle-ai/risor/v2"
 )
 
-// ContextBuilder builds Risor contexts for non-GUI applications.
-// It provides access to the same module system (HTTP, SQL, OS, etc.) and import
-// functionality as fynerisor Window, but without GUI dependencies.
+// Context builds Risor execution contexts for non-GUI applications.
+// It provides access to modules (HTTP, SQL, OS, etc.) and import functionality
+// without requiring Fyne or any GUI dependencies.
 //
-// This is useful for headless scripts, CLI tools, or server applications that
-// need Risor scripting with modules but don't require a GUI.
-type ContextBuilder struct {
+// This enables static compilation for headless scripts, CLI tools, or server
+// applications that need Risor scripting with modules.
+type Context struct {
 	globals        []risor.Option
 	enabledModules map[string]bool
 	appName        string // Name of the embedding application
 	runner         *ScriptRunner
 }
 
-// NewContext creates a new Risor context builder for non-GUI applications.
+// NewContext creates a new Risor context for non-GUI applications.
 //
 // Parameters:
 //   - opts: Optional configuration using functional options (WithHTTP, WithSQL, etc.)
 //
 // Returns:
-//   - *ContextBuilder: Builder for creating Risor contexts
+//   - *Context: Execution context for Risor scripts
 //
 // Example:
 //
-//	ctx := fynerisor.NewContext(
-//	    fynerisor.WithHTTP(),
-//	    fynerisor.WithSQL(),
-//	    fynerisor.WithOS(),
+//	ctx := core.NewContext(
+//	    core.WithHTTP(),
+//	    core.WithSQL(),
+//	    core.WithOS(),
 //	)
 //
 //	script := `
@@ -42,8 +44,8 @@ type ContextBuilder struct {
 //	`
 //
 //	result, err := ctx.Eval(script)
-func NewContext(opts ...Option) *ContextBuilder {
-	cb := &ContextBuilder{
+func NewContext(opts ...Option) *Context {
+	cb := &Context{
 		enabledModules: make(map[string]bool),
 		appName:        "fynerisor", // default
 	}
@@ -81,17 +83,17 @@ func NewContext(opts ...Option) *ContextBuilder {
 //
 // Example:
 //
-//	ctx := fynerisor.NewContext(fynerisor.WithHTTP())
+//	ctx := core.NewContext(core.WithHTTP())
 //	ctx.ImportScript("utils.risor")
 //	ctx.ImportScript("https://example.com/helpers.risor")
 //	result, err := ctx.Eval(mainScript)
-func (cb *ContextBuilder) ImportScript(source string) error {
+func (cb *Context) ImportScript(source string) error {
 	return cb.runner.ImportScript(source)
 }
 
 // LoadScript sets the main script to be executed.
 // Call this after all ImportScript() calls.
-func (cb *ContextBuilder) LoadScript(script string) {
+func (cb *Context) LoadScript(script string) {
 	cb.runner.LoadScript(script)
 }
 
@@ -107,14 +109,14 @@ func (cb *ContextBuilder) LoadScript(script string) {
 // Example:
 //
 //	// Direct eval
-//	ctx := fynerisor.NewContext(fynerisor.WithHTTP())
+//	ctx := core.NewContext(core.WithHTTP())
 //	result, err := ctx.Eval(`http.get("https://example.com").status`)
 //
 //	// With imports
 //	ctx.ImportScript("utils.risor")
 //	ctx.LoadScript(`let result = myUtil(42)`)
 //	result, err := ctx.Eval("")
-func (cb *ContextBuilder) Eval(script string) (any, error) {
+func (cb *Context) Eval(script string) (any, error) {
 	// If no script was loaded via LoadScript, use the provided script
 	if len(cb.runner.scriptParts) == 0 && script != "" {
 		cb.runner.LoadScript(script)
@@ -137,7 +139,7 @@ func (cb *ContextBuilder) Eval(script string) (any, error) {
 //
 // Example:
 //
-//	ctx := fynerisor.NewContext(fynerisor.WithContextHTTP())
+//	ctx := core.NewContext(core.WithHTTP())
 //
 //	fetchFunc := func(path string) (string, error) {
 //	    data, err := os.ReadFile(path)
@@ -151,7 +153,7 @@ func (cb *ContextBuilder) Eval(script string) (any, error) {
 //	`
 //
 //	result, err := ctx.EvalWithImports(script, fetchFunc)
-func (cb *ContextBuilder) EvalWithImports(script string, fetchFunc func(path string) (string, error)) (any, error) {
+func (cb *Context) EvalWithImports(script string, fetchFunc func(path string) (string, error)) (any, error) {
 	// Analyze script for imports
 	reqs, err := AnalyzeRequirements(script)
 	if err != nil {
@@ -186,7 +188,7 @@ func (cb *ContextBuilder) EvalWithImports(script string, fetchFunc func(path str
 }
 
 // EnabledModules returns a map of enabled module names.
-func (cb *ContextBuilder) EnabledModules() map[string]bool {
+func (cb *Context) EnabledModules() map[string]bool {
 	modules := make(map[string]bool, len(cb.enabledModules))
 	for k, v := range cb.enabledModules {
 		modules[k] = v

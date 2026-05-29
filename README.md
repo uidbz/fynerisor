@@ -13,6 +13,22 @@ Fynerisor provides Risor script bindings for the Fyne GUI toolkit, allowing you 
 - 🧵 **Concurrency** - `go()` function for background tasks, `window.Do()` for GUI updates
 - 🎨 **Widget Enhancements** - Button importance, entry validation, styling
 - 📱 **Cross-Platform** - Linux, Windows, macOS, Android
+- ⚡ **Static Compilation** - Headless mode with no GUI dependencies
+
+## Package Structure
+
+Fynerisor is split into two packages:
+
+- **`core`** - Headless Risor execution with no GUI dependencies (enables static compilation)
+- **`gui`** - Full GUI capabilities with Fyne framework
+
+The root package (`github.com/uidbz/fynerisor`) re-exports `gui` functionality for backward compatibility.
+
+**When to use each:**
+
+- Use `core` for CLI tools, batch processing, server-side scripts (static compilation)
+- Use `gui` for desktop applications with UI (requires dynamic linking)
+- Use root package for backward compatibility with existing code
 
 ## Quick Start
 
@@ -47,11 +63,20 @@ print(sprintf("Name: %s", data.name))
 
 **Prerequisites:**
 
-Before installing fynerisor, ensure you have the Fyne prerequisites for your platform:
+For GUI applications, ensure you have the Fyne prerequisites for your platform:
 - [Fyne Getting Started Guide](https://docs.fyne.io/started/quick/) - Install required system dependencies
+
+For headless (core) usage, no GUI dependencies are required.
 
 **As a library:**
 ```bash
+# For GUI applications
+go get github.com/uidbz/fynerisor/gui
+
+# For headless/static compilation
+go get github.com/uidbz/fynerisor/core
+
+# For backward compatibility (re-exports gui)
 go get github.com/uidbz/fynerisor
 ```
 
@@ -137,21 +162,23 @@ print(app.version)  // "2.5.1"
 
 See [examples/27-app-versioning](examples/27-app-versioning) for a complete example.
 
-### Headless Context
+### Headless Context (Static Compilation)
+
+For headless execution without GUI dependencies, use the `core` package. This enables static compilation:
 
 ```go
 package main
 
 import (
     "fmt"
-    "github.com/uidbz/fynerisor"
+    "github.com/uidbz/fynerisor/core"
 )
 
 func main() {
-    // Create headless context
-    ctx := fynerisor.NewContext(
-        fynerisor.WithAppName("cli-tool"),
-        fynerisor.WithHTTP(),
+    // Create headless context (no GUI dependencies)
+    ctx := core.NewContext(
+        core.WithHTTP(),
+        core.WithSQL(),
     )
     
     // Execute script
@@ -174,7 +201,7 @@ Enable modules via `With*()` options and use `require(["@module"])` in scripts:
 
 | Module | Option | Description |
 |--------|--------|-------------|
-| `@gui` | N/A | GUI functionality (automatic in Window) |
+| `@gui` | N/A | GUI functionality (automatic in `gui.Window`, not available in `core.Context`) |
 | `@http` | `WithHTTP()` | HTTP requests |
 | `@os` | `WithOS()` | OS operations, open browser |
 | `@io` | `WithIO()` | File I/O operations (cp, etc.) |
@@ -185,16 +212,16 @@ Enable modules via `With*()` options and use `require(["@module"])` in scripts:
 
 ## Configuration Options
 
-Customize fynerisor behavior via `With*()` options when creating Window or Context:
+Customize fynerisor behavior via `With*()` options when creating `gui.Window` or `core.Context`:
 
-| Option | Type | Description |
-|--------|------|-------------|
+| Option | Available In | Description |
+|--------|--------------|-------------|
 | `WithAppName(name)` | Both | Set application name (accessible via `app.name` in scripts) |
 | `WithGlobals(opts)` | Both | Add custom global objects to script environment |
-| `WithStatusCallback(fn)` | Window | Called when `window.SetStatus()` is invoked |
-| `WithResultCallback(fn)` | Window | Called when script execution returns a value |
+| `WithStatusCallback(fn)` | `gui` only | Called when `window.SetStatus()` is invoked |
+| `WithResultCallback(fn)` | `gui` only | Called when script execution returns a value |
 
-**Module Options** (both Window and Context):
+**Module Options** (available in both `gui` and `core` packages):
 - `WithHTTP()` - Enable HTTP requests
 - `WithOS()` - Enable OS operations
 - `WithIO()` - Enable file I/O operations

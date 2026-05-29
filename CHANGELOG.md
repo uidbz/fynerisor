@@ -1,5 +1,59 @@
 # Changelog
 
+## [0.5.0] - 2026-05-29
+
+### Breaking Changes
+
+**Package Restructure for Static Compilation:**
+- Split fynerisor into `core` (headless) and `gui` (GUI) packages
+- Root package re-exports `gui` for backward compatibility
+- Existing code continues to work unchanged
+
+### Added
+
+**Headless Mode with Static Compilation:**
+- **`core` package** - Risor execution with zero Fyne dependencies
+  - `core.NewContext()` for headless script execution
+  - All modules available: HTTP, SQL, OS, Strings, Filepath, Time, IO
+  - Enables static compilation without OpenGL/X11 dependencies
+  - Perfect for CLI tools, batch processing, server-side scripts
+- **`gui` package** - Full GUI capabilities with Fyne framework
+  - All original functionality preserved
+  - `gui.NewWindow()` and `gui.NewApp()` for GUI applications
+  - Subpackages: widget, binding, container, canvas, chart
+- **Backward compatibility** - Root package re-exports gui functionality
+  - Existing imports continue to work: `import "github.com/uidbz/fynerisor"`
+  - No code changes required for existing applications
+
+### Changed
+- Moved NAMING_CONVENTIONS.md to docs/ directory
+- Updated documentation for new package structure
+- Updated example 16-context-builder to use `core` package
+
+### Migration Guide
+
+**For GUI applications (no changes needed):**
+```go
+// This still works (uses gui package)
+import "github.com/uidbz/fynerisor"
+fw := fynerisor.NewApp("My App", fynerisor.WithHTTP())
+```
+
+**For headless/static compilation:**
+```go
+// Use core package directly
+import "github.com/uidbz/fynerisor/core"
+ctx := core.NewContext(core.WithHTTP(), core.WithSQL())
+result, err := ctx.Eval(`print("Hello!")`)
+```
+
+**For explicit GUI usage:**
+```go
+// Use gui package directly
+import "github.com/uidbz/fynerisor/gui"
+fw := gui.NewApp("My App", gui.WithHTTP())
+```
+
 ## [0.4.2] - 2026-05-19
 
 ### Fixed

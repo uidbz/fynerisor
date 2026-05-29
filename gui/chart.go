@@ -1,11 +1,11 @@
-package fynerisor
+package gui
 
 import (
 	"context"
 	"errors"
 	"fmt"
 
-	risorchart "github.com/uidbz/fynerisor/chart"
+	risorchart "github.com/uidbz/fynerisor/gui/chart"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 )

@@ -1,4 +1,4 @@
-package fynerisor
+package gui
 
 import (
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -17,9 +17,7 @@ func newAppObject(w *Window) *App {
 	return &App{appName: w.appName}
 }
 
-func newAppObjectForContext(cb *ContextBuilder) *App {
-	return &App{appName: cb.appName}
-}
+// newAppObjectForContext removed - not needed in GUI package
 
 func (a *App) Type() object.Type {
 	return AppType

@@ -1,4 +1,4 @@
-package fynerisor
+package gui
 
 import (
 	"context"
@@ -153,75 +153,4 @@ func parseVersion(version string) ([3]int, error) {
 	// parts already initialized to [0, 0, 0]
 
 	return parts, nil
-}
-
-// newRequireBuiltinForContext creates the require() function for ContextBuilder
-func newRequireBuiltinForContext(cb *ContextBuilder) *object.Builtin {
-	return object.NewBuiltin("require", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-		if len(args) != 1 {
-			return nil, fmt.Errorf("require: expected 1 argument (string or list), got %d", len(args))
-		}
-
-		// Handle string argument
-		if str, ok := args[0].(*object.String); ok {
-			return processRequirementForContext(cb, str.Value())
-		}
-
-		// Handle list argument
-		if list, ok := args[0].(*object.List); ok {
-			for _, item := range list.Value() {
-				str, ok := item.(*object.String)
-				if !ok {
-					return nil, fmt.Errorf("require: list items must be strings, got %s", item.Type())
-				}
-				if _, err := processRequirementForContext(cb, str.Value()); err != nil {
-					return nil, err
-				}
-			}
-			return object.Nil, nil
-		}
-
-		return nil, fmt.Errorf("require: argument must be a string or list, got %s", args[0].Type())
-	})
-}
-
-// processRequirementForContext handles a single requirement string for ContextBuilder
-func processRequirementForContext(cb *ContextBuilder, req string) (object.Object, error) {
-	// Module requirement (@module)
-	if strings.HasPrefix(req, "@") {
-		moduleName := strings.TrimPrefix(req, "@")
-
-		// Special case: @gui is not available in headless ContextBuilder
-		if moduleName == "gui" {
-			return nil, fmt.Errorf("require: @gui is not available in headless mode (script requires GUI window)")
-		}
-
-		if !cb.enabledModules[moduleName] {
-			// Capitalize first letter for option name
-			optionName := strings.ToUpper(moduleName[:1]) + moduleName[1:]
-			return nil, fmt.Errorf("require: module @%s is not enabled (use fynerisor.With%s() option)", moduleName, optionName)
-		}
-		return object.Nil, nil
-	}
-
-	// Version requirement (v0.2.0 or ==v0.2.0)
-	if strings.HasPrefix(req, "v") || strings.HasPrefix(req, "==v") {
-		// Use app version if set, otherwise use fynerisor version
-		versionToCheck := "v" + Version
-		versionName := "fynerisor"
-		if appVersion != "" {
-			versionToCheck = appVersion
-			if !strings.HasPrefix(versionToCheck, "v") {
-				versionToCheck = "v" + versionToCheck
-			}
-			versionName = "application"
-		}
-
-		if err := checkVersion(req, versionToCheck, versionName); err != nil {
-			return nil, err
-		}
-		return object.Nil, nil
-	}
-
-	return nil, fmt.Errorf("require: invalid requirement '%s' (use 'v0.2.0' for version or '@sql' for module)", req)
 }
