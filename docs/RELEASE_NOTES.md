@@ -1,3 +1,93 @@
+# Fynerisor v0.5.0 - Package Split for Static Compilation ⚡
+
+**Release Date:** 2026-05-29  
+**BREAKING CHANGE: Migration Required**
+
+---
+
+## ⚠️ BREAKING CHANGES
+
+All imports must be updated to use explicit package paths:
+
+**OLD (v0.4.x):**
+```go
+import "github.com/uidbz/fynerisor"
+fw := fynerisor.NewApp("My App", fynerisor.WithHTTP())
+```
+
+**NEW (v0.5.0) - GUI Applications:**
+```go
+import "github.com/uidbz/fynerisor/gui"
+fw := gui.NewApp("My App", gui.WithHTTP())
+```
+
+**NEW (v0.5.0) - Headless/CLI:**
+```go
+import "github.com/uidbz/fynerisor/core"
+ctx := core.NewContext(core.WithHTTP(), core.WithSQL())
+```
+
+---
+
+## 🚀 New Features
+
+### Static Compilation Support
+
+- **`core` package** - Headless Risor execution with **zero Fyne dependencies**
+  - No OpenGL, X11, or GUI libraries required
+  - Perfect for CLI tools, batch scripts, server-side processing
+  - All modules available: HTTP, SQL, OS, Strings, Filepath, Time, IO
+  - Enables truly static binaries without CGO
+
+- **`gui` package** - Full GUI capabilities with Fyne framework
+  - All 37 widgets, data binding, containers
+  - All original functionality preserved
+  - Clean separation from headless code
+
+### Clean Architecture
+
+- Clear intent at import time: `core` vs `gui`
+- No ambiguity about which package to use
+- Simpler documentation and maintenance
+- Better separation of concerns
+
+---
+
+## 📝 Changes
+
+- Split functionality into `core` and `gui` packages
+- Removed backward compatibility layer (clean break)
+- All 28 examples updated to use explicit imports
+- CLI tool uses both packages explicitly
+- Documentation fully updated (README, doc.go, llms.txt)
+- Tests reorganized into appropriate packages
+- NAMING_CONVENTIONS.md moved to docs/
+
+---
+
+## 🤔 Why the Breaking Change?
+
+This establishes the correct architectural pattern going forward. With minimal downstream usage, now is the right time to make this improvement. Backward compatibility would add complexity without value and create confusion about which package to use.
+
+---
+
+# Fynerisor v0.4.2 - CLI Installation Fix
+
+**Release Date:** 2026-05-19  
+**Patch Release**
+
+## Fixed
+- CLI installation via `go install github.com/uidbz/fynerisor/cmd/fynerisor@latest`
+- Added missing 01-hello-world example
+- Fixed commit attribution for GitHub
+
+## Added
+- `--theme` flag for dark/light theme selection
+- Logo and screenshot to README
+- Link to Fyne prerequisites in installation section
+
+---
+
 # Fynerisor v0.4.1 - Open Source Release 🎉
 
 **Release Date:** 2026-05-15  
