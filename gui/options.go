@@ -281,6 +281,9 @@ func WithIO() Option {
 // WithGlobal adds a custom global variable to the Risor environment.
 // This allows you to expose custom Go types and their methods to scripts.
 //
+// Note: This does NOT register the global as a requireable module. Use WithModule
+// if you want scripts to be able to require(["@modulename"]).
+//
 // Example:
 //
 //	type MyDatabase struct { ... }
@@ -299,6 +302,45 @@ func WithGlobal(name string, value any) Option {
 				name: value,
 			}
 			*globalsList = append(*globalsList, risor.WithEnv(customGlobals))
+		},
+	}
+}
+
+// WithModule registers a custom module that can be required with @modulename.
+// This allows embedding applications to expose their own APIs that scripts can
+// explicitly require for validation.
+//
+// Unlike WithGlobal which only adds a global variable, WithModule also:
+//   - Registers the module in enabledModules for require() validation
+//   - Allows scripts to declare dependencies explicitly with require(["@modulename"])
+//   - Provides clear error messages if the module is not available
+//
+// Example:
+//
+//	type MyApp struct { ... }
+//	func (app *MyApp) GetAttr(name string) (object.Object, bool) { ... }
+//
+//	myApp := &MyApp{...}
+//	w := fynerisor.NewApp("My Application",
+//	    fynerisor.WithModule("myapp", myApp),
+//	)
+//
+// Usage in script:
+//
+//	require(["v1.0", "@gui", "@myapp"])  // Validates @myapp is available
+//	myapp.DoSomething()                  // Use the custom API
+//
+// If a script tries to require @myapp in a different application that doesn't
+// provide it, the require() call will fail with a clear error message instead
+// of causing undefined variable errors later.
+func WithModule(name string, value any) Option {
+	return moduleOption{
+		fn: func(globalsList *[]risor.Option, modules map[string]bool) {
+			customGlobals := map[string]any{
+				name: value,
+			}
+			*globalsList = append(*globalsList, risor.WithEnv(customGlobals))
+			modules[name] = true // Register for require() validation
 		},
 	}
 }
