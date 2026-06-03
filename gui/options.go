@@ -278,42 +278,16 @@ func WithIO() Option {
 	}
 }
 
-// WithGlobal adds a custom global variable to the Risor environment.
-// This allows you to expose custom Go types and their methods to scripts.
+// WithGlobal adds a custom global variable to the Risor environment and
+// registers it as a requireable module that can be validated with require(["@name"]).
 //
-// Note: This does NOT register the global as a requireable module. Use WithModule
-// if you want scripts to be able to require(["@modulename"]).
+// This allows you to expose custom Go types and their methods to scripts, while
+// enabling scripts to explicitly declare their dependencies for validation.
 //
-// Example:
-//
-//	type MyDatabase struct { ... }
-//	func (db *MyDatabase) GetAttr(name string) (object.Object, bool) { ... }
-//
-//	db := &MyDatabase{}
-//	w := fynerisor.NewApp("My App",
-//	    fynerisor.WithGlobal("db", db),
-//	)
-//
-//	// In scripts: db.query("SELECT * FROM users")
-func WithGlobal(name string, value any) Option {
-	return moduleOption{
-		fn: func(globalsList *[]risor.Option, modules map[string]bool) {
-			customGlobals := map[string]any{
-				name: value,
-			}
-			*globalsList = append(*globalsList, risor.WithEnv(customGlobals))
-		},
-	}
-}
-
-// WithModule registers a custom module that can be required with @modulename.
-// This allows embedding applications to expose their own APIs that scripts can
-// explicitly require for validation.
-//
-// Unlike WithGlobal which only adds a global variable, WithModule also:
-//   - Registers the module in enabledModules for require() validation
-//   - Allows scripts to declare dependencies explicitly with require(["@modulename"])
-//   - Provides clear error messages if the module is not available
+// The global will be:
+//   - Added to the Risor environment (accessible as a global variable)
+//   - Registered in enabledModules (can be validated with require())
+//   - Provide clear error messages if required but not available
 //
 // Example:
 //
@@ -322,7 +296,7 @@ func WithGlobal(name string, value any) Option {
 //
 //	myApp := &MyApp{...}
 //	w := fynerisor.NewApp("My Application",
-//	    fynerisor.WithModule("myapp", myApp),
+//	    fynerisor.WithGlobal("myapp", myApp),
 //	)
 //
 // Usage in script:
@@ -333,7 +307,10 @@ func WithGlobal(name string, value any) Option {
 // If a script tries to require @myapp in a different application that doesn't
 // provide it, the require() call will fail with a clear error message instead
 // of causing undefined variable errors later.
-func WithModule(name string, value any) Option {
+//
+// This works for any custom object: application APIs, database connections,
+// configuration objects, or any other Go type you want to expose to scripts.
+func WithGlobal(name string, value any) Option {
 	return moduleOption{
 		fn: func(globalsList *[]risor.Option, modules map[string]bool) {
 			customGlobals := map[string]any{

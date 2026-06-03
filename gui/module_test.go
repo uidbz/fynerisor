@@ -11,7 +11,7 @@ import (
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 )
 
-// mockModule is a simple test object for WithModule
+// mockModule is a simple test object for WithGlobal
 type mockModule struct{}
 
 const mockModuleType object.Type = "mockmodule"
@@ -60,14 +60,14 @@ func (m *mockModule) Equals(other object.Object) bool {
 	return ok
 }
 
-// TestWithModule tests that WithModule registers a custom module
-func TestWithModule(t *testing.T) {
+// TestWithGlobal tests that WithGlobal registers a custom module
+func TestWithGlobal(t *testing.T) {
 	a := test.NewApp()
 	defer a.Quit()
 	w := a.NewWindow("Test")
 
 	mock := &mockModule{}
-	fw := NewWindow(w, WithModule("custom", mock))
+	fw := NewWindow(w, WithGlobal("custom", mock))
 
 	// Test that require() succeeds when module is registered
 	script := `
@@ -85,13 +85,13 @@ func TestWithModule(t *testing.T) {
 	}
 }
 
-// TestWithModuleRequireFails tests that require() fails when module is not registered
-func TestWithModuleRequireFails(t *testing.T) {
+// TestWithGlobalRequireFails tests that require() fails when module is not registered
+func TestWithGlobalRequireFails(t *testing.T) {
 	a := test.NewApp()
 	defer a.Quit()
 	w := a.NewWindow("Test")
 
-	fw := NewWindow(w) // No WithModule
+	fw := NewWindow(w) // No WithGlobal
 
 	// Test that require() fails when module is not available
 	script := `
@@ -114,51 +114,8 @@ func TestWithModuleRequireFails(t *testing.T) {
 	}
 }
 
-// TestWithGlobalNotRequireable tests that WithGlobal does not register as requireable
-func TestWithGlobalNotRequireable(t *testing.T) {
-	a := test.NewApp()
-	defer a.Quit()
-	w := a.NewWindow("Test")
-
-	mock := &mockModule{}
-	fw := NewWindow(w, WithGlobal("custom", mock))
-
-	// Test that require() fails even though global is available
-	script := `
-		require(["@custom"])
-		window.SetContent(widget.NewLabel("Should not reach here"))
-	`
-
-	fw.LoadScript(script)
-	fw.Execute()
-	time.Sleep(100 * time.Millisecond)
-
-	// Should have error status because WithGlobal doesn't register for require()
-	if !strings.Contains(fw.Status, "ERROR") {
-		t.Errorf("Expected ERROR status for require(@custom) with WithGlobal, got: %s", fw.Status)
-	}
-
-	// But the global should still be accessible if we don't require it
-	// Create a fresh window to avoid status from previous error
-	w2 := a.NewWindow("Test2")
-	fw2 := NewWindow(w2, WithGlobal("custom", mock))
-
-	script2 := `
-		let result = custom.Test()
-		window.SetContent(widget.NewLabel(result))
-	`
-
-	fw2.LoadScript(script2)
-	fw2.Execute()
-	time.Sleep(100 * time.Millisecond)
-
-	if fw2.Status != "Ready!" {
-		t.Errorf("Expected Ready! when using global without require, got: %s", fw2.Status)
-	}
-}
-
-// TestWithModuleMultiple tests that multiple custom modules can be registered
-func TestWithModuleMultiple(t *testing.T) {
+// TestWithGlobalMultiple tests that multiple custom globals can be registered
+func TestWithGlobalMultiple(t *testing.T) {
 	a := test.NewApp()
 	defer a.Quit()
 	w := a.NewWindow("Test")
@@ -166,8 +123,8 @@ func TestWithModuleMultiple(t *testing.T) {
 	mock1 := &mockModule{}
 	mock2 := &mockModule{}
 	fw := NewWindow(w,
-		WithModule("module1", mock1),
-		WithModule("module2", mock2),
+		WithGlobal("module1", mock1),
+		WithGlobal("module2", mock2),
 	)
 
 	// Test that both modules can be required
