@@ -1,6 +1,7 @@
 package widget
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -88,6 +89,26 @@ func (obj *ProgressBar) GetAttr(name string) (object.Object, bool) {
 		return object.NewFloat(obj.instance.Min), true
 	case "Max":
 		return object.NewFloat(obj.instance.Max), true
+	case "Hide":
+		return object.NewBuiltin("widget.ProgressBar.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			fyne.Do(func() {
+				obj.instance.Hide()
+			})
+			return object.Nil, nil
+		}), true
+	case "Show":
+		return object.NewBuiltin("widget.ProgressBar.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			fyne.Do(func() {
+				obj.instance.Show()
+			})
+			return object.Nil, nil
+		}), true
 	}
 	return nil, false
 }

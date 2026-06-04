@@ -1,6 +1,7 @@
 package widget
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -62,6 +63,28 @@ func (obj *Form) SetAttr(name string, value object.Object) error {
 }
 
 func (obj *Form) GetAttr(name string) (object.Object, bool) {
+	switch name {
+	case "Hide":
+		return object.NewBuiltin("widget.Form.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			fyne.Do(func() {
+				obj.instance.Hide()
+			})
+			return object.Nil, nil
+		}), true
+	case "Show":
+		return object.NewBuiltin("widget.Form.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			fyne.Do(func() {
+				obj.instance.Show()
+			})
+			return object.Nil, nil
+		}), true
+	}
 	return nil, false
 }
 

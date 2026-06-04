@@ -194,6 +194,26 @@ func (obj *RichText) GetAttr(name string) (object.Object, bool) {
 	// Use ParseMarkdown() for rich text content instead
 	case "Segments":
 		return object.Errorf("attribute error: Segments manipulation not supported in Risor bindings. Use ParseMarkdown() instead."), false
+	case "Hide":
+		return object.NewBuiltin("widget.RichText.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			fyne.Do(func() {
+				obj.instance.Hide()
+			})
+			return object.Nil, nil
+		}), true
+	case "Show":
+		return object.NewBuiltin("widget.RichText.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			fyne.Do(func() {
+				obj.instance.Show()
+			})
+			return object.Nil, nil
+		}), true
 	}
 
 	return nil, false

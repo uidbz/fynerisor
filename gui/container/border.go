@@ -1,6 +1,7 @@
 package container
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -63,18 +64,28 @@ func (obj *Border) SetAttr(name string, value object.Object) error {
 }
 
 func (obj *Border) GetAttr(name string) (object.Object, bool) {
-	// switch name {
-	// case "NewBorderLayout":
-	// 	return object.NewBuiltin("layout.NewBorderLayout", func(ctx context.Context, args ...object.Object) object.Object {
-	// 		if len(args) != 2 {
-	// 			return object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-	// 		}
-
-	// 		borderlayout := layout.NewBorderLayout(args[0].Interface().(fyne.CanvasObject), args[1].Interface().(fyne.CanvasObject), nil, nil)
-
-	// 		return NewFyneBorder(borderlayout)
-	// 	}), true
-	// }
+	switch name {
+	case "Hide":
+		return object.NewBuiltin("container.Border.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			fyne.Do(func() {
+				obj.instance.Hide()
+			})
+			return object.Nil, nil
+		}), true
+	case "Show":
+		return object.NewBuiltin("container.Border.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			fyne.Do(func() {
+				obj.instance.Show()
+			})
+			return object.Nil, nil
+		}), true
+	}
 	return nil, false
 }
 

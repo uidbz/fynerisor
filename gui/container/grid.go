@@ -1,6 +1,7 @@
 package container
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -65,6 +66,28 @@ func (obj *GridWithColumns) SetAttr(name string, value object.Object) error {
 }
 
 func (obj *GridWithColumns) GetAttr(name string) (object.Object, bool) {
+	switch name {
+	case "Hide":
+		return object.NewBuiltin("container.GridWithColumns.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			fyne.Do(func() {
+				obj.instance.Hide()
+			})
+			return object.Nil, nil
+		}), true
+	case "Show":
+		return object.NewBuiltin("container.GridWithColumns.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			fyne.Do(func() {
+				obj.instance.Show()
+			})
+			return object.Nil, nil
+		}), true
+	}
 	return nil, false
 }
 
@@ -121,6 +144,28 @@ func (obj *GridWithRows) SetAttr(name string, value object.Object) error {
 }
 
 func (obj *GridWithRows) GetAttr(name string) (object.Object, bool) {
+	switch name {
+	case "Hide":
+		return object.NewBuiltin("container.GridWithRows.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			fyne.Do(func() {
+				obj.instance.Hide()
+			})
+			return object.Nil, nil
+		}), true
+	case "Show":
+		return object.NewBuiltin("container.GridWithRows.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			fyne.Do(func() {
+				obj.instance.Show()
+			})
+			return object.Nil, nil
+		}), true
+	}
 	return nil, false
 }
 
