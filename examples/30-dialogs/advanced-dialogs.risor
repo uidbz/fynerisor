@@ -22,7 +22,7 @@ let advFileOpenBtn = widget.NewButton("Advanced File Open", () => {
     fileDialog.SetLocation("/tmp") // Start in /tmp
     fileDialog.Show()
 })
-buttons = append(buttons, advFileOpenBtn)
+buttons.append(advFileOpenBtn)
 
 // Test 2: NewFileSave with custom filename
 let advFileSaveBtn = widget.NewButton("Advanced File Save", () => {
@@ -41,7 +41,7 @@ let advFileSaveBtn = widget.NewButton("Advanced File Save", () => {
     fileDialog.SetConfirmText("Save File")
     fileDialog.Show()
 })
-buttons = append(buttons, advFileSaveBtn)
+buttons.append(advFileSaveBtn)
 
 // Test 3: NewConfirm with custom button text and importance
 let advConfirmBtn = widget.NewButton("Advanced Confirm", () => {
@@ -63,7 +63,7 @@ let advConfirmBtn = widget.NewButton("Advanced Confirm", () => {
     confirmDialog.SetConfirmImportance(4)  // DangerHigh importance
     confirmDialog.Show()
 })
-buttons = append(buttons, advConfirmBtn)
+buttons.append(advConfirmBtn)
 
 // Test 4: NewColorPicker with advanced mode
 let advColorBtn = widget.NewButton("Advanced Color Picker", () => {
@@ -79,7 +79,7 @@ let advColorBtn = widget.NewButton("Advanced Color Picker", () => {
     colorDialog.Advanced = true
     colorDialog.Show()
 })
-buttons = append(buttons, advColorBtn)
+buttons.append(advColorBtn)
 
 // Test 5: NewCustom dialog with complex content
 let customContentBtn = widget.NewButton("Custom Content Dialog", () => {
@@ -94,7 +94,7 @@ let customContentBtn = widget.NewButton("Custom Content Dialog", () => {
     let customDialog = dialog.NewCustom("Custom Dialog", "Close", content)
     customDialog.Show()
 })
-buttons = append(buttons, customContentBtn)
+buttons.append(customContentBtn)
 
 // Test 6: NewForm with programmatic submit
 let formWithSubmitBtn = widget.NewButton("Form with Submit Button", () => {
@@ -121,7 +121,7 @@ let formWithSubmitBtn = widget.NewButton("Form with Submit Button", () => {
     // Could programmatically submit later with: formDialog.Submit()
     formDialog.Show()
 })
-buttons = append(buttons, formWithSubmitBtn)
+buttons.append(formWithSubmitBtn)
 
 // Test 7: NewCustomConfirm with widget content
 let customConfirmBtn = widget.NewButton("Custom Confirm Content", () => {
@@ -146,11 +146,10 @@ let customConfirmBtn = widget.NewButton("Custom Confirm Content", () => {
     customDialog.SetConfirmImportance(4)  // DangerHigh
     customDialog.Show()
 })
-buttons = append(buttons, customConfirmBtn)
+buttons.append(customConfirmBtn)
 
 // Create scrollable layout
 let vbox = container.NewVBox(buttons)
 let scroll = container.NewScroll(vbox)
 window.SetContent(scroll)
 window.Resize(450, 450)
-window.SetTitle("Advanced Dialog Examples")

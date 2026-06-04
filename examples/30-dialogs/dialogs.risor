@@ -7,13 +7,13 @@ let buttons = []
 let infoBtn = widget.NewButton("Show Information", () => {
     dialog.ShowInformation("Information", "This is an information dialog!")
 })
-buttons = append(buttons, infoBtn)
+buttons.append(infoBtn)
 
 // Test 2: ShowError
 let errorBtn = widget.NewButton("Show Error", () => {
     dialog.ShowError("This is an error message!")
 })
-buttons = append(buttons, errorBtn)
+buttons.append(errorBtn)
 
 // Test 3: ShowConfirm
 let confirmBtn = widget.NewButton("Show Confirm Dialog", () => {
@@ -25,7 +25,7 @@ let confirmBtn = widget.NewButton("Show Confirm Dialog", () => {
         }
     })
 })
-buttons = append(buttons, confirmBtn)
+buttons.append(confirmBtn)
 
 // Test 4: ShowFileOpen
 let fileOpenBtn = widget.NewButton("Open File", () => {
@@ -41,7 +41,7 @@ let fileOpenBtn = widget.NewButton("Open File", () => {
         }
     })
 })
-buttons = append(buttons, fileOpenBtn)
+buttons.append(fileOpenBtn)
 
 // Test 5: ShowFileSave
 let fileSaveBtn = widget.NewButton("Save File", () => {
@@ -57,7 +57,7 @@ let fileSaveBtn = widget.NewButton("Save File", () => {
         }
     })
 })
-buttons = append(buttons, fileSaveBtn)
+buttons.append(fileSaveBtn)
 
 // Test 6: ShowFolderOpen
 let folderBtn = widget.NewButton("Open Folder", () => {
@@ -73,7 +73,7 @@ let folderBtn = widget.NewButton("Open Folder", () => {
         }
     })
 })
-buttons = append(buttons, folderBtn)
+buttons.append(folderBtn)
 
 // Test 7: ShowColorPicker
 let colorBtn = widget.NewButton("Pick Color", () => {
@@ -84,7 +84,7 @@ let colorBtn = widget.NewButton("Pick Color", () => {
         window.SetStatus("Selected color: RGB(" + r + ", " + g + ", " + b + ")")
     })
 })
-buttons = append(buttons, colorBtn)
+buttons.append(colorBtn)
 
 // Test 8: ShowForm
 let formBtn = widget.NewButton("Show Form", () => {
@@ -102,14 +102,14 @@ let formBtn = widget.NewButton("Show Form", () => {
         }
     })
 })
-buttons = append(buttons, formBtn)
+buttons.append(formBtn)
 
 // Test 9: ShowCustom
 let customBtn = widget.NewButton("Custom Dialog", () => {
     let label = widget.NewLabel("This is a custom dialog with any content!")
     dialog.ShowCustom("Custom", "OK", label)
 })
-buttons = append(buttons, customBtn)
+buttons.append(customBtn)
 
 // Test 10: ShowCustomConfirm
 let customConfirmBtn = widget.NewButton("Custom Confirm", () => {
@@ -122,11 +122,10 @@ let customConfirmBtn = widget.NewButton("Custom Confirm", () => {
         }
     })
 })
-buttons = append(buttons, customConfirmBtn)
+buttons.append(customConfirmBtn)
 
 // Create layout
 let vbox = container.NewVBox(buttons)
 let scroll = container.NewScroll(vbox)
 window.SetContent(scroll)
 window.Resize(400, 500)
-window.SetTitle("Dialog Examples")
