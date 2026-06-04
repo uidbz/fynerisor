@@ -648,6 +648,83 @@ func main() {
 
 ---
 
+## Dialogs and User Interaction
+
+Show dialogs for user confirmation, file selection, color picking, and custom content.
+
+```js
+require(["v0.5"])
+
+// Simple information dialog
+dialog.ShowInformation("Success", "Operation completed successfully")
+
+// Error dialog
+dialog.ShowError("Something went wrong!")
+
+// Confirmation dialog with callback
+dialog.ShowConfirm("Confirm Delete", "Are you sure?", (confirmed) => {
+    if (confirmed) {
+        print("User confirmed deletion")
+    }
+})
+
+// File picker
+dialog.ShowFileOpen((path, err) => {
+    if (path != nil) {
+        print("Selected file:", path)
+    }
+})
+
+// Color picker with RGB callback
+dialog.ShowColorPicker("Choose Color", "Select a color", (color) => {
+    print(`RGB(${color.R}, ${color.G}, ${color.B})`)
+})
+
+// Form dialog with validation
+let nameEntry = widget.NewEntry()
+let emailEntry = widget.NewEntry()
+let nameItem = widget.NewFormItem("Name", nameEntry)
+let emailItem = widget.NewFormItem("Email", emailEntry)
+
+dialog.ShowForm("User Info", "Submit", "Cancel", [nameItem, emailItem], (submitted) => {
+    if (submitted) {
+        print("Form submitted!")
+    }
+})
+```
+
+**Advanced dialog control:**
+```js
+// Create dialog with more control
+let fileDialog = dialog.NewFileOpen((path, err) => {
+    if (path != nil) {
+        window.SetStatus("Opened: " + path)
+    }
+})
+
+// Customize before showing
+fileDialog.SetFileName("default.txt")
+fileDialog.SetFilter(".txt")       // Only show .txt files
+fileDialog.SetLocation("/tmp")     // Start in /tmp directory
+fileDialog.Show()
+
+// Custom content dialog
+let label = widget.NewLabel("This is custom content!")
+let entry = widget.NewEntry()
+let content = container.NewVBox([label, entry])
+dialog.ShowCustom("Custom Dialog", "OK", content)
+```
+
+**Key concepts:**
+- Simple Show* functions for common cases
+- New* constructors for advanced customization
+- Callbacks for user responses
+- File dialogs return path strings
+- Color picker returns RGB map
+- Form dialogs include automatic validation
+
+---
+
 ## Complete Examples
 
 The `examples/` directory contains complete working applications:
@@ -668,6 +745,7 @@ The `examples/` directory contains complete working applications:
 13. **12-imports** - Code organization with ImportScript
 14. **13-http-fetch** - HTTP requests and JSON parsing
 15. **15-sql-test** - Database connectivity
+30. **30-dialogs** - Dialog windows (info, error, confirm, file picker, color picker, forms)
 
 **Headless Example:**
 16. **16-context-builder** - Headless script execution

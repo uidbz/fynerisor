@@ -291,6 +291,28 @@ container.NewScroll(content)
 container.NewHSplit(left, right)
 ```
 
+### dialog
+
+Dialog windows:
+
+```js
+// Simple convenience functions
+dialog.ShowInformation(title, message)
+dialog.ShowError(message)
+dialog.ShowConfirm(title, message, callback)
+dialog.ShowFileOpen(callback)
+dialog.ShowFileSave(callback)
+dialog.ShowFolderOpen(callback)
+dialog.ShowColorPicker(title, message, callback)
+dialog.ShowForm(title, confirm, dismiss, items, callback)
+
+// Advanced constructors for more control
+let fd = dialog.NewFileOpen(callback)
+fd.SetFileName("default.txt")
+fd.SetFilter(".txt")
+fd.Show()
+```
+
 ### canvas
 
 Canvas objects:

@@ -1,5 +1,33 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+**Dialog Support:**
+- **Dialog package** - Full Fyne dialog support for user interactions
+  - Show* convenience functions: ShowInformation, ShowError, ShowConfirm, ShowFileOpen, ShowFileSave, ShowFolderOpen, ShowColorPicker, ShowForm, ShowCustom, ShowCustomConfirm
+  - New* constructors for advanced control: NewFileOpen, NewFileSave, NewConfirm, NewCustom, NewColorPicker, NewForm
+  - Dialog wrapper types with full API: FileDialog (SetFileName, SetFilter, SetLocation), ConfirmDialog (SetConfirmImportance), CustomDialog (SetButtons), ColorPickerDialog (Advanced mode, SetColor), FormDialog (Submit)
+  - All callbacks properly marshalled to GUI thread
+  - File dialogs return paths as strings, color picker returns RGB map
+  - Example: 30-dialogs with both basic and advanced usage
+
+**Widget Visibility Control:**
+- **Hide() and Show() methods** - Added to all 48 widgets and containers
+  - Dynamic visibility control for all UI elements
+  - Thread-safe via fyne.Do()
+  - Consistent API across buttons, labels, entries, forms, tables, containers, etc.
+
+**Command Execution:**
+- **Exec module** - Run external commands from Risor scripts
+  - exec(["command", "args"]) - Execute and return result with stdout/stderr/pid
+  - exec.command(["ls", "-la"]) - Create command object with control methods
+  - exec.look_path("cmd") - Find command path in PATH
+  - Result and Command types with methods: run(), output(), json()
+  - Configuration via options map: dir, env, stdin, stdout, stderr
+  - Available in both core and gui packages via WithExec()
+
 ## [0.5.0] - 2026-05-29
 
 ### Breaking Changes
