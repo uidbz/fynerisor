@@ -142,6 +142,7 @@ func NewWindow(window fyne.Window, opts ...Option) *Window {
 	constants := newConstantsObject()
 	fyneobj := &Fyne{w: w}
 	bindingobj := NewBinding()
+	dialogobj := NewDialog(w)
 
 	globals := map[string]any{
 		"window":    w,
@@ -149,6 +150,7 @@ func NewWindow(window fyne.Window, opts ...Option) *Window {
 		"canvas":    fynecanvas,
 		"container": fynecontainer,
 		"chart":     chart,
+		"dialog":    dialogobj,
 		"app":       app,
 		"constants": constants,
 		"fyne":      fyneobj,

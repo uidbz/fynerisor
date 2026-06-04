@@ -1,0 +1,132 @@
+require(["v0.5"])
+
+// Create a vertical box to hold all buttons
+let buttons = []
+
+// Test 1: ShowInformation
+let infoBtn = widget.NewButton("Show Information", () => {
+    dialog.ShowInformation("Information", "This is an information dialog!")
+})
+buttons.push(infoBtn)
+
+// Test 2: ShowError
+let errorBtn = widget.NewButton("Show Error", () => {
+    dialog.ShowError("This is an error message!")
+})
+buttons.push(errorBtn)
+
+// Test 3: ShowConfirm
+let confirmBtn = widget.NewButton("Show Confirm Dialog", () => {
+    dialog.ShowConfirm("Confirmation", "Do you want to proceed?", (confirmed) => {
+        if (confirmed) {
+            window.SetStatus("User confirmed!")
+        } else {
+            window.SetStatus("User cancelled")
+        }
+    })
+})
+buttons.push(confirmBtn)
+
+// Test 4: ShowFileOpen
+let fileOpenBtn = widget.NewButton("Open File", () => {
+    dialog.ShowFileOpen((path, err) => {
+        if (err != nil) {
+            window.SetStatus("Error: " + err)
+            return
+        }
+        if (path != nil) {
+            window.SetStatus("Selected file: " + path)
+        } else {
+            window.SetStatus("No file selected")
+        }
+    })
+})
+buttons.push(fileOpenBtn)
+
+// Test 5: ShowFileSave
+let fileSaveBtn = widget.NewButton("Save File", () => {
+    dialog.ShowFileSave((path, err) => {
+        if (err != nil) {
+            window.SetStatus("Error: " + err)
+            return
+        }
+        if (path != nil) {
+            window.SetStatus("Save to: " + path)
+        } else {
+            window.SetStatus("Save cancelled")
+        }
+    })
+})
+buttons.push(fileSaveBtn)
+
+// Test 6: ShowFolderOpen
+let folderBtn = widget.NewButton("Open Folder", () => {
+    dialog.ShowFolderOpen((path, err) => {
+        if (err != nil) {
+            window.SetStatus("Error: " + err)
+            return
+        }
+        if (path != nil) {
+            window.SetStatus("Selected folder: " + path)
+        } else {
+            window.SetStatus("No folder selected")
+        }
+    })
+})
+buttons.push(folderBtn)
+
+// Test 7: ShowColorPicker
+let colorBtn = widget.NewButton("Pick Color", () => {
+    dialog.ShowColorPicker("Choose Color", "Select your favorite color", (color) => {
+        let r = color.R
+        let g = color.G
+        let b = color.B
+        window.SetStatus("Selected color: RGB(" + r + ", " + g + ", " + b + ")")
+    })
+})
+buttons.push(colorBtn)
+
+// Test 8: ShowForm
+let formBtn = widget.NewButton("Show Form", () => {
+    let nameEntry = widget.NewEntry()
+    let emailEntry = widget.NewEntry()
+
+    let nameItem = widget.NewFormItem("Name", nameEntry)
+    let emailItem = widget.NewFormItem("Email", emailEntry)
+
+    dialog.ShowForm("User Information", "Submit", "Cancel", [nameItem, emailItem], (submitted) => {
+        if (submitted) {
+            window.SetStatus("Form submitted!")
+        } else {
+            window.SetStatus("Form cancelled")
+        }
+    })
+})
+buttons.push(formBtn)
+
+// Test 9: ShowCustom
+let customBtn = widget.NewButton("Custom Dialog", () => {
+    let label = widget.NewLabel("This is a custom dialog with any content!")
+    dialog.ShowCustom("Custom", "OK", label)
+})
+buttons.push(customBtn)
+
+// Test 10: ShowCustomConfirm
+let customConfirmBtn = widget.NewButton("Custom Confirm", () => {
+    let label = widget.NewLabel("Do you want to proceed with custom content?")
+    dialog.ShowCustomConfirm("Custom Confirm", "Yes", "No", label, (confirmed) => {
+        if (confirmed) {
+            window.SetStatus("Custom confirmed!")
+        } else {
+            window.SetStatus("Custom cancelled")
+        }
+    })
+})
+buttons.push(customConfirmBtn)
+
+// Create layout
+let vbox = container.NewVBox(buttons)
+let scroll = container.NewScroll(vbox)
+window.SetContent(scroll)
+window.Resize(400, 500)
+window.SetTitle("Dialog Examples")
