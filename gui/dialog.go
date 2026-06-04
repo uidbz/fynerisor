@@ -11,6 +11,7 @@ import (
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
+	risorDialog "github.com/uidbz/fynerisor/gui/dialog"
 )
 
 const DialogType object.Type = "dialog"
@@ -431,6 +432,308 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 				dialog.ShowForm(title, confirm, dismiss, formItems, callback, d.w.FyneWindow)
 			})
 			return object.Nil, nil
+		}), true
+
+	case "NewFileOpen":
+		return object.NewBuiltin("dialog.NewFileOpen", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 1 {
+				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+			}
+			fn, ok := args[0].(*object.Closure)
+			if !ok {
+				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			}
+
+			callFunc, ok := object.GetCallFunc(ctx)
+			if !ok {
+				return object.Errorf("internal error: no call function in context"), nil
+			}
+
+			callback := func(reader fyne.URIReadCloser, err error) {
+				d.w.Do(func() {
+					var path object.Object = object.Nil
+					var errObj object.Object = object.Nil
+
+					if reader != nil {
+						path = object.NewString(reader.URI().Path())
+						defer reader.Close()
+					}
+					if err != nil {
+						errObj = object.NewString(err.Error())
+					}
+
+					callFunc(ctx, fn, []object.Object{path, errObj})
+				})
+			}
+
+			fileDialog := risorDialog.NewFileOpen(callback, d.w.FyneWindow)
+			return fileDialog, nil
+		}), true
+
+	case "NewFileSave":
+		return object.NewBuiltin("dialog.NewFileSave", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 1 {
+				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+			}
+			fn, ok := args[0].(*object.Closure)
+			if !ok {
+				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			}
+
+			callFunc, ok := object.GetCallFunc(ctx)
+			if !ok {
+				return object.Errorf("internal error: no call function in context"), nil
+			}
+
+			callback := func(writer fyne.URIWriteCloser, err error) {
+				d.w.Do(func() {
+					var path object.Object = object.Nil
+					var errObj object.Object = object.Nil
+
+					if writer != nil {
+						path = object.NewString(writer.URI().Path())
+						defer writer.Close()
+					}
+					if err != nil {
+						errObj = object.NewString(err.Error())
+					}
+
+					callFunc(ctx, fn, []object.Object{path, errObj})
+				})
+			}
+
+			fileDialog := risorDialog.NewFileSave(callback, d.w.FyneWindow)
+			return fileDialog, nil
+		}), true
+
+	case "NewFolderOpen":
+		return object.NewBuiltin("dialog.NewFolderOpen", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 1 {
+				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+			}
+			fn, ok := args[0].(*object.Closure)
+			if !ok {
+				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			}
+
+			callFunc, ok := object.GetCallFunc(ctx)
+			if !ok {
+				return object.Errorf("internal error: no call function in context"), nil
+			}
+
+			callback := func(uri fyne.ListableURI, err error) {
+				d.w.Do(func() {
+					var path object.Object = object.Nil
+					var errObj object.Object = object.Nil
+
+					if uri != nil {
+						path = object.NewString(uri.Path())
+					}
+					if err != nil {
+						errObj = object.NewString(err.Error())
+					}
+
+					callFunc(ctx, fn, []object.Object{path, errObj})
+				})
+			}
+
+			fileDialog := risorDialog.NewFolderOpen(callback, d.w.FyneWindow)
+			return fileDialog, nil
+		}), true
+
+	case "NewConfirm":
+		return object.NewBuiltin("dialog.NewConfirm", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 3 {
+				return object.Errorf("wrong number of arguments. got=%d, want=3", len(args)), nil
+			}
+			title, err := object.AsString(args[0])
+			if err != nil {
+				return object.Errorf("type error: title must be string, got %s", args[0].Type()), nil
+			}
+			message, err := object.AsString(args[1])
+			if err != nil {
+				return object.Errorf("type error: message must be string, got %s", args[1].Type()), nil
+			}
+			fn, ok := args[2].(*object.Closure)
+			if !ok {
+				return object.Errorf("argument error: expected function, got %s", args[2].Type()), nil
+			}
+
+			callFunc, ok := object.GetCallFunc(ctx)
+			if !ok {
+				return object.Errorf("internal error: no call function in context"), nil
+			}
+
+			callback := func(confirmed bool) {
+				d.w.Do(func() {
+					callFunc(ctx, fn, []object.Object{object.NewBool(confirmed)})
+				})
+			}
+
+			confirmDialog := risorDialog.NewConfirm(title, message, callback, d.w.FyneWindow)
+			return confirmDialog, nil
+		}), true
+
+	case "NewCustomConfirm":
+		return object.NewBuiltin("dialog.NewCustomConfirm", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 5 {
+				return object.Errorf("wrong number of arguments. got=%d, want=5", len(args)), nil
+			}
+			title, err := object.AsString(args[0])
+			if err != nil {
+				return object.Errorf("type error: title must be string, got %s", args[0].Type()), nil
+			}
+			confirm, err := object.AsString(args[1])
+			if err != nil {
+				return object.Errorf("type error: confirm must be string, got %s", args[1].Type()), nil
+			}
+			dismiss, err := object.AsString(args[2])
+			if err != nil {
+				return object.Errorf("type error: dismiss must be string, got %s", args[2].Type()), nil
+			}
+
+			content, ok := args[3].(interface{ CanvasObject() fyne.CanvasObject })
+			if !ok {
+				return object.Errorf("type error: content must be a widget or canvas object"), nil
+			}
+
+			fn, ok := args[4].(*object.Closure)
+			if !ok {
+				return object.Errorf("argument error: expected function, got %s", args[4].Type()), nil
+			}
+
+			callFunc, ok := object.GetCallFunc(ctx)
+			if !ok {
+				return object.Errorf("internal error: no call function in context"), nil
+			}
+
+			callback := func(confirmed bool) {
+				d.w.Do(func() {
+					callFunc(ctx, fn, []object.Object{object.NewBool(confirmed)})
+				})
+			}
+
+			confirmDialog := risorDialog.NewCustomConfirm(title, confirm, dismiss, content.CanvasObject(), callback, d.w.FyneWindow)
+			return confirmDialog, nil
+		}), true
+
+	case "NewCustom":
+		return object.NewBuiltin("dialog.NewCustom", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 3 {
+				return object.Errorf("wrong number of arguments. got=%d, want=3", len(args)), nil
+			}
+			title, err := object.AsString(args[0])
+			if err != nil {
+				return object.Errorf("type error: title must be string, got %s", args[0].Type()), nil
+			}
+			dismiss, err := object.AsString(args[1])
+			if err != nil {
+				return object.Errorf("type error: dismiss must be string, got %s", args[1].Type()), nil
+			}
+
+			content, ok := args[2].(interface{ CanvasObject() fyne.CanvasObject })
+			if !ok {
+				return object.Errorf("type error: content must be a widget or canvas object"), nil
+			}
+
+			customDialog := risorDialog.NewCustom(title, dismiss, content.CanvasObject(), d.w.FyneWindow)
+			return customDialog, nil
+		}), true
+
+	case "NewColorPicker":
+		return object.NewBuiltin("dialog.NewColorPicker", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 3 {
+				return object.Errorf("wrong number of arguments. got=%d, want=3", len(args)), nil
+			}
+			title, err := object.AsString(args[0])
+			if err != nil {
+				return object.Errorf("type error: title must be string, got %s", args[0].Type()), nil
+			}
+			message, err := object.AsString(args[1])
+			if err != nil {
+				return object.Errorf("type error: message must be string, got %s", args[1].Type()), nil
+			}
+			fn, ok := args[2].(*object.Closure)
+			if !ok {
+				return object.Errorf("argument error: expected function, got %s", args[2].Type()), nil
+			}
+
+			callFunc, ok := object.GetCallFunc(ctx)
+			if !ok {
+				return object.Errorf("internal error: no call function in context"), nil
+			}
+
+			callback := func(c color.Color) {
+				d.w.Do(func() {
+					r, g, b, a := c.RGBA()
+					colorMap := object.NewMap(map[string]object.Object{
+						"R": object.NewInt(int64(r >> 8)),
+						"G": object.NewInt(int64(g >> 8)),
+						"B": object.NewInt(int64(b >> 8)),
+						"A": object.NewInt(int64(a >> 8)),
+					})
+					callFunc(ctx, fn, []object.Object{colorMap})
+				})
+			}
+
+			colorDialog := risorDialog.NewColorPicker(title, message, callback, d.w.FyneWindow)
+			return colorDialog, nil
+		}), true
+
+	case "NewForm":
+		return object.NewBuiltin("dialog.NewForm", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 5 {
+				return object.Errorf("wrong number of arguments. got=%d, want=5", len(args)), nil
+			}
+			title, err := object.AsString(args[0])
+			if err != nil {
+				return object.Errorf("type error: title must be string, got %s", args[0].Type()), nil
+			}
+			confirm, err := object.AsString(args[1])
+			if err != nil {
+				return object.Errorf("type error: confirm must be string, got %s", args[1].Type()), nil
+			}
+			dismiss, err := object.AsString(args[2])
+			if err != nil {
+				return object.Errorf("type error: dismiss must be string, got %s", args[2].Type()), nil
+			}
+
+			itemsList, ok := args[3].(*object.List)
+			if !ok {
+				return object.Errorf("type error: items must be a list, got %s", args[3].Type()), nil
+			}
+
+			var formItems []*widget.FormItem
+			for i, item := range itemsList.Value() {
+				formItemObj, ok := item.(interface{ Interface() interface{} })
+				if !ok {
+					return object.Errorf("type error: item %d is not a valid form item", i), nil
+				}
+				formItem, ok := formItemObj.Interface().(*widget.FormItem)
+				if !ok {
+					return object.Errorf("type error: item %d is not a form item", i), nil
+				}
+				formItems = append(formItems, formItem)
+			}
+
+			fn, ok := args[4].(*object.Closure)
+			if !ok {
+				return object.Errorf("argument error: expected function, got %s", args[4].Type()), nil
+			}
+
+			callFunc, ok := object.GetCallFunc(ctx)
+			if !ok {
+				return object.Errorf("internal error: no call function in context"), nil
+			}
+
+			callback := func(confirmed bool) {
+				d.w.Do(func() {
+					callFunc(ctx, fn, []object.Object{object.NewBool(confirmed)})
+				})
+			}
+
+			formDialog := risorDialog.NewForm(title, confirm, dismiss, formItems, callback, d.w.FyneWindow)
+			return formDialog, nil
 		}), true
 	}
 

@@ -1,0 +1,156 @@
+require(["v0.5"])
+
+// Advanced dialog examples using New* constructors for more control
+
+let buttons = []
+
+// Test 1: NewFileOpen with custom settings
+let advFileOpenBtn = widget.NewButton("Advanced File Open", () => {
+    let fileDialog = dialog.NewFileOpen((path, err) => {
+        if (err != nil) {
+            window.SetStatus("Error: " + err)
+            return
+        }
+        if (path != nil) {
+            window.SetStatus("Opened: " + path)
+        }
+    })
+
+    // Customize the dialog before showing
+    fileDialog.SetConfirmText("Select")
+    fileDialog.SetFilter(".txt")  // Only show .txt files
+    fileDialog.SetLocation("/tmp") // Start in /tmp
+    fileDialog.Show()
+})
+buttons.push(advFileOpenBtn)
+
+// Test 2: NewFileSave with custom filename
+let advFileSaveBtn = widget.NewButton("Advanced File Save", () => {
+    let fileDialog = dialog.NewFileSave((path, err) => {
+        if (err != nil) {
+            window.SetStatus("Error: " + err)
+            return
+        }
+        if (path != nil) {
+            window.SetStatus("Save to: " + path)
+        }
+    })
+
+    // Pre-fill filename
+    fileDialog.SetFileName("output.txt")
+    fileDialog.SetConfirmText("Save File")
+    fileDialog.Show()
+})
+buttons.push(advFileSaveBtn)
+
+// Test 3: NewConfirm with custom button text and importance
+let advConfirmBtn = widget.NewButton("Advanced Confirm", () => {
+    let confirmDialog = dialog.NewConfirm(
+        "Warning",
+        "This action cannot be undone. Continue?",
+        (confirmed) => {
+            if (confirmed) {
+                window.SetStatus("Action confirmed!")
+            } else {
+                window.SetStatus("Action cancelled")
+            }
+        }
+    )
+
+    // Customize before showing
+    confirmDialog.SetConfirmText("Yes, Delete")
+    confirmDialog.SetDismissText("No, Keep")
+    confirmDialog.SetConfirmImportance(4)  // DangerHigh importance
+    confirmDialog.Show()
+})
+buttons.push(advConfirmBtn)
+
+// Test 4: NewColorPicker with advanced mode
+let advColorBtn = widget.NewButton("Advanced Color Picker", () => {
+    let colorDialog = dialog.NewColorPicker(
+        "Select Theme Color",
+        "Choose your application theme color",
+        (color) => {
+            window.SetStatus("RGB(" + color.R + ", " + color.G + ", " + color.B + ")")
+        }
+    )
+
+    // Enable advanced mode
+    colorDialog.Advanced = true
+    colorDialog.Show()
+})
+buttons.push(advColorBtn)
+
+// Test 5: NewCustom dialog with complex content
+let customContentBtn = widget.NewButton("Custom Content Dialog", () => {
+    // Create complex custom content
+    let titleLabel = widget.NewLabel("Welcome to Fynerisor!")
+    let descLabel = widget.NewLabel("This is a custom dialog with multiple widgets.")
+    let entry = widget.NewEntry()
+    entry.SetPlaceholder("Enter your name...")
+
+    let content = container.NewVBox([titleLabel, descLabel, entry])
+
+    let customDialog = dialog.NewCustom("Custom Dialog", "Close", content)
+    customDialog.Show()
+})
+buttons.push(customContentBtn)
+
+// Test 6: NewForm with programmatic submit
+let formWithSubmitBtn = widget.NewButton("Form with Submit Button", () => {
+    let nameEntry = widget.NewEntry()
+    let emailEntry = widget.NewEntry()
+
+    let nameItem = widget.NewFormItem("Name", nameEntry)
+    let emailItem = widget.NewFormItem("Email", emailEntry)
+
+    let formDialog = dialog.NewForm(
+        "Registration",
+        "Register",
+        "Cancel",
+        [nameItem, emailItem],
+        (submitted) => {
+            if (submitted) {
+                window.SetStatus("Registration submitted!")
+            } else {
+                window.SetStatus("Registration cancelled")
+            }
+        }
+    )
+
+    // Could programmatically submit later with: formDialog.Submit()
+    formDialog.Show()
+})
+buttons.push(formWithSubmitBtn)
+
+// Test 7: NewCustomConfirm with widget content
+let customConfirmBtn = widget.NewButton("Custom Confirm Content", () => {
+    let warningLabel = widget.NewLabel("⚠️ Warning")
+    let infoLabel = widget.NewLabel("This will permanently delete all data.")
+    let checkBox = widget.NewCheck("I understand the consequences", () => {})
+
+    let content = container.NewVBox([warningLabel, infoLabel, checkBox])
+
+    let customDialog = dialog.NewCustomConfirm(
+        "Confirm Deletion",
+        "Delete",
+        "Cancel",
+        content,
+        (confirmed) => {
+            if (confirmed) {
+                window.SetStatus("Deletion confirmed")
+            }
+        }
+    )
+
+    customDialog.SetConfirmImportance(4)  // DangerHigh
+    customDialog.Show()
+})
+buttons.push(customConfirmBtn)
+
+// Create scrollable layout
+let vbox = container.NewVBox(buttons)
+let scroll = container.NewScroll(vbox)
+window.SetContent(scroll)
+window.Resize(450, 450)
+window.SetTitle("Advanced Dialog Examples")
