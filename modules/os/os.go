@@ -20,6 +20,8 @@ func Module() *object.Module {
 		"read_file":    object.NewBuiltin("os.read_file", readFile),
 		"write_file":   object.NewBuiltin("os.write_file", writeFile),
 		"read_dir":     object.NewBuiltin("os.read_dir", readDir),
+		"mkdir_all":    object.NewBuiltin("os.mkdir_all", mkdirAll),
+		"is_dir":       object.NewBuiltin("os.is_dir", isDir),
 	})
 }
 
@@ -163,4 +165,53 @@ func readDir(ctx context.Context, args ...object.Object) (object.Object, error) 
 	}
 
 	return object.NewList(items), nil
+}
+
+// mkdirAll creates a directory along with any necessary parents
+func mkdirAll(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) < 1 || len(args) > 2 {
+		return object.Errorf("os.mkdir_all: expected 1 or 2 arguments, got %d", len(args)), nil
+	}
+
+	path, err := object.AsString(args[0])
+	if err != nil {
+		return nil, err
+	}
+
+	// Default permission is 0755
+	perm := os.FileMode(0755)
+	if len(args) == 2 {
+		permInt, err := object.AsInt(args[1])
+		if err != nil {
+			return nil, err
+		}
+		perm = os.FileMode(permInt)
+	}
+
+	err = os.MkdirAll(path, perm)
+	if err != nil {
+		return object.NewError(err), nil
+	}
+
+	return object.Nil, nil
+}
+
+// isDir checks if a path is a directory
+func isDir(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) != 1 {
+		return object.Errorf("os.is_dir: expected 1 argument, got %d", len(args)), nil
+	}
+
+	path, err := object.AsString(args[0])
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		// Path doesn't exist or error accessing it
+		return object.NewBool(false), nil
+	}
+
+	return object.NewBool(info.IsDir()), nil
 }
