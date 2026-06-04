@@ -60,6 +60,24 @@ func (obj *Split) Attrs() []object.AttrSpec {
 }
 
 func (obj *Split) SetAttr(name string, value object.Object) error {
+	switch name {
+	case "Offset":
+		split, ok := obj.instance.(*container.Split)
+		if !ok {
+			return fmt.Errorf("attribute error: instance is not a Split container")
+		}
+
+		offset, err := object.AsFloat(value)
+		if err != nil {
+			return err
+		}
+
+		fyne.Do(func() {
+			split.Offset = float64(offset)
+			split.Refresh()
+		})
+		return nil
+	}
 	return fmt.Errorf("attribute error: %s object has no attribute %q", SplitType, name)
 }
 
@@ -85,6 +103,12 @@ func (obj *Split) GetAttr(name string) (object.Object, bool) {
 			})
 			return object.Nil, nil
 		}), true
+	case "Offset":
+		split, ok := obj.instance.(*container.Split)
+		if !ok {
+			return object.NewFloat(0.5), true // Default if not a Split
+		}
+		return object.NewFloat(split.Offset), true
 	}
 	return nil, false
 }
