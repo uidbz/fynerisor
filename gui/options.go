@@ -9,6 +9,7 @@ import (
 	"github.com/uidbz/fynerisor/modules/sql"
 	"github.com/uidbz/fynerisor/modules/strings"
 	"github.com/uidbz/fynerisor/modules/time"
+	"github.com/uidbz/fynerisor/modules/exec"
 )
 
 // Module options (WithHTTP, WithSQL, etc.) work with both.
@@ -322,3 +323,17 @@ func WithGlobal(name string, value any) Option {
 	}
 }
 
+
+// WithExec enables the exec module for running external commands from Risor scripts.
+func WithExec() Option {
+	return moduleOption{
+		fn: func(globalsList *[]risor.Option, modules map[string]bool) {
+			execModule := exec.Module()
+			execGlobals := map[string]any{
+				"exec": execModule,
+			}
+			*globalsList = append(*globalsList, risor.WithEnv(execGlobals))
+			modules["exec"] = true
+		},
+	}
+}

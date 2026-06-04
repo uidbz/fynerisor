@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/deepnoodle-ai/risor/v2"
+	"github.com/uidbz/fynerisor/modules/exec"
 	filepathmod "github.com/uidbz/fynerisor/modules/filepath"
 	"github.com/uidbz/fynerisor/modules/http"
 	iomod "github.com/uidbz/fynerisor/modules/io"
@@ -216,6 +217,30 @@ func WithIO() Option {
 			}
 			*globalsList = append(*globalsList, risor.WithEnv(ioGlobals))
 			modules["io"] = true
+		},
+	}
+}
+
+// WithExec enables the exec module for running external commands from Risor scripts.
+// The module provides functions: command, look_path, and exec.
+//
+// Example:
+//
+//	ctx := core.NewContext(core.WithExec())
+//
+// Usage in script:
+//
+//	let result = exec(["ls", "-la"])
+//	print(result.stdout)
+func WithExec() Option {
+	return moduleOption{
+		fn: func(globalsList *[]risor.Option, modules map[string]bool) {
+			execModule := exec.Module()
+			execGlobals := map[string]any{
+				"exec": execModule,
+			}
+			*globalsList = append(*globalsList, risor.WithEnv(execGlobals))
+			modules["exec"] = true
 		},
 	}
 }
