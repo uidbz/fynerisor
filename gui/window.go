@@ -296,6 +296,8 @@ func (w *Window) Execute() {
 			if ctx.Err() == context.Canceled {
 				return // Silently exit if cancelled
 			}
+			// Log error to stderr so it's visible in terminal
+			fmt.Fprintf(os.Stderr, "Script execution error: %v\n", err)
 			w.SetStatus("ERROR: " + err.Error())
 			return
 		}
