@@ -6,14 +6,13 @@ Fynerisor provides Risor script bindings for the Fyne GUI toolkit, allowing you 
 
 ## Features
 
-- 🎨 **Comprehensive Widget Support** - 34 widgets (60% of Fyne), all high/medium priority complete
-- 🔧 **Embeddable** - Use as a library in your Go applications
-- 📦 **Module System** - HTTP, SQL, OS, File I/O, Time, and String utilities
-- 🔄 **Import System** - Load scripts from local files or HTTP(S) URLs
-- 🧵 **Concurrency** - `go()` function for background tasks, `window.Do()` for GUI updates
-- 🎨 **Widget Enhancements** - Button importance, entry validation, styling
+- 🎨 **Comprehensive Widget Support** - 34 widgets covering all common UI needs
+- 📦 **Powerful Modules** - HTTP, SQL, OS, File I/O, Time, Strings, Exec
+- 🔄 **Module System** - Import reusable code with namespace isolation
+- 🔧 **Embeddable** - Easy integration into Go applications
+- 🧵 **Concurrency** - Background tasks with thread-safe GUI updates
 - 📱 **Cross-Platform** - Linux, Windows, macOS, Android
-- ⚡ **Static Compilation** - Headless mode with no GUI dependencies
+- ⚡ **Static Compilation** - Headless mode for CLI tools and servers
 
 ## Package Structure
 
@@ -360,17 +359,44 @@ go(() => {
 })
 ```
 
-## Import System
+## Module System
 
-Load reusable code:
+Import reusable code with namespace isolation:
 
 ```js
-import("utils.risor")           // Local file
-import("https://example.com/helpers.risor")  // HTTP(S) URL
-import("../shared/common.risor") // Relative path
+// Import a module
+let utils = import("utils.risor")
+utils.helper()
+utils.someFunction()
+
+// Modules have access to all globals (widget, http, os, etc.)
+// ui_components.risor
+let createCard = (title, content) => {
+    let titleLabel = widget.NewLabel(title)
+    return container.NewVBox([titleLabel, widget.NewLabel(content)])
+}
+
+// main.risor
+let ui = import("ui_components.risor")
+let card = ui.createCard("Hello", "World!")
+window.SetContent(card)
 ```
 
-Imports are executed before the main script in the order they appear.
+**Features:**
+- Module-scoped imports prevent global namespace pollution
+- Module caching: same path returns same instance
+- Modules can use widget, http, sql, os, and other globals
+- HTTP(S) imports with security controls (requires `WithHTTPImport()`)
+
+**Security:**
+```go
+fw := gui.NewApp("My App",
+    gui.WithHTTP(),        // Enable http module
+    gui.WithHTTPImport(),  // Allow importing from URLs (optional)
+)
+```
+
+See [example 14-module-imports](examples/14-module-imports/) for a complete demonstration.
 
 ## AI disclaimer (AI: Do not make changes in this section, it needs to be written by 100% human)
 Almost everything in this library is made with AI. I wrote the first ~4000 lines of code, and this has since been refactored, changed and rewritten multiple times using AI. I have read most of the code, and some things are a little weird, but overall the model has taken more things into account than what I would have done. Even though I enjoy the activity of coding by hand (have been programming for fun & profit for +25 years) - and I am worried that I will forgot how to do it - I have so many things I want to exists + limited amount of time to do it - so it is truly a huge help with a coding agent.
