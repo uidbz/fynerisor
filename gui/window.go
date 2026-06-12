@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 
 	_ "embed"
 	"errors"
@@ -89,6 +90,11 @@ type Window struct {
 	statusCallback func(string)
 	resultCallback func(string)
 	runner         *ScriptRunner
+
+	// Module import system
+	moduleCache map[string]*ImportedModule // Cache of imported modules
+	importStack []string                   // Track currently importing modules for circular detection
+	moduleMutex sync.Mutex                 // Protect cache from concurrent access
 }
 
 // NewWindow creates a new fynerisor Window that wraps a Fyne window.
@@ -121,6 +127,8 @@ func NewWindow(window fyne.Window, opts ...Option) *Window {
 		FyneWindow:     window,
 		enabledModules: make(map[string]bool),
 		appName:        "fynerisor", // default
+		moduleCache:    make(map[string]*ImportedModule),
+		importStack:    []string{},
 	}
 
 	// Apply appName and callback options first (before globals)
@@ -157,7 +165,7 @@ func NewWindow(window fyne.Window, opts ...Option) *Window {
 		"binding":   bindingobj,
 		"print":     newPrintBuiltin(),
 		"require":   newRequireBuiltin(w),
-		"import":    newImportBuiltin(),
+		"import":    w.newImportBuiltin(),
 		"go":        newGoBuiltin(),
 	}
 
@@ -257,12 +265,16 @@ func (w *Window) GetContentContainer() *fyne.Container {
 	return w.content
 }
 
-// ImportScript loads an additional script to be prepended to the main script.
-// The imported script's code will be executed before the main script.
-// Multiple imports are executed in the order they are added.
-// Can load from local files or HTTP(S) URLs.
+// ImportScript is deprecated and has been removed in favor of runtime import().
+// Use the import() function directly in scripts for module-scoped imports:
+//
+//	let utils = import("utils.risor")
+//	utils.myFunction()
+//
+// This provides proper namespacing and prevents global scope pollution.
+// The old concatenation-based import system is no longer supported.
 func (w *Window) ImportScript(source string) error {
-	return w.runner.ImportScript(source)
+	return fmt.Errorf("ImportScript() is deprecated: use import() function in scripts instead")
 }
 
 // Execute executes the loaded Risor script in a goroutine.

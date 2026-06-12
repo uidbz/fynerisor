@@ -1,0 +1,17 @@
+// String utility module
+// Simple functions that don't reference module-level variables
+
+let upper = (s) => s.to_upper()
+
+let lower = (s) => s.to_lower()
+
+let trim = (s) => s.trim()
+
+let split = (s, sep) => s.split(sep)
+
+let join = (list, sep) => list.join(sep)
+
+let reverse = (s) => {
+    // Simple reverse using reduce
+    return s.split("").reduce("", (acc, char) => char + acc)
+}

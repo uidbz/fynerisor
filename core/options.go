@@ -94,6 +94,38 @@ func WithHTTP() Option {
 	}
 }
 
+// WithHTTPImport enables importing Risor modules from HTTP(S) URLs.
+// This is a separate option from WithHTTP() for security reasons.
+//
+// When enabled, scripts can use import() with HTTP(S) URLs:
+//
+//	let utils = import("https://example.com/utils.risor")
+//	utils.someFunction()
+//
+// Security considerations:
+//   - Only enable this for trusted scripts or controlled environments
+//   - Imported modules execute with full access to enabled modules
+//   - HTTPS is recommended for production
+//
+// Example:
+//
+//	ctx := core.NewContext(
+//	    core.WithHTTP(),
+//	    core.WithHTTPImport(),
+//	)
+//
+// Usage in script:
+//
+//	require(["@httpimport"])
+//	let remote = import("https://cdn.example.com/mylib.risor")
+func WithHTTPImport() Option {
+	return moduleOption{
+		fn: func(globalsList *[]risor.Option, modules map[string]bool) {
+			modules["httpimport"] = true
+		},
+	}
+}
+
 // WithOS enables the OS module for accessing OS functionality from Risor scripts.
 // The module provides functions: goos, current_user, open_browser, read_file,
 // write_file, and read_dir.

@@ -1,0 +1,52 @@
+require(["v0.6", "@gui"])
+
+// Test 1: Basic module import
+print("=== Test 1: String Utils Module ===")
+let strUtils = import("string_utils.risor")
+
+let text = "Hello World"
+print("Original:", text)
+print("Upper:", strUtils.upper(text))
+print("Lower:", strUtils.lower(text))
+print("Reverse:", strUtils.reverse(text))
+
+// Test 2: Module caching
+print("\n=== Test 2: Module Caching ===")
+let strUtils2 = import("string_utils.risor")
+print("Same module instance?", strUtils == strUtils2)
+
+// Test 3: Using module in UI
+print("\n=== Test 3: Module in UI ===")
+
+let input = widget.NewEntry()
+input.SetPlaceHolder("Enter text here...")
+input.SetText("Fynerisor Modules")
+
+let outputLabel = widget.NewLabel("")
+
+let btnUpper = widget.NewButton("To Upper", () => {
+    outputLabel.SetText(strUtils.upper(input.Text))
+})
+
+let btnLower = widget.NewButton("To Lower", () => {
+    outputLabel.SetText(strUtils.lower(input.Text))
+})
+
+let btnReverse = widget.NewButton("Reverse", () => {
+    outputLabel.SetText(strUtils.reverse(input.Text))
+})
+
+let buttons = container.NewHBox([btnUpper, btnLower, btnReverse])
+
+let content = container.NewVBox([
+    widget.NewLabel("Module Import Demo"),
+    widget.NewSeparator(),
+    input,
+    buttons,
+    widget.NewSeparator(),
+    widget.NewLabel("Output:"),
+    outputLabel
+])
+
+window.SetContent(content)
+window.Resize(500, 300)

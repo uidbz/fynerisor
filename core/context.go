@@ -3,7 +3,8 @@
 package core
 
 import (
-	"context"
+	"fmt"
+	"sync"
 
 	"github.com/deepnoodle-ai/risor/v2"
 )
@@ -19,6 +20,11 @@ type Context struct {
 	enabledModules map[string]bool
 	appName        string // Name of the embedding application
 	runner         *ScriptRunner
+
+	// Module import system
+	moduleCache map[string]*ImportedModule // Cache of imported modules
+	importStack []string                   // Track currently importing modules for circular detection
+	moduleMutex sync.Mutex                 // Protect cache from concurrent access
 }
 
 // NewContext creates a new Risor context for non-GUI applications.
@@ -48,6 +54,8 @@ func NewContext(opts ...Option) *Context {
 	cb := &Context{
 		enabledModules: make(map[string]bool),
 		appName:        "fynerisor", // default
+		moduleCache:    make(map[string]*ImportedModule),
+		importStack:    []string{},
 	}
 
 	// Set base globals first
@@ -56,7 +64,7 @@ func NewContext(opts ...Option) *Context {
 		"app":     app,
 		"print":   newPrintBuiltin(),
 		"require": newRequireBuiltinForContext(cb),
-		"import":  newImportBuiltin(),
+		"import":  cb.newImportBuiltin(),
 	}
 
 	cb.globals = []risor.Option{risor.WithEnv(risor.Builtins()), risor.WithEnv(globals)}
@@ -72,23 +80,16 @@ func NewContext(opts ...Option) *Context {
 	return cb
 }
 
-// ImportScript loads a script from a path or URL and adds it to the import list.
-// The script will be executed before the main script when Eval() is called.
+// ImportScript is deprecated and has been removed in favor of runtime import().
+// Use the import() function directly in scripts for module-scoped imports:
 //
-// Parameters:
-//   - source: Path to a local file or HTTP(S) URL
+//	let utils = import("utils.risor")
+//	utils.myFunction()
 //
-// Returns:
-//   - error: Any error encountered while fetching the script
-//
-// Example:
-//
-//	ctx := core.NewContext(core.WithHTTP())
-//	ctx.ImportScript("utils.risor")
-//	ctx.ImportScript("https://example.com/helpers.risor")
-//	result, err := ctx.Eval(mainScript)
+// This provides proper namespacing and prevents global scope pollution.
+// The old concatenation-based import system is no longer supported.
 func (cb *Context) ImportScript(source string) error {
-	return cb.runner.ImportScript(source)
+	return fmt.Errorf("ImportScript() is deprecated: use import() function in scripts instead")
 }
 
 // LoadScript sets the main script to be executed.
@@ -112,79 +113,32 @@ func (cb *Context) LoadScript(script string) {
 //	ctx := core.NewContext(core.WithHTTP())
 //	result, err := ctx.Eval(`http.get("https://example.com").status`)
 //
-//	// With imports
-//	ctx.ImportScript("utils.risor")
-//	ctx.LoadScript(`let result = myUtil(42)`)
-//	result, err := ctx.Eval("")
+//	// With imports (runtime module scoping)
+//	result, err := ctx.Eval(`
+//	    let utils = import("utils.risor")
+//	    utils.myUtil(42)
+//	`)
 func (cb *Context) Eval(script string) (any, error) {
-	// If no script was loaded via LoadScript, use the provided script
-	if len(cb.runner.scriptParts) == 0 && script != "" {
+	// Load the script if provided
+	if script != "" {
 		cb.runner.LoadScript(script)
 	}
 
 	return cb.runner.Eval()
 }
 
-// EvalWithImports analyzes the script for imports, loads them in order,
-// then evaluates the main script. This method creates a shared Risor context
-// so imported scripts can define functions/variables used by the main script.
-//
-// Parameters:
-//   - script: The Risor script source code
-//   - fetchFunc: Function to fetch import sources by path/URL
-//
-// Returns:
-//   - any: The script result (converted to Go types)
-//   - error: Any evaluation error
-//
-// Example:
-//
-//	ctx := core.NewContext(core.WithHTTP())
-//
-//	fetchFunc := func(path string) (string, error) {
-//	    data, err := os.ReadFile(path)
-//	    return string(data), err
-//	}
+// EvalWithImports is deprecated. Use runtime import() function instead:
 //
 //	script := `
-//	    import("utils.risor")
+//	    let utils = import("utils.risor")
 //	    require("@http")
-//	    let result = myUtil(42)
+//	    let result = utils.myUtil(42)
 //	`
+//	result, err := ctx.Eval(script)
 //
-//	result, err := ctx.EvalWithImports(script, fetchFunc)
+// The new import() provides proper module scoping with namespace isolation.
 func (cb *Context) EvalWithImports(script string, fetchFunc func(path string) (string, error)) (any, error) {
-	// Analyze script for imports
-	reqs, err := AnalyzeRequirements(script)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx := context.Background()
-
-	// Create a shared Risor context by evaluating imports first
-	// Each eval in the same context shares the global scope
-	combinedScript := ""
-
-	// Load imports in order
-	for _, importPath := range reqs.Imports {
-		importScript, err := fetchFunc(importPath)
-		if err != nil {
-			return nil, err
-		}
-		combinedScript += importScript + "\n"
-	}
-
-	// Add main script
-	combinedScript += script
-
-	// Execute all scripts in one context so imports can define functions
-	result, err := risor.Eval(ctx, combinedScript, cb.globals...)
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	return nil, fmt.Errorf("EvalWithImports() is deprecated: use import() function in scripts for module-scoped imports")
 }
 
 // EnabledModules returns a map of enabled module names.
