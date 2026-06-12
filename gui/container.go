@@ -364,6 +364,55 @@ func (obj *Container) GetAttr(name string) (object.Object, bool) {
 			return risorcontainer.NewGridWithRows(int(rows), objects...), nil
 		}), true
 
+	case "NewAppTabs":
+		return object.NewBuiltin("container.NewAppTabs", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			var tabItems []*risorcontainer.TabItem
+			for i, arg := range args {
+				tabItem, ok := arg.(*risorcontainer.TabItem)
+				if !ok {
+					return object.Errorf("NewAppTabs: expected TabItem at argument %d, got %s", i, arg.Type()), nil
+				}
+				tabItems = append(tabItems, tabItem)
+			}
+			return risorcontainer.NewAppTabsFromItems(tabItems...), nil
+		}), true
+
+	case "NewTabItem":
+		return object.NewBuiltin("container.NewTabItem", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 2 {
+				return object.Errorf("wrong number of arguments. got=%d, want=2", len(args)), nil
+			}
+			text, err := object.AsString(args[0])
+			if err != nil {
+				return object.Errorf("NewTabItem: first argument must be string (text)"), nil
+			}
+			content, ok := args[1].Interface().(fyne.CanvasObject)
+			if !ok {
+				return object.Errorf("NewTabItem: second argument must be CanvasObject"), nil
+			}
+			return risorcontainer.NewTabItem(text, content), nil
+		}), true
+
+	case "NewTabItemWithIcon":
+		return object.NewBuiltin("container.NewTabItemWithIcon", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 3 {
+				return object.Errorf("wrong number of arguments. got=%d, want=3", len(args)), nil
+			}
+			text, err := object.AsString(args[0])
+			if err != nil {
+				return object.Errorf("NewTabItemWithIcon: first argument must be string (text)"), nil
+			}
+			icon, ok := args[1].Interface().(fyne.Resource)
+			if !ok {
+				return object.Errorf("NewTabItemWithIcon: second argument must be Resource (icon)"), nil
+			}
+			content, ok := args[2].Interface().(fyne.CanvasObject)
+			if !ok {
+				return object.Errorf("NewTabItemWithIcon: third argument must be CanvasObject"), nil
+			}
+			return risorcontainer.NewTabItemWithIcon(text, icon, content), nil
+		}), true
+
 	}
 	return nil, false
 }
