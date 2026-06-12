@@ -22,6 +22,8 @@ func Module() *object.Module {
 		"read_dir":     object.NewBuiltin("os.read_dir", readDir),
 		"mkdir_all":    object.NewBuiltin("os.mkdir_all", mkdirAll),
 		"is_dir":       object.NewBuiltin("os.is_dir", isDir),
+		"getwd":        object.NewBuiltin("os.getwd", getwd),
+		"exec":         object.NewBuiltin("os.exec", execCommand),
 	})
 }
 
@@ -214,4 +216,48 @@ func isDir(ctx context.Context, args ...object.Object) (object.Object, error) {
 	}
 
 	return object.NewBool(info.IsDir()), nil
+}
+
+// getwd returns the current working directory
+func getwd(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) != 0 {
+		return object.Errorf("os.getwd: expected 0 arguments, got %d", len(args)), nil
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return object.NewError(err), nil
+	}
+
+	return object.NewString(wd), nil
+}
+
+// execCommand executes a command with arguments
+func execCommand(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) < 1 {
+		return object.Errorf("os.exec: expected at least 1 argument, got %d", len(args)), nil
+	}
+
+	command, err := object.AsString(args[0])
+	if err != nil {
+		return nil, err
+	}
+
+	var cmdArgs []string
+	if len(args) > 1 {
+		for _, arg := range args[1:] {
+			str, err := object.AsString(arg)
+			if err != nil {
+				return nil, err
+			}
+			cmdArgs = append(cmdArgs, str)
+		}
+	}
+
+	cmd := exec.Command(command, cmdArgs...)
+	if err := cmd.Start(); err != nil {
+		return object.NewError(err), nil
+	}
+
+	return object.Nil, nil
 }

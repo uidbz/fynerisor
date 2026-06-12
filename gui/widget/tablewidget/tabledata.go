@@ -26,6 +26,7 @@ type TableData struct {
 	columnToSortBy string
 	sortAscending  bool
 	tableSorter    *tableSorter
+	RowMapping     []int // Maps filtered row index to original row index (for filtering)
 }
 
 // First ID in list must be the tableId, following 1 for each row

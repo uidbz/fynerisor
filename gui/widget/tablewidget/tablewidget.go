@@ -2,6 +2,8 @@ package tablewidget
 
 import (
 	_ "embed"
+	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"image/color"
 	"os"
@@ -11,6 +13,7 @@ import (
 	"time"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
@@ -133,7 +136,7 @@ func NewTableWidget(title string, pageSize int) *TableWidget {
 		widget.NewLabel("Count:"),
 		widget.NewLabelWithData(binding.IntToString(ctx.totalResults)),
 	)
-	footer := container.NewBorder(ctx.newfilterWidget(), nil, leftFooter, widget.NewButton("Export to Excel", ctx.showExportWindow))
+	footer := container.NewBorder(ctx.newfilterWidget(), nil, leftFooter, widget.NewButton("Export", ctx.showExportWindow))
 
 	ctx.table.SelectionColor = color.RGBA{85, 85, 85, 128}
 	ctx.Instance = container.NewBorder(nil, footer, nil, nil, container.NewPadded(ctx.table))
@@ -215,21 +218,24 @@ func (ctx *TableWidget) cellOnSecondaryClick(c *TableCell) {
 
 func (ctx *TableWidget) filter(text string) {
 	ctx.filteredData = NewTableData("filtered data")
-	// for key, val := range currentData.ColumnIdToField {
-	// 	filteredData.ColumnIdToField[key] = val
-	// }
+	ctx.filteredData.RowMapping = []int{} // Initialize row mapping
+
 	for i := 0; i < ctx.currentData.RowCount(); i++ {
 		stringRow := make([]string, ctx.currentData.ColumnCount())
 		found := false
 		for j := 0; j < ctx.currentData.ColumnCount(); j++ {
 			val := ctx.currentData.Get(j, i)
-			if !found && strings.Contains(strings.ToLower(val), strings.ToLower(text)) {
+			// Skip filtering on widget placeholder columns (marked with [Widget Type])
+			isWidgetColumn := strings.HasPrefix(val, "[") && strings.HasSuffix(val, "]")
+			if !found && !isWidgetColumn && strings.Contains(strings.ToLower(val), strings.ToLower(text)) {
 				found = true
 			}
 			stringRow[j] = val
 		}
 		if found {
 			ctx.filteredData.AddStringRow(ctx.currentData.Columns, stringRow)
+			// Store mapping: filtered row index -> original row index
+			ctx.filteredData.RowMapping = append(ctx.filteredData.RowMapping, i)
 		}
 	}
 	if len(ctx.filteredData.Columns) > 1 {
@@ -286,13 +292,38 @@ func (ctx *TableWidget) showExportWindow() {
 		"-" + fmt.Sprintf("%02d", time.Now().Minute()) +
 		"-" + fmt.Sprintf("%02d", time.Now().Second())
 
+	// Get default export directory (current working directory + /exports)
+	defaultExportDir := "./exports"
+	if cwd, err := os.Getwd(); err == nil {
+		defaultExportDir = filepath.Join(cwd, "exports")
+	}
+
 	exportPath := widget.NewEntry()
-	exportPath.Text = "C:/goto/export"
+	exportPath.Text = defaultExportDir
 	filename := widget.NewEntry()
-	filename.Text = ctx.Title + "-" + datetime + ".xlsx"
+	filename.Text = ctx.Title + "-" + datetime + ".csv"
+
+	format := widget.NewRadioGroup([]string{"CSV", "XLSX", "JSON"}, func(selection string) {
+		// Update filename extension when format changes
+		name := filename.Text
+		ext := filepath.Ext(name)
+		if ext != "" {
+			name = name[:len(name)-len(ext)]
+		}
+		switch selection {
+		case "CSV":
+			filename.SetText(name + ".csv")
+		case "XLSX":
+			filename.SetText(name + ".xlsx")
+		case "JSON":
+			filename.SetText(name + ".json")
+		}
+	})
+	format.SetSelected("CSV")
 
 	h := widget.NewForm(
 		widget.NewFormItem("Export", dataset),
+		widget.NewFormItem("Format", format),
 		widget.NewFormItem("Selected columns", columnsSelection),
 		widget.NewFormItem("Export path", exportPath),
 		widget.NewFormItem("Filename", filename),
@@ -314,7 +345,19 @@ func (ctx *TableWidget) showExportWindow() {
 
 		os.MkdirAll(exportPath.Text, 0755)
 
-		err := ctx.ExportToExcel(data, selected, filepath.Join(exportPath.Text, filename.Text))
+		var err error
+		fullPath := filepath.Join(exportPath.Text, filename.Text)
+
+		switch format.Selected {
+		case "CSV":
+			err = ctx.ExportToCSV(data, selected, fullPath)
+		case "XLSX":
+			err = ctx.ExportToExcel(data, selected, fullPath)
+		case "JSON":
+			err = ctx.ExportToJSON(data, selected, fullPath)
+		default:
+			err = fmt.Errorf("unsupported format: %s", format.Selected)
+		}
 
 		if err != nil {
 			dialog.ShowError(err, w)
@@ -325,6 +368,57 @@ func (ctx *TableWidget) showExportWindow() {
 	w.SetContent(h)
 	w.Resize(fyne.NewSize(800, 600))
 	w.Show()
+}
+
+func (ctx *TableWidget) getCellValue(data *TableData, columnName string, row int) string {
+	// For both string and widget modes, use the Data callback
+	// In widget mode, users should populate the Data callback with actual string values
+	// for export functionality to work properly
+	return data.GetFromColumn(columnName, row)
+}
+
+func (ctx *TableWidget) extractWidgetText(obj fyne.CanvasObject) string {
+	// Unwrap WidgetCell to get actual content
+	if widgetCell, ok := obj.(*WidgetCell); ok {
+		if widgetCell.content != nil {
+			return ctx.extractWidgetText(widgetCell.content)
+		}
+		return ""
+	}
+
+	switch v := obj.(type) {
+	case *widget.Label:
+		return v.Text
+	case *widget.Button:
+		return "[Button: " + v.Text + "]"
+	case *widget.Entry:
+		return v.Text
+	case *widget.Check:
+		if v.Checked {
+			return "☑"
+		}
+		return "☐"
+	case *widget.Select:
+		return v.Selected
+	case *widget.Icon:
+		if v.Resource != nil {
+			return "[Icon: " + v.Resource.Name() + "]"
+		}
+		return "[Icon]"
+	case *fyne.Container:
+		// For images in containers
+		if len(v.Objects) > 0 {
+			return ctx.extractWidgetText(v.Objects[0])
+		}
+		return "[Container]"
+	case *canvas.Image:
+		if v.File != "" {
+			return "[Image: " + v.File + "]"
+		}
+		return "[Image]"
+	default:
+		return fmt.Sprintf("[%T]", obj)
+	}
 }
 
 func (ctx *TableWidget) ExportToExcel(data *TableData, columns []string, path string) error {
@@ -343,18 +437,68 @@ func (ctx *TableWidget) ExportToExcel(data *TableData, columns []string, path st
 		excel.SetCellValue(sheet, cellName, x)
 	}
 
-	// Write headers
+	// Write data rows
 	for row := 0; row < data.RowCount(); row++ {
 		for col, x := range columns {
 			cellName, err := excelize.CoordinatesToCellName(col+1, row+2)
 			if err != nil {
 				fmt.Println("Error getting cellname:", err)
 			} else {
-				excel.SetCellValue(sheet, cellName, data.GetFromColumn(x, row))
+				excel.SetCellValue(sheet, cellName, ctx.getCellValue(data, x, row))
 			}
 		}
 	}
 	excel.DeleteSheet("Sheet1")
 	excel.SetActiveSheet(0)
 	return excel.SaveAs(path)
+}
+
+func (ctx *TableWidget) ExportToCSV(data *TableData, columns []string, path string) error {
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	// Write headers
+	if err := writer.Write(columns); err != nil {
+		return err
+	}
+
+	// Write data rows
+	for row := 0; row < data.RowCount(); row++ {
+		record := make([]string, len(columns))
+		for col, columnName := range columns {
+			record[col] = ctx.getCellValue(data, columnName, row)
+		}
+		if err := writer.Write(record); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (ctx *TableWidget) ExportToJSON(data *TableData, columns []string, path string) error {
+	// Build array of objects
+	var records []map[string]string
+	for row := 0; row < data.RowCount(); row++ {
+		record := make(map[string]string)
+		for _, columnName := range columns {
+			record[columnName] = ctx.getCellValue(data, columnName, row)
+		}
+		records = append(records, record)
+	}
+
+	// Marshal to JSON with indentation
+	jsonData, err := json.MarshalIndent(records, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	// Write to file
+	return os.WriteFile(path, jsonData, 0644)
 }

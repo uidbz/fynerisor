@@ -1,4 +1,4 @@
-require(["v0.3", "@gui"])
+require(["v0.5", "@gui"])
 
 // String binding
 let nameData = binding.NewString("John")

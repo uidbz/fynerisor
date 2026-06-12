@@ -1,7 +1,21 @@
 // Table display example
 // Demonstrates table widget with paginated data
 
-require("v0.2")
+require("v0.5")
+
+// Sample data
+let sampleData = [
+    ["1", "Alice Johnson", "alice@example.com", "Active"],
+    ["2", "Bob Smith", "bob@example.com", "Active"],
+    ["3", "Carol White", "carol@example.com", "Inactive"],
+    ["4", "David Brown", "david@example.com", "Active"],
+    ["5", "Eve Davis", "eve@example.com", "Active"],
+    ["6", "Frank Miller", "frank@example.com", "Inactive"],
+    ["7", "Grace Wilson", "grace@example.com", "Active"],
+    ["8", "Henry Moore", "henry@example.com", "Active"],
+    ["9", "Iris Taylor", "iris@example.com", "Active"],
+    ["10", "Jack Anderson", "jack@example.com", "Inactive"]
+]
 
 let table = widget.NewTable("People Directory", 5)
 
@@ -17,12 +31,16 @@ table.SetColumnWidth(3, 100)
 
 // Provide total row count
 table.RowCount(() => {
-    return data.getCount()
+    return len(sampleData)
 })
 
 // Provide data for current page
 table.Data((offset, limit) => {
-    return data.getPage(offset, limit)
+    let end = offset + limit
+    if (end > len(sampleData)) {
+        end = len(sampleData)
+    }
+    return sampleData[offset:end]
 })
 
 // Handle row clicks

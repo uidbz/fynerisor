@@ -28,9 +28,9 @@ type FlexTable struct {
 	headerBgColor    color.Color
 
 	// Widget mode support
-	widgetMode       bool
-	createCellFunc   func(col, row int) fyne.CanvasObject
-	updateCellFunc   func(col, row int, obj fyne.CanvasObject)
+	widgetMode     bool
+	createCellFunc func(col, row int) fyne.CanvasObject
+	updateCellFunc func(col, row int, obj fyne.CanvasObject)
 }
 
 func NewFlexTable(data *TableData, onClick func(cell *TableCell)) *FlexTable {
@@ -61,32 +61,50 @@ func NewFlexTable(data *TableData, onClick func(cell *TableCell)) *FlexTable {
 			if table.widgetMode && table.updateCellFunc != nil {
 				// Widget mode: Replace the widget in the cell
 				if widgetCell, ok := o.(*WidgetCell); ok {
-					// Only create a new widget if this cell position changed
-					// (Fyne reuses WidgetCell instances for different rows/cols)
-					if widgetCell.currentID.Col != id.Col || widgetCell.currentID.Row != id.Row {
+					// Check if we need to recreate the widget
+					needsRecreation := widgetCell.currentID.Col != id.Col ||
+						widgetCell.currentID.Row != id.Row
+
+					if needsRecreation {
 						cellWidget := table.createCellFunc(id.Col, id.Row)
 						widgetCell.SetWidget(cellWidget, id)
 					}
 					// Always call UpdateCell to refresh the widget's state
 					if widgetCell.content != nil {
-						table.updateCellFunc(id.Col, id.Row, widgetCell.content)
+						// Map filtered row to original row if filtering is active
+						originalRow := id.Row
+						if table.data.RowMapping != nil && id.Row < len(table.data.RowMapping) {
+							originalRow = table.data.RowMapping[id.Row]
+						}
+						table.updateCellFunc(id.Col, originalRow, widgetCell.content)
 					}
 				}
-			} else {
+			} else{
 				// String mode: update Label (current behavior)
-				cell := o.(*TableCell)
-				txt := table.data.Get(id.Col, id.Row)
-				if cell.label.Text != txt {
-					cell.label.SetText(txt)
-				}
-				cell.Id = id
-				if id.Row == table.selectedRow {
-					cell.background.FillColor = table.SelectionColor
-				} else {
-					if id.Row%2 == 0 {
-						cell.background.FillColor = table.CellBgColor
+				// Handle both TableCell and WidgetCell (for when filtering in widget mode)
+				if widgetCell, ok := o.(*WidgetCell); ok {
+					// WidgetCell in string mode - replace content with a label showing string data
+					txt := table.data.Get(id.Col, id.Row)
+					if widgetCell.content == nil || widgetCell.currentID.Col != id.Col || widgetCell.currentID.Row != id.Row {
+						label := widget.NewLabel(txt)
+						widgetCell.SetWidget(label, id)
+					} else if lbl, ok := widgetCell.content.(*widget.Label); ok {
+						lbl.SetText(txt)
+					}
+				} else if cell, ok := o.(*TableCell); ok {
+					txt := table.data.Get(id.Col, id.Row)
+					if cell.label.Text != txt {
+						cell.label.SetText(txt)
+					}
+					cell.Id = id
+					if id.Row == table.selectedRow {
+						cell.background.FillColor = table.SelectionColor
 					} else {
-						cell.background.FillColor = table.CellBgColorAlt
+						if id.Row%2 == 0 {
+							cell.background.FillColor = table.CellBgColor
+						} else {
+							cell.background.FillColor = table.CellBgColorAlt
+						}
 					}
 				}
 			}
@@ -123,6 +141,7 @@ func (t *FlexTable) SetColumnWidth(id int, width float32) {
 func (t *FlexTable) Refresh() {
 	t.table.Refresh()
 }
+
 
 func (t *FlexTable) SetCreateCell(fn func(col, row int) fyne.CanvasObject) {
 	t.createCellFunc = fn

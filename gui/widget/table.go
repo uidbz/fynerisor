@@ -7,11 +7,13 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 
+	risorcanvas "github.com/uidbz/fynerisor/gui/canvas"
 	"github.com/uidbz/fynerisor/gui/widget/tablewidget"
 )
 
@@ -240,7 +242,11 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 				if widgetObj, ok := result.(interface{ CanvasObject() fyne.CanvasObject }); ok {
 					return widgetObj.CanvasObject()
 				}
-				fmt.Println("CreateCell: result does not implement CanvasObject()")
+				if errObj, ok := result.(*object.Error); ok {
+					fmt.Printf("CreateCell ERROR: %v\n", errObj.Value())
+				} else {
+					fmt.Printf("CreateCell: result does not implement CanvasObject() - got type: %T\n", result)
+				}
 				return widget.NewLabel("")
 			}
 
@@ -359,11 +365,10 @@ func wrapCanvasObjectTable(obj fyne.CanvasObject) object.Object {
 		return &Form{instance: v}
 	case *widget.Accordion:
 		return &Accordion{instance: v}
-	// Canvas objects - these don't have much API in Risor, so wrap as generic
+	// Canvas objects
 	case *canvas.Image:
-		// Canvas images need special handling - for now wrap as generic
-		// Users can create images via canvas.NewImageFromFile() etc.
-		return &GenericCanvasObjectTable{obj: obj}
+		// Return proper Image wrapper with SetImageFromURI support
+		return risorcanvas.NewImage(v)
 	case *canvas.Text:
 		return &GenericCanvasObjectTable{obj: obj}
 	case *canvas.Rectangle:
@@ -376,11 +381,97 @@ func wrapCanvasObjectTable(obj fyne.CanvasObject) object.Object {
 		// Handle containers - wrap as generic
 		return &GenericCanvasObjectTable{obj: obj}
 	case *fyne.Container:
+		// Check if container holds an image (from canvas.NewImageFromURI)
+		if len(v.Objects) > 0 {
+			if img, ok := v.Objects[0].(*canvas.Image); ok {
+				// Create wrapper that will modify the existing container/image in place
+				return &ImageCellWrapper{container: v, image: img}
+			}
+		}
 		// Generic container handling
 		return &GenericCanvasObjectTable{obj: obj}
 	default:
 		return &GenericCanvasObjectTable{obj: obj}
 	}
+}
+
+// ImageCellWrapper wraps an image in a table cell, allowing it to be updated
+type ImageCellWrapper struct {
+	container *fyne.Container
+	image     *canvas.Image
+}
+
+func (g *ImageCellWrapper) Type() object.Type {
+	return "canvas.Image"
+}
+
+func (g *ImageCellWrapper) Inspect() string {
+	return "canvas.Image"
+}
+
+func (g *ImageCellWrapper) Interface() interface{} {
+	return g.container
+}
+
+func (g *ImageCellWrapper) CanvasObject() fyne.CanvasObject {
+	return g.container
+}
+
+func (g *ImageCellWrapper) IsTruthy() bool {
+	return true
+}
+
+func (g *ImageCellWrapper) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("type error: unable to marshal canvas.Image")
+}
+
+func (g *ImageCellWrapper) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
+	return object.Errorf("eval error: unsupported operation for canvas.Image"), nil
+}
+
+func (g *ImageCellWrapper) Equals(other object.Object) bool {
+	return g == other
+}
+
+func (g *ImageCellWrapper) Attrs() []object.AttrSpec {
+	return nil
+}
+
+func (g *ImageCellWrapper) SetAttr(name string, value object.Object) error {
+	return fmt.Errorf("attribute error: canvas.Image has no settable attributes")
+}
+
+func (g *ImageCellWrapper) GetAttr(name string) (object.Object, bool) {
+	switch name {
+	case "SetImageFromURI":
+		return object.NewBuiltin("canvas.Image.SetImageFromURI", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 1 {
+				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+			}
+			path, err := object.AsString(args[0])
+			if err != nil {
+				return nil, err
+			}
+
+			uri, err := storage.ParseURI(path)
+			if err != nil {
+				return object.NewError(err), nil
+			}
+
+			fyne.Do(func() {
+				// Update the existing image instead of creating a new one
+				newImg := canvas.NewImageFromURI(uri)
+				newImg.FillMode = canvas.ImageFillOriginal
+				g.image.Resource = newImg.Resource
+				g.image.File = newImg.File
+				g.image.FillMode = newImg.FillMode
+				g.image.Refresh()
+			})
+
+			return object.Nil, nil
+		}), true
+	}
+	return nil, false
 }
 
 // GenericCanvasObjectTable is a minimal wrapper for canvas objects in tables

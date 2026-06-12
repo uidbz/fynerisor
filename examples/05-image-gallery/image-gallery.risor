@@ -1,0 +1,140 @@
+require(["v0.5"])
+
+// Scan pics directory for image files
+let scanImages = () => {
+    let images = []
+
+    // Read directory contents
+    let entries = os.read_dir("pics")
+
+    entries.each((entry) => {
+        // Skip directories
+        if (entry.is_dir) {
+            return
+        }
+
+        let filename = entry.name
+
+        // Skip README
+        if (filename == "README.md") {
+            return
+        }
+
+        // Check if file has image extension
+        let lower = strings.to_lower(filename)
+        if (strings.has_suffix(lower, ".png") || strings.has_suffix(lower, ".jpg") ||
+            strings.has_suffix(lower, ".jpeg") || strings.has_suffix(lower, ".gif")) {
+            images = images.append({
+                filename: filename,
+                path: "pics/" + filename
+            })
+        }
+    })
+
+    return images
+}
+
+// State management
+let state = {
+    images: scanImages()
+}
+
+let table = widget.NewTable("Image Gallery", 50)
+
+// Set up table columns
+table.Columns(() => ["Filename", "Preview", "Actions"])
+
+// Set row count
+table.RowCount(() => len(state.images))
+
+// Data callback (required even in widget mode)
+table.Data((offset, limit) => {
+    let rows = []
+    let count = len(state.images) - offset
+    if (count > limit) {
+        count = limit
+    }
+    range(count).each((i) => {
+        rows = rows.append(["", "", ""])
+    })
+    return rows
+})
+
+// CreateCell - called once per cell to create widgets
+table.CreateCell((col, row) => {
+    if (col == 0) {
+        // Filename column: label
+        return widget.NewLabel("")
+    } else if (col == 1) {
+        // Preview column: create image widget with first image as placeholder
+        if (len(state.images) > 0) {
+            let firstImage = state.images[0]
+            let absPath = os.getwd() + "/" + firstImage.path
+            return canvas.NewImageFromURI("file://" + absPath)
+        }
+        return widget.NewLabel("[no images]")
+    } else if (col == 2) {
+        // Actions column: button
+        return widget.NewButton("Open", () => {})
+    }
+    return widget.NewLabel("")
+})
+
+// UpdateCell - configure widgets with data
+table.UpdateCell((col, row, cell) => {
+    if (row >= len(state.images)) {
+        return
+    }
+
+    let image = state.images[row]
+
+    if (col == 0) {
+        // Filename column
+        cell.SetText(image.filename)
+    } else if (col == 1) {
+        // Preview column - load the image
+        let absPath = os.getwd() + "/" + image.path
+        cell.SetImageFromURI("file://" + absPath)
+    } else if (col == 2) {
+        // Actions column
+        let path = image.path
+        cell.SetText("Open")
+        cell.OnTapped(() => {
+            // Open in system viewer
+            window.SetStatus("Opening: " + path)
+            os.exec("xdg-open", path)
+        })
+    }
+})
+
+// Set column widths
+table.SetColumnWidth(0, 250.0)  // Filename
+table.SetColumnWidth(1, 180.0)  // Preview
+table.SetColumnWidth(2, 100.0)  // Actions
+
+// Refresh the table
+table.Refresh()
+
+// Create control panel
+let refreshBtn = widget.NewButton("Refresh List", () => {
+    state.images = scanImages()
+    window.SetStatus(sprintf("Rescanning... found %d images", len(state.images)))
+    table.Refresh()
+})
+
+let infoLabel = widget.NewLabel(sprintf("Found %d images in pics/", len(state.images)))
+
+let controls = container.NewVBox([
+    infoLabel,
+    widget.NewSeparator(),
+    refreshBtn,
+    widget.NewLabel(""),
+    widget.NewLabel("Add images to the pics/ directory"),
+    widget.NewLabel("and click Refresh to see them."),
+])
+
+// Create main layout
+let mainLayout = container.NewBorder(nil, nil, nil, controls, table)
+
+window.SetContent(mainLayout)
+window.Resize(800, 600)

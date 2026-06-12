@@ -1,6 +1,7 @@
 // simple-app.risor - Main application using imported utilities
 
-require("v0.2")
+import("examples/14-imports/simple-utils.risor")
+require("v0.5")
 
 // Use imported greet function
 let greeting = greet("World")

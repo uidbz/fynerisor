@@ -37,17 +37,24 @@ table.Columns(() => ["", "Name", "Role", "Status", "Actions"])
 // Set row count
 table.RowCount(() => len(state.users))
 
-// Need to provide Data callback even in widget mode (for table structure)
+// Data callback - provides data for exports (CSV, JSON, XLSX)
+// In widget mode, this data is also used for export functionality
 table.Data((offset, limit) => {
-    // Return empty string arrays - widgets will be created by CreateCell/UpdateCell
     let rows = []
     let count = len(state.users) - offset
     if (count > limit) {
         count = limit
     }
-    // Create empty rows for the table structure (5 columns now)
     range(count).each((i) => {
-        rows = rows.append(["", "", "", "", ""])
+        let user = state.users[offset + i]
+        // Return actual data - this is used for exports
+        rows = rows.append([
+            "[Icon]",  // Icon column
+            user.name,
+            user.role,
+            user.status,
+            "[Button: Delete]"  // Button column
+        ])
     })
     return rows
 })

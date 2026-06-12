@@ -4,11 +4,12 @@ import (
 	"log"
 	"os"
 
+	"github.com/uidbz/fynerisor/core"
 	"github.com/uidbz/fynerisor/gui"
 )
 
 func main() {
-	gui.SetAppVersion("1.0.0")
+	core.SetAppVersion("1.0.0")
 
 	// Create the custom user database object
 	userDB := NewUserDatabaseObject()
