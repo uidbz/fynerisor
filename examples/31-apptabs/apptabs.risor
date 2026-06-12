@@ -38,7 +38,7 @@ let selectTab2Btn = widget.NewButton("Select Tab 2", () => {
 
 let showSelectedBtn = widget.NewButton("Show Selected", () => {
     let index = tabs.SelectedIndex()
-    window.SetStatus("Currently selected tab index: " + index)
+    window.SetStatus(sprintf("Currently selected tab index: %d", index))
 })
 
 let addTabBtn = widget.NewButton("Add New Tab", () => {
@@ -53,7 +53,7 @@ let removeLastBtn = widget.NewButton("Remove Last Tab", () => {
     let index = tabs.SelectedIndex()
     if (index >= 0) {
         tabs.RemoveIndex(index)
-        window.SetStatus("Removed tab at index " + index)
+        window.SetStatus(sprintf("Removed tab at index %d", index))
     }
 })
 
