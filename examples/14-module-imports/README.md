@@ -9,6 +9,8 @@ This example demonstrates the new module-scoped import system introduced in v0.6
 - **Module functions**: Call functions from imported modules using dot notation
 - **Module exports**: All top-level variables and functions in a module are automatically exported
 - **UI integration**: Use module functions in callbacks and event handlers
+- **Global access**: Modules can use widget, container, http, sql, os, and all other enabled globals
+- **Composability**: Create reusable UI component libraries and utility modules
 
 ## How It Works
 
@@ -22,6 +24,31 @@ let reverse = (s) => s.split("").reduce("", (acc, char) => char + acc)
 ```
 
 All top-level `let` declarations are automatically exported and accessible via the module object.
+
+### Modules Can Use Globals
+
+Modules have access to all enabled globals (widget, http, os, etc.):
+
+```javascript
+// ui_components.risor - Uses widget and container globals
+let createCard = (title, content) => {
+    let titleLabel = widget.NewLabel(title)
+    let contentLabel = widget.NewLabel(content)
+    return container.NewVBox([
+        titleLabel,
+        widget.NewSeparator(),
+        contentLabel
+    ])
+}
+
+// http_utils.risor - Uses http global
+let fetchJSON = (url) => {
+    let response = http.get(url)
+    return response.json()
+}
+```
+
+This makes it easy to create reusable component libraries and utility modules.
 
 ### Using Modules (main.risor)
 
