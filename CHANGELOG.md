@@ -2,6 +2,49 @@
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-06-12
+
+### Added
+
+**Widget Table Cells:**
+- **Widget mode for tables** - Use any Fyne widget type in table cells
+  - CreateCell callback for widget creation (called once per cell position)
+  - UpdateCell callback for data binding (maps filtered rows automatically)
+  - Supports all widget types: Button, Icon, Label, Entry, Check, Select, etc.
+  - Canvas image support for displaying images in table cells
+  - Example: 32-table-widgets with interactive buttons and icons
+  - Example: 33-image-gallery with thumbnail images in tables
+
+**Table Export Enhancements:**
+- **Multi-format export** - Export table data to CSV, XLSX, or JSON
+  - CSV: Standard comma-separated format
+  - XLSX: Excel-compatible spreadsheet format
+  - JSON: Structured data with column names as keys
+  - Configurable export path and filename
+  - Column selection for export
+  - Export current page or all data
+  - Default export directory: ./exports (current working directory)
+
+**OS Module Enhancements:**
+- **os.read_dir(path)** - List directory contents
+  - Returns list of maps with entry.name and entry.is_dir fields
+  - Available via gui.WithOS() option
+- **os.getwd()** - Get current working directory
+- **os.exec(command, args)** - Execute external commands
+
+### Fixed
+
+**Table Filtering with Widgets:**
+- **Automatic row mapping** - Filtering now works correctly with widget mode
+  - Filtered rows automatically map to original data indices
+  - Widget state preserved during filtering
+  - No script changes required - mapping is transparent
+  - Widget placeholder columns (e.g., "[Icon]", "[Button]") excluded from filter search
+
+### Changed
+- Export functionality integrated into table widget footer
+- Widget cells cached and reused for better performance
+
 ### Added
 
 **Dialog Support:**
