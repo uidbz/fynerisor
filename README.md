@@ -6,9 +6,9 @@ Fynerisor provides Risor script bindings for the Fyne GUI toolkit, allowing you 
 
 ## Features
 
-- 🎨 **Comprehensive Widget Support** - 34 widgets covering all common UI needs
-- 📦 **Powerful Modules** - HTTP, SQL, OS, File I/O, Time, Strings, Exec
-- 🔄 **Module System** - Import reusable code with namespace isolation
+- 🎨 **Comprehensive Widgets** - 34 widgets covering all common UI needs
+- 🌐 **HTTP, SQL, OS & More** - Built-in modules for web requests, databases, file I/O
+- 📦 **Script Imports** - Load reusable code with namespace isolation
 - 🔧 **Embeddable** - Easy integration into Go applications
 - 🧵 **Concurrency** - Background tasks with thread-safe GUI updates
 - 📱 **Cross-Platform** - Linux, Windows, macOS, Android
@@ -359,7 +359,7 @@ go(() => {
 })
 ```
 
-## Module System
+## Script Imports
 
 Import reusable code with namespace isolation:
 
