@@ -159,6 +159,31 @@ func (obj *Button) GetAttr(name string) (object.Object, bool) {
 			})
 			return object.Nil, nil
 		}), true
+	case "OnTapped":
+		return object.NewBuiltin("widget.Button.OnTapped", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 1 {
+				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+			}
+			fn, ok := args[0].(*object.Closure)
+			if !ok {
+				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			}
+			callFunc, ok := object.GetCallFunc(ctx)
+			if !ok {
+				return object.Errorf("button: unable to get call function"), nil
+			}
+
+			// Set the button's OnTapped callback
+			fyne.Do(func() {
+				obj.instance.OnTapped = func() {
+					_, err := callFunc(ctx, fn, []object.Object{})
+					if err != nil {
+						fmt.Println("Button.OnTapped ERROR:", err)
+					}
+				}
+			})
+			return object.Nil, nil
+		}), true
 	}
 	return nil, false
 }

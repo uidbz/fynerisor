@@ -5,6 +5,9 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/widget"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -209,6 +212,77 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 			}
 			return object.Nil, nil
 		}), true
+
+	case "CreateCell":
+		return object.NewBuiltin("widget.Table.CreateCell", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 1 {
+				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+			}
+			fn, ok := args[0].(*object.Closure)
+			if !ok {
+				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			}
+			callFunc, ok := object.GetCallFunc(ctx)
+			if !ok {
+				return object.Errorf("table: unable to get call function"), nil
+			}
+
+			createFunc := func(col, row int) fyne.CanvasObject {
+				// Call the Risor callback directly - we're already in the GUI thread
+				result, err := callFunc(ctx, fn, []object.Object{
+					object.NewInt(int64(col)),
+					object.NewInt(int64(row)),
+				})
+				if err != nil {
+					fmt.Println("CreateCell ERROR:", err)
+					return widget.NewLabel("")
+				}
+				if widgetObj, ok := result.(interface{ CanvasObject() fyne.CanvasObject }); ok {
+					return widgetObj.CanvasObject()
+				}
+				fmt.Println("CreateCell: result does not implement CanvasObject()")
+				return widget.NewLabel("")
+			}
+
+			fyne.Do(func() {
+				obj.instance.GetFlexTable().SetCreateCell(createFunc)
+			})
+			return object.Nil, nil
+		}), true
+
+	case "UpdateCell":
+		return object.NewBuiltin("widget.Table.UpdateCell", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 1 {
+				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+			}
+			fn, ok := args[0].(*object.Closure)
+			if !ok {
+				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			}
+			callFunc, ok := object.GetCallFunc(ctx)
+			if !ok {
+				return object.Errorf("table: unable to get call function"), nil
+			}
+
+			updateFunc := func(col, row int, canvasObj fyne.CanvasObject) {
+				// Call the Risor callback directly - we're already in the GUI thread
+				wrappedObj := wrapCanvasObjectTable(canvasObj)
+				_, err := callFunc(ctx, fn, []object.Object{
+					object.NewInt(int64(col)),
+					object.NewInt(int64(row)),
+					wrappedObj,
+				})
+				if err != nil {
+					fmt.Println("UpdateCell ERROR:", err)
+				}
+			}
+
+			fyne.Do(func() {
+				obj.instance.GetFlexTable().SetUpdateCell(updateFunc)
+			})
+			return object.Nil, nil
+		}), true
+
 	case "Hide":
 		return object.NewBuiltin("widget.Table.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
@@ -248,4 +322,112 @@ func stringsFromList(l *object.List) []string {
 
 func NewTable(title string, pageSize int, w WindowInterface) *Table {
 	return &Table{instance: tablewidget.NewTableWidget(title, pageSize), w: w}
+}
+
+// wrapCanvasObjectTable wraps a fyne.CanvasObject so Risor scripts can access it in table cells
+func wrapCanvasObjectTable(obj fyne.CanvasObject) object.Object {
+	switch v := obj.(type) {
+	case *widget.Label:
+		return &Label{instance: v}
+	case *widget.Button:
+		return &Button{instance: v}
+	case *widget.Entry:
+		return &Entry{instance: v}
+	case *widget.Select:
+		return &Select{instance: v}
+	case *widget.Check:
+		return &Check{instance: v}
+	case *widget.Icon:
+		return &Icon{instance: v}
+	case *widget.RadioGroup:
+		return &RadioGroup{instance: v}
+	case *widget.CheckGroup:
+		return &CheckGroup{instance: v}
+	case *widget.Slider:
+		return &Slider{instance: v}
+	case *widget.ProgressBar:
+		return &ProgressBar{instance: v}
+	case *widget.ProgressBarInfinite:
+		return &ProgressBarInfinite{instance: v}
+	case *widget.Hyperlink:
+		return &Hyperlink{instance: v}
+	case *widget.Separator:
+		return &Separator{instance: v}
+	case *widget.Card:
+		return &Card{instance: v}
+	case *widget.Form:
+		return &Form{instance: v}
+	case *widget.Accordion:
+		return &Accordion{instance: v}
+	// Canvas objects - these don't have much API in Risor, so wrap as generic
+	case *canvas.Image:
+		// Canvas images need special handling - for now wrap as generic
+		// Users can create images via canvas.NewImageFromFile() etc.
+		return &GenericCanvasObjectTable{obj: obj}
+	case *canvas.Text:
+		return &GenericCanvasObjectTable{obj: obj}
+	case *canvas.Rectangle:
+		return &GenericCanvasObjectTable{obj: obj}
+	case *canvas.Circle:
+		return &GenericCanvasObjectTable{obj: obj}
+	case *canvas.Line:
+		return &GenericCanvasObjectTable{obj: obj}
+	case *container.Scroll:
+		// Handle containers - wrap as generic
+		return &GenericCanvasObjectTable{obj: obj}
+	case *fyne.Container:
+		// Generic container handling
+		return &GenericCanvasObjectTable{obj: obj}
+	default:
+		return &GenericCanvasObjectTable{obj: obj}
+	}
+}
+
+// GenericCanvasObjectTable is a minimal wrapper for canvas objects in tables
+type GenericCanvasObjectTable struct {
+	obj fyne.CanvasObject
+}
+
+func (g *GenericCanvasObjectTable) Type() object.Type {
+	return "canvas.Object"
+}
+
+func (g *GenericCanvasObjectTable) Inspect() string {
+	return "canvas.Object"
+}
+
+func (g *GenericCanvasObjectTable) Interface() interface{} {
+	return g.obj
+}
+
+func (g *GenericCanvasObjectTable) CanvasObject() fyne.CanvasObject {
+	return g.obj
+}
+
+func (g *GenericCanvasObjectTable) IsTruthy() bool {
+	return true
+}
+
+func (g *GenericCanvasObjectTable) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("type error: unable to marshal canvas.Object")
+}
+
+func (g *GenericCanvasObjectTable) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
+	return object.Errorf("eval error: unsupported operation for canvas.Object"), nil
+}
+
+func (g *GenericCanvasObjectTable) Equals(other object.Object) bool {
+	return g == other
+}
+
+func (g *GenericCanvasObjectTable) Attrs() []object.AttrSpec {
+	return nil
+}
+
+func (g *GenericCanvasObjectTable) SetAttr(name string, value object.Object) error {
+	return fmt.Errorf("attribute error: canvas.Object has no settable attributes")
+}
+
+func (g *GenericCanvasObjectTable) GetAttr(name string) (object.Object, bool) {
+	return nil, false
 }

@@ -26,6 +26,11 @@ type FlexTable struct {
 	CellBgColor      color.Color
 	CellBgColorAlt   color.Color
 	headerBgColor    color.Color
+
+	// Widget mode support
+	widgetMode       bool
+	createCellFunc   func(col, row int) fyne.CanvasObject
+	updateCellFunc   func(col, row int, obj fyne.CanvasObject)
 }
 
 func NewFlexTable(data *TableData, onClick func(cell *TableCell)) *FlexTable {
@@ -45,22 +50,44 @@ func NewFlexTable(data *TableData, onClick func(cell *TableCell)) *FlexTable {
 			return table.data.RowCount(), table.data.ColumnCount()
 		},
 		func() fyne.CanvasObject {
+			if table.widgetMode && table.createCellFunc != nil {
+				// Widget mode: create a wrapper that can be replaced
+				return NewWidgetCell()
+			}
+			// String mode: use Label cell (current behavior)
 			return NewCell(table)
 		},
 		func(id widget.TableCellID, o fyne.CanvasObject) {
-			cell := o.(*TableCell)
-			txt := table.data.Get(id.Col, id.Row)
-			if cell.label.Text != txt {
-				cell.label.SetText(txt)
-			}
-			cell.Id = id
-			if id.Row == table.selectedRow {
-				cell.background.FillColor = table.SelectionColor
+			if table.widgetMode && table.updateCellFunc != nil {
+				// Widget mode: Replace the widget in the cell
+				if widgetCell, ok := o.(*WidgetCell); ok {
+					// Only create a new widget if this cell position changed
+					// (Fyne reuses WidgetCell instances for different rows/cols)
+					if widgetCell.currentID.Col != id.Col || widgetCell.currentID.Row != id.Row {
+						cellWidget := table.createCellFunc(id.Col, id.Row)
+						widgetCell.SetWidget(cellWidget, id)
+					}
+					// Always call UpdateCell to refresh the widget's state
+					if widgetCell.content != nil {
+						table.updateCellFunc(id.Col, id.Row, widgetCell.content)
+					}
+				}
 			} else {
-				if id.Row%2 == 0 {
-					cell.background.FillColor = table.CellBgColor
+				// String mode: update Label (current behavior)
+				cell := o.(*TableCell)
+				txt := table.data.Get(id.Col, id.Row)
+				if cell.label.Text != txt {
+					cell.label.SetText(txt)
+				}
+				cell.Id = id
+				if id.Row == table.selectedRow {
+					cell.background.FillColor = table.SelectionColor
 				} else {
-					cell.background.FillColor = table.CellBgColorAlt
+					if id.Row%2 == 0 {
+						cell.background.FillColor = table.CellBgColor
+					} else {
+						cell.background.FillColor = table.CellBgColorAlt
+					}
 				}
 			}
 		})
@@ -95,6 +122,15 @@ func (t *FlexTable) SetColumnWidth(id int, width float32) {
 
 func (t *FlexTable) Refresh() {
 	t.table.Refresh()
+}
+
+func (t *FlexTable) SetCreateCell(fn func(col, row int) fyne.CanvasObject) {
+	t.createCellFunc = fn
+	t.widgetMode = true
+}
+
+func (t *FlexTable) SetUpdateCell(fn func(col, row int, obj fyne.CanvasObject)) {
+	t.updateCellFunc = fn
 }
 
 type tableRenderer struct {
@@ -251,4 +287,64 @@ func (h *Header) Tapped(_ *fyne.PointEvent) {
 	h.table.data.sortAscending = !h.table.data.sortAscending
 	h.table.data.Sort(h.colId, h.table.data.sortAscending)
 	h.table.Refresh()
+}
+
+// WidgetCell is a cell that can hold any widget (for widget mode)
+type WidgetCell struct {
+	widget.BaseWidget
+	content   fyne.CanvasObject
+	currentID widget.TableCellID
+}
+
+func NewWidgetCell() *WidgetCell {
+	cell := &WidgetCell{
+		currentID: widget.TableCellID{Col: -1, Row: -1},
+	}
+	cell.ExtendBaseWidget(cell)
+	return cell
+}
+
+func (w *WidgetCell) SetWidget(content fyne.CanvasObject, id widget.TableCellID) {
+	// Only replace widget if the cell position changed
+	if w.currentID.Col != id.Col || w.currentID.Row != id.Row {
+		w.content = content
+		w.currentID = id
+	}
+	w.Refresh()
+}
+
+func (w *WidgetCell) CreateRenderer() fyne.WidgetRenderer {
+	return &widgetCellRenderer{cell: w}
+}
+
+type widgetCellRenderer struct {
+	cell *WidgetCell
+}
+
+func (r *widgetCellRenderer) Destroy() {}
+
+func (r *widgetCellRenderer) Layout(size fyne.Size) {
+	if r.cell.content != nil {
+		r.cell.content.Resize(size)
+	}
+}
+
+func (r *widgetCellRenderer) MinSize() fyne.Size {
+	if r.cell.content != nil {
+		return r.cell.content.MinSize()
+	}
+	return fyne.NewSize(0, 0)
+}
+
+func (r *widgetCellRenderer) Objects() []fyne.CanvasObject {
+	if r.cell.content != nil {
+		return []fyne.CanvasObject{r.cell.content}
+	}
+	return []fyne.CanvasObject{}
+}
+
+func (r *widgetCellRenderer) Refresh() {
+	if r.cell.content != nil {
+		r.cell.content.Refresh()
+	}
 }

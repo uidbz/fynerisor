@@ -47,6 +47,10 @@ type TableWidget struct {
 	Limit                int // this is currently not used. Offset for fetching data is pageSize
 }
 
+func (ctx *TableWidget) GetFlexTable() *FlexTable {
+	return ctx.table
+}
+
 func (ctx *TableWidget) prevPage() {
 	page, err := ctx.currentPage.Get()
 	if err != nil {
