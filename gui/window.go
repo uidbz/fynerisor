@@ -80,6 +80,8 @@ type Window struct {
 
 	content        *fyne.Container
 	globals        []risor.Option
+	env            map[string]any  // Merged built-in globals (shared with imported module VMs)
+	userGlobals    []risor.Option  // Opaque user-supplied globals (via WithGlobals)
 	enabledModules map[string]bool // Track which modules are enabled
 	appName        string          // Name of the embedding application
 	droppedPaths   []string
@@ -169,14 +171,24 @@ func NewWindow(window fyne.Window, opts ...Option) *Window {
 		"go":        newGoBuiltin(),
 	}
 
-	w.globals = []risor.Option{risor.WithEnv(risor.Builtins()), risor.WithEnv(globals)}
+	// Build a single merged environment containing the standard library and all
+	// built-in globals. This same map is passed to imported module VMs so that
+	// functions defined in modules can access globals like widget, http, etc.
+	w.env = risor.Builtins()
+	for k, v := range globals {
+		w.env[k] = v
+	}
 
-	// Apply module options (which add to w.globals)
+	// Apply module options (which populate w.env, w.userGlobals and enabledModules)
 	for _, opt := range opts {
 		if _, ok := opt.(moduleOption); ok {
 			opt.applyToWindow(w)
 		}
 	}
+
+	// Compose the final risor options: the merged env first, then any opaque
+	// user-supplied globals (from WithGlobals).
+	w.globals = append([]risor.Option{risor.WithEnv(w.env)}, w.userGlobals...)
 
 	// Create script runner
 	w.runner = NewScriptRunner(w.globals)

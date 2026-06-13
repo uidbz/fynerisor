@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/deepnoodle-ai/risor/v2"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -97,8 +98,10 @@ func (cb *Context) newImportBuiltin() *object.Builtin {
 			return nil, object.Errorf("import %q: compilation failed: %w", modulePath, err)
 		}
 
-		// Create VM and execute module
-		moduleVM, err := vm.New(code)
+		// Create VM and execute module. The module VM is seeded with the same
+		// merged environment as the main script so module code and functions can
+		// access globals like http, sql, os, etc.
+		moduleVM, err := vm.New(code, vm.WithGlobals(cb.env))
 		if err != nil {
 			return nil, object.Errorf("import %q: VM creation failed: %w", modulePath, err)
 		}
@@ -108,14 +111,10 @@ func (cb *Context) newImportBuiltin() *object.Builtin {
 			return nil, object.Errorf("import %q: execution failed: %w", modulePath, err)
 		}
 
-		// Extract all globals from VM
-		globals := make(map[string]object.Object)
-		for _, name := range moduleVM.GlobalNames() {
-			value, err := moduleVM.Get(name)
-			if err == nil && value != nil {
-				globals[name] = value
-			}
-		}
+		// Extract exported globals. Exported functions are bound to the module's
+		// own VM so that references to other module-level variables and functions
+		// resolve correctly (see wrapModuleExports for details).
+		globals := wrapModuleExports(moduleVM)
 
 		// Create module object
 		module := NewImportedModule(modulePath, globals)
@@ -126,6 +125,47 @@ func (cb *Context) newImportBuiltin() *object.Builtin {
 		cb.moduleMutex.Unlock()
 
 		return module, nil
+	})
+}
+
+// wrapModuleExports converts a module VM's global variables into the export map
+// returned to the importing script.
+//
+// Risor v2 resolves global variable references by index against the *currently
+// executing* VM's globals array; globals are not captured into closures. If an
+// exported function were called directly by the importing script's VM, its
+// references to module-level variables/functions would resolve against the
+// wrong globals array (producing wrong values or an index-out-of-range error).
+//
+// To make module-level references work, every exported function is wrapped in a
+// builtin that re-enters the module's own VM via moduleVM.Call. Non-function
+// values (numbers, strings, lists, maps, ...) are exported directly.
+func wrapModuleExports(moduleVM *vm.VirtualMachine) map[string]object.Object {
+	// One mutex per module serializes calls into its (single, stateful) VM.
+	mu := &sync.Mutex{}
+	exports := make(map[string]object.Object)
+	for _, name := range moduleVM.GlobalNames() {
+		value, err := moduleVM.Get(name)
+		if err != nil || value == nil {
+			continue
+		}
+		if closure, ok := value.(*object.Closure); ok {
+			exports[name] = bindModuleFunction(moduleVM, mu, name, closure)
+		} else {
+			exports[name] = value
+		}
+	}
+	return exports
+}
+
+// bindModuleFunction wraps an exported module closure so that invoking it runs
+// the closure inside the module's own VM (where its global references resolve
+// correctly).
+func bindModuleFunction(moduleVM *vm.VirtualMachine, mu *sync.Mutex, name string, closure *object.Closure) *object.Builtin {
+	return object.NewBuiltin(name, func(ctx context.Context, args ...object.Object) (object.Object, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		return moduleVM.Call(ctx, closure, args)
 	})
 }
 

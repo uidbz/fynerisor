@@ -15,6 +15,14 @@ print("\n=== Test 2: Module Caching ===")
 let strUtils2 = import("string_utils.risor")
 print("Same module instance?", strUtils == strUtils2)
 
+// Test 2b: Module functions referencing module-level variables and functions
+print("\n=== Test 2b: Module-Level References ===")
+let math = import("math_utils.risor")
+print("PI:", math.PI)
+print("square(4):", math.square(4))
+print("circleArea(2):", math.circleArea(2)) // PI * 2*2 = 12.56636
+print("cube(3):", math.cube(3))              // 27
+
 // Test 3: Using module in UI
 print("\n=== Test 3: Module in UI ===")
 

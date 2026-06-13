@@ -17,6 +17,8 @@ import (
 // applications that need Risor scripting with modules.
 type Context struct {
 	globals        []risor.Option
+	env            map[string]any // Merged built-in globals (shared with imported module VMs)
+	userGlobals    []risor.Option // Opaque user-supplied globals (via WithGlobals)
 	enabledModules map[string]bool
 	appName        string // Name of the embedding application
 	runner         *ScriptRunner
@@ -67,12 +69,22 @@ func NewContext(opts ...Option) *Context {
 		"import":  cb.newImportBuiltin(),
 	}
 
-	cb.globals = []risor.Option{risor.WithEnv(risor.Builtins()), risor.WithEnv(globals)}
+	// Build a single merged environment containing the standard library and all
+	// built-in globals. This same map is passed to imported module VMs so that
+	// functions defined in modules can access globals like http, sql, etc.
+	cb.env = risor.Builtins()
+	for k, v := range globals {
+		cb.env[k] = v
+	}
 
-	// Apply functional options after (so they can append to cb.globals)
+	// Apply functional options after (so they can populate cb.env / cb.userGlobals)
 	for _, opt := range opts {
 		opt.applyToContext(cb)
 	}
+
+	// Compose the final risor options: the merged env first, then any opaque
+	// user-supplied globals (from WithGlobals).
+	cb.globals = append([]risor.Option{risor.WithEnv(cb.env)}, cb.userGlobals...)
 
 	// Create script runner
 	cb.runner = NewScriptRunner(cb.globals)

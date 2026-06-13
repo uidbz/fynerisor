@@ -19,11 +19,15 @@ type Option interface {
 }
 
 type moduleOption struct {
-	fn func(globals *[]risor.Option, modules map[string]bool)
+	// fn configures an imported environment. Built-in module options write their
+	// global objects into env (so they can be passed to both the main script and
+	// any imported module VMs). User-supplied opaque options (WithGlobals) are
+	// appended to userGlobals instead, since their values can't be introspected.
+	fn func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool)
 }
 
 func (o moduleOption) applyToWindow(w *Window) {
-	o.fn(&w.globals, w.enabledModules)
+	o.fn(w.env, &w.userGlobals, w.enabledModules)
 }
 
 type windowOption struct {
@@ -55,8 +59,8 @@ func (o appNameOption) applyToWindow(w *Window) {
 //	)
 func WithGlobals(globals ...risor.Option) Option {
 	return moduleOption{
-		fn: func(globalsList *[]risor.Option, modules map[string]bool) {
-			*globalsList = append(*globalsList, globals...)
+		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
+			*userGlobals = append(*userGlobals, globals...)
 		},
 	}
 }
@@ -131,12 +135,8 @@ func WithAppName(name string) Option {
 //	print(response.body)
 func WithHTTP() Option {
 	return moduleOption{
-		fn: func(globalsList *[]risor.Option, modules map[string]bool) {
-			httpModule := http.Module()
-			httpGlobals := map[string]any{
-				"http": httpModule,
-			}
-			*globalsList = append(*globalsList, risor.WithEnv(httpGlobals))
+		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
+			env["http"] = http.Module()
 			modules["http"] = true
 		},
 	}
@@ -171,7 +171,7 @@ func WithHTTP() Option {
 //	remote.doSomething()
 func WithHTTPImport() Option {
 	return moduleOption{
-		fn: func(globalsList *[]risor.Option, modules map[string]bool) {
+		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
 			// This is a marker module - actual functionality is in import.go
 			modules["httpimport"] = true
 		},
@@ -194,12 +194,8 @@ func WithHTTPImport() Option {
 //	os.open_browser("https://example.com")
 func WithOS() Option {
 	return moduleOption{
-		fn: func(globalsList *[]risor.Option, modules map[string]bool) {
-			osModule := os.Module()
-			osGlobals := map[string]any{
-				"os": osModule,
-			}
-			*globalsList = append(*globalsList, risor.WithEnv(osGlobals))
+		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
+			env["os"] = os.Module()
 			modules["os"] = true
 		},
 	}
@@ -208,12 +204,8 @@ func WithOS() Option {
 // WithStrings enables the strings module for string manipulation from Risor scripts.
 func WithStrings() Option {
 	return moduleOption{
-		fn: func(globalsList *[]risor.Option, modules map[string]bool) {
-			stringsModule := strings.Module()
-			stringsGlobals := map[string]any{
-				"strings": stringsModule,
-			}
-			*globalsList = append(*globalsList, risor.WithEnv(stringsGlobals))
+		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
+			env["strings"] = strings.Module()
 			modules["strings"] = true
 		},
 	}
@@ -222,12 +214,8 @@ func WithStrings() Option {
 // WithFilepath enables the filepath module for file path manipulation from Risor scripts.
 func WithFilepath() Option {
 	return moduleOption{
-		fn: func(globalsList *[]risor.Option, modules map[string]bool) {
-			filepathModule := filepathmod.Module()
-			filepathGlobals := map[string]any{
-				"filepath": filepathModule,
-			}
-			*globalsList = append(*globalsList, risor.WithEnv(filepathGlobals))
+		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
+			env["filepath"] = filepathmod.Module()
 			modules["filepath"] = true
 		},
 	}
@@ -249,12 +237,8 @@ func WithFilepath() Option {
 //	let parsed = time.parse("2026-05-01")
 func WithTime() Option {
 	return moduleOption{
-		fn: func(globalsList *[]risor.Option, modules map[string]bool) {
-			timeModule := time.Module()
-			timeGlobals := map[string]any{
-				"time": timeModule,
-			}
-			*globalsList = append(*globalsList, risor.WithEnv(timeGlobals))
+		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
+			env["time"] = time.Module()
 			modules["time"] = true
 		},
 	}
@@ -279,12 +263,8 @@ func WithTime() Option {
 //	conn.close()
 func WithSQL() Option {
 	return moduleOption{
-		fn: func(globalsList *[]risor.Option, modules map[string]bool) {
-			sqlModule := sql.Module()
-			sqlGlobals := map[string]any{
-				"sql": sqlModule,
-			}
-			*globalsList = append(*globalsList, risor.WithEnv(sqlGlobals))
+		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
+			env["sql"] = sql.Module()
 			modules["sql"] = true
 		},
 	}
@@ -304,12 +284,8 @@ func WithSQL() Option {
 //	io.cp("source.txt", "destination.txt")
 func WithIO() Option {
 	return moduleOption{
-		fn: func(globalsList *[]risor.Option, modules map[string]bool) {
-			ioModule := iomod.NewIO()
-			ioGlobals := map[string]any{
-				"io": ioModule,
-			}
-			*globalsList = append(*globalsList, risor.WithEnv(ioGlobals))
+		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
+			env["io"] = iomod.NewIO()
 			modules["io"] = true
 		},
 	}
@@ -349,11 +325,8 @@ func WithIO() Option {
 // configuration objects, or any other Go type you want to expose to scripts.
 func WithGlobal(name string, value any) Option {
 	return moduleOption{
-		fn: func(globalsList *[]risor.Option, modules map[string]bool) {
-			customGlobals := map[string]any{
-				name: value,
-			}
-			*globalsList = append(*globalsList, risor.WithEnv(customGlobals))
+		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
+			env[name] = value
 			modules[name] = true // Register for require() validation
 		},
 	}
@@ -363,12 +336,8 @@ func WithGlobal(name string, value any) Option {
 // WithExec enables the exec module for running external commands from Risor scripts.
 func WithExec() Option {
 	return moduleOption{
-		fn: func(globalsList *[]risor.Option, modules map[string]bool) {
-			execModule := exec.Module()
-			execGlobals := map[string]any{
-				"exec": execModule,
-			}
-			*globalsList = append(*globalsList, risor.WithEnv(execGlobals))
+		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
+			env["exec"] = exec.Module()
 			modules["exec"] = true
 		},
 	}

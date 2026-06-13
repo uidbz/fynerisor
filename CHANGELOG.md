@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+### Fixed
+
+**Module Imports (`import()`):**
+- **Module-level references now work** - Functions in an imported module can
+  reference other module-level variables and functions (e.g.
+  `let circleArea = (r) => PI * square(r)`). Previously such references resolved
+  against the wrong globals array, returning incorrect values or crashing with
+  `index out of range`. Exported functions are now executed inside their own
+  module VM where global references resolve correctly.
+- **Modules receive host globals** - Imported module VMs are now seeded with the
+  same merged environment as the main script, so module functions can use
+  `widget`, `http`, `os`, `sql`, etc. Use `WithGlobal("name", value)` (singular)
+  for custom globals that imported modules should also access; opaque
+  `WithGlobals(risor.WithEnv(...))` values are not forwarded into module VMs.
+
 ## [0.5.1] - 2026-06-12
 
 ### Added

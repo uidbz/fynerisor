@@ -96,25 +96,38 @@ utils.helper()                     // Namespaced access
 4. **Better IDE support**: Dot notation enables autocomplete
 5. **Caching**: Modules loaded once and reused
 
-## Limitations
+## Module-Level References
 
-Module functions should be self-contained or only reference parameters. They cannot reliably reference module-level variables due to Risor v2's closure scope limitations:
+Imported functions may freely reference other module-level variables and
+functions, as well as any enabled host globals (`widget`, `http`, `os`, ...).
+Each module runs in its own isolated VM, and exported functions are executed
+back in that VM so their global references always resolve against the module's
+own scope.
 
 **Works:**
 ```javascript
-let add = (a, b) => a + b  // ✓ Self-contained
-```
+let add = (a, b) => a + b              // ✓ Self-contained
 
-**Doesn't work reliably:**
-```javascript
 let PI = 3.14159
-let circleArea = (r) => PI * r * r  // ✗ References module variable
+let square = (x) => x * x
+let circleArea = (r) => PI * square(r) // ✓ References module variable + function
+
+let card = (title) => widget.NewLabel(title) // ✓ Uses host globals
 ```
 
-**Workaround:**
-```javascript
-let circleArea = (r, pi) => pi * r * r  // ✓ Pass as parameter
-```
+### How module references resolve
+
+Risor v2 resolves top-level (`let`) bindings as *globals*, addressed by index
+against the currently executing VM. Earlier versions of this example ran
+imported functions inside the main script's VM, so a reference like `PI` or
+`square` resolved against the wrong globals array — producing a wrong value or
+an `index out of range` error. Imported functions are now invoked inside their
+own module VM, so these references work correctly.
+
+> **Note:** Custom globals supplied via the opaque `WithGlobals(risor.WithEnv(...))`
+> form are available to the main script but are not forwarded into module VMs.
+> Prefer `WithGlobal("name", value)` (singular) for globals that imported
+> modules should also be able to use.
 
 ## HTTP(S) Imports
 

@@ -1,0 +1,13 @@
+// Math utility module
+// Demonstrates that module functions CAN reference other module-level
+// variables and functions (each module runs in its own VM).
+
+let PI = 3.14159
+
+let square = (x) => x * x
+
+// References both a module-level variable (PI) and a module-level function (square)
+let circleArea = (r) => PI * square(r)
+
+// References another module-level function
+let cube = (x) => square(x) * x
