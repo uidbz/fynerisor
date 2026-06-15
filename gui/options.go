@@ -46,18 +46,21 @@ func (o appNameOption) applyToWindow(w *Window) {
 	w.appName = o.name
 }
 
-// WithGlobals adds custom global objects to the Risor script environment.
-// The globals parameter should be created using risor.WithEnv().
+// WithRisorOptions adds advanced Risor VM configuration options.
+// These are opaque risor.Option objects for advanced Risor VM configuration.
+// Unlike WithGlobal(), these options are NOT forwarded to imported modules.
+//
+// Use WithGlobal() instead for named globals that modules should access.
 //
 // Example:
 //
-//	customGlobals := map[string]any{
-//	    "myAPI": myAPIObject,
+//	customFuncs := map[string]any{
+//	    "myFunc": func() string { return "hello" },
 //	}
 //	window := fynerisor.NewWindow(w,
-//	    fynerisor.WithGlobals(risor.WithEnv(customGlobals)),
+//	    fynerisor.WithRisorOptions(risor.WithEnv(customFuncs)),
 //	)
-func WithGlobals(globals ...risor.Option) Option {
+func WithRisorOptions(globals ...risor.Option) Option {
 	return moduleOption{
 		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
 			*userGlobals = append(*userGlobals, globals...)

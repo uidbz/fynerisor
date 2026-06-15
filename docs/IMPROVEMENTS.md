@@ -46,7 +46,7 @@ fw := fynerisor.NewWindow(w, nil, nil, nil)
 **Solution**: Use functional options pattern:
 ```go
 fw := fynerisor.NewScriptWindow(w,
-    fynerisor.WithGlobals(customGlobals),
+    fynerisor.WithRisorOptions(customGlobals),
     fynerisor.WithStatusCallback(statusFn),
     fynerisor.WithResultCallback(resultFn),
 )
@@ -56,7 +56,7 @@ fw := fynerisor.NewScriptWindow(w,
 ```go
 type Option func(*Config)
 
-func WithGlobals(globals []risor.Option) Option {
+func WithRisorOptions(globals []risor.Option) Option {
     return func(c *Config) { c.Globals = globals }
 }
 

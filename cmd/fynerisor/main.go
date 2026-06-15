@@ -144,7 +144,7 @@ func main() {
 			gui.WithTime(),
 			gui.WithSQL(),
 			gui.WithIO(),
-			gui.WithGlobals(customGlobals...),
+			gui.WithRisorOptions(customGlobals...),
 			gui.WithStatusCallback(func(status string) {
 				log.Printf("[STATUS] %s", status)
 			}),
@@ -161,7 +161,7 @@ func main() {
 			gui.WithTime(),
 			gui.WithSQL(),
 			gui.WithIO(),
-			gui.WithGlobals(customGlobals...),
+			gui.WithRisorOptions(customGlobals...),
 			gui.WithStatusCallback(func(status string) {
 				if strings.HasPrefix(status, "ERROR:") {
 					log.Printf("[ERROR] %s", status)

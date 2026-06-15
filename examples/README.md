@@ -158,7 +158,7 @@ fw := fynerisor.NewApp("My App",
 
 ### Custom Data
 
-Pass custom Go functions to Risor scripts using `WithGlobals`:
+Pass custom Go functions to Risor scripts using `WithRisorOptions`:
 
 ```go
 import "github.com/deepnoodle-ai/risor/v2"
@@ -172,7 +172,7 @@ customFuncs := risor.WithEnv(map[string]any{
 })
 
 fw := fynerisor.NewApp("My App",
-    fynerisor.WithGlobals(customFuncs),
+    fynerisor.WithRisorOptions(customFuncs),
 )
 ```
 

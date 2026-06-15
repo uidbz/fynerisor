@@ -216,7 +216,7 @@ Customize fynerisor behavior via `With*()` options when creating `gui.Window` or
 | Option | Available In | Description |
 |--------|--------------|-------------|
 | `WithAppName(name)` | Both | Set application name (accessible via `app.name` in scripts) |
-| `WithGlobals(opts)` | Both | Add custom global objects to script environment |
+| `WithRisorOptions(opts)` | Both | Add custom global objects to script environment |
 | `WithStatusCallback(fn)` | `gui` only | Called when `window.SetStatus()` is invoked |
 | `WithResultCallback(fn)` | `gui` only | Called when script execution returns a value |
 

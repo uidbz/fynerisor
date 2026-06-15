@@ -32,7 +32,7 @@
   same merged environment as the main script, so module functions can use
   `widget`, `http`, `os`, `sql`, etc. Use `WithGlobal("name", value)` (singular)
   for custom globals that imported modules should also access; opaque
-  `WithGlobals(risor.WithEnv(...))` values are not forwarded into module VMs.
+  `WithRisorOptions(risor.WithEnv(...))` values are not forwarded into module VMs.
 
 ## [0.5.1] - 2026-06-12
 

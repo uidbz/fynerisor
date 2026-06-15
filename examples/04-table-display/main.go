@@ -66,7 +66,7 @@ func main() {
 
 	// Create fynerisor window using NewApp convenience function
 	fyneWindow := gui.NewApp("Table Display Example",
-		gui.WithGlobals(risor.WithEnv(dataFuncs)),
+		gui.WithRisorOptions(risor.WithEnv(dataFuncs)),
 		gui.WithStatusCallback(func(status string) {
 			fmt.Println("Status:", status)
 		}),

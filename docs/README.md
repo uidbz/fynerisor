@@ -269,7 +269,7 @@ result, err := ctx.EvalWithImports(script, fetchFunc)
 - `WithStrings()` - Strings module
 - `WithFilepath()` - Filepath module
 - `WithTime()` - Time module
-- `WithGlobals()` - Custom globals
+- `WithRisorOptions()` - Custom globals
 
 Note: Window-specific options like `WithStatusCallback()` and `WithResultCallback()` are silently ignored when used with ContextBuilder.
 
@@ -751,7 +751,7 @@ dataFuncs := map[string]any{
 }
 
 fyneWindow := fynerisor.NewWindow(w,
-    fynerisor.WithGlobals(risor.WithEnv(dataFuncs)),
+    fynerisor.WithRisorOptions(risor.WithEnv(dataFuncs)),
 )
 ```
 

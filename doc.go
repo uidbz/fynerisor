@@ -230,7 +230,7 @@
 //	})
 //
 //	fw := gui.NewApp("My App",
-//	    gui.WithGlobals(customData),
+//	    gui.WithRisorOptions(customData),
 //	)
 //
 // Scripts can then access: api.someMethod() and config.someProperty

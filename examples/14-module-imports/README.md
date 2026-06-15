@@ -124,7 +124,7 @@ imported functions inside the main script's VM, so a reference like `PI` or
 an `index out of range` error. Imported functions are now invoked inside their
 own module VM, so these references work correctly.
 
-> **Note:** Custom globals supplied via the opaque `WithGlobals(risor.WithEnv(...))`
+> **Note:** Custom globals supplied via the opaque `WithRisorOptions(risor.WithEnv(...))`
 > form are available to the main script but are not forwarded into module VMs.
 > Prefer `WithGlobal("name", value)` (singular) for globals that imported
 > modules should also be able to use.
