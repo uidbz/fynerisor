@@ -15,21 +15,23 @@
 //
 // # Version
 //
-// Current Version: 0.4.1
+// Current Version: 0.6.0
 // Risor Compatibility: v2.1+ (arrow functions required)
 // Fyne Compatibility: v2.7+
 //
 // # Features
 //
-//   - 34 widget bindings (60% coverage - all high/medium priority complete)
-//   - Button importance levels and validation
-//   - Entry validation with visual feedback
+//   - 48+ widget bindings (100% coverage - all priority levels complete)
+//   - Keyboard shortcuts (window.AddShortcut, MenuItem.Shortcut display)
+//   - Data binding system (String, Bool, Int, Float)
+//   - Dialog support (file, confirm, color, form, custom)
+//   - Module-scoped imports with namespace isolation
 //   - SQL module for MySQL, PostgreSQL, SQLite, SQL Server
 //   - HTTP module for REST API calls
-//   - Layout containers (VBox, HBox, Border, Split, Scroll)
+//   - Layout containers (VBox, HBox, Border, Split, Scroll, Grid, Stack, etc.)
 //   - Canvas objects and charts
 //   - Thread-safe callback handling
-//   - Property access and modification from scripts
+//   - Widget visibility control (Hide/Show methods)
 //   - Constants global for Fyne enums
 //
 // # Quick Start
@@ -95,34 +97,43 @@
 //
 // Scripts can declare version and module requirements:
 //
-//	require(["v0.2", "@sql", "@http"])  // Multiple requirements
-//	require("v0.2.0")                   // Minimum version
+//	require(["v0.6", "@sql", "@http"])  // Multiple requirements
+//	require("v0.6.0")                   // Minimum version
 //	require("@sql")                     // Module must be enabled
 //
 // # Global Objects
 //
 // Risor scripts have access to the following global objects:
 //
-//   - window: Main window control (SetContent, SetStatus, Title property)
+//   - window: Main window control (SetContent, SetStatus, AddShortcut, etc.)
 //   - widget: Factory for all widgets
 //   - container: Factory for layouts
 //   - canvas: Factory for canvas objects
 //   - chart: Factory for charts
+//   - dialog: Dialog functions (file, confirm, color, etc.)
+//   - binding: Data binding for reactive UIs
 //   - constants: Fyne constants (button importance, etc.)
-//   - app: Application metadata (app.name)
+//   - fyne: Fyne utilities (NewMenu, NewMainMenu, etc.)
+//   - app: Application metadata (app.name, app.version)
+//   - print: Output function
+//   - require: Version and module validation
+//   - import: Module imports with namespace isolation
 //
 // # Options
 //
 // Enable additional modules using options:
 //
 //	fw := gui.NewApp("My App",
-//	    gui.WithHTTP(),      // HTTP client
-//	    gui.WithSQL(),       // Database connectivity
-//	    gui.WithOS(),        // OS utilities
-//	    gui.WithIO(),        // File I/O (cp, etc.)
-//	    gui.WithStrings(),   // String manipulation
-//	    gui.WithFilepath(),  // Path utilities
-//	    gui.WithTime(),      // Time operations
+//	    gui.WithHTTP(),           // HTTP client
+//	    gui.WithSQL(),            // Database connectivity
+//	    gui.WithOS(),             // OS utilities
+//	    gui.WithIO(),             // File I/O (cp, etc.)
+//	    gui.WithExec(),           // Execute commands
+//	    gui.WithStrings(),        // String manipulation
+//	    gui.WithFilepath(),       // Path utilities
+//	    gui.WithTime(),           // Time operations
+//	    gui.WithHTTPImport(),     // Import modules from URLs
+//	    gui.WithGlobal("myapi", apiObject),  // Custom named global
 //	    gui.WithStatusCallback(func(status string) {
 //	        log.Println("Status:", status)
 //	    }),
@@ -198,12 +209,20 @@
 //   - 11-list: Virtualized scrolling list
 //   - 12-tree: Hierarchical tree widget
 //   - 13-http-fetch: HTTP requests and JSON
+//   - 14-module-imports: Module-scoped imports with namespaces
 //   - 15-sql-test: Database connectivity
 //   - 17-gridwrap: Grid layout
 //   - 18-textgrid: Code display
 //   - 19-richtext: Markdown formatting
 //   - 20-button-importance: Button styling
 //   - 21-form-validation: Entry validation
+//   - 25-data-binding: Reactive UI with data binding
+//   - 27-app-versioning: Application version checking
+//   - 28-custom-struct: Expose custom Go types
+//   - 30-dialogs: File, confirm, color picker dialogs
+//   - 32-table-widgets: Widget mode for table cells
+//   - 33-image-gallery: Images in table cells
+//   - 34-keyboard-shortcuts: Global shortcuts and menu integration
 //
 // # CLI Tool
 //

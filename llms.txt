@@ -2,7 +2,7 @@
 
 Build cross-platform desktop GUIs using Risor v2 scripts with Fyne widgets.
 
-Version: 0.5.0
+Version: 0.6.0
 Risor: v2.x (arrow functions, no for loops, functional iteration)
 Fyne: v2.7+
 
@@ -16,18 +16,22 @@ Fynerisor is split into two packages:
 Always import the specific package you need.
 
 ## Features
-- 34+ widgets (60% of Fyne, all high/medium priority complete)
-- Data binding system (reactive UIs)
-- Custom Go type integration (WithGlobal)
-- Application versioning (SetAppVersion)
-- Modules: HTTP, SQL, OS, Time, Strings, Filepath, IO
+- 48+ widgets (100% coverage - all priority levels complete)
+- Keyboard shortcuts (window.AddShortcut, menu integration)
+- Data binding system (String, Bool, Int, Float)
+- Dialog support (file, confirm, color, form, custom)
+- Module-scoped imports with namespace isolation
+- Custom Go type integration (core.WithGlobal, gui.WithGlobal)
+- Application versioning (core.SetAppVersion)
+- Modules: HTTP, SQL, OS, Time, Strings, Filepath, IO, Exec
 - Static compilation support (core package)
+- Widget visibility control (Hide/Show methods)
 
 ## Quick Start
 
 ```risor
 // Specify requirements (optional but recommended)
-require(["v0.4", "@sql", "@http"])
+require(["v0.6", "@sql", "@http"])
 
 // Create a simple button with counter
 let count = 0
@@ -57,24 +61,31 @@ window.SetContent(container.NewVBox(label, btn))
 
 ## Import and Require Functions
 
-### Import Function
+### Import Function (Module-Scoped)
 
-Import external Risor scripts (local files or URLs):
+Import Risor modules with namespace isolation (v0.6+):
 
 ```risor
-// Single import
-import("utils.risor")                    // Local file (relative to script)
-import("https://example.com/lib.risor")  // Remote URL
+// Import returns a module object with namespaced exports
+let utils = import("utils.risor")
+utils.myFunction()
+utils.myVariable
 
-// Multiple imports
-import(["utils.risor", "helpers.risor"])
+// Local files (relative to script)
+let helpers = import("./lib/helpers.risor")
 
-// Imports are loaded in order before script execution
+// Remote URLs (requires WithHTTPImport option)
+require(["@httpimport"])
+let remote = import("https://example.com/lib.risor")
+remote.someFunction()
 ```
 
-**Important**: `import()` is a no-op at runtime. The actual importing is handled
-by the Go application before script execution via `fynerisor.AnalyzeRequirements()`
-and `Window.ImportScript()`.
+**Module scoping**: Each import creates an isolated namespace. All top-level
+variables and functions in the imported module are accessible via dot notation.
+Modules can access global objects like `widget`, `http`, `os`, etc.
+
+**Caching**: Modules are loaded once and cached. The same import path always
+returns the same module instance.
 
 ### Require Function
 
@@ -82,11 +93,11 @@ Declare version and module requirements:
 
 ```risor
 // Single requirement
-require("v0.4.1")         // Minimum version
+require("v0.6.0")         // Minimum version
 require("@sql")           // Module must be enabled
 
 // Multiple requirements
-require(["v0.4", "@sql", "@http", "@os"])
+require(["v0.6", "@sql", "@http", "@os"])
 
 // Version formats
 require("v0.4")           // Minimum version (>=)
@@ -169,6 +180,9 @@ let result = rows.map(row => [row["id"], row["name"]])
 **window** - Main window control
 - `window.SetContent(widget)` - Set window content
 - `window.SetStatus(string)` - Update status text
+- `window.AddShortcut(shortcut, callback)` - Register keyboard shortcut
+- `window.RemoveShortcut(shortcut)` - Remove keyboard shortcut
+- `window.SetMainMenu(mainMenu)` - Set window's main menu bar
 - `window.Title` - Get/set window title (read/write)
 - `window.Do(func)` - Execute function on UI thread (for goroutine safety)
 
@@ -176,8 +190,14 @@ let result = rows.map(row => [row["id"], row["name"]])
 **container** - Factory for layouts
 **canvas** - Factory for canvas objects
 **chart** - Factory for charts
+**dialog** - Dialog functions (file, confirm, color, etc.)
 **binding** - Factory for data bindings (reactive UIs)
+**fyne** - Fyne utilities (NewMenu, NewMainMenu, NewMenuItem, etc.)
 **constants** - Fyne constants (ImportanceHigh, TextWrapWord, etc.)
+**app** - Application metadata (app.name, app.version)
+**print** - Output function
+**require** - Version and module validation
+**import** - Module imports with namespace isolation
 
 ## Data Binding (Reactive UIs)
 
@@ -237,6 +257,75 @@ enabled.Set(true)
 - `widget.NewLabelWithData(stringBinding)`
 - `widget.NewCheckWithData(text, boolBinding)`
 - `widget.NewSliderWithData(min, max, floatBinding)`
+
+## Keyboard Shortcuts
+
+Register global keyboard shortcuts that work independently of menus:
+
+### Basic Shortcuts
+```risor
+// Register shortcuts
+window.AddShortcut("Ctrl+S", () => {
+    print("Save triggered!")
+})
+
+window.AddShortcut("Ctrl+O", () => {
+    print("Open triggered!")
+})
+
+window.AddShortcut("Ctrl+Q", () => {
+    app.Quit()
+})
+
+// Remove shortcuts
+window.RemoveShortcut("Ctrl+S")
+```
+
+### Supported Modifiers
+- `Ctrl` / `Control` - Control key
+- `Alt` / `Option` - Alt/Option key
+- `Shift` - Shift key
+- `Super` / `Cmd` / `Command` - Super/Command key
+
+### Supported Keys
+- Letters: A-Z
+- Numbers: 0-9
+- Function keys: F1-F12
+- Special: Return, Enter, Escape, Tab, Space, Backspace, Delete
+- Arrows: Up, Down, Left, Right
+- Navigation: Home, End, PageUp, PageDown
+
+### Multi-Modifier Shortcuts
+```risor
+window.AddShortcut("Ctrl+Shift+S", () => {
+    print("Save As")
+})
+
+window.AddShortcut("Alt+Shift+F1", () => {
+    print("Help")
+})
+```
+
+### Menu Integration
+Display shortcut hints in menu items (display only):
+
+```risor
+// Register actual shortcut
+window.AddShortcut("Ctrl+S", () => {
+    print("Saved!")
+})
+
+// Create menu item with shortcut display
+let saveItem = fyne.NewMenuItem("Save", () => {})
+saveItem.Shortcut = "Ctrl+S"  // Shows "Ctrl+S" in menu
+
+// Create main menu
+let fileMenu = fyne.NewMenu("File", saveItem)
+let mainMenu = fyne.NewMainMenu([fileMenu])
+window.SetMainMenu(mainMenu)
+```
+
+**Note**: Shortcuts work without menus. MenuItem.Shortcut is only for display.
 - `widget.NewProgressBarWithData(floatBinding)`
 - `widget.NewEntryWithData(stringBinding)` (bi-directional)
 
