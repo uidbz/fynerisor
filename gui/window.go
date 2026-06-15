@@ -16,6 +16,7 @@ import (
 	"github.com/deepnoodle-ai/risor/v2"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
+	"github.com/uidbz/fynerisor/core"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -94,9 +95,9 @@ type Window struct {
 	runner         *ScriptRunner
 
 	// Module import system
-	moduleCache map[string]*ImportedModule // Cache of imported modules
-	importStack []string                   // Track currently importing modules for circular detection
-	moduleMutex sync.Mutex                 // Protect cache from concurrent access
+	moduleCache map[string]*core.ImportedModule // Cache of imported modules
+	importStack []string                        // Track currently importing modules for circular detection
+	moduleMutex sync.Mutex                      // Protect cache from concurrent access
 
 	// Keyboard shortcut system
 	shortcuts      map[string]fyne.Shortcut // Map shortcut string to Shortcut object
@@ -133,7 +134,7 @@ func NewWindow(window fyne.Window, opts ...Option) *Window {
 		FyneWindow:     window,
 		enabledModules: make(map[string]bool),
 		appName:        "fynerisor", // default
-		moduleCache:    make(map[string]*ImportedModule),
+		moduleCache:    make(map[string]*core.ImportedModule),
 		importStack:    []string{},
 		shortcuts:      make(map[string]fyne.Shortcut),
 	}

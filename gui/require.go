@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
+	"github.com/uidbz/fynerisor/core"
 )
 
 // newRequireBuiltin creates the require() function for version and module checking
@@ -58,13 +59,13 @@ func processRequirement(w *Window, req string) (object.Object, error) {
 		return object.Nil, nil
 	}
 
-	// Version requirement (v0.2.0 or ==v0.2.0)
+	// core.Version requirement (v0.2.0 or ==v0.2.0)
 	if strings.HasPrefix(req, "v") || strings.HasPrefix(req, "==v") {
 		// Use app version if set, otherwise use fynerisor version
-		versionToCheck := "v" + Version
+		versionToCheck := "v" + core.Version
 		versionName := "fynerisor"
-		if appVersion != "" {
-			versionToCheck = appVersion
+		if core.GetAppVersion() != "" {
+			versionToCheck = core.GetAppVersion()
 			if !strings.HasPrefix(versionToCheck, "v") {
 				versionToCheck = "v" + versionToCheck
 			}

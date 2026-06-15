@@ -3,6 +3,7 @@ package gui
 import (
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
+	"github.com/uidbz/fynerisor/core"
 )
 
 const AppType object.Type = "app"
@@ -58,8 +59,9 @@ func (a *App) GetAttr(name string) (object.Object, bool) {
 		return object.NewString(a.appName), true
 	case "version":
 		// Return app version if set, otherwise empty string
-		if appVersion != "" {
-			return object.NewString(appVersion), true
+		appVer := core.GetAppVersion()
+		if appVer != "" {
+			return object.NewString(appVer), true
 		}
 		return object.NewString(""), true
 	}

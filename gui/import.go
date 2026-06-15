@@ -10,6 +10,7 @@ import (
 	"github.com/deepnoodle-ai/risor/v2"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/vm"
+	"github.com/uidbz/fynerisor/core"
 )
 
 // newImportBuiltin creates the import() function that loads Risor modules
@@ -119,7 +120,7 @@ func (w *Window) newImportBuiltin() *object.Builtin {
 		globals := wrapModuleExports(moduleVM)
 
 		// Create module object
-		module := NewImportedModule(modulePath, globals)
+		module := core.NewImportedModule(modulePath, globals)
 
 		// Cache it
 		w.moduleMutex.Lock()
