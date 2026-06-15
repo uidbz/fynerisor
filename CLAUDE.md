@@ -229,14 +229,28 @@ bol, err := object.AsBool(obj)
 ### In Risor Scripts (Examples)
 
 ```javascript
-// Use arrow functions
-let onClick = () => { print("clicked") }
-let process = (x) => x * 2
+// Use 'function' keyword at top/global scope
+function processData(data) {
+    return data.map(x => x * 2)
+}
 
-// No for loops - use functional iteration
+function handleClick() {
+    print("Button clicked!")
+}
+
+// Use arrow functions for callbacks and inline functions
+let button = widget.NewButton("Click", () => {
+    print("Inline callback")
+})
+
+// Arrow functions in functional iteration
 items.map(x => x * 2)
 items.filter(x => x > 10)
 items.each(x => print(x))
+
+// Arrow functions assigned to variables
+let onClick = () => { print("clicked") }
+let transform = (x) => x * 2
 
 // Module imports
 let utils = import("utils.risor")
