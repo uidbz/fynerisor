@@ -248,3 +248,44 @@ func WithExec() Option {
 		},
 	}
 }
+
+// WithGlobal adds a custom global variable to the Risor environment and
+// registers it as a requireable module that can be validated with require(["@name"]).
+//
+// This allows you to expose custom Go types and their methods to scripts, while
+// enabling scripts to explicitly declare their dependencies for validation.
+//
+// The global will be:
+//   - Added to the Risor environment (accessible as a global variable)
+//   - Registered in enabledModules (can be validated with require())
+//   - Provide clear error messages if required but not available
+//
+// Example:
+//
+//	type MyAPI struct { ... }
+//	func (api *MyAPI) GetAttr(name string) (object.Object, bool) { ... }
+//
+//	myAPI := &MyAPI{...}
+//	ctx := core.NewContext(
+//	    core.WithGlobal("myapi", myAPI),
+//	)
+//
+// Usage in script:
+//
+//	require(["v1.0", "@myapi"])  // Validates @myapi is available
+//	myapi.DoSomething()          // Use the custom API
+//
+// If a script tries to require @myapi in a different application that doesn't
+// provide it, the require() call will fail with a clear error message instead
+// of causing undefined variable errors later.
+//
+// This works for any custom object: application APIs, database connections,
+// configuration objects, or any other Go type you want to expose to scripts.
+func WithGlobal(name string, value any) Option {
+	return moduleOption{
+		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
+			env[name] = value
+			modules[name] = true // Register for require() validation
+		},
+	}
+}
