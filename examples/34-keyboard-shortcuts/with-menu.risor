@@ -1,0 +1,62 @@
+require(["v0.6"])
+
+// Status label
+let statusLabel = widget.NewLabel("Try keyboard shortcuts or menu items")
+
+// Register actual shortcut handlers (these make the shortcuts work)
+window.AddShortcut("Ctrl+N", () => {
+    statusLabel.SetText("New file created!")
+    print("New file")
+})
+
+window.AddShortcut("Ctrl+O", () => {
+    statusLabel.SetText("Opening file...")
+    print("Open file")
+})
+
+window.AddShortcut("Ctrl+S", () => {
+    statusLabel.SetText("File saved!")
+    print("Save file")
+})
+
+window.AddShortcut("Ctrl+Q", () => {
+    statusLabel.SetText("Quitting...")
+    print("Quit")
+})
+
+// Create menu items with shortcut hints (display only)
+let newItem = fyne.NewMenuItem("New", () => {
+    statusLabel.SetText("New from menu")
+})
+newItem.Shortcut = "Ctrl+N"  // Shows "Ctrl+N" in menu
+
+let openItem = fyne.NewMenuItem("Open", () => {
+    statusLabel.SetText("Open from menu")
+})
+openItem.Shortcut = "Ctrl+O"
+
+let saveItem = fyne.NewMenuItem("Save", () => {
+    statusLabel.SetText("Save from menu")
+})
+saveItem.Shortcut = "Ctrl+S"
+
+let quitItem = fyne.NewMenuItem("Quit", () => {
+    statusLabel.SetText("Quit from menu")
+})
+quitItem.Shortcut = "Ctrl+Q"
+
+// Create menu with all items (items passed as arguments, not assigned)
+let fileMenu = fyne.NewMenu("File", newItem, openItem, saveItem, fyne.NewMenuItemSeparator(), quitItem)
+
+// Set main menu
+let mainMenu = fyne.NewMainMenu([fileMenu])
+window.SetMainMenu(mainMenu)
+
+// Build UI
+let content = container.NewVBox([
+    widget.NewLabel("Keyboard shortcuts with menu display"),
+    widget.NewSeparator(),
+    statusLabel
+])
+
+window.SetContent(content)

@@ -97,6 +97,10 @@ type Window struct {
 	moduleCache map[string]*ImportedModule // Cache of imported modules
 	importStack []string                   // Track currently importing modules for circular detection
 	moduleMutex sync.Mutex                 // Protect cache from concurrent access
+
+	// Keyboard shortcut system
+	shortcuts      map[string]fyne.Shortcut // Map shortcut string to Shortcut object
+	shortcutMutex  sync.Mutex               // Protect concurrent access
 }
 
 // NewWindow creates a new fynerisor Window that wraps a Fyne window.
@@ -131,6 +135,7 @@ func NewWindow(window fyne.Window, opts ...Option) *Window {
 		appName:        "fynerisor", // default
 		moduleCache:    make(map[string]*ImportedModule),
 		importStack:    []string{},
+		shortcuts:      make(map[string]fyne.Shortcut),
 	}
 
 	// Apply appName and callback options first (before globals)
@@ -545,6 +550,99 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			fyne.Do(func() {
 				w.Resize(float32(width), float32(height))
 			})
+
+			return object.Nil, nil
+		}), true
+
+	case "AddShortcut":
+		return object.NewBuiltin("window.AddShortcut", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 2 {
+				return nil, fmt.Errorf("AddShortcut requires 2 arguments (shortcut, callback)")
+			}
+
+			// Parse shortcut string
+			shortcutStr, ok := args[0].(*object.String)
+			if !ok {
+				return nil, fmt.Errorf("first argument must be string (e.g., 'Ctrl+S')")
+			}
+
+			// Get callback function
+			callback, ok := args[1].(*object.Closure)
+			if !ok {
+				return nil, fmt.Errorf("second argument must be function")
+			}
+
+			// Parse the shortcut string
+			shortcut, err := ParseShortcutString(shortcutStr.Value())
+			if err != nil {
+				return nil, fmt.Errorf("invalid shortcut: %w", err)
+			}
+
+			// Get call function from context
+			callFunc, ok := object.GetCallFunc(ctx)
+			if !ok {
+				return nil, fmt.Errorf("unable to get call function")
+			}
+
+			// Register shortcut on canvas
+			w.FyneWindow.Canvas().AddShortcut(shortcut, func(s fyne.Shortcut) {
+				// Queue callback on function channel (for thread safety)
+				w.functionCalls <- func() {
+					fyne.Do(func() {
+						_, err := callFunc(ctx, callback, []object.Object{})
+						if err != nil {
+							w.SetStatus("ERROR: " + err.Error())
+						}
+					})
+				}
+			})
+
+			// Track shortcut for removal
+			w.shortcutMutex.Lock()
+			w.shortcuts[shortcutStr.Value()] = shortcut
+			w.shortcutMutex.Unlock()
+
+			return object.Nil, nil
+		}), true
+
+	case "RemoveShortcut":
+		return object.NewBuiltin("window.RemoveShortcut", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 1 {
+				return nil, fmt.Errorf("RemoveShortcut requires 1 argument (shortcut string)")
+			}
+
+			shortcutStr, ok := args[0].(*object.String)
+			if !ok {
+				return nil, fmt.Errorf("argument must be string")
+			}
+
+			// Find and remove shortcut
+			w.shortcutMutex.Lock()
+			shortcut, found := w.shortcuts[shortcutStr.Value()]
+			if found {
+				delete(w.shortcuts, shortcutStr.Value())
+			}
+			w.shortcutMutex.Unlock()
+
+			if found {
+				w.FyneWindow.Canvas().RemoveShortcut(shortcut)
+			}
+
+			return object.Nil, nil
+		}), true
+
+	case "SetMainMenu":
+		return object.NewBuiltin("window.SetMainMenu", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 1 {
+				return nil, fmt.Errorf("SetMainMenu requires 1 argument (MainMenu)")
+			}
+
+			mainMenuObj, ok := args[0].(*MainMenu)
+			if !ok {
+				return nil, fmt.Errorf("argument must be MainMenu object")
+			}
+
+			w.FyneWindow.SetMainMenu(mainMenuObj.instance)
 
 			return object.Nil, nil
 		}), true

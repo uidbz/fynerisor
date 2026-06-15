@@ -88,6 +88,32 @@ func (obj *Fyne) GetAttr(name string) (object.Object, bool) {
 
 			return &Menu{instance: menu}, nil
 		}), true
+
+	case "NewMainMenu":
+		return object.NewBuiltin("fyne.NewMainMenu", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) < 1 {
+				return object.Errorf("wrong number of arguments. got=%d, want=at least 1", len(args)), nil
+			}
+
+			// Collect Menus from list
+			listObj, ok := args[0].(*object.List)
+			if !ok {
+				return object.Errorf("argument error: expected list of menus, got %s", args[0].Type()), nil
+			}
+
+			menus := make([]*fyne.Menu, 0, len(listObj.Value()))
+			for _, item := range listObj.Value() {
+				menuObj, ok := item.(*Menu)
+				if !ok {
+					return object.Errorf("argument error: expected Menu in list, got %s", item.Type()), nil
+				}
+				menus = append(menus, menuObj.instance)
+			}
+
+			mainMenu := fyne.NewMainMenu(menus...)
+
+			return &MainMenu{instance: mainMenu}, nil
+		}), true
 	}
 	return nil, false
 }
@@ -97,6 +123,7 @@ func (obj *Fyne) Attrs() []object.AttrSpec {
 		{Name: "NewMenuItem"},
 		{Name: "NewMenuItemSeparator"},
 		{Name: "NewMenu"},
+		{Name: "NewMainMenu"},
 	}
 }
 
@@ -165,6 +192,71 @@ func (obj *Menu) GetAttr(name string) (object.Object, bool) {
 func (obj *Menu) Attrs() []object.AttrSpec {
 	return []object.AttrSpec{
 		{Name: "Label"},
+		{Name: "Refresh"},
+	}
+}
+
+// MainMenu wraps fyne.MainMenu
+type MainMenu struct {
+	instance *fyne.MainMenu
+}
+
+func (obj *MainMenu) Instance() *fyne.MainMenu {
+	return obj.instance
+}
+
+func (obj *MainMenu) Type() object.Type {
+	return "fyne.MainMenu"
+}
+
+func (obj *MainMenu) Inspect() string {
+	return "fyne.MainMenu"
+}
+
+func (obj *MainMenu) Interface() interface{} {
+	return obj.instance
+}
+
+func (obj *MainMenu) IsTruthy() bool {
+	return true
+}
+
+func (obj *MainMenu) Cost() int {
+	return 0
+}
+
+func (obj *MainMenu) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("type error: unable to marshal 'fyne.MainMenu'")
+}
+
+func (obj *MainMenu) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
+	return object.Errorf("eval error: unsupported operation for MainMenu: %v", opType), nil
+}
+
+func (obj *MainMenu) Equals(other object.Object) bool {
+	return obj == other
+}
+
+func (obj *MainMenu) SetAttr(name string, value object.Object) error {
+	return fmt.Errorf("attribute error: MainMenu object has no writable attributes")
+}
+
+func (obj *MainMenu) GetAttr(name string) (object.Object, bool) {
+	switch name {
+	case "Refresh":
+		return object.NewBuiltin("fyne.MainMenu.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			obj.instance.Refresh()
+			return object.Nil, nil
+		}), true
+	}
+	return nil, false
+}
+
+func (obj *MainMenu) Attrs() []object.AttrSpec {
+	return []object.AttrSpec{
 		{Name: "Refresh"},
 	}
 }
