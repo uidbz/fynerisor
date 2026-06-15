@@ -91,7 +91,7 @@ fynerisor enables building cross-platform desktop applications using Risor scrip
 - **Critical Bug Fixes**: Fixed race condition in widget callbacks (see CONCURRENCY.md)
 - **CLI Enhancements**: Error messages now display without --verbose flag
 - **Iterator Support**: SQL row iterators with `.map()` and `.each()` for streaming
-- **Enhanced require()**: List syntax and module requirements (`require(["v0.2", "@sql"])`)
+- **Enhanced require()**: List syntax and module requirements (`require(["v0.6", "@sql"])`)
 - **Requirement Analysis**: `AnalyzeRequirements()` function for external tools
 
 ## Features
@@ -131,16 +131,16 @@ See [Fyne Prerequisites](https://docs.fyne.io/started/) for detailed setup instr
 ```go
 package main
 
-import "github.com/uidbz/fynerisor"
+import "github.com/uidbz/fynerisor/gui"
 
 func main() {
 	// NewApp creates both Fyne app and window in one call
-	fw := fynerisor.NewApp("Hello World",
-		fynerisor.WithHTTP(),
+	fw := gui.NewApp("Hello World",
+		gui.WithHTTP(),
 	)
 
 	script := `
-		require(["v0.2", "@http"])
+		require(["v0.6", "@http"])
 		let btn = widget.NewButton("Click Me", () => {
 			window.SetStatus("Clicked!")
 		})
@@ -171,8 +171,8 @@ func main() {
 	w := a.NewWindow("Hello World")
 
 	// Wrap with fynerisor
-	fw := fynerisor.NewWindow(w,
-		fynerisor.WithHTTP(),
+	fw := gui.NewWindow(w,
+		gui.WithHTTP(),
 	)
 
 	// Load and execute script
@@ -210,19 +210,19 @@ package main
 import (
 	"fmt"
 	"log"
-	"github.com/uidbz/fynerisor"
+	"github.com/uidbz/fynerisor/core"
 )
 
 func main() {
 	// Create context with desired modules (same options as Window)
-	ctx := fynerisor.NewContext(
-		fynerisor.WithHTTP(),
-		fynerisor.WithSQL(),
-		fynerisor.WithOS(),
+	ctx := core.NewContext(
+		core.WithHTTP(),
+		core.WithSQL(),
+		core.WithOS(),
 	)
 
 	script := `
-		require(["v0.2", "@http", "@sql", "@os"])
+		require(["v0.6", "@http", "@sql", "@os"])
 
 		let platform = os.goos()
 		print("Running on:", platform)
@@ -260,7 +260,7 @@ fetchFunc := func(path string) (string, error) {
 
 script := `
 	import("utils.risor")
-	require(["v0.2", "@http"])
+	require(["v0.6", "@http"])
 	
 	let result = myUtilFunction(42)
 `
@@ -774,11 +774,11 @@ window.CaptureStdout((line) => {
 Callbacks in Go code allow monitoring script execution:
 
 ```go
-fyneWindow := fynerisor.NewWindow(w,
-    fynerisor.WithStatusCallback(func(status string) {
+fyneWindow := gui.NewWindow(w,
+    gui.WithStatusCallback(func(status string) {
         fmt.Printf("Status: %s\n", status)
     }),
-    fynerisor.WithResultCallback(func(result string) {
+    gui.WithResultCallback(func(result string) {
         fmt.Printf("Result: %s\n", result)
     }),
 )
@@ -801,8 +801,8 @@ dataFuncs := map[string]any{
     },
 }
 
-fyneWindow := fynerisor.NewWindow(w,
-    fynerisor.WithRisorOptions(risor.WithEnv(dataFuncs)),
+fyneWindow := gui.NewWindow(w,
+    gui.WithRisorOptions(risor.WithEnv(dataFuncs)),
 )
 ```
 
@@ -816,7 +816,7 @@ let users = data.getUsers()
 Fynerisor includes standard modules that can be enabled via options:
 
 ### HTTP Module
-Enable with `fynerisor.WithHTTP()`:
+Enable with `gui.WithHTTP()`:
 
 ```js
 let response = http.get("https://api.example.com/data")
@@ -834,7 +834,7 @@ http.delete(url, headers)
 ```
 
 ### OS Module
-Enable with `fynerisor.WithOS()`:
+Enable with `gui.WithOS()`:
 
 ```js
 let platform = os.goos()           // "linux", "windows", "darwin"
@@ -843,7 +843,7 @@ os.open_browser("https://example.com")  // Open URL in default browser
 ```
 
 ### Strings Module
-Enable with `fynerisor.WithStrings()`:
+Enable with `gui.WithStrings()`:
 
 ```js
 strings.replace_all(str, old, new)
@@ -855,7 +855,7 @@ strings.to_upper(str)
 ```
 
 ### Filepath Module
-Enable with `fynerisor.WithFilepath()`:
+Enable with `gui.WithFilepath()`:
 
 ```js
 filepath.join(parts...)
@@ -1026,7 +1026,7 @@ Key points:
 ### Script Execution
 
 1. Create a Fyne window with `app.NewWindow()`
-2. Wrap it with `fynerisor.NewWindow()`
+2. Wrap it with `gui.NewWindow()`
 3. Set the `Script` field to Risor code
 4. Call `RunCode()` to execute (runs in goroutine)
 5. Call `ShowAndRun()` to display the window
@@ -1110,7 +1110,9 @@ require("v0.2")
 **Checking Version in Go Code**:
 ```go
 // In your Go code
-info := fynerisor.GetVersion()
+import "github.com/uidbz/fynerisor/core"
+
+info := core.GetVersion()
 fmt.Printf("fynerisor %s (Risor %s, Fyne %s)\n", 
     info.Version, info.RisorCompat, info.FyneCompat)
 ```
