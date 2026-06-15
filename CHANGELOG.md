@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+### Added
+
+**Keyboard Shortcuts:**
+- **window.AddShortcut(shortcut, callback)** - Register global keyboard shortcuts
+  - Simple string-based API: `"Ctrl+S"`, `"Alt+Shift+N"`, etc.
+  - Works without menus - shortcuts are always active
+  - Supports all modifier keys: Ctrl, Alt, Shift, Super/Cmd
+  - Cross-platform modifier aliases: Ctrl/Control, Alt/Option, Super/Cmd/Command
+  - Supports letters (A-Z), numbers (0-9), function keys (F1-F12)
+  - Special keys: Return, Escape, Tab, Space, Backspace, Delete, arrows, etc.
+  - Multi-modifier shortcuts: `"Ctrl+Shift+S"`, `"Alt+Shift+F1"`
+- **window.RemoveShortcut(shortcut)** - Remove registered shortcuts dynamically
+- **MenuItem.Shortcut** - Display shortcut hints in menu items
+  - Shows shortcut text like "Ctrl+S" next to menu item labels
+  - Display-only property (actual shortcuts registered via window.AddShortcut)
+  - Example: 34-keyboard-shortcuts with menu integration
+
 ### Fixed
 
 **Module Imports (`import()`):**
