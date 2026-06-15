@@ -2,7 +2,7 @@
 
 **A [Risor](https://risor.io/) scripting interface for [Fyne](https://fyne.io/) GUI applications**
 
-Fynerisor provides [Risor](https://risor.io/) script bindings for the [Fyne GUI toolkit](https://fyne.io/), allowing you to build cross-platform desktop applications using a simple scripting language.
+Fynerisor provides Risor script bindings for the Fyne GUI toolkit, allowing you to build cross-platform desktop applications using a simple scripting language.
 
 ## Features
 
