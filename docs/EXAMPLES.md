@@ -23,6 +23,7 @@ Production-ready examples demonstrating fynerisor widget and container usage.
 - [Background Tasks with go()](#background-tasks-with-go)
 - [File Operations with io module](#file-operations-with-io-module)
 - [Detecting Application Context](#detecting-application-context)
+- [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
 
@@ -907,6 +908,76 @@ let configPath = sprintf("/home/user/.%s/config.toml", app.name)
 // Feature detection
 let hasNavigation = (app.name == "goto")
 ```
+
+---
+
+## Keyboard Shortcuts
+
+Global keyboard shortcuts and menu integration.
+
+```js
+require(["v0.6"])
+
+let statusLabel = widget.NewLabel("Press Ctrl+S to save, Ctrl+Q to quit")
+
+// Register global shortcuts
+window.AddShortcut("Ctrl+S", () => {
+    window.SetStatus("Saved!")
+    statusLabel.SetText("Document saved at " + time.now().format("15:04:05"))
+})
+
+window.AddShortcut("Ctrl+Q", () => {
+    window.SetStatus("Quitting...")
+    app.Quit()
+})
+
+// Function keys
+window.AddShortcut("F5", () => {
+    window.SetStatus("Refreshed!")
+})
+
+// Alt combinations
+window.AddShortcut("Alt+Shift+N", () => {
+    window.SetStatus("New item created")
+})
+
+window.SetContent(statusLabel)
+```
+
+**Key concepts:**
+- `window.AddShortcut(shortcut, callback)` - Register global shortcuts
+- `window.RemoveShortcut(shortcut)` - Remove shortcuts
+- Shortcuts work without visible menus
+- Cross-platform modifiers: `Ctrl`/`Control`, `Alt`/`Option`, `Super`/`Cmd`/`Command`
+
+**Menu integration:**
+```js
+// Create menu items with shortcut hints
+let saveItem = fyne.NewMenuItem("Save", () => {
+    window.SetStatus("Saved from menu!")
+})
+saveItem.Shortcut = "Ctrl+S"  // Display only, register separately
+
+let quitItem = fyne.NewMenuItem("Quit", () => {
+    app.Quit()
+})
+quitItem.Shortcut = "Ctrl+Q"
+
+// Create menu
+let fileMenu = fyne.NewMenu("File", saveItem, quitItem)
+let mainMenu = fyne.NewMainMenu(fileMenu)
+window.SetMainMenu(mainMenu)
+
+// Register actual shortcuts
+window.AddShortcut("Ctrl+S", () => { window.SetStatus("Saved!") })
+window.AddShortcut("Ctrl+Q", () => { app.Quit() })
+```
+
+**Supported keys:**
+- Letters: `A-Z`
+- Numbers: `0-9`
+- Function keys: `F1-F12`
+- Special keys: `Escape`, `Tab`, `Return`, `Space`, `Backspace`, `Delete`, `Left`, `Right`, `Up`, `Down`, `Home`, `End`, `PageUp`, `PageDown`
 
 ---
 

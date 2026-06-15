@@ -1,12 +1,13 @@
 # Fynerisor
 
-**A Risor scripting interface for Fyne GUI applications**
+**A [Risor](https://risor.io/) scripting interface for [Fyne](https://fyne.io/) GUI applications**
 
-Fynerisor provides Risor script bindings for the Fyne GUI toolkit, allowing you to build cross-platform desktop applications using a simple scripting language.
+Fynerisor provides [Risor](https://risor.io/) script bindings for the [Fyne GUI toolkit](https://fyne.io/), allowing you to build cross-platform desktop applications using a simple scripting language.
 
 ## Features
 
-- 🎨 **Comprehensive Widgets** - 34 widgets covering all common UI needs
+- 🎨 **Comprehensive Widgets** - 48+ widgets covering all common UI needs
+- ⌨️ **Keyboard Shortcuts** - Global shortcuts and menu integration
 - 🌐 **HTTP, SQL, OS & More** - Built-in modules for web requests, databases, file I/O
 - 📦 **Script Imports** - Load reusable code with namespace isolation
 - 🔧 **Embeddable** - Easy integration into Go applications
@@ -31,7 +32,7 @@ Fynerisor is split into two packages:
 ### GUI Application
 
 ```js
-require(["v0.2", "@gui"])
+require(["v0.6", "@gui"])  // Optional: validate version and modules
 
 let count = 0
 let label = widget.NewLabel(sprintf("Count: %d", count))
@@ -48,7 +49,7 @@ window.SetContent(vbox)
 ### Headless Script
 
 ```js
-require(["v0.2", "@http"])
+require(["v0.6", "@http"])  // Optional: validate version and modules
 
 let response = http.get("https://api.github.com/users/octocat")
 let data = response.json()
@@ -92,74 +93,37 @@ fynerisor script.risor
 package main
 
 import (
-    "github.com/uidbz/fynerisor/core"
     "github.com/uidbz/fynerisor/gui"
+    "os"
 )
 
 func main() {
-    // Set your application version (optional)
-    // Scripts will check against this version, not fynerisor's version
-    core.SetAppVersion("1.2.3")
-    
     // Create fynerisor app with modules
     fw := gui.NewApp("My App",
-        gui.WithAppName("myapp"),
         gui.WithHTTP(),
-        gui.WithOS(),
+        gui.WithSQL(),
         gui.WithTime(),
     )
     
-    // Load and execute script
-    fw.LoadScript(`
-        // require(["v1.2"]) now checks YOUR app version (1.2.3)
-        let btn = widget.NewButton("Hello", () => {
-            window.SetStatus("Clicked!")
-        })
-        window.SetContent(btn)
-    `)
+    // Load script from file
+    script, _ := os.ReadFile("app.risor")
+    fw.LoadScript(string(script))
     fw.Execute()
     fw.ShowAndRun()
 }
 ```
 
-### Application Versioning
-
-When embedding fynerisor, you can set your application's version so scripts check compatibility against **your app**, not fynerisor:
-
-```go
-import (
-    "github.com/uidbz/fynerisor/core"
-    "github.com/uidbz/fynerisor/gui"
-)
-
-const AppVersion = "2.5.1"
-
-func main() {
-    // Scripts will now check against YOUR version
-    core.SetAppVersion(AppVersion)
-    
-    w := gui.NewApp("My App v" + AppVersion)
-    // ...
-}
-```
-
-In scripts:
+**app.risor:**
 ```js
-// Checks YOUR app version (2.5.1), not fynerisor (0.4.0)
-require(["v2.5"])      // Minimum version: 2.5.0+
-require(["==v2.5.1"])  // Exact version: 2.5.1 only
+require(["v0.6", "@http"])
 
-// Access app version
-print(app.version)  // "2.5.1"
+let btn = widget.NewButton("Fetch Data", () => {
+    let resp = http.get("https://api.github.com/zen")
+    window.SetStatus(resp.text())
+})
+
+window.SetContent(btn)
 ```
-
-**Benefits:**
-- Independent versioning from fynerisor
-- Scripts can require specific app versions
-- Manage API changes and breaking changes
-- Clear error messages for version mismatches
-
-See [examples/27-app-versioning](examples/27-app-versioning) for a complete example.
 
 ### Headless Context (Static Compilation)
 
@@ -182,7 +146,7 @@ func main() {
     
     // Execute script
     result, err := ctx.Eval(`
-        require(["@http"])
+        require(["v0.6", "@http"])
         let resp = http.get("https://httpbin.org/get")
         return resp.status
     `)
@@ -194,20 +158,36 @@ func main() {
 }
 ```
 
-## Available Modules
+### Custom Globals
 
-Enable modules via `With*()` options and use `require(["@module"])` in scripts:
+Inject custom Go objects or functions into scripts:
 
-| Module | Option | Description |
-|--------|--------|-------------|
-| `@gui` | N/A | GUI functionality (automatic in `gui.Window`, not available in `core.Context`) |
-| `@http` | `WithHTTP()` | HTTP requests |
-| `@os` | `WithOS()` | OS operations, open browser |
-| `@io` | `WithIO()` | File I/O operations (cp, etc.) |
-| `@sql` | `WithSQL()` | Database connectivity |
-| `@strings` | `WithStrings()` | String manipulation |
-| `@filepath` | `WithFilepath()` | Path operations |
-| `@time` | `WithTime()` | Time and date functions |
+```go
+import (
+    "github.com/uidbz/fynerisor/gui"
+)
+
+func main() {
+    myAPI := map[string]any{
+        "fetchUser": func(id int) string {
+            return fmt.Sprintf("User %d", id)
+        },
+    }
+    
+    fw := gui.NewApp("My App",
+        gui.WithGlobal("api", myAPI),
+        gui.WithHTTP(),
+    )
+    
+    fw.LoadScript(`
+        require(["v0.6"])
+        let user = api.fetchUser(123)
+        window.SetContent(widget.NewLabel(user))
+    `)
+    fw.Execute()
+    fw.ShowAndRun()
+}
+```
 
 ## Configuration Options
 
@@ -231,16 +211,33 @@ Customize fynerisor behavior via `With*()` options when creating `gui.Window` or
 
 **Example:**
 ```go
-fw := fynerisor.NewApp("My App",
-    fynerisor.WithAppName("myapp"),
-    fynerisor.WithStatusCallback(func(status string) {
+fw := gui.NewApp("My App",
+    gui.WithAppName("myapp"),
+    gui.WithStatusCallback(func(status string) {
         log.Println("Status:", status)
     }),
-    fynerisor.WithHTTP(),
-    fynerisor.WithSQL(),
-    fynerisor.WithTime(),
+    gui.WithHTTP(),
+    gui.WithSQL(),
+    gui.WithTime(),
 )
 ```
+
+## Available Modules
+
+Enable modules via `With*()` options. Scripts can optionally use `require(["@module"])` to declare which modules they expect to be available:
+
+| Module | Option | Description |
+|--------|--------|-------------|
+| `@gui` | N/A | GUI functionality (automatic in `gui.Window`, not available in `core.Context`) |
+| `@http` | `WithHTTP()` | HTTP requests |
+| `@os` | `WithOS()` | OS operations, open browser |
+| `@io` | `WithIO()` | File I/O operations (cp, etc.) |
+| `@sql` | `WithSQL()` | Database connectivity |
+| `@strings` | `WithStrings()` | String manipulation |
+| `@filepath` | `WithFilepath()` | Path operations |
+| `@time` | `WithTime()` | Time and date functions |
+
+**Note:** The `require()` function is **optional**. It's a validation mechanism for scripts to declare their dependencies and minimum version requirements. If a script doesn't call `require()`, it will simply use whatever modules the embedding application has enabled. Use `require()` when you want scripts to fail fast with clear error messages if expected modules or versions are missing.
 
 ## Global Objects
 
@@ -249,11 +246,14 @@ fw := fynerisor.NewApp("My App",
 Core window functionality (GUI mode only):
 
 ```js
-window.SetContent(widget)  // Update window content
-window.SetStatus(text)      // Set status message
-window.OnDropped(callback)  // Handle file drops
-window.Do(callback)         // Queue GUI update from background thread
-window.DroppedPaths         // List of dropped file paths
+window.SetContent(widget)              // Update window content
+window.SetStatus(text)                 // Set status message
+window.AddShortcut("Ctrl+S", callback) // Register keyboard shortcut
+window.RemoveShortcut("Ctrl+S")        // Remove keyboard shortcut
+window.SetMainMenu(mainMenu)           // Set main menu bar (macOS only)
+window.OnDropped(callback)             // Handle file drops
+window.Do(callback)                    // Queue GUI update from background thread
+window.DroppedPaths                    // List of dropped file paths
 ```
 
 ### app
@@ -261,7 +261,8 @@ window.DroppedPaths         // List of dropped file paths
 Application metadata:
 
 ```js
-app.name  // Application name (set via WithAppName)
+app.name     // Application name (set via WithAppName)
+app.version  // Application version (set via core.SetAppVersion, see examples/27-app-versioning)
 ```
 
 ### widget
@@ -359,6 +360,53 @@ go(() => {
 })
 ```
 
+## Keyboard Shortcuts
+
+Register global keyboard shortcuts and integrate with menus:
+
+```js
+require(["v0.6"])
+
+// Global shortcuts (work without menus)
+window.AddShortcut("Ctrl+S", () => {
+    window.SetStatus("Saved!")
+})
+
+window.AddShortcut("Ctrl+Q", () => {
+    app.Quit()
+})
+
+// Function keys
+window.AddShortcut("F5", () => {
+    window.SetStatus("Refreshed!")
+})
+
+// Cross-platform modifiers: Ctrl/Control, Alt/Option, Super/Cmd/Command
+window.AddShortcut("Alt+Shift+N", () => {
+    window.SetStatus("New item")
+})
+```
+
+**Menu Integration:**
+```js
+// Create menu items with shortcut display
+let saveItem = fyne.NewMenuItem("Save", () => {
+    window.SetStatus("Saved from menu!")
+})
+saveItem.Shortcut = "Ctrl+S"  // Display only
+
+let fileMenu = fyne.NewMenu("File", saveItem)
+let mainMenu = fyne.NewMainMenu(fileMenu)
+window.SetMainMenu(mainMenu)
+
+// Register actual shortcut separately
+window.AddShortcut("Ctrl+S", () => {
+    window.SetStatus("Saved!")
+})
+```
+
+See [example 34-keyboard-shortcuts](examples/34-keyboard-shortcuts/) for complete examples.
+
 ## Script Imports
 
 Import reusable code with namespace isolation:
@@ -419,10 +467,12 @@ Eventually I dream of making an other browser app, that incorporates the origina
 
 ## Documentation
 
-- [Changelog](docs/CHANGELOG.md) - Version history
-- [Examples](docs/EXAMPLES.md) - Complete usage examples
+- [Examples](examples/README.md) - 33 working examples with detailed READMEs
+- [Examples Guide](docs/EXAMPLES.md) - Usage patterns and concepts
+- [Changelog](CHANGELOG.md) - Version history
 - [Concurrency Guide](docs/CONCURRENCY.md) - Threading patterns
 - [Widget Status](docs/WIDGET_STATUS.md) - Supported Fyne widgets
+- [App Versioning](examples/27-app-versioning) - Custom application versioning
 
 ## Requirements
 

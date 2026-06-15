@@ -23,50 +23,41 @@ Before running the examples, ensure you have:
 
 ## Example List
 
-### 01-hello-world
+Each example has its own README with detailed explanation. Browse the directories to explore:
 
-**Difficulty:** Beginner  
-**Concepts:** Basic setup, file-based scripts, label widget
-
-The simplest possible fynerisor application. Loads a Risor script from a file and displays "Hello World" in a label.
-
-**Learn:** How to create a window, load a script, and display a simple widget.
-
-### 02-button-callback
-
-**Difficulty:** Beginner  
-**Concepts:** Interactive widgets, callbacks, state management, VBox layout
-
-Interactive application with buttons that respond to clicks and update the UI.
-
-**Learn:** How to handle button clicks, maintain state in callbacks, and update widget properties dynamically.
-
-### 03-form-input
-
-**Difficulty:** Intermediate  
-**Concepts:** Entry widgets, forms, validation, HBox layout
-
-Form application with text input fields, validation logic, and error handling.
-
-**Learn:** How to read user input, validate data, display error messages, and work with multiple widgets in a form.
-
-### 04-table-display
-
-**Difficulty:** Advanced  
-**Concepts:** Table widget, pagination, data callbacks, Go-to-Risor data passing
-
-Table widget displaying paginated data with custom data source callbacks.
-
-**Learn:** How to create tables, implement pagination, handle row clicks, and pass data functions from Go to Risor scripts.
-
-### 05-progress-widgets
-
-**Difficulty:** Beginner  
-**Concepts:** Progress bars, sliders, activity indicators, separators, state management
-
-Demonstrates progress indicators, sliders, and visual separators with interactive controls.
-
-**Learn:** How to use ProgressBar, ProgressBarInfinite, Slider, Activity, and Separator widgets. Shows linking widgets and managing toggle state.
+- **01-hello-world** - Basic label widget
+- **02-button-callback** - Interactive buttons with callbacks
+- **03-form-input** - Form with validation
+- **04-table-display** - Paginated table
+- **05-progress-widgets** - Progress bars, sliders, activity indicators
+- **06-icon-hyperlink-card** - Icon, hyperlink, and card widgets
+- **07-radiogroup** - Radio button groups
+- **08-accordion** - Expandable accordion widget
+- **09-toolbar** - Toolbar with actions
+- **10-calendar** - Calendar date picker
+- **11-list** - Virtualized scrolling list
+- **12-tree** - Hierarchical tree widget
+- **13-http-fetch** - HTTP requests and JSON
+- **14-module-imports** - Module-scoped imports with namespaces
+- **15-sql-test** - Database connectivity
+- **16-context-builder** - Headless context (core package)
+- **17-gridwrap** - Grid layout
+- **18-textgrid** - Code display with TextGrid
+- **19-richtext** - Markdown formatting
+- **20-button-importance** - Button styling with importance levels
+- **21-form-validation** - Entry validation
+- **22-popup** - Popup menus
+- **23-menu** - Menu and menu items
+- **24-constants** - Using Fyne constants
+- **25-data-binding** - Reactive UI with data binding
+- **26-data-binding-types** - All binding types (String, Bool, Int, Float)
+- **27-app-versioning** - Application version checking
+- **28-custom-struct** - Expose custom Go types
+- **30-dialogs** - File, confirm, color picker dialogs
+- **31-apptabs** - Tabbed interface
+- **32-table-widgets** - Widget mode for table cells
+- **33-image-gallery** - Images in table cells
+- **34-keyboard-shortcuts** - Global shortcuts and menu integration
 
 ## Example Structure
 
@@ -89,13 +80,13 @@ All examples follow this pattern:
 package main
 
 import (
-    "github.com/uidbz/fynerisor"
+    "github.com/uidbz/fynerisor/gui"
     "os"
 )
 
 func main() {
     // 1. Create fynerisor app
-    fw := fynerisor.NewApp("Title")
+    fw := gui.NewApp("Title")
     
     // 2. Load and execute script
     script, _ := os.ReadFile("script.risor")
@@ -127,11 +118,19 @@ window.SetContent(layout)
 
 ## Global Objects Available in Scripts
 
-- **window**: Window control (`SetContent`, `OnDropped`, `CaptureStdout`)
+- **window**: Window control (`SetContent`, `SetStatus`, `AddShortcut`, `RemoveShortcut`, `SetMainMenu`, `OnDropped`, `CaptureStdout`)
 - **widget**: Widget factory (`NewButton`, `NewLabel`, `NewEntry`, `NewTable`, etc.)
-- **container**: Layout factory (`NewVBox`, `NewHBox`, `NewBorder`, `NewSplit`, `NewScroll`)
-- **canvas**: Canvas objects (`NewLine`, `NewImageFromURI`)
-- **chart**: Chart factory (`NewBarChart`)
+- **container**: Layout factory (`NewVBox`, `NewHBox`, `NewBorder`, `NewSplit`, `NewScroll`, `NewGrid`, `NewStack`)
+- **canvas**: Canvas objects (`NewLine`, `NewImageFromURI`, `NewRectangle`, `NewCircle`, `NewText`)
+- **chart**: Chart factory (`NewBarChart`, `NewLineChart`, `NewPieChart`)
+- **dialog**: Dialog functions (`ShowFileOpen`, `ShowFileSave`, `ShowConfirm`, `ShowColorPicker`, `ShowForm`, `ShowCustom`)
+- **binding**: Data binding factory (`NewString`, `NewBool`, `NewInt`, `NewFloat`)
+- **constants**: Fyne constants (`ImportanceHigh`, `ImportanceLow`, etc.)
+- **fyne**: Fyne utilities (`NewMenu`, `NewMenuItem`, `NewMainMenu`, `NewSize`, `NewPos`)
+- **app**: Application metadata (`app.name`, `app.version`)
+- **print**: Output function
+- **require**: Version and module validation
+- **import**: Module imports with namespace isolation
 
 ## Tips
 
@@ -149,8 +148,8 @@ No recompilation needed when modifying scripts!
 Check the console output for error messages. The status callback (when provided) will show script execution status:
 
 ```go
-fw := fynerisor.NewApp("My App",
-    fynerisor.WithStatusCallback(func(status string) {
+fw := gui.NewApp("My App",
+    gui.WithStatusCallback(func(status string) {
         fmt.Printf("Status: %s\n", status)
     }),
 )
@@ -158,25 +157,30 @@ fw := fynerisor.NewApp("My App",
 
 ### Custom Data
 
-Pass custom Go functions to Risor scripts using `WithRisorOptions`:
+Pass custom Go data or functions to Risor scripts:
 
 ```go
-import "github.com/deepnoodle-ai/risor/v2"
+import (
+    "github.com/deepnoodle-ai/risor/v2"
+    "github.com/uidbz/fynerisor/gui"
+)
 
-customFuncs := risor.WithEnv(map[string]any{
-    "myModule": map[string]any{
-        "doSomething": func(arg string) string {
-            return "Result: " + arg
-        },
-    },
+// Named global (accessible in scripts)
+fw := gui.NewApp("My App",
+    gui.WithGlobal("myapi", myAPIObject),
+)
+
+// Or use Risor options for advanced VM configuration
+customOpts := risor.WithEnv(map[string]any{
+    "myModule": myModuleObject,
 })
 
-fw := fynerisor.NewApp("My App",
-    fynerisor.WithRisorOptions(customFuncs),
+fw := gui.NewApp("My App",
+    gui.WithRisorOptions(customOpts),
 )
 ```
 
-Then in Risor: `myModule.doSomething("hello")`
+Then in Risor: `myapi.someMethod()` or `myModule.doSomething("hello")`
 
 ## Next Steps
 

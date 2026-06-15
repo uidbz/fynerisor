@@ -73,14 +73,20 @@ fynerisor enables building cross-platform desktop applications using Risor scrip
 
 ## Version
 
-**Current Version**: 0.2.0  
-**Risor Compatibility**: v2.x  
+**Current Version**: 0.6.0  
+**Risor Compatibility**: v2.1+ (arrow functions required)  
 **Fyne Compatibility**: v2.7+
 
-### What's New in v0.2.0
+### What's New in v0.6.0
 
-- **Risor v2 Migration**: Full migration to Risor v2 with arrow function syntax
+- **Keyboard Shortcuts**: Global shortcuts with `window.AddShortcut("Ctrl+S", callback)` and menu integration via `MenuItem.Shortcut`
+- **48+ Widget Bindings**: Complete widget coverage across all priority levels
+- **Data Binding System**: Reactive UI with String, Bool, Int, and Float bindings
+- **Dialog Support**: File pickers, confirmations, color pickers, forms, and custom dialogs
+- **Module-Scoped Imports**: Namespace isolation with `import()` function
 - **SQL Module**: Database connectivity with MySQL, PostgreSQL, SQLite, and SQL Server support
+- **HTTP Module**: REST API calls with JSON parsing
+- **Risor v2 Migration**: Full migration to Risor v2 with arrow function syntax
 - **Advanced Widgets**: Tree and List widgets for hierarchical and scrolling data
 - **Critical Bug Fixes**: Fixed race condition in widget callbacks (see CONCURRENCY.md)
 - **CLI Enhancements**: Error messages now display without --verbose flag
@@ -279,12 +285,19 @@ See [example 16-context-builder](examples/16-context-builder) for complete usage
 
 Risor scripts have access to these global factory objects:
 
-- **window**: Window control (`SetContent`, `OnDropped`, `CaptureStdout`)
+- **window**: Window control (`SetContent`, `SetStatus`, `AddShortcut`, `RemoveShortcut`, `SetMainMenu`, `OnDropped`, `CaptureStdout`)
 - **widget**: Widget factory (`NewButton`, `NewLabel`, `NewEntry`, `NewTable`, etc.)
-- **container**: Layout factory (`NewVBox`, `NewHBox`, `NewBorder`, `NewSplit`, `NewScroll`)
-- **canvas**: Canvas objects (`NewLine`, `NewImageFromURI`)
-- **chart**: Chart factory (`NewBarChart`)
-- **require**: Version enforcement function (`require("v0.2")` enforces minimum version)
+- **container**: Layout factory (`NewVBox`, `NewHBox`, `NewBorder`, `NewSplit`, `NewScroll`, `NewGrid`, `NewStack`)
+- **canvas**: Canvas objects (`NewLine`, `NewImageFromURI`, `NewRectangle`, `NewCircle`, `NewText`)
+- **chart**: Chart factory (`NewBarChart`, `NewLineChart`, `NewPieChart`)
+- **dialog**: Dialog functions (`ShowFileOpen`, `ShowFileSave`, `ShowConfirm`, `ShowColorPicker`, `ShowForm`, `ShowCustom`)
+- **binding**: Data binding factory (`NewString`, `NewBool`, `NewInt`, `NewFloat`)
+- **constants**: Fyne constants (`ImportanceHigh`, `ImportanceLow`, etc.)
+- **fyne**: Fyne utilities (`NewMenu`, `NewMenuItem`, `NewMainMenu`, `NewSize`, `NewPos`)
+- **app**: Application metadata (`app.name`, `app.version`)
+- **print**: Output function
+- **require**: Version and module validation (`require(["v0.6", "@sql", "@http"])`)
+- **import**: Module imports with namespace isolation (`import("math", "mymath")`)
 
 ## Widgets
 
@@ -704,6 +717,44 @@ Handle file drag-and-drop events.
 window.OnDropped((paths) => {
     print("Dropped files:", paths)
 })
+```
+
+### AddShortcut
+Register a global keyboard shortcut.
+
+```js
+window.AddShortcut("Ctrl+S", () => {
+    print("Save triggered!")
+})
+
+// Cross-platform modifiers: Ctrl/Control, Alt/Option, Super/Cmd/Command
+window.AddShortcut("Alt+Shift+N", () => {
+    print("New item")
+})
+
+// Function keys
+window.AddShortcut("F5", () => {
+    print("Refresh")
+})
+```
+
+### RemoveShortcut
+Remove a previously registered shortcut.
+
+```js
+window.RemoveShortcut("Ctrl+S")
+```
+
+### SetMainMenu
+Set the window's main menu bar (macOS only, ignored on other platforms).
+
+```js
+let fileMenu = fyne.NewMenu("File",
+    fyne.NewMenuItem("Save", saveCallback),
+    fyne.NewMenuItem("Quit", quitCallback)
+)
+let mainMenu = fyne.NewMainMenu(fileMenu)
+window.SetMainMenu(mainMenu)
 ```
 
 ### CaptureStdout
