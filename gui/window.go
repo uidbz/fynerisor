@@ -670,27 +670,46 @@ func (w *Window) captureStdout() {
 	// Redirect os.Stdout to the pipe writer
 	os.Stdout = writer
 
-	// Channel to receive output
-	outputChan := make(chan string)
+	// Unbounded, mutex-guarded buffer between the pipe reader and the GUI
+	// dispatcher. The pipe MUST always be drained: if the reader ever blocks
+	// (e.g. the GUI thread is busy and a bounded channel fills), the OS pipe
+	// buffer fills and any fmt.Println/print on the redirected stdout blocks
+	// the calling goroutine, deadlocking the script. Buffering here decouples
+	// pipe draining from GUI processing so print() never blocks.
+	var (
+		mu      sync.Mutex
+		pending []string
+		notify  = make(chan struct{}, 1)
+	)
 
-	// Goroutine to read from the pipe
+	// Goroutine to read from the pipe; never blocks on the GUI.
 	go func() {
 		scanner := bufio.NewScanner(reader)
 		for scanner.Scan() {
-			line := scanner.Text()
-			// Send to channel
-			outputChan <- line
-			// Also write to original stdout
-			// fmt.Fprintln(originalStdout, line)
+			mu.Lock()
+			pending = append(pending, scanner.Text())
+			mu.Unlock()
+			select {
+			case notify <- struct{}{}:
+			default:
+			}
 		}
-		fmt.Println("Channel closing")
-		close(outputChan)
 	}()
 
-	// Another goroutine to consume from the channel
+	// Dispatcher: forwards buffered lines to the GUI as fast as it can drain.
 	go func() {
-		for msg := range outputChan {
-			w.functionCalls <- func() { fyne.Do(func() { w.onNewStdout(msg) }) }
+		for range notify {
+			for {
+				mu.Lock()
+				if len(pending) == 0 {
+					mu.Unlock()
+					break
+				}
+				msg := pending[0]
+				pending = pending[1:]
+				mu.Unlock()
+				w.functionCalls <- func() { fyne.Do(func() { w.onNewStdout(msg) }) }
+			}
 		}
 	}()
 }
