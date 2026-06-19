@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/storage"
@@ -131,7 +132,7 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() { obj.instance.Refresh() })
+			guithread.Do(func() { obj.instance.Refresh() })
 			return object.Nil, nil
 		}), true
 
@@ -148,7 +149,7 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return nil, err
 			}
-			fyne.Do(func() { obj.instance.SetColumnWidth(int(column), float32(width)) })
+			guithread.Do(func() { obj.instance.SetColumnWidth(int(column), float32(width)) })
 			return object.Nil, nil
 		}), true
 
@@ -250,7 +251,7 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 				return widget.NewLabel("")
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.GetFlexTable().SetCreateCell(createFunc)
 			})
 			return object.Nil, nil
@@ -283,7 +284,7 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 				}
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.GetFlexTable().SetUpdateCell(updateFunc)
 			})
 			return object.Nil, nil
@@ -294,7 +295,7 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Instance.Hide()
 			})
 			return object.Nil, nil
@@ -304,7 +305,7 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Instance.Show()
 			})
 			return object.Nil, nil
@@ -458,7 +459,7 @@ func (g *ImageCellWrapper) GetAttr(name string) (object.Object, bool) {
 				return object.NewError(err), nil
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				// Update the existing image instead of creating a new one
 				newImg := canvas.NewImageFromURI(uri)
 				newImg.FillMode = canvas.ImageFillOriginal

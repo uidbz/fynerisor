@@ -6,6 +6,7 @@ import (
 	"image/color"
 
 	"fyne.io/fyne/v2"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 
@@ -90,7 +91,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return object.Errorf("type error: message must be string, got %s", args[1].Type()), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				dialog.ShowInformation(title, message, d.w.FyneWindow)
 			})
 			return object.Nil, nil
@@ -105,7 +106,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return object.Errorf("type error: message must be string, got %s", args[0].Type()), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				dialog.ShowError(fmt.Errorf("%s", message), d.w.FyneWindow)
 			})
 			return object.Nil, nil
@@ -140,7 +141,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 				})
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				dialog.ShowConfirm(title, message, callback, d.w.FyneWindow)
 			})
 			return object.Nil, nil
@@ -178,7 +179,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 				})
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				dialog.ShowFileOpen(callback, d.w.FyneWindow)
 			})
 			return object.Nil, nil
@@ -216,7 +217,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 				})
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				dialog.ShowFileSave(callback, d.w.FyneWindow)
 			})
 			return object.Nil, nil
@@ -253,7 +254,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 				})
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				dialog.ShowFolderOpen(callback, d.w.FyneWindow)
 			})
 			return object.Nil, nil
@@ -279,7 +280,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("type error: content must be a widget or canvas object"), nil
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				dialog.ShowCustom(title, dismiss, content.CanvasObject(), d.w.FyneWindow)
 			})
 			return object.Nil, nil
@@ -325,7 +326,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 				})
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				dialog.ShowCustomConfirm(title, confirm, dismiss, content.CanvasObject(), callback, d.w.FyneWindow)
 			})
 			return object.Nil, nil
@@ -369,7 +370,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 				})
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				dialog.ShowColorPicker(title, message, callback, d.w.FyneWindow)
 			})
 			return object.Nil, nil
@@ -428,7 +429,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 				})
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				dialog.ShowForm(title, confirm, dismiss, formItems, callback, d.w.FyneWindow)
 			})
 			return object.Nil, nil

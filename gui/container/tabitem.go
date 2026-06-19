@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/container"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -60,7 +61,7 @@ func (obj *TabItem) SetAttr(name string, value object.Object) error {
 		if err != nil {
 			return fmt.Errorf("type error: %v", err)
 		}
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.Text = text
 		})
 		return nil

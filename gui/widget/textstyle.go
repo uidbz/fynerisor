@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -70,7 +71,7 @@ func (obj *TextStyle) SetAttr(name string, value object.Object) error {
 		}
 		obj.style.Bold = bold
 		if obj.widget != nil {
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.widget.Refresh()
 			})
 		}
@@ -82,7 +83,7 @@ func (obj *TextStyle) SetAttr(name string, value object.Object) error {
 		}
 		obj.style.Italic = italic
 		if obj.widget != nil {
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.widget.Refresh()
 			})
 		}
@@ -94,7 +95,7 @@ func (obj *TextStyle) SetAttr(name string, value object.Object) error {
 		}
 		obj.style.Monospace = monospace
 		if obj.widget != nil {
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.widget.Refresh()
 			})
 		}
@@ -106,7 +107,7 @@ func (obj *TextStyle) SetAttr(name string, value object.Object) error {
 		}
 		obj.style.TabWidth = int(tabWidth)
 		if obj.widget != nil {
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.widget.Refresh()
 			})
 		}

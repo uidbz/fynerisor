@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -140,7 +141,7 @@ func (obj *PopUp) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Show()
 			})
 
@@ -153,7 +154,7 @@ func (obj *PopUp) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Hide()
 			})
 
@@ -176,7 +177,7 @@ func (obj *PopUp) GetAttr(name string) (object.Object, bool) {
 				return nil, err
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.ShowAtPosition(fyne.NewPos(float32(x), float32(y)))
 			})
 
@@ -199,7 +200,7 @@ func (obj *PopUp) GetAttr(name string) (object.Object, bool) {
 				return nil, err
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Move(fyne.NewPos(float32(x), float32(y)))
 			})
 
@@ -222,7 +223,7 @@ func (obj *PopUp) GetAttr(name string) (object.Object, bool) {
 				return nil, err
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Resize(fyne.NewSize(float32(w), float32(h)))
 			})
 

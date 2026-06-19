@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -119,7 +120,7 @@ func (obj *RichText) SetAttr(name string, value object.Object) error {
 		if err != nil {
 			return fmt.Errorf("type error: %v", err)
 		}
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.Wrapping = fyne.TextWrap(i)
 			obj.instance.Refresh()
 		})
@@ -130,7 +131,7 @@ func (obj *RichText) SetAttr(name string, value object.Object) error {
 		if err != nil {
 			return fmt.Errorf("type error: %v", err)
 		}
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.Truncation = fyne.TextTruncation(i)
 			obj.instance.Refresh()
 		})
@@ -141,7 +142,7 @@ func (obj *RichText) SetAttr(name string, value object.Object) error {
 		if err != nil {
 			return fmt.Errorf("type error: %v", err)
 		}
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.Scroll = fyne.ScrollDirection(i)
 			obj.instance.Refresh()
 		})
@@ -170,7 +171,7 @@ func (obj *RichText) GetAttr(name string) (object.Object, bool) {
 				return nil, err
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.ParseMarkdown(text)
 			})
 
@@ -183,7 +184,7 @@ func (obj *RichText) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Refresh()
 			})
 
@@ -199,7 +200,7 @@ func (obj *RichText) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Hide()
 			})
 			return object.Nil, nil
@@ -209,7 +210,7 @@ func (obj *RichText) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Show()
 			})
 			return object.Nil, nil

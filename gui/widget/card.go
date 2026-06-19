@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -83,7 +84,7 @@ func (obj *Card) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return nil, err
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.SetTitle(title)
 			})
 			return object.Nil, nil
@@ -97,7 +98,7 @@ func (obj *Card) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return nil, err
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.SetSubTitle(subtitle)
 			})
 			return object.Nil, nil
@@ -111,7 +112,7 @@ func (obj *Card) GetAttr(name string) (object.Object, bool) {
 			if !ok {
 				return object.Errorf("argument error: expected CanvasObject, got %s", args[0].Type()), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.SetContent(contentObj.CanvasObject())
 			})
 			return object.Nil, nil
@@ -121,7 +122,7 @@ func (obj *Card) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Hide()
 			})
 			return object.Nil, nil
@@ -131,7 +132,7 @@ func (obj *Card) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Show()
 			})
 			return object.Nil, nil
@@ -147,7 +148,7 @@ func (obj *Card) SetAttr(name string, value object.Object) error {
 		if err != nil {
 			return fmt.Errorf("type error: %v", err)
 		}
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.SetTitle(title)
 		})
 		return nil
@@ -156,7 +157,7 @@ func (obj *Card) SetAttr(name string, value object.Object) error {
 		if err != nil {
 			return fmt.Errorf("type error: %v", err)
 		}
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.SetSubTitle(subtitle)
 		})
 		return nil

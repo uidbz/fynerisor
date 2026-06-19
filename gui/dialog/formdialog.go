@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 
@@ -65,7 +66,7 @@ func (obj *FormDialog) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Show()
 			})
 			return object.Nil, nil
@@ -75,7 +76,7 @@ func (obj *FormDialog) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Hide()
 			})
 			return object.Nil, nil
@@ -85,7 +86,7 @@ func (obj *FormDialog) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Refresh()
 			})
 			return object.Nil, nil
@@ -99,7 +100,7 @@ func (obj *FormDialog) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return object.Errorf("type error: %v", err), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.SetDismissText(text)
 			})
 			return object.Nil, nil
@@ -109,7 +110,7 @@ func (obj *FormDialog) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Submit()
 			})
 			return object.Nil, nil

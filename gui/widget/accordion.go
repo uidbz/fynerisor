@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -70,7 +71,7 @@ func (obj *Accordion) SetAttr(name string, value object.Object) error {
 		if err != nil {
 			return err
 		}
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.MultiOpen = multiOpen
 			obj.instance.Refresh()
 		})
@@ -94,7 +95,7 @@ func (obj *Accordion) GetAttr(name string) (object.Object, bool) {
 			if !ok {
 				return object.Errorf("argument error: expected AccordionItem, got %s", args[0].Type()), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Append(item)
 			})
 			return object.Nil, nil
@@ -109,7 +110,7 @@ func (obj *Accordion) GetAttr(name string) (object.Object, bool) {
 			if !ok {
 				return object.Errorf("argument error: expected AccordionItem, got %s", args[0].Type()), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Remove(item)
 			})
 			return object.Nil, nil
@@ -124,7 +125,7 @@ func (obj *Accordion) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return nil, err
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.RemoveIndex(int(index))
 			})
 			return object.Nil, nil
@@ -139,7 +140,7 @@ func (obj *Accordion) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return nil, err
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Open(int(index))
 			})
 			return object.Nil, nil
@@ -154,7 +155,7 @@ func (obj *Accordion) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return nil, err
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Close(int(index))
 			})
 			return object.Nil, nil
@@ -165,7 +166,7 @@ func (obj *Accordion) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.CloseAll()
 			})
 			return object.Nil, nil
@@ -176,7 +177,7 @@ func (obj *Accordion) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Refresh()
 			})
 			return object.Nil, nil
@@ -186,7 +187,7 @@ func (obj *Accordion) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Hide()
 			})
 			return object.Nil, nil
@@ -196,7 +197,7 @@ func (obj *Accordion) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Show()
 			})
 			return object.Nil, nil

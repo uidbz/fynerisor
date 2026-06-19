@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -85,7 +86,7 @@ func (obj *List) SetAttr(name string, value object.Object) error {
 			return fmt.Errorf("type error: %v", err)
 		}
 		obj.instance.HideSeparators = b
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.Refresh()
 		})
 		return nil
@@ -225,7 +226,7 @@ func (obj *List) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Refresh()
 			})
 
@@ -243,7 +244,7 @@ func (obj *List) GetAttr(name string) (object.Object, bool) {
 				return nil, err
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Select(widget.ListItemID(id))
 			})
 
@@ -261,7 +262,7 @@ func (obj *List) GetAttr(name string) (object.Object, bool) {
 				return nil, err
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Unselect(widget.ListItemID(id))
 			})
 
@@ -274,7 +275,7 @@ func (obj *List) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.UnselectAll()
 			})
 
@@ -292,7 +293,7 @@ func (obj *List) GetAttr(name string) (object.Object, bool) {
 				return nil, err
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.ScrollTo(widget.ListItemID(id))
 			})
 
@@ -303,7 +304,7 @@ func (obj *List) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Hide()
 			})
 			return object.Nil, nil
@@ -313,7 +314,7 @@ func (obj *List) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Show()
 			})
 			return object.Nil, nil

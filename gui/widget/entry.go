@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
 
@@ -67,7 +68,7 @@ func (obj *Entry) SetAttr(name string, value object.Object) error {
 		if err != nil {
 			return fmt.Errorf("type error: %v", err)
 		}
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.SetText(text)
 		})
 		return nil
@@ -78,7 +79,7 @@ func (obj *Entry) SetAttr(name string, value object.Object) error {
 			return fmt.Errorf("type error: %v", err)
 		}
 		obj.instance.PlaceHolder = text
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.Refresh()
 		})
 		return nil
@@ -88,7 +89,7 @@ func (obj *Entry) SetAttr(name string, value object.Object) error {
 		if err != nil {
 			return fmt.Errorf("type error: %v", err)
 		}
-		fyne.Do(func() {
+		guithread.Do(func() {
 			if b {
 				obj.instance.Disable()
 			} else {
@@ -122,7 +123,7 @@ func (obj *Entry) GetAttr(name string) (object.Object, bool) {
 				return nil, err
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.SetText(val)
 			})
 
@@ -141,7 +142,7 @@ func (obj *Entry) GetAttr(name string) (object.Object, bool) {
 			}
 
 			obj.instance.PlaceHolder = val
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Refresh()
 			})
 
@@ -254,7 +255,7 @@ func (obj *Entry) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Disable()
 			})
 			return object.Nil, nil
@@ -265,7 +266,7 @@ func (obj *Entry) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Enable()
 			})
 			return object.Nil, nil
@@ -275,7 +276,7 @@ func (obj *Entry) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Hide()
 			})
 			return object.Nil, nil
@@ -285,7 +286,7 @@ func (obj *Entry) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Show()
 			})
 			return object.Nil, nil

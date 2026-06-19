@@ -11,6 +11,7 @@ import (
 	"fyne.io/fyne/v2/container"
 
 	"fyne.io/fyne/v2"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/storage"
 
@@ -86,7 +87,7 @@ func (g *Image) GetAttr(name string) (object.Object, bool) {
 				return object.NewError(err), nil
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				g.instance = canvas.NewImageFromURI(uri)
 				g.instance.FillMode = canvas.ImageFillOriginal
 				g.container.Objects = []fyne.CanvasObject{g.instance}

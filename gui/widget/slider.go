@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
 
@@ -126,7 +127,7 @@ func (obj *Slider) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Hide()
 			})
 			return object.Nil, nil
@@ -136,7 +137,7 @@ func (obj *Slider) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Show()
 			})
 			return object.Nil, nil
@@ -152,7 +153,7 @@ func (obj *Slider) SetAttr(name string, value object.Object) error {
 		if err != nil {
 			return fmt.Errorf("type error: %v", err)
 		}
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.SetValue(val)
 		})
 		return nil
@@ -162,7 +163,7 @@ func (obj *Slider) SetAttr(name string, value object.Object) error {
 			return fmt.Errorf("type error: %v", err)
 		}
 		obj.instance.Min = val
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.Refresh()
 		})
 		return nil
@@ -172,7 +173,7 @@ func (obj *Slider) SetAttr(name string, value object.Object) error {
 			return fmt.Errorf("type error: %v", err)
 		}
 		obj.instance.Max = val
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.Refresh()
 		})
 		return nil

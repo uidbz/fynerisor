@@ -19,6 +19,7 @@ import (
 	"github.com/uidbz/fynerisor/core"
 
 	"fyne.io/fyne/v2"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 )
@@ -62,6 +63,7 @@ const WindowType object.Type = "window"
 //	w := a.NewWindow("My App")
 //	fw := fynerisor.NewWindow(w, fynerisor.WithHTTP())
 func NewApp(title string, opts ...Option) *Window {
+	guithread.SetMain()
 	a := app.New()
 	w := a.NewWindow(title)
 	return NewWindow(w, opts...)
@@ -130,6 +132,7 @@ type Window struct {
 //	fyneWindow.Execute()
 //	fyneWindow.ShowAndRun()
 func NewWindow(window fyne.Window, opts ...Option) *Window {
+	guithread.SetMain()
 	w := &Window{
 		FyneWindow:     window,
 		enabledModules: make(map[string]bool),
@@ -211,7 +214,7 @@ func NewWindow(window fyne.Window, opts ...Option) *Window {
 		}
 		w.droppedPaths = paths
 		if w.onDropped != nil {
-			w.functionCalls <- func() { fyne.Do(func() { w.onDropped(paths) }) }
+			w.functionCalls <- func() { guithread.Do(func() { w.onDropped(paths) }) }
 		}
 	})
 
@@ -434,7 +437,7 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("argument error: expected IsCanvasObject, got %s", args[1].Type()), nil
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				w.content.Objects = []fyne.CanvasObject{obj.CanvasObject()}
 				w.content.Refresh()
 			})
@@ -517,7 +520,7 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 
 			// Queue the function to run on the GUI thread
 			w.functionCalls <- func() {
-				fyne.Do(func() {
+				guithread.Do(func() {
 					_, err := safeCall(callFunc, ctx, fn, []object.Object{})
 					if err != nil {
 						w.SetStatus("ERROR: " + err.Error())
@@ -548,7 +551,7 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			}
 
 			// Must call Resize on the UI thread
-			fyne.Do(func() {
+			guithread.Do(func() {
 				w.Resize(float32(width), float32(height))
 			})
 
@@ -589,7 +592,7 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			w.FyneWindow.Canvas().AddShortcut(shortcut, func(s fyne.Shortcut) {
 				// Queue callback on function channel (for thread safety)
 				w.functionCalls <- func() {
-					fyne.Do(func() {
+					guithread.Do(func() {
 						_, err := safeCall(callFunc, ctx, callback, []object.Object{})
 						if err != nil {
 							w.SetStatus("ERROR: " + err.Error())
@@ -708,7 +711,7 @@ func (w *Window) captureStdout() {
 				msg := pending[0]
 				pending = pending[1:]
 				mu.Unlock()
-				w.functionCalls <- func() { fyne.Do(func() { w.onNewStdout(msg) }) }
+				w.functionCalls <- func() { guithread.Do(func() { w.onNewStdout(msg) }) }
 			}
 		}
 	}()

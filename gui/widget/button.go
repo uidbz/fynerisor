@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -65,7 +66,7 @@ func (obj *Button) SetAttr(name string, value object.Object) error {
 		if err != nil {
 			return fmt.Errorf("type error: %v", err)
 		}
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.SetText(text)
 		})
 		return nil
@@ -75,7 +76,7 @@ func (obj *Button) SetAttr(name string, value object.Object) error {
 		if err != nil {
 			return fmt.Errorf("type error: %v", err)
 		}
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.Importance = widget.Importance(i)
 			obj.instance.Refresh()
 		})
@@ -85,7 +86,7 @@ func (obj *Button) SetAttr(name string, value object.Object) error {
 		if err != nil {
 			return fmt.Errorf("type error: %v", err)
 		}
-		fyne.Do(func() {
+		guithread.Do(func() {
 			if b {
 				obj.instance.Disable()
 			} else {
@@ -114,7 +115,7 @@ func (obj *Button) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return object.Errorf("type error: %v", err), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.SetText(text)
 			})
 			return object.Nil, nil
@@ -124,7 +125,7 @@ func (obj *Button) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Disable()
 			})
 			return object.Nil, nil
@@ -134,7 +135,7 @@ func (obj *Button) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Enable()
 			})
 			return object.Nil, nil
@@ -144,7 +145,7 @@ func (obj *Button) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Hide()
 			})
 			return object.Nil, nil
@@ -154,7 +155,7 @@ func (obj *Button) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Show()
 			})
 			return object.Nil, nil
@@ -174,7 +175,7 @@ func (obj *Button) GetAttr(name string) (object.Object, bool) {
 			}
 
 			// Set the button's OnTapped callback
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.OnTapped = func() {
 					_, err := callFunc(ctx, fn, []object.Object{})
 					if err != nil {

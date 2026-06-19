@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -86,7 +87,7 @@ func (obj *SelectEntry) SetAttr(name string, value object.Object) error {
 		if err != nil {
 			return fmt.Errorf("type error: %v", err)
 		}
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.SetText(text)
 		})
 		return nil
@@ -121,7 +122,7 @@ func (obj *SelectEntry) GetAttr(name string) (object.Object, bool) {
 				return nil, err
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.SetText(text)
 			})
 
@@ -148,7 +149,7 @@ func (obj *SelectEntry) GetAttr(name string) (object.Object, bool) {
 				options[i] = opt
 			}
 
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.SetOptions(options)
 			})
 
@@ -184,7 +185,7 @@ func (obj *SelectEntry) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Hide()
 			})
 			return object.Nil, nil
@@ -194,7 +195,7 @@ func (obj *SelectEntry) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Show()
 			})
 			return object.Nil, nil

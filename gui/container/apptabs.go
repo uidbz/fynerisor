@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/container"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -73,7 +74,7 @@ func (obj *AppTabs) GetAttr(name string) (object.Object, bool) {
 			if !ok {
 				return object.Errorf("type error: expected TabItem, got %s", args[0].Type()), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Append(tabItem.instance)
 			})
 			return object.Nil, nil
@@ -88,7 +89,7 @@ func (obj *AppTabs) GetAttr(name string) (object.Object, bool) {
 			if !ok {
 				return object.Errorf("type error: expected TabItem, got %s", args[0].Type()), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Remove(tabItem.instance)
 			})
 			return object.Nil, nil
@@ -103,7 +104,7 @@ func (obj *AppTabs) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return object.Errorf("type error: %v", err), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.RemoveIndex(int(index))
 			})
 			return object.Nil, nil
@@ -118,7 +119,7 @@ func (obj *AppTabs) GetAttr(name string) (object.Object, bool) {
 			if !ok {
 				return object.Errorf("type error: expected TabItem, got %s", args[0].Type()), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Select(tabItem.instance)
 			})
 			return object.Nil, nil
@@ -133,7 +134,7 @@ func (obj *AppTabs) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return object.Errorf("type error: %v", err), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.SelectIndex(int(index))
 			})
 			return object.Nil, nil
@@ -168,7 +169,7 @@ func (obj *AppTabs) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return object.Errorf("type error: %v", err), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.EnableIndex(int(index))
 			})
 			return object.Nil, nil
@@ -183,7 +184,7 @@ func (obj *AppTabs) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return object.Errorf("type error: %v", err), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.DisableIndex(int(index))
 			})
 			return object.Nil, nil
@@ -198,7 +199,7 @@ func (obj *AppTabs) GetAttr(name string) (object.Object, bool) {
 			if !ok {
 				return object.Errorf("type error: expected TabItem, got %s", args[0].Type()), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.EnableItem(tabItem.instance)
 			})
 			return object.Nil, nil
@@ -213,7 +214,7 @@ func (obj *AppTabs) GetAttr(name string) (object.Object, bool) {
 			if !ok {
 				return object.Errorf("type error: expected TabItem, got %s", args[0].Type()), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.DisableItem(tabItem.instance)
 			})
 			return object.Nil, nil
@@ -224,7 +225,7 @@ func (obj *AppTabs) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Hide()
 			})
 			return object.Nil, nil
@@ -235,7 +236,7 @@ func (obj *AppTabs) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Show()
 			})
 			return object.Nil, nil

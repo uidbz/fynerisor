@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
 
@@ -66,7 +67,7 @@ func (obj *Label) SetAttr(name string, value object.Object) error {
 		if err != nil {
 			return fmt.Errorf("type error: %v", err)
 		}
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.SetText(text)
 		})
 		return nil
@@ -75,7 +76,7 @@ func (obj *Label) SetAttr(name string, value object.Object) error {
 		if err != nil {
 			return fmt.Errorf("type error: %v", err)
 		}
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.Wrapping = fyne.TextWrap(i)
 			obj.instance.Refresh()
 		})
@@ -85,7 +86,7 @@ func (obj *Label) SetAttr(name string, value object.Object) error {
 		if err != nil {
 			return fmt.Errorf("type error: %v", err)
 		}
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.Truncation = fyne.TextTruncation(i)
 			obj.instance.Refresh()
 		})
@@ -95,7 +96,7 @@ func (obj *Label) SetAttr(name string, value object.Object) error {
 		if err != nil {
 			return fmt.Errorf("type error: %v", err)
 		}
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.Alignment = fyne.TextAlign(i)
 			obj.instance.Refresh()
 		})
@@ -105,7 +106,7 @@ func (obj *Label) SetAttr(name string, value object.Object) error {
 		if err != nil {
 			return fmt.Errorf("type error: %v", err)
 		}
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.Importance = widget.Importance(i)
 			obj.instance.Refresh()
 		})
@@ -139,7 +140,7 @@ func (obj *Label) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return object.Errorf("type error: %v", err), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.SetText(text)
 			})
 			return object.Nil, nil
@@ -149,7 +150,7 @@ func (obj *Label) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Hide()
 			})
 			return object.Nil, nil
@@ -159,7 +160,7 @@ func (obj *Label) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Show()
 			})
 			return object.Nil, nil

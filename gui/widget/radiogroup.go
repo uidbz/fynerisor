@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -70,7 +71,7 @@ func (obj *RadioGroup) SetAttr(name string, value object.Object) error {
 		if err != nil {
 			return err
 		}
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.Selected = selected
 			obj.instance.Refresh()
 		})
@@ -80,7 +81,7 @@ func (obj *RadioGroup) SetAttr(name string, value object.Object) error {
 		if err != nil {
 			return err
 		}
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.Options = options
 			obj.instance.Refresh()
 		})
@@ -90,7 +91,7 @@ func (obj *RadioGroup) SetAttr(name string, value object.Object) error {
 		if err != nil {
 			return err
 		}
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.Horizontal = horizontal
 			obj.instance.Refresh()
 		})
@@ -100,7 +101,7 @@ func (obj *RadioGroup) SetAttr(name string, value object.Object) error {
 		if err != nil {
 			return err
 		}
-		fyne.Do(func() {
+		guithread.Do(func() {
 			obj.instance.Required = required
 			obj.instance.Refresh()
 		})
@@ -130,7 +131,7 @@ func (obj *RadioGroup) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return nil, err
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.SetSelected(selected)
 			})
 			return object.Nil, nil
@@ -145,7 +146,7 @@ func (obj *RadioGroup) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return nil, err
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Append(option)
 			})
 			return object.Nil, nil
@@ -156,7 +157,7 @@ func (obj *RadioGroup) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Disable()
 			})
 			return object.Nil, nil
@@ -167,7 +168,7 @@ func (obj *RadioGroup) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Enable()
 			})
 			return object.Nil, nil
@@ -178,7 +179,7 @@ func (obj *RadioGroup) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Refresh()
 			})
 			return object.Nil, nil
@@ -188,7 +189,7 @@ func (obj *RadioGroup) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Hide()
 			})
 			return object.Nil, nil
@@ -198,7 +199,7 @@ func (obj *RadioGroup) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Show()
 			})
 			return object.Nil, nil

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -77,7 +78,7 @@ func (obj *Toolbar) GetAttr(name string) (object.Object, bool) {
 			if !ok {
 				return object.Errorf("argument error: expected ToolbarItem, got %s", args[0].Type()), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Append(item)
 			})
 			return object.Nil, nil
@@ -92,7 +93,7 @@ func (obj *Toolbar) GetAttr(name string) (object.Object, bool) {
 			if !ok {
 				return object.Errorf("argument error: expected ToolbarItem, got %s", args[0].Type()), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Prepend(item)
 			})
 			return object.Nil, nil
@@ -103,7 +104,7 @@ func (obj *Toolbar) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Refresh()
 			})
 			return object.Nil, nil
@@ -113,7 +114,7 @@ func (obj *Toolbar) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Hide()
 			})
 			return object.Nil, nil
@@ -123,7 +124,7 @@ func (obj *Toolbar) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
-			fyne.Do(func() {
+			guithread.Do(func() {
 				obj.instance.Show()
 			})
 			return object.Nil, nil
