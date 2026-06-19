@@ -82,8 +82,10 @@ func (obj *Log) GetAttr(name string) (object.Object, bool) {
 				obj.data = obj.data[1:]
 			}
 			obj.data = append(obj.data, line)
-			obj.instance.Refresh()
-			obj.instance.ScrollToBottom()
+			guithread.Do(func() {
+				obj.instance.Refresh()
+				obj.instance.ScrollToBottom()
+			})
 
 			return object.Nil, nil
 		}), true
@@ -124,6 +126,20 @@ func (obj *Log) GetAttr(name string) (object.Object, bool) {
 		}), true
 	}
 	return nil, false
+}
+
+// AppendGo appends a line from Go code without entering the Risor VM. The
+// stdout-capture path uses this so it can run concurrently with a go() script
+// goroutine (which holds the single, non-threadsafe VM) without corrupting it.
+func (obj *Log) AppendGo(line string) {
+	if len(obj.data) > obj.maxItems-1 {
+		obj.data = obj.data[1:]
+	}
+	obj.data = append(obj.data, line)
+	guithread.Do(func() {
+		obj.instance.Refresh()
+		obj.instance.ScrollToBottom()
+	})
 }
 
 func NewLog(maxItems int) *Log {

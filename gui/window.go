@@ -20,6 +20,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	risorwidget "github.com/uidbz/fynerisor/gui/widget"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 )
@@ -90,6 +91,7 @@ type Window struct {
 	droppedPaths   []string
 	onDropped      func(droppedPaths []string)
 	onNewStdout    func(text string)
+	stdoutSink     func(text string) // Go sink for captured stdout; bypasses the Risor VM
 	functionCalls  chan func()
 	cancelExec     context.CancelFunc // Cancel function for current execution
 	statusCallback func(string)
@@ -450,9 +452,23 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
+
+			// Preferred form: pass a Log widget directly. Captured lines are
+			// appended via pure Go (AppendGo), never re-entering the Risor VM,
+			// so stdout capture is safe while a go() goroutine holds the single
+			// non-threadsafe VM.
+			if logWidget, ok := args[0].(*risorwidget.Log); ok {
+				w.stdoutSink = logWidget.AppendGo
+				w.captureStdout()
+				return object.Nil, nil
+			}
+
+			// Legacy form: a closure. This re-enters the VM on each line and is
+			// NOT safe together with go() that produces output — prefer passing
+			// the Log widget instead.
 			fn, ok := args[0].(*object.Closure)
 			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[1].Type()), nil
+				return object.Errorf("argument error: expected widget.Log or function, got %s", args[0].Type()), nil
 			}
 			callFunc, ok := object.GetCallFunc(ctx)
 			if !ok {
@@ -723,7 +739,17 @@ func (w *Window) captureStdout() {
 				msg := pending[0]
 				pending = pending[1:]
 				mu.Unlock()
-				w.functionCalls <- func() { guithread.Do(func() { w.onNewStdout(msg) }) }
+				// Prefer the Go sink: it appends to the log widget without
+				// entering the non-threadsafe Risor VM, so capture can run
+				// concurrently with a go() script goroutine that holds the VM.
+				// Only fall back to the script closure (which re-enters the VM)
+				// when no Go sink is registered.
+				if w.stdoutSink != nil {
+					sink := w.stdoutSink
+					guithread.Do(func() { sink(msg) })
+				} else {
+					w.functionCalls <- func() { guithread.Do(func() { w.onNewStdout(msg) }) }
+				}
 			}
 		}
 	}()
