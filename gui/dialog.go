@@ -136,7 +136,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 
 			callback := func(confirmed bool) {
 				d.w.Do(func() {
-					callFunc(ctx, fn, []object.Object{object.NewBool(confirmed)})
+					safeCall(callFunc, ctx, fn, []object.Object{object.NewBool(confirmed)})
 				})
 			}
 
@@ -174,7 +174,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 						errObj = object.NewString(err.Error())
 					}
 
-					callFunc(ctx, fn, []object.Object{path, errObj})
+					safeCall(callFunc, ctx, fn, []object.Object{path, errObj})
 				})
 			}
 
@@ -212,7 +212,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 						errObj = object.NewString(err.Error())
 					}
 
-					callFunc(ctx, fn, []object.Object{path, errObj})
+					safeCall(callFunc, ctx, fn, []object.Object{path, errObj})
 				})
 			}
 
@@ -249,7 +249,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 						errObj = object.NewString(err.Error())
 					}
 
-					callFunc(ctx, fn, []object.Object{path, errObj})
+					safeCall(callFunc, ctx, fn, []object.Object{path, errObj})
 				})
 			}
 
@@ -321,7 +321,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 
 			callback := func(confirmed bool) {
 				d.w.Do(func() {
-					callFunc(ctx, fn, []object.Object{object.NewBool(confirmed)})
+					safeCall(callFunc, ctx, fn, []object.Object{object.NewBool(confirmed)})
 				})
 			}
 
@@ -365,7 +365,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 						"B": object.NewInt(int64(b >> 8)),
 						"A": object.NewInt(int64(a >> 8)),
 					})
-					callFunc(ctx, fn, []object.Object{colorMap})
+					safeCall(callFunc, ctx, fn, []object.Object{colorMap})
 				})
 			}
 
@@ -424,7 +424,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 
 			callback := func(confirmed bool) {
 				d.w.Do(func() {
-					callFunc(ctx, fn, []object.Object{object.NewBool(confirmed)})
+					safeCall(callFunc, ctx, fn, []object.Object{object.NewBool(confirmed)})
 				})
 			}
 
@@ -462,7 +462,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 						errObj = object.NewString(err.Error())
 					}
 
-					callFunc(ctx, fn, []object.Object{path, errObj})
+					safeCall(callFunc, ctx, fn, []object.Object{path, errObj})
 				})
 			}
 
@@ -498,7 +498,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 						errObj = object.NewString(err.Error())
 					}
 
-					callFunc(ctx, fn, []object.Object{path, errObj})
+					safeCall(callFunc, ctx, fn, []object.Object{path, errObj})
 				})
 			}
 
@@ -533,7 +533,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 						errObj = object.NewString(err.Error())
 					}
 
-					callFunc(ctx, fn, []object.Object{path, errObj})
+					safeCall(callFunc, ctx, fn, []object.Object{path, errObj})
 				})
 			}
 
@@ -566,7 +566,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 
 			callback := func(confirmed bool) {
 				d.w.Do(func() {
-					callFunc(ctx, fn, []object.Object{object.NewBool(confirmed)})
+					safeCall(callFunc, ctx, fn, []object.Object{object.NewBool(confirmed)})
 				})
 			}
 
@@ -609,7 +609,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 
 			callback := func(confirmed bool) {
 				d.w.Do(func() {
-					callFunc(ctx, fn, []object.Object{object.NewBool(confirmed)})
+					safeCall(callFunc, ctx, fn, []object.Object{object.NewBool(confirmed)})
 				})
 			}
 
@@ -672,7 +672,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 						"B": object.NewInt(int64(b >> 8)),
 						"A": object.NewInt(int64(a >> 8)),
 					})
-					callFunc(ctx, fn, []object.Object{colorMap})
+					safeCall(callFunc, ctx, fn, []object.Object{colorMap})
 				})
 			}
 
@@ -728,7 +728,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 
 			callback := func(confirmed bool) {
 				d.w.Do(func() {
-					callFunc(ctx, fn, []object.Object{object.NewBool(confirmed)})
+					safeCall(callFunc, ctx, fn, []object.Object{object.NewBool(confirmed)})
 				})
 			}
 

@@ -247,7 +247,7 @@ func newGoBuiltin() *object.Builtin {
 
 		// Spawn goroutine to execute the closure
 		go func() {
-			_, err := callFunc(ctx, fn, []object.Object{})
+			_, err := safeCall(callFunc, ctx, fn, []object.Object{})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "go routine error: %v\n", err)
 			}
@@ -457,7 +457,7 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			}
 
 			w.onNewStdout = func(text string) {
-				callFunc(ctx, fn, []object.Object{object.NewString(text)})
+				safeCall(callFunc, ctx, fn, []object.Object{object.NewString(text)})
 			}
 
 			w.captureStdout()
@@ -480,7 +480,7 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			}
 
 			w.onDropped = func(droppedPaths []string) {
-				callFunc(ctx, fn, []object.Object{object.NewStringList(droppedPaths)})
+				safeCall(callFunc, ctx, fn, []object.Object{object.NewStringList(droppedPaths)})
 			}
 
 			return object.Nil, nil
@@ -518,7 +518,7 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			// Queue the function to run on the GUI thread
 			w.functionCalls <- func() {
 				fyne.Do(func() {
-					_, err := callFunc(ctx, fn, []object.Object{})
+					_, err := safeCall(callFunc, ctx, fn, []object.Object{})
 					if err != nil {
 						w.SetStatus("ERROR: " + err.Error())
 					}
@@ -590,7 +590,7 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 				// Queue callback on function channel (for thread safety)
 				w.functionCalls <- func() {
 					fyne.Do(func() {
-						_, err := callFunc(ctx, callback, []object.Object{})
+						_, err := safeCall(callFunc, ctx, callback, []object.Object{})
 						if err != nil {
 							w.SetStatus("ERROR: " + err.Error())
 						}

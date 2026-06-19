@@ -107,7 +107,7 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 			button := func(f *object.Closure) object.Object {
 				return risorwidget.NewButton(name, func() {
 					obj.w.Do(func() {
-						_, err := callFunc(ctx, f, []object.Object{})
+						_, err := safeCall(callFunc, ctx, f, []object.Object{})
 						if err != nil {
 							fmt.Println(err)
 						}
@@ -141,7 +141,7 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 				return risorwidget.NewCheck(label, func(changed bool) {
 					obj.w.Do(func() {
 						val := object.NewBool(changed)
-						callFunc(ctx, f, []object.Object{val})
+						safeCall(callFunc, ctx, f, []object.Object{val})
 					})
 				})
 			}(fn)
@@ -191,7 +191,7 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 				return risorwidget.NewCheckGroup(options, func(checked []string) {
 					obj.w.Do(func() {
 						list := object.NewStringList(checked)
-						callFunc(ctx, f, []object.Object{list})
+						safeCall(callFunc, ctx, f, []object.Object{list})
 					})
 				})
 			}(fn)
@@ -222,7 +222,7 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 				return risorwidget.NewSelect(options, func(selected string) {
 					obj.w.Do(func() {
 						selectedObj := object.NewString(selected)
-						callFunc(ctx, f, []object.Object{selectedObj})
+						safeCall(callFunc, ctx, f, []object.Object{selectedObj})
 					})
 				})
 			}(fn)
@@ -291,7 +291,7 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 					return func(selected time.Time) {
 						obj.w.Do(func() {
 							timeObj := timemodule.NewTimeObject(selected)
-							callFunc(ctx, f, []object.Object{timeObj})
+							safeCall(callFunc, ctx, f, []object.Object{timeObj})
 						})
 					}
 				}(fn)
@@ -623,7 +623,7 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 				return risorwidget.NewRadioGroup(options, func(selected string) {
 					obj.w.Do(func() {
 						selectedObj := object.NewString(selected)
-						callFunc(ctx, f, []object.Object{selectedObj})
+						safeCall(callFunc, ctx, f, []object.Object{selectedObj})
 					})
 				})
 			}(fn)
@@ -706,7 +706,7 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 
 			action := risorwidget.NewToolbarAction(icon, func() {
 				obj.w.Do(func() {
-					_, err := callFunc(ctx, fn, []object.Object{})
+					_, err := safeCall(callFunc, ctx, fn, []object.Object{})
 					if err != nil {
 						fmt.Println(err)
 					}
