@@ -686,15 +686,27 @@ func (w *Window) captureStdout() {
 	)
 
 	// Goroutine to read from the pipe; never blocks on the GUI.
+	//
+	// Use bufio.Reader.ReadString rather than bufio.Scanner: Scanner has a
+	// 64KB max line length and returns false (killing this loop) on a longer
+	// line. If the reader dies, the pipe stops draining, the OS pipe buffer
+	// fills, and the next fmt.Println/print blocks the calling goroutine
+	// forever - freezing the script. ReadString has no length limit.
 	go func() {
-		scanner := bufio.NewScanner(reader)
-		for scanner.Scan() {
-			mu.Lock()
-			pending = append(pending, scanner.Text())
-			mu.Unlock()
-			select {
-			case notify <- struct{}{}:
-			default:
+		br := bufio.NewReader(reader)
+		for {
+			line, err := br.ReadString('\n')
+			if len(line) > 0 {
+				mu.Lock()
+				pending = append(pending, strings.TrimRight(line, "\n"))
+				mu.Unlock()
+				select {
+				case notify <- struct{}{}:
+				default:
+				}
+			}
+			if err != nil {
+				return
 			}
 		}
 	}()
