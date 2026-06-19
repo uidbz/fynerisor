@@ -122,6 +122,79 @@ For any widget with callbacks:
 - Monitor for stack underflow panics
 - If crashes occur → check for mixed threading pattern
 
+## The Second Bug We Fixed: go() + stdout capture (commit 9fa2634)
+
+The widget-callback rules above assume VM calls happen on the GUI thread. But
+there are actually **two independent entry points into the VM**, and only one is
+serialized:
+
+1. **The `functionCalls` channel** — consumed serially by the `Execute()` loop in
+   `window.go`. Button taps, `window.Do`, `OnDropped`, and shortcut handlers all
+   funnel through here. This path is single-threaded. Safe.
+2. **The `go(() => {...})` builtin** (`newGoBuiltin` in `window.go`) — spawns a
+   **raw goroutine** that calls the closure via `safeCall` directly, bypassing
+   `functionCalls`. This path is NOT serialized against anything.
+
+### Root Cause
+
+`window.CaptureStdout` originally took a Risor closure and invoked it once per
+captured output line, through the VM:
+
+```go
+// ❌ DANGEROUS: capture callback re-enters the VM
+w.onNewStdout = func(text string) {
+    safeCall(callFunc, ctx, fn, []object.Object{object.NewString(text)})
+}
+```
+
+When a script ran a worker via `go()` that produced output:
+
+- **Goroutine 1 (go worker):** executing VM bytecode for the job closure.
+- **Goroutine 2 (Execute loop):** running the stdout-capture closure in the SAME
+  VM, triggered by a `print()` from goroutine 1.
+
+Two `callFunction` invocations, one VM, no lock → corrupted `vm.fp` / stack →
+
+```
+go routine error: runtime error: unknown opcode: 0
+recovered panic in script callback: runtime error: index out of range [21] with length 1
+```
+
+This is the same class of bug as the widget one (concurrent VM access), but the
+second goroutine is the `go()` worker rather than Fyne's render thread, so the
+"all-synchronous callback" fix does not apply.
+
+### The Fix
+
+Captured stdout no longer enters the VM at all. `CaptureStdout` accepts a `Log`
+widget directly and appends lines via a **pure-Go sink** (`Log.AppendGo`):
+
+```go
+// ✅ SAFE: Go sink, never touches the VM
+if logWidget, ok := args[0].(*risorwidget.Log); ok {
+    w.stdoutSink = logWidget.AppendGo   // plain Go append + guithread.Do refresh
+    w.captureStdout()
+    return object.Nil, nil
+}
+// (legacy closure form retained but documented as unsafe with go()+output)
+```
+
+Risor script side:
+
+```risor
+let log = widget.NewLog(1000)
+window.CaptureStdout(log)   // pass the widget, NOT a closure
+```
+
+### Rule 5: Never re-enter the VM from a goroutine that can race a go() worker
+
+Any Go callback that may fire *while a `go()` closure is executing* (stdout
+capture, timers, network completion handlers, anything not gated by
+`functionCalls`) must NOT call back into Risor. Do the work in Go, or marshal it
+onto the `functionCalls` channel — but be aware that `go()` workers run
+concurrently with `functionCalls` consumption, so even the channel does not
+serialize against an in-flight `go()` closure. When in doubt, keep it in Go.
+
 ## Safe Patterns Summary
 
 | Pattern | Use When | Example |
@@ -129,6 +202,7 @@ For any widget with callbacks:
 | **All Sync** | Property getters + events | Tree, List |
 | **All Async** | Event callbacks only | Button, Slider, Entry |
 | **No Callbacks** | Display/control only | Label, Icon, Accordion |
+| **Go-only (no VM)** | Callback can fire during a `go()` worker | stdout capture (Log.AppendGo) |
 
 ## What About Performance?
 
@@ -173,9 +247,17 @@ case "UpdateNode":
 
 ## References
 
+### Widget callback bug
 - **Issue:** Stack underflow after 30-100 widget interactions
 - **Error:** `panic: runtime error: index out of range [-1]` at `vm.(*VirtualMachine).pop()`
 - **Root cause:** Concurrent VM access from GUI thread and VM goroutine
 - **Solution:** All-synchronous callback pattern
 - **Commits:** 652a650 (Tree), 5721fc4 (List)
 - **Audit:** WIDGET_AUDIT.md in bug report directory
+
+### go() + stdout capture bug
+- **Issue:** GUI froze (spinner stuck) when a `go()` worker produced output via `print()`; only seen in the goto pdf-table-extract app, never in headless CLI runs
+- **Error:** `runtime error: unknown opcode: 0` / `index out of range [21] with length 1`, panicking from the stdout-capture callback while the go() worker stepped the VM
+- **Root cause:** `CaptureStdout` invoked a Risor closure per output line, re-entering the single non-threadsafe VM concurrently with the `go()` worker
+- **Solution:** Route captured stdout through a pure-Go sink (`Log.AppendGo`); `CaptureStdout(log)` takes the widget directly
+- **Commit:** 9fa2634
