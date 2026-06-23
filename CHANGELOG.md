@@ -17,6 +17,13 @@
     - Callbacks for navigation lifecycle (OnNavigate, OnError, etc.)
   - Built on fynerisor's gui.Window for seamless integration
 
+**Reference Browser:**
+- **cmd/fynerisor-browser/** - Reference implementation demonstrating browser package usage
+  - Loads Risor scripts from HTTP(S) or file:// URLs
+  - Shows plugin architecture and integration patterns
+  - Serves as starting point for custom browser applications
+  - ~350 lines with clear comments
+
 ## [0.6.1] - 2026-06-23
 
 ### Fixed
