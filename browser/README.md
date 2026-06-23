@@ -159,6 +159,56 @@ The browser package follows a hybrid plugin architecture:
 
 This design allows applications to plug in custom behavior while keeping the browser generic and reusable.
 
+## Programmatic Navigation from Scripts
+
+To allow Risor scripts to navigate programmatically, you have two options:
+
+### Option 1: Use the provided RisorBrowser wrapper
+
+```go
+// During window creation
+browserWrapper := browser.NewRisorBrowser(nil) // nil for now
+window := gui.NewWindow(fyneWindow,
+    gui.WithGlobal("browser", browserWrapper),
+    // ... other options
+)
+
+// After creating the actual browser
+actualBrowser := browser.New(window, config)
+// Update the wrapper (requires modifying RisorBrowser or using a different approach)
+```
+
+### Option 2: Create your own wrapper (recommended)
+
+```go
+// Create a custom object that wraps the browser
+type MyAppGlobal struct {
+    browser *browser.Browser
+}
+
+func (m *MyAppGlobal) GetAttr(name string) (object.Object, bool) {
+    if name == "Open" {
+        return object.NewBuiltin("myapp.Open", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+            url, _ := object.AsString(args[0])
+            m.browser.Navigate(url)
+            return object.Nil, nil
+        }), true
+    }
+    return nil, false
+}
+// ... implement other object.Object methods
+
+// Register during window creation
+gui.WithGlobal("myapp", myAppGlobalInstance)
+```
+
+Scripts can then navigate:
+```risor
+myapp.Open("https://example.com/page")
+// or with the browser wrapper:
+browser.Open("https://example.com/page")
+```
+
 ## Configuration Options
 
 ```go

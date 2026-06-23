@@ -94,6 +94,13 @@ func NewBrowserApp(title string) *BrowserApp {
 		},
 	})
 
+	// Note: To allow scripts to navigate programmatically (browser.Open(url)),
+	// you need to register the browser global during window creation:
+	//   gui.WithGlobal("browser", browser.NewRisorBrowser(browserInstance))
+	// Since the browser doesn't exist yet during window creation, you would need
+	// to restructure the initialization or use a wrapper object.
+	// For this reference implementation, navigation from scripts is not enabled.
+
 	// Enable source view
 	b.browser.EnableSourceView(b, nil)
 

@@ -284,6 +284,11 @@ func (b *Browser) GetWindow() *gui.Window {
 	return b.window
 }
 
+// NavigateToURL navigates to the specified URL (for programmatic navigation from scripts)
+func (b *Browser) NavigateToURL(url string) {
+	b.Navigate(url)
+}
+
 // CorrectRelativeURL is a convenience export
 func CorrectRelativeURL(base, target string) string {
 	return correctRelativeURL(base, target)
