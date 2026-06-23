@@ -32,12 +32,22 @@ go install github.com/uidbz/fynerisor/cmd/fynerisor-browser@latest
 # Load from URL
 fynerisor-browser https://example.com/app
 
-# Load from local file
+# Load from local file (absolute path)
+fynerisor-browser /path/to/script.risor
+fynerisor-browser C:\path\to\script.risor  # Windows
+
+# Load from local file (relative path)
+fynerisor-browser ./script.risor
+fynerisor-browser ../other/script.risor
+
+# Or use file:// URL explicitly
 fynerisor-browser file:///path/to/script.risor
 
 # Use default home URL
 fynerisor-browser
 ```
+
+File paths are automatically detected and converted to `file://` URLs. Both Unix-style (`/home/user/script.risor`) and Windows-style (`C:\Users\user\script.risor`) paths are supported.
 
 ### Command-line Flags
 

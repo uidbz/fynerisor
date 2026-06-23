@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -292,7 +293,10 @@ func NewScriptLoader() *ScriptLoader {
 
 // LoadScript fetches a script from the given URL with optional authentication
 func (sl *ScriptLoader) LoadScript(url, username, password string) (string, error) {
-	fixedURL, err := browser.FixURL(url)
+	// Normalize the URL - convert file paths to file:// URLs
+	normalizedURL := normalizeURL(url)
+
+	fixedURL, err := browser.FixURL(normalizedURL)
 	if err != nil {
 		return "", err
 	}
@@ -304,6 +308,49 @@ func (sl *ScriptLoader) LoadScript(url, username, password string) (string, erro
 
 	// Handle HTTP(S) URLs
 	return sl.loadFromHTTP(fixedURL, username, password)
+}
+
+// normalizeURL converts file paths to file:// URLs
+func normalizeURL(url string) string {
+	// Already a URL scheme
+	if strings.HasPrefix(url, "http://") ||
+	   strings.HasPrefix(url, "https://") ||
+	   strings.HasPrefix(url, "file://") {
+		return url
+	}
+
+	// Check if it looks like a file path
+	// Unix absolute path: starts with /
+	// Windows absolute path: starts with X:\ or X:/ (drive letter)
+	// Relative path: ./ or ../ or just a filename
+	isUnixPath := strings.HasPrefix(url, "/")
+	isWindowsPath := len(url) >= 3 && url[1] == ':' && (url[2] == '\\' || url[2] == '/')
+	isRelativePath := strings.HasPrefix(url, "./") || strings.HasPrefix(url, "../") ||
+	                  !strings.Contains(url, "://")
+
+	if isUnixPath || isWindowsPath || isRelativePath {
+		// Convert to absolute path
+		absPath, err := filepath.Abs(url)
+		if err != nil {
+			// If we can't get absolute path, just prepend file://
+			// and let the error handling deal with it later
+			absPath = url
+		}
+
+		// Convert to file:// URL
+		// filepath.ToSlash converts Windows backslashes to forward slashes
+		absPath = filepath.ToSlash(absPath)
+
+		// Ensure it starts with /
+		if !strings.HasPrefix(absPath, "/") {
+			absPath = "/" + absPath
+		}
+
+		return "file://" + absPath
+	}
+
+	// Assume it's a domain/hostname, return as-is for browser.FixURL to handle
+	return url
 }
 
 func (sl *ScriptLoader) loadFromFile(fileURL string) (string, error) {
