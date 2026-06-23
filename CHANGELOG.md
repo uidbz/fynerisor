@@ -1,5 +1,22 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+**Browser Package:**
+- **browser/** - Generic, reusable browser UI for fynerisor applications
+  - Navigation: address bar, back/forward/refresh/home buttons
+  - History management with browser-style back/forward stacks
+  - URL handling: automatic normalization and relative path resolution
+  - Source view toggle: split layout showing content and source code side-by-side
+  - Hybrid plugin system:
+    - MenuProvider interface for custom menu items
+    - AuthProvider interface for custom authentication UI
+    - SourceViewProvider interface for source code display
+    - Callbacks for navigation lifecycle (OnNavigate, OnError, etc.)
+  - Built on fynerisor's gui.Window for seamless integration
+
 ## [0.6.1] - 2026-06-23
 
 ### Fixed
