@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.6.1] - 2026-06-23
+
+### Fixed
+
+**Goroutine Safety:**
+- **Fixed concurrent VM access in goroutines** - go() spawned goroutines that call GUI
+  functions (e.g., `label.SetText()`) no longer cause concurrent VM access panics.
+  GUI updates from goroutines are now properly routed through fyne.Do() to ensure
+  thread-safe execution on the main UI thread.
+- **Fixed stdout capture deadlock** - Large output from spawned goroutines no longer
+  causes deadlocks when stdout capture is enabled. Output lines longer than buffer
+  size are now handled gracefully.
+- **Panic recovery in callbacks** - Script callbacks (button clicks, form submits, etc.)
+  that panic are now caught and logged instead of crashing the application.
+
+### Changed
+- Goroutine stdout capture now routes through Go channel to avoid concurrent VM access
+- Long output lines are truncated with warning instead of blocking
+
 ## [0.6.0] - 2026-06-15
 
 ### Added

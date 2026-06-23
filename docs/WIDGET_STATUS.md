@@ -1,199 +1,158 @@
-# Fynerisor Widget Implementation Status
+# Widget Implementation Status
 
-Status indicators:
-- ✅ **Implemented** - Fully functional in Risor
-- 🚧 **Partial** - Basic features work, some methods missing
-- ⏸️ **Not Implemented** - Planned but not yet started
-- ❌ **Won't Implement** - Not suitable for Risor bindings
+This document lists the Fyne widgets and features available in fynerisor.
 
-Complexity: **S**imple | **M**edium | **C**omplex
+## Implemented Widgets
 
----
+### Input Widgets
+- **Button** - Clickable button with text, icon, importance levels, callbacks
+- **Check** - Checkbox with label and OnChanged callback
+- **CheckGroup** - Multiple checkboxes with OnChanged callback
+- **Entry** - Text input with PlaceHolder, OnChanged, OnSubmitted, multiline support
+- **RadioGroup** - Radio button group with OnChanged callback
+- **Select** - Dropdown selection with OnChanged callback
+- **SelectEntry** - Searchable dropdown with OnChanged callback
+- **Slider** - Numeric slider with Min, Max, Step, OnChanged callback
 
-## Core Input Widgets
+### Display Widgets
+- **Label** - Text display with writable Text property, alignment, styling
+- **Icon** - Icon display from theme resources
+- **Hyperlink** - Clickable link with URL
+- **ProgressBar** - Determinate progress indicator with Value property
+- **ProgressBarInfinite** - Indeterminate progress animation
+- **Activity** - Simple activity/loading indicator
+- **Separator** - Visual separator line (horizontal/vertical)
 
-| Widget | Status | Priority | Complexity | File | Notes |
-|--------|--------|----------|------------|------|-------|
-| Button | ✅ | High | S | button.go | Complete with callbacks |
-| Check | ✅ | High | S | check.go | Complete with callbacks |
-| CheckGroup | ✅ | High | M | checkgroup.go | Complete with callbacks |
-| Entry | ✅ | High | C | entry.go | Text input, PlaceHolder, submit callback, multiline variant |
-| RadioGroup | ✅ | High | M | radiogroup.go | Select one from options |
-| Select | ✅ | High | M | select.go | Dropdown selection |
-| SelectEntry | ✅ | Medium | M | selectentry.go | Searchable dropdown |
-| Slider | ✅ | High | M | slider.go | Numeric value selection |
+### Form Widgets
+- **Form** - Form container with items, submit/cancel buttons, OnSubmit/OnCancel
+- **FormItem** - Label + widget pair for forms
+- **Card** - Card with title, subtitle, image, content
+- **Calendar** - Date picker with OnSelected callback
+- **DateEntry** - Date input field (YYYY-MM-DD format)
 
-## Display Widgets
+### Data Widgets
+- **Table** - Paginated table with filtering, sorting, export (CSV/XLSX/JSON)
+  - Widget mode: use any widget type in cells (buttons, icons, images, etc.)
+  - CreateCell and UpdateCell callbacks for custom rendering
+- **Tree** - Hierarchical data display with expand/collapse
+- **List** - Virtualized scrolling list with CreateItem/UpdateItem callbacks
+- **GridWrap** - Grid layout with virtualization and selection
 
-| Widget | Status | Priority | Complexity | File | Notes |
-|--------|--------|----------|------------|------|-------|
-| Label | ✅ | High | S | label.go | Text display, writable Text property |
-| Icon | ✅ | Medium | S | icon.go | Icon display from theme resources |
-| Hyperlink | ✅ | Medium | S | hyperlink.go | Clickable link with URL |
-| ProgressBar | ✅ | High | S | progressbar.go | Value-based progress |
-| ProgressBarInfinite | ✅ | Medium | S | progressbarinfinite.go | Indeterminate progress |
-| Activity | ✅ | Medium | S | activity.go | Simple activity indicator |
-| Separator | ✅ | Low | S | separator.go | Visual separator line |
+### Layout Widgets
+- **Accordion** - Collapsible sections with AccordionItem
+- **Toolbar** - Action toolbar with ToolbarAction, ToolbarSeparator, ToolbarSpacer
 
-## Form & Composite Widgets
+### Text Widgets
+- **Markdown** - Markdown rendering (uses RichText internally)
+- **RichText** - Formatted text display via markdown
+- **TextGrid** - Monospace text grid for code display with line numbers
+- **Log** - Custom scrolling log widget
 
-| Widget | Status | Priority | Complexity | File | Notes |
-|--------|--------|----------|------------|------|-------|
-| Form | ✅ | High | M | form.go | Form with items, submit button |
-| FormItem | ✅ | High | S | formitem.go | Label + widget pair |
-| Card | ✅ | Medium | M | card.go | Title, subtitle, content |
-| Calendar | ✅ | Medium | M | calendar.go | Date picker with OnSelected callback |
-| DateEntry | ✅ | Low | M | dateentry.go | YYYY-MM-DD date input |
-
-## Advanced Data Widgets
-
-| Widget | Status | Priority | Complexity | File | Notes |
-|--------|--------|----------|------------|------|-------|
-| Tree | ✅ | Medium | C | widget/tree.go | Hierarchical data display with callbacks |
-| List | ✅ | Medium | C | widget/list.go | Scrolling list with item callbacks |
-
-## Container/Layout Widgets
-
-| Widget | Status | Priority | Complexity | File | Notes |
-|--------|--------|----------|------------|------|-------|
-| Accordion | ✅ | Medium | M | accordion.go | Collapsible sections |
-| Toolbar | ✅ | Medium | M | toolbar.go | Action toolbar |
-| Table | ✅ | High | C | table.go | Paginated with callbacks |
-| Tree | ✅ | Medium | C | widget/tree.go | Hierarchical data |
-| List | ✅ | Medium | C | list.go | Virtualized scrolling list |
-| GridWrap | ✅ | Low | C | widget/gridwrap.go | Grid layout with virtualization |
-
-## Text & Rich Content
-
-| Widget | Status | Priority | Complexity | File | Notes |
-|--------|--------|----------|------------|------|-------|
-| Markdown | ✅ | Medium | M | markdown.go | Markdown rendering via RichText |
-| RichText | ✅ | Low | C | widget/richtext.go | Formatted text via markdown |
-| TextGrid | ✅ | Low | C | widget/textgrid.go | Monospace grid for code |
-| Log | ✅ | Medium | M | log.go | Custom scrolling log widget |
-
-## Desktop-Specific
-
-| Widget | Status | Priority | Complexity | File | Notes |
-|--------|--------|----------|------------|------|-------|
-| PopUp | ✅ | Medium | M | widget/popup.go | Floating overlay, modal support |
-| PopUpMenu | ✅ | Medium | M | widget/popupmenu.go | Context menus |
-| FileIcon | ✅ | Low | S | widget/fileicon.go | File/folder icons |
-
-## Base Classes (Won't Implement)
-
-| Type | Status | Notes |
-|------|--------|-------|
-| BaseWidget | ❌ | Internal implementation detail |
-| DisableableWidget | ❌ | Internal implementation detail |
-| CustomTextGridStyle | ❌ | Too low-level for Risor |
-
-## Supporting Types
-
-| Type | Status | Priority | Notes |
-|------|--------|----------|-------|
-| AccordionItem | ✅ | Medium | For Accordion widget |
-| FormItem | ✅ | High | Implemented |
-| MenuItem | ✅ | Medium | For Menu/PopUpMenu (fyne.MenuItem) |
-| ToolbarAction | ✅ | Medium | For Toolbar |
-| ToolbarItem | ✅ | Medium | For Toolbar |
-| ToolbarSeparator | ✅ | Medium | For Toolbar |
-| ToolbarSpacer | ✅ | Medium | For Toolbar |
-| TableCellID | ✅ | High | Used in table callbacks |
-| TreeNodeID | ✅ | Low | For Tree widget |
-| ListItemID | ✅ | Medium | For List widget |
-| GridWrapItemID | ✅ | Low | For GridWrap widget |
-
-## RichText Segments (Partial/Won't Implement)
-
-| Segment | Status | Notes |
-|---------|--------|-------|
-| TextSegment | ⏸️ | Basic text formatting |
-| HyperlinkSegment | 🚧 | Used in Markdown widget |
-| ImageSegment | ⏸️ | Images in rich text |
-| ListSegment | ⏸️ | Bullet/numbered lists |
-| ParagraphSegment | ⏸️ | Paragraph formatting |
-| SeparatorSegment | ⏸️ | Horizontal rule |
+### Desktop Widgets
+- **PopUp** - Floating overlay window (modal/non-modal)
+- **PopUpMenu** - Context menus
+- **FileIcon** - File/folder icons with file type detection
 
 ## Container Types
 
-| Container | Status | Notes |
-|-----------|--------|-------|
-| NewBorder | ✅ | Top/bottom/left/right/center regions |
-| NewHBox | ✅ | Horizontal box layout |
-| NewVBox | ✅ | Vertical box layout |
-| NewHSplit | ✅ | Horizontal split container |
-| NewVSplit | ✅ | Vertical split container |
-| NewScroll | ✅ | Scrollable content |
-| NewCenter | ✅ | Center-aligned layout |
-| NewMax | ✅ | Maximum size layout |
-| NewStack | ✅ | Layered stack |
-| NewPadded | ✅ | Padded container |
-| NewGridWithColumns | ✅ | Fixed column grid |
-| NewGridWithRows | ✅ | Fixed row grid |
+All standard Fyne containers are supported:
 
-## Enums & Constants
+- **NewBorder** - Border layout (top, bottom, left, right, center)
+- **NewHBox** - Horizontal box layout
+- **NewVBox** - Vertical box layout
+- **NewHSplit** - Horizontal split container with draggable divider
+- **NewVSplit** - Vertical split container with draggable divider
+- **NewScroll** - Scrollable content wrapper
+- **NewCenter** - Center-aligned layout
+- **NewMax** - Maximum size layout
+- **NewStack** - Layered stack layout
+- **NewPadded** - Padded container
+- **NewGridWithColumns** - Fixed column grid
+- **NewGridWithRows** - Fixed row grid
 
-| Type | Status | Notes |
-|------|--------|-------|
-| ButtonImportance | ✅ | High/Medium/Low/Danger/Warning/Success |
-| ButtonAlign | ✅ | Leading/Center/Trailing |
-| ButtonIconPlacement | ✅ | Leading/Trailing |
-| TextWrap | ✅ | Off/Break/Word |
-| TextTruncation | ✅ | Off/Clip/Ellipsis |
-| TextAlign | ✅ | Leading/Center/Trailing |
-| ScrollDirection | ✅ | Both/HorizontalOnly/VerticalOnly/None |
-| Orientation | ✅ | Horizontal/Vertical |
-| ButtonStyle | ⏸️ | Primary/Default styles (not commonly used) |
-| RichTextStyle | ⏸️ | Inline/Block/Heading (use markdown instead) |
-| TextGridStyle | ⏸️ | Text styling (complex, low priority) |
+## Canvas Objects
+
+- **Image** - Display images from files or data
+- **Rectangle** - Colored rectangles
+- **Circle** - Colored circles
+- **Line** - Lines between points
+- **Text** - Basic text rendering
+
+## Dialogs
+
+- **dialog.ShowInformation** - Information dialog
+- **dialog.ShowError** - Error dialog
+- **dialog.ShowConfirm** - Confirmation dialog with Yes/No
+- **dialog.ShowFileOpen** - File picker (single/multiple)
+- **dialog.ShowFileSave** - File save dialog
+- **dialog.ShowFolderOpen** - Folder picker
+- **dialog.ShowCustom** - Custom dialog with any widget
+- **dialog.ShowCustomConfirm** - Custom dialog with confirm buttons
+
+## Window Features
+
+- **window.SetContent()** - Set window content
+- **window.Resize()** - Set window size
+- **window.SetTitle()** - Set window title
+- **window.ShowAndRun()** - Display window and start event loop
+- **window.Close()** - Close window
+- **window.AddShortcut()** - Register keyboard shortcuts (Ctrl+S, etc.)
+- **window.RemoveShortcut()** - Remove keyboard shortcuts
+- **window.SetMainMenu()** - Set application menu bar
+
+## Data Binding
+
+- **binding.NewString()** - String data binding
+- **binding.NewFloat()** - Float data binding
+- **binding.NewInt()** - Integer data binding
+- **binding.NewBool()** - Boolean data binding
+- Widget properties can be bound to data sources for reactive updates
+
+## Charts (via go-echarts)
+
+- **Line charts** - Line plots with multiple series
+- **Bar charts** - Bar/column charts
+- **Pie charts** - Pie/donut charts
+- **Scatter plots** - XY scatter plots
+- Interactive features: zoom, pan, tooltips, legends
+
+## Modules Available
+
+Enable with `gui.With*()` options in your application:
+
+- **http** - HTTP client (WithHTTP)
+- **os** - File system operations (WithOS)
+- **sql** - Database access (WithSQL)
+- **strings** - String utilities (WithStrings)
+- **filepath** - Path manipulation (WithFilepath)
+- **time** - Time operations (WithTime)
+- **io** - I/O operations (WithIO)
+- **exec** - Execute external commands (WithExec)
+
+## Constants & Enums
+
+Available via the global `constants` object:
+
+- **ButtonImportance** - High, Medium, Low, Success, Warning, Danger
+- **ButtonAlign** - Leading, Center, Trailing
+- **ButtonIconPlacement** - Leading, Trailing
+- **TextWrap** - Off, Break, Word
+- **TextTruncation** - Off, Clip, Ellipsis
+- **TextAlign** - Leading, Center, Trailing
+- **ScrollDirection** - Both, HorizontalOnly, VerticalOnly, None
+- **Orientation** - Horizontal, Vertical
+
+## Not Implemented
+
+Low-level or internal Fyne types not suitable for Risor scripting:
+
+- BaseWidget (internal implementation detail)
+- DisableableWidget (internal implementation detail)
+- CustomTextGridStyle (too low-level)
+- Individual RichText segments (use Markdown widget instead)
 
 ---
 
-## Implementation Statistics
+**See [examples/](../examples/) directory for usage examples of all widgets.**
 
-- **Total Fyne Widgets**: 57 types
-- **Implemented**: 37 (65%)
-- **Partial**: 0 (0%)
-- **Not Implemented**: 6 (11%)
-- **Won't Implement**: 14 (25%)
-- **Container Types**: 10/10 (100%)
-
-**By Priority:**
-- High Priority: 11/11 implemented (100%)
-- Medium Priority: 13/13 implemented (100%)
-- Low Priority: 13/13 implemented (100%)
-
-**By Complexity:**
-- Simple: 12 implemented
-- Medium: 15 implemented
-- Complex: 10 implemented
-
-**Coverage:**
-- ✅ All high, medium, and low priority widgets complete
-- ✅ All standard container types implemented
-- ✅ Feature-complete for production use
-
-## Recently Added (v0.3.0)
-
-**Advanced Widgets:**
-- **GridWrap** - Grid layout with virtualization and selection
-- **TextGrid** - Monospace text grid for code display
-- **RichText** - Formatted text with markdown parsing
-
-**Enhancements:**
-- **Button.Importance** - Visual hierarchy (High/Medium/Low, Success/Warning/Danger)
-- **Button.Disabled** - Enable/disable state
-- **Entry.SetValidator()** - Custom validation with visual feedback
-- **Constants** - Global object for Fyne enums and values
-
-**Examples:**
-- 17-gridwrap: Grid layout example
-- 18-textgrid: Code display example
-- 19-richtext: Markdown formatting example
-- 20-button-importance: Button styling example
-- 21-form-validation: Entry validation example
-
----
-
-Last updated: 2026-05-06
+Last updated: 2026-06-23
