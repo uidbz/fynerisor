@@ -161,52 +161,56 @@ This design allows applications to plug in custom behavior while keeping the bro
 
 ## Programmatic Navigation from Scripts
 
-To allow Risor scripts to navigate programmatically, you have two options:
-
-### Option 1: Use the provided RisorBrowser wrapper
+Scripts can navigate programmatically using the `browser` global object:
 
 ```go
-// During window creation
-browserWrapper := browser.NewRisorBrowser(nil) // nil for now
+// Create browser
+b := browser.New(window, config)
+
+// Expose browser to scripts
+browserWrapper := browser.NewRisorBrowser(b)
 window := gui.NewWindow(fyneWindow,
     gui.WithGlobal("browser", browserWrapper),
     // ... other options
 )
-
-// After creating the actual browser
-actualBrowser := browser.New(window, config)
-// Update the wrapper (requires modifying RisorBrowser or using a different approach)
 ```
 
-### Option 2: Create your own wrapper (recommended)
+**Available methods in scripts:**
 
-```go
-// Create a custom object that wraps the browser
-type MyAppGlobal struct {
-    browser *browser.Browser
-}
-
-func (m *MyAppGlobal) GetAttr(name string) (object.Object, bool) {
-    if name == "Open" {
-        return object.NewBuiltin("myapp.Open", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-            url, _ := object.AsString(args[0])
-            m.browser.Navigate(url)
-            return object.Nil, nil
-        }), true
-    }
-    return nil, false
-}
-// ... implement other object.Object methods
-
-// Register during window creation
-gui.WithGlobal("myapp", myAppGlobalInstance)
-```
-
-Scripts can then navigate:
-```risor
-myapp.Open("https://example.com/page")
-// or with the browser wrapper:
+```js
+// Navigate to a URL
 browser.Open("https://example.com/page")
+browser.Open("file:///path/to/script.risor")
+
+// Get current URL
+let currentURL = browser.GetURL()
+print("Current URL:", currentURL)
+
+// Set status bar text
+browser.SetStatus("Loading...")
+browser.SetStatus("Ready")
+```
+
+**Example script:**
+
+```js
+// Create navigation buttons
+let homeBtn = widget.NewButton("Home", () => {
+    browser.SetStatus("Going home...")
+    browser.Open("https://example.com/home")
+})
+
+let aboutBtn = widget.NewButton("About", () => {
+    browser.SetStatus("Loading about page...")
+    browser.Open("https://example.com/about")
+})
+
+let urlBtn = widget.NewButton("Show URL", () => {
+    let url = browser.GetURL()
+    browser.SetStatus("Current: " + url)
+})
+
+window.SetContent(container.NewVBox([homeBtn, aboutBtn, urlBtn]))
 ```
 
 ## Configuration Options

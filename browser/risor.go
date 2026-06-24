@@ -30,6 +30,11 @@ func (rb *RisorBrowser) Inspect() string {
 	return "browser"
 }
 
+// String returns a string representation
+func (rb *RisorBrowser) String() string {
+	return "browser"
+}
+
 // Interface returns the underlying Go value
 func (rb *RisorBrowser) Interface() interface{} {
 	return rb.browser
@@ -67,7 +72,11 @@ func (rb *RisorBrowser) Equals(other object.Object) bool {
 
 // Attrs returns available attributes
 func (rb *RisorBrowser) Attrs() []object.AttrSpec {
-	return nil
+	return []object.AttrSpec{
+		{Name: "Open", Doc: "Navigate to a URL programmatically: browser.Open(\"https://example.com\")"},
+		{Name: "GetURL", Doc: "Get current URL: browser.GetURL()"},
+		{Name: "SetStatus", Doc: "Set status bar text: browser.SetStatus(\"Loading...\")"},
+	}
 }
 
 // SetAttr sets an attribute (not supported)

@@ -331,6 +331,20 @@ func (obj *Container) GetAttr(name string) (object.Object, bool) {
 
 			var objects []fyne.CanvasObject
 			for i, x := range args[1:] {
+				if x.Type() == object.LIST {
+					items, err := object.AsList(x)
+					if err != nil {
+						return nil, err
+					}
+					for j, y := range items.Value() {
+						o, ok := y.Interface().(fyne.CanvasObject)
+						if !ok {
+							return object.Errorf("NewGridWithColumns: Wrong type, expected CanvasObject within list at position: %d", j), nil
+						}
+						objects = append(objects, o)
+					}
+					continue
+				}
 				o, ok := x.Interface().(fyne.CanvasObject)
 				if !ok {
 					return object.Errorf("NewGridWithColumns: Wrong type, expected CanvasObject at argument: %d", i+1), nil
@@ -354,6 +368,20 @@ func (obj *Container) GetAttr(name string) (object.Object, bool) {
 
 			var objects []fyne.CanvasObject
 			for i, x := range args[1:] {
+				if x.Type() == object.LIST {
+					items, err := object.AsList(x)
+					if err != nil {
+						return nil, err
+					}
+					for j, y := range items.Value() {
+						o, ok := y.Interface().(fyne.CanvasObject)
+						if !ok {
+							return object.Errorf("NewGridWithRows: Wrong type, expected CanvasObject within list at position: %d", j), nil
+						}
+						objects = append(objects, o)
+					}
+					continue
+				}
 				o, ok := x.Interface().(fyne.CanvasObject)
 				if !ok {
 					return object.Errorf("NewGridWithRows: Wrong type, expected CanvasObject at argument: %d", i+1), nil

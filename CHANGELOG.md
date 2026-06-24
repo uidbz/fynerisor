@@ -10,6 +10,10 @@
   - History management with browser-style back/forward stacks
   - URL handling: automatic normalization and relative path resolution
   - Source view toggle: split layout showing content and source code side-by-side
+  - **Programmatic navigation from scripts:**
+    - `browser.Open(url)` - Navigate to a URL from Risor scripts
+    - `browser.GetURL()` - Get current URL
+    - `browser.SetStatus(text)` - Set status bar text
   - Hybrid plugin system:
     - MenuProvider interface for custom menu items
     - AuthProvider interface for custom authentication UI
@@ -21,8 +25,14 @@
 - **cmd/fynerisor-browser/** - Reference implementation demonstrating browser package usage
   - Loads Risor scripts from HTTP(S) or file:// URLs
   - Shows plugin architecture and integration patterns
+  - Programmatic navigation enabled via `browser` global object
   - Serves as starting point for custom browser applications
   - ~350 lines with clear comments
+
+**Window Enhancements:**
+- **window.RegisterGlobal(name, value)** - Add global objects after window creation
+  - Useful for objects that need to reference window or components created after initialization
+  - Example: registering browser object for programmatic navigation
 
 ## [0.6.1] - 2026-06-23
 
