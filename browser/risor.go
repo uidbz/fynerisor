@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"fyne.io/fyne/v2"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 )
@@ -13,11 +14,12 @@ import (
 // Applications can register this with gui.WithGlobal("browser", browserObj)
 type RisorBrowser struct {
 	browser *Browser
+	app     fyne.App // Optional: for clipboard access
 }
 
 // NewRisorBrowser creates a Risor-accessible browser object
-func NewRisorBrowser(b *Browser) *RisorBrowser {
-	return &RisorBrowser{browser: b}
+func NewRisorBrowser(b *Browser, app fyne.App) *RisorBrowser {
+	return &RisorBrowser{browser: b, app: app}
 }
 
 // Type returns the Risor type name
@@ -72,11 +74,15 @@ func (rb *RisorBrowser) Equals(other object.Object) bool {
 
 // Attrs returns available attributes
 func (rb *RisorBrowser) Attrs() []object.AttrSpec {
-	return []object.AttrSpec{
+	attrs := []object.AttrSpec{
 		{Name: "Open", Doc: "Navigate to a URL programmatically: browser.Open(\"https://example.com\")"},
 		{Name: "GetURL", Doc: "Get current URL: browser.GetURL()"},
 		{Name: "SetStatus", Doc: "Set status bar text: browser.SetStatus(\"Loading...\")"},
 	}
+	if rb.app != nil {
+		attrs = append(attrs, object.AttrSpec{Name: "CopyToClipboard", Doc: "Copy text to clipboard: browser.CopyToClipboard(\"text\")"})
+	}
+	return attrs
 }
 
 // SetAttr sets an attribute (not supported)
@@ -120,6 +126,24 @@ func (rb *RisorBrowser) GetAttr(name string) (object.Object, bool) {
 			}
 
 			rb.browser.SetStatus(status)
+			return object.Nil, nil
+		}), true
+
+	case "CopyToClipboard":
+		if rb.app == nil {
+			return nil, false
+		}
+		return object.NewBuiltin("browser.CopyToClipboard", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 1 {
+				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+			}
+			text, err := object.AsString(args[0])
+			if err != nil {
+				return nil, err
+			}
+
+			rb.app.Clipboard().SetContent(text)
+			rb.browser.SetStatus("Copied to clipboard")
 			return object.Nil, nil
 		}), true
 	}

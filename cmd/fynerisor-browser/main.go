@@ -42,11 +42,12 @@ func main() {
 
 // BrowserApp is a minimal browser application demonstrating the browser package
 type BrowserApp struct {
-	app     fyne.App
-	window  *gui.Window
-	browser *browser.Browser
-	loader  *ScriptLoader
-	source  string // Current script source for source view
+	app            fyne.App
+	window         *gui.Window
+	browser        *browser.Browser
+	loader         *ScriptLoader
+	source         string // Current script source for source view
+	lastErrorShown string // Track last error to prevent duplicate error dialogs
 }
 
 // NewBrowserApp creates a new browser application
@@ -64,7 +65,14 @@ func NewBrowserApp(title string) *BrowserApp {
 	b.window = gui.NewWindow(fyneWindow,
 		gui.WithAppName("fynerisor-browser"),
 		gui.WithStatusCallback(func(status string) {
-			// Status updates handled by browser
+			// Check for script execution errors
+			if strings.HasPrefix(status, "ERROR: ") && status != b.lastErrorShown {
+				b.lastErrorShown = status
+				errorMsg := strings.TrimPrefix(status, "ERROR: ")
+				b.showError("Script Execution Error", errorMsg)
+			}
+			// Pass status to browser
+			b.browser.SetStatus(status)
 		}),
 		gui.WithResultCallback(func(result string) {
 			// Print results to console
@@ -96,8 +104,8 @@ func NewBrowserApp(title string) *BrowserApp {
 	})
 
 	// Register browser global for programmatic navigation from scripts
-	// This allows scripts to call browser.Open(url), browser.GetURL(), browser.SetStatus()
-	browserObj := browser.NewRisorBrowser(b.browser)
+	// This allows scripts to call browser.Open(url), browser.GetURL(), browser.SetStatus(), browser.CopyToClipboard()
+	browserObj := browser.NewRisorBrowser(b.browser, b.app)
 	b.window.RegisterGlobal("browser", browserObj)
 
 	// Enable source view
@@ -137,24 +145,35 @@ func (b *BrowserApp) loadScript(url, username, password string) (string, error) 
 // showError displays an error page
 func (b *BrowserApp) showError(title, message string) {
 	errorScript := fmt.Sprintf(`
+require(["v0.6", "@gui"])
+
 let title = widget.NewLabel(%q)
 title.TextStyle.Bold = true
 
 let msg = widget.NewLabel(%q)
 
-let content = container.NewVBox(
+let copy_btn = widget.NewButton("Copy Error to Clipboard", () => {
+    browser.CopyToClipboard(%q)
+})
+
+let content = container.NewVBox([
     title,
     widget.NewSeparator(),
-    msg
-)
+    msg,
+    widget.NewSeparator(),
+    copy_btn
+])
 
 window.SetContent(content)
-`, title, message)
+`, title, message, message)
 
 	b.window.Clear()
 	b.source = errorScript
 	b.window.LoadScript(errorScript)
 	b.window.Execute()
+
+	// Log error to terminal as well
+	log.Printf("ERROR: %s - %s", title, message)
 }
 
 // showAbout displays the about page
