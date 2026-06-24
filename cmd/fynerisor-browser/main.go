@@ -22,7 +22,7 @@ import (
 	"github.com/uidbz/fynerisor/gui"
 )
 
-const version = "0.1.0"
+const version = "0.6.0"
 
 func main() {
 	// Parse command-line flags
@@ -31,7 +31,21 @@ func main() {
 
 	// If URL provided as argument, use it instead
 	if flag.NArg() > 0 {
-		*homeURL = flag.Arg(0)
+		arg := flag.Arg(0)
+
+		// Convert relative paths to absolute file:// URLs
+		if !strings.HasPrefix(arg, "http://") && !strings.HasPrefix(arg, "https://") && !strings.HasPrefix(arg, "file://") {
+			// It's a relative path, convert to absolute file:// URL
+			absPath, err := filepath.Abs(arg)
+			if err != nil {
+				log.Printf("Warning: failed to resolve path %q: %v", arg, err)
+				*homeURL = arg // Use as-is if we can't resolve
+			} else {
+				*homeURL = "file://" + absPath
+			}
+		} else {
+			*homeURL = arg
+		}
 	}
 
 	// Create the browser application
