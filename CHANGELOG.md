@@ -34,6 +34,19 @@
   - Useful for objects that need to reference window or components created after initialization
   - Example: registering browser object for programmatic navigation
 
+**Error Handling:**
+- **Script execution error display** - Errors now show in clean UI with "Copy Error to Clipboard" button
+- **browser.CopyToClipboard(text)** - Copy text to system clipboard from scripts
+- **Terminal error logging** - All errors logged to terminal for debugging
+
+### Fixed
+
+**Canvas Image Loading:**
+- **canvas.NewImageFromURI()** - Better error messages for invalid URIs
+  - Relative paths now return clear error: "relative paths are not supported, use absolute file:// URI or HTTP(S) URL"
+  - Panic recovery for malformed URIs prevents crashes
+  - Empty URI check with helpful error message
+
 ## [0.6.1] - 2026-06-23
 
 ### Fixed

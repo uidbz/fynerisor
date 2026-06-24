@@ -108,6 +108,11 @@ func NewImage(instance *canvas.Image) *Image {
 // NewImageFromURI creates a new Image from a URI string.
 // For HTTP/HTTPS URLs, it downloads the image with proper User-Agent header.
 func NewImageFromURI(uri string) (*Image, error) {
+	// Check for empty or invalid URI
+	if uri == "" {
+		return nil, fmt.Errorf("empty URI provided")
+	}
+
 	// For HTTP/HTTPS URIs, download and create from resource
 	if strings.HasPrefix(uri, "http://") || strings.HasPrefix(uri, "https://") {
 		img, err := loadImageFromHTTP(uri)
@@ -117,10 +122,26 @@ func NewImageFromURI(uri string) (*Image, error) {
 		return NewImage(img), nil
 	}
 
+	// Check if it looks like a relative path (no scheme)
+	if !strings.Contains(uri, "://") && !strings.HasPrefix(uri, "file://") {
+		return nil, fmt.Errorf("relative paths are not supported, use absolute file:// URI or HTTP(S) URL: %q", uri)
+	}
+
 	// For file:// and other URIs, use Fyne's built-in support
-	fyneURI, err := storage.ParseURI(uri)
-	if err != nil {
-		return nil, err
+	// Wrap ParseURI in a panic recovery since it can panic on malformed URIs
+	var fyneURI fyne.URI
+	var parseErr error
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				parseErr = fmt.Errorf("failed to parse URI %q: %v", uri, r)
+			}
+		}()
+		fyneURI, parseErr = storage.ParseURI(uri)
+	}()
+
+	if parseErr != nil {
+		return nil, parseErr
 	}
 
 	img := canvas.NewImageFromURI(fyneURI)
