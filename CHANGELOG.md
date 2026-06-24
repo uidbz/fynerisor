@@ -47,6 +47,12 @@
   - Panic recovery for malformed URIs prevents crashes
   - Empty URI check with helpful error message
 
+**Browser URL Handling:**
+- **file:// directory URLs** - Now append `/index.risor` to file:// directory paths
+  - Previously only HTTP(S) URLs got `/index.risor` appended
+  - Now `file:///path/to/dir` → `file:///path/to/dir/index.risor`
+  - Consistent behavior across all URL schemes
+
 ## [0.6.1] - 2026-06-23
 
 ### Fixed

@@ -35,9 +35,20 @@ func IsRelativeURL(rawURL string) bool {
 
 // fixURL normalizes a URL by adding https:// prefix and /index.risor suffix as needed
 func fixURL(rawURL string) (string, error) {
-	// Handle file:// URLs - don't add index.risor
+	// Handle file:// URLs
 	if strings.HasPrefix(rawURL, "file://") {
-		return rawURL, nil
+		// Parse the file URL
+		parsed, err := url.Parse(rawURL)
+		if err != nil {
+			return "", fmt.Errorf("invalid file URL: %w", err)
+		}
+
+		// Add index.risor if no .risor extension
+		if !strings.HasSuffix(parsed.Path, ".risor") {
+			parsed.Path = filepath.ToSlash(filepath.Join(parsed.Path, "index.risor"))
+		}
+
+		return parsed.String(), nil
 	}
 
 	// Add https:// prefix if no scheme present
