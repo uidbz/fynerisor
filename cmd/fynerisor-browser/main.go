@@ -26,7 +26,7 @@ const version = "0.6.0"
 
 func main() {
 	// Parse command-line flags
-	homeURL := flag.String("home", "https://example.com", "Home URL to load on startup")
+	homeURL := flag.String("home", "https://fynerisor.com/app", "Home URL to load on startup")
 	flag.Parse()
 
 	// If URL provided as argument, use it instead
