@@ -76,7 +76,17 @@ func correctRelativeURL(currentUrl, relativeUrl string) string {
 		// For file:// URLs, handle filesystem paths
 		if strings.HasPrefix(currentUrl, "file://") {
 			currentPath := strings.TrimPrefix(currentUrl, "file://")
-			currentDir := filepath.Dir(currentPath)
+
+			// If currentPath doesn't end with .risor, it's a directory URL
+			// In this case, use it as-is rather than taking its parent
+			var currentDir string
+			if strings.HasSuffix(currentPath, ".risor") {
+				currentDir = filepath.Dir(currentPath)
+			} else {
+				// It's already a directory path, use it directly
+				currentDir = currentPath
+			}
+
 			resolvedPath := filepath.Join(currentDir, relativeUrl)
 			absPath, err := filepath.Abs(resolvedPath)
 			if err == nil {
