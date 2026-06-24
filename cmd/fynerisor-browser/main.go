@@ -100,7 +100,8 @@ func NewBrowserApp(title string) *BrowserApp {
 		gui.WithStrings(),
 		gui.WithFilepath(),
 		gui.WithTime(),
-		gui.WithIO(),
+		// Note: IO module intentionally not enabled for security
+		// (provides file system write access)
 	)
 
 	// Create browser with plugins
