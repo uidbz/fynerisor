@@ -7,14 +7,11 @@ import (
 	"image/color"
 	"log"
 
-	"gonum.org/v1/plot/vg/vgimg"
-
-	"gonum.org/v1/plot/vg/draw"
-
 	"gonum.org/v1/plot"
-	"gonum.org/v1/plot/font"
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/vg"
+	"gonum.org/v1/plot/vg/draw"
+	"gonum.org/v1/plot/vg/vgimg"
 
 	"fyne.io/fyne/v2/container"
 
@@ -117,10 +114,9 @@ func createBarChart(title, ylabel string, labels []string, values []float64) ([]
 		p.Add(label)
 	}
 
-	labelCount := font.Length(len(labels))
-
+	// Fixed resolution for consistent chart quality
 	// Render to in-memory buffer
-	img := vgimg.New(labelCount*vg.Inch, labelCount*0.75*vg.Inch)
+	img := vgimg.New(8*vg.Inch, 6*vg.Inch)
 	dc := draw.New(img)
 	p.Draw(dc)
 
