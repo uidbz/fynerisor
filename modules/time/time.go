@@ -16,7 +16,21 @@ func Module() *object.Module {
 		"now":   object.NewBuiltin("time.now", now),
 		"date":  object.NewBuiltin("time.date", date),
 		"parse": object.NewBuiltin("time.parse", parse),
+		"unix":  object.NewBuiltin("time.unix", unix),
 	})
+}
+
+// unix creates a time object from a unix timestamp (seconds since epoch),
+// in the local timezone.
+func unix(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) != 1 {
+		return object.Errorf("time.unix: expected 1 argument (seconds), got %d", len(args)), nil
+	}
+	secs, err := object.AsInt(args[0])
+	if err != nil {
+		return nil, err
+	}
+	return NewTimeObject(time.Unix(secs, 0)), nil
 }
 
 // now returns the current time as a Time object
