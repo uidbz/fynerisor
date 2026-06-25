@@ -195,6 +195,49 @@ onto the `functionCalls` channel — but be aware that `go()` workers run
 concurrently with `functionCalls` consumption, so even the channel does not
 serialize against an in-flight `go()` closure. When in doubt, keep it in Go.
 
+## The Diagnostic Guard (vmguard)
+
+The rules above are *preventive* — they tell widget authors and script authors
+how to avoid concurrent VM access. But when a script violates them anyway (most
+commonly a `go()` worker that touches the VM while a table renders), the failure
+was historically a *mystery*: a corrupted VM stack surfaces as a misleading
+error like `widget.Table.Data: ERROR: function takes 1 argument (2 given)` —
+the arity is fine; the stack is corrupt — or an `unknown opcode` panic.
+
+`gui/vmguard` makes that failure *legible*. `vmguard.Call(...)` wraps the VM
+call path with a **non-blocking `TryLock`**:
+
+```go
+func Call(callFunc object.CallFunc, ctx, fn, args) (object.Object, error) {
+    if !mu.TryLock() {
+        return object.Nil, fmt.Errorf("concurrent VM access detected: ...")
+    }
+    defer mu.Unlock()
+    return callFunc(ctx, fn, args)
+}
+```
+
+**Why TryLock, not Lock?** A blocking `Lock()` would be *correct* (no
+corruption) but would **freeze the GUI**: a button tap runs on the GUI thread
+through `safeCall`, and if a `go()` worker held the lock during a slow HTTP
+call, the tap would block until the worker finished. TryLock never waits, so the
+GUI can never freeze behind a background worker.
+
+**What it does and does not do:**
+- ✅ Converts silent stack corruption into a clear, actionable error naming the
+  cause (`go()` worker racing the GUI thread) and pointing here.
+- ✅ Never blocks → never freezes the GUI.
+- ❌ Does **not** make concurrent VM access safe. It detects and rejects the
+  *second* entrant; the rejected callback does not run. The real fix is still to
+  keep background work in Go (see the rules above).
+
+**Where it's wired:** `safeCall` (covers the `go()` builtin, queued
+`functionCalls`, dialogs, and bindings) and the render-thread getters in
+`gui/widget/table.go` (`Columns`, `RowCount`, `Data`, `CreateCell`,
+`UpdateCell`). Both racing sides must take the same guard for TryLock to detect
+the overlap. Other widgets with render-thread getters (List, Tree, GridWrap) can
+be wired the same way as needed.
+
 ## Safe Patterns Summary
 
 | Pattern | Use When | Example |

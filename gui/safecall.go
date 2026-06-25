@@ -7,6 +7,7 @@ import (
 	"runtime/debug"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
+	"github.com/uidbz/fynerisor/gui/vmguard"
 )
 
 // safeCall invokes a script callback, recovering from any panic so that a
@@ -21,5 +22,5 @@ func safeCall(callFunc object.CallFunc, ctx context.Context, fn *object.Closure,
 			err = fmt.Errorf("panic in script callback: %v", r)
 		}
 	}()
-	return callFunc(ctx, fn, args)
+	return vmguard.Call(callFunc, ctx, fn, args)
 }

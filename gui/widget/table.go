@@ -15,6 +15,7 @@ import (
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 
 	risorcanvas "github.com/uidbz/fynerisor/gui/canvas"
+	"github.com/uidbz/fynerisor/gui/vmguard"
 	"github.com/uidbz/fynerisor/gui/widget/tablewidget"
 )
 
@@ -84,7 +85,7 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 			}
 
 			obj.Columns = func() []string {
-				o, err := callFunc(ctx, fn, []object.Object{})
+				o, err := vmguard.Call(callFunc, ctx, fn, []object.Object{})
 				if err != nil {
 					fmt.Println("ERROR:", err)
 				}
@@ -112,7 +113,7 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 			}
 
 			obj.instance.RowCount = func() int {
-				o, err := callFunc(ctx, fn, []object.Object{})
+				o, err := vmguard.Call(callFunc, ctx, fn, []object.Object{})
 				if err != nil {
 					fmt.Println("RowCount: ERROR:", err)
 					return 0
@@ -192,7 +193,7 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 			}
 
 			obj.instance.Data = func(offset, limit int) *tablewidget.TableData {
-				o, err := callFunc(ctx, fn, []object.Object{object.NewInt(int64(offset)), object.NewInt(int64(limit))})
+				o, err := vmguard.Call(callFunc, ctx, fn, []object.Object{object.NewInt(int64(offset)), object.NewInt(int64(limit))})
 				if err != nil {
 					fmt.Println("widget.Table.Data: ERROR:", err)
 					return tablewidget.NewTableData(obj.instance.Title)
@@ -232,7 +233,7 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 
 			createFunc := func(col, row int) fyne.CanvasObject {
 				// Call the Risor callback directly - we're already in the GUI thread
-				result, err := callFunc(ctx, fn, []object.Object{
+				result, err := vmguard.Call(callFunc, ctx, fn, []object.Object{
 					object.NewInt(int64(col)),
 					object.NewInt(int64(row)),
 				})
@@ -274,7 +275,7 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 			updateFunc := func(col, row int, canvasObj fyne.CanvasObject) {
 				// Call the Risor callback directly - we're already in the GUI thread
 				wrappedObj := wrapCanvasObjectTable(canvasObj)
-				_, err := callFunc(ctx, fn, []object.Object{
+				_, err := vmguard.Call(callFunc, ctx, fn, []object.Object{
 					object.NewInt(int64(col)),
 					object.NewInt(int64(row)),
 					wrappedObj,
