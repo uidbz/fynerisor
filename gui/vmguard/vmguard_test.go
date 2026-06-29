@@ -57,3 +57,51 @@ func TestCallSerializesAndDetectsContention(t *testing.T) {
 		t.Fatalf("post-release Call returned unexpected result: %v", res)
 	}
 }
+
+// TestReentrantSameGoroutine verifies that a nested Call on the SAME goroutine
+// (e.g. a handler that runs through the guard and then triggers Table.Refresh,
+// which synchronously calls the guarded Data/RowCount callbacks) is allowed
+// rather than rejected as a false race.
+func TestReentrantSameGoroutine(t *testing.T) {
+	inner := object.CallFunc(func(ctx context.Context, fn *object.Closure, args []object.Object) (object.Object, error) {
+		return object.NewString("inner"), nil
+	})
+
+	outer := object.CallFunc(func(ctx context.Context, fn *object.Closure, args []object.Object) (object.Object, error) {
+		// Re-enter the guard from the same goroutine — must succeed.
+		res, err := Call(inner, ctx, nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		return res, nil
+	})
+
+	res, err := Call(outer, context.Background(), nil, nil)
+	if err != nil {
+		t.Fatalf("reentrant Call errored: %v", err)
+	}
+	if s, _ := res.(*object.String); s == nil || s.Value() != "inner" {
+		t.Fatalf("reentrant Call returned unexpected result: %v", res)
+	}
+
+	// Guard must be fully released afterward.
+	if owner != 0 || depth != 0 {
+		t.Fatalf("guard not released after reentrant call: owner=%d depth=%d", owner, depth)
+	}
+}
+
+// TestPanicRecovered verifies a panic inside the VM callback is converted to an
+// error (so a faulty script can never crash the GUI) and the guard is released.
+func TestPanicRecovered(t *testing.T) {
+	boom := object.CallFunc(func(ctx context.Context, fn *object.Closure, args []object.Object) (object.Object, error) {
+		panic("boom")
+	})
+
+	_, err := Call(boom, context.Background(), nil, nil)
+	if err == nil || !strings.Contains(err.Error(), "panic in VM callback") {
+		t.Fatalf("expected recovered-panic error, got: %v", err)
+	}
+	if owner != 0 || depth != 0 {
+		t.Fatalf("guard not released after panic: owner=%d depth=%d", owner, depth)
+	}
+}
