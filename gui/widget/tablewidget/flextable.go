@@ -31,6 +31,13 @@ type FlexTable struct {
 	widgetMode     bool
 	createCellFunc func(col, row int) fyne.CanvasObject
 	updateCellFunc func(col, row int, obj fyne.CanvasObject)
+
+	// dataGen bumps on every SetData (a real data change). A WidgetCell records
+	// the generation it last ran UpdateCell at; a geometry-only refresh (e.g. a
+	// column-resize drag, which forces a full re-render of every visible cell)
+	// then skips the per-cell UpdateCell VM round-trip because the content is
+	// unchanged. This is the difference between fluid and choppy column resizing.
+	dataGen int
 }
 
 func NewFlexTable(data *TableData, onClick func(cell *TableCell)) *FlexTable {
@@ -69,14 +76,21 @@ func NewFlexTable(data *TableData, onClick func(cell *TableCell)) *FlexTable {
 						cellWidget := table.createCellFunc(id.Col, id.Row)
 						widgetCell.SetWidget(cellWidget, id)
 					}
-					// Always call UpdateCell to refresh the widget's state
-					if widgetCell.content != nil {
+					// Skip the UpdateCell VM round-trip when this cell already
+					// reflects the current data at its current position. A
+					// geometry-only refresh (column-resize drag) re-renders every
+					// visible cell but changes no content, so re-running the
+					// script callback per cell per drag-pixel is pure waste and is
+					// what makes resizing choppy. Recreation or a new data
+					// generation forces a real update.
+					if widgetCell.content != nil && (needsRecreation || widgetCell.lastGen != table.dataGen) {
 						// Map filtered row to original row if filtering is active
 						originalRow := id.Row
 						if table.data.RowMapping != nil && id.Row < len(table.data.RowMapping) {
 							originalRow = table.data.RowMapping[id.Row]
 						}
 						table.updateCellFunc(id.Col, originalRow, widgetCell.content)
+						widgetCell.lastGen = table.dataGen
 					}
 				}
 			} else{
@@ -120,6 +134,7 @@ func NewFlexTable(data *TableData, onClick func(cell *TableCell)) *FlexTable {
 
 func (t *FlexTable) SetData(data *TableData) {
 	t.data = data
+	t.dataGen++
 	t.table.CreateHeader = func() fyne.CanvasObject {
 		return NewHeader("", t.headerBgColor, t)
 	}
@@ -139,6 +154,12 @@ func (t *FlexTable) SetColumnWidth(id int, width float32) {
 }
 
 func (t *FlexTable) Refresh() {
+	// Treat an explicit Refresh as a possible content change (e.g. header-click
+	// sort mutates data in place and calls this without SetData). Bumping dataGen
+	// forces visible cells to re-run UpdateCell. The interactive column-resize
+	// drag does NOT come through here — it drives the inner widget.Table directly
+	// — so resize still skips the per-cell VM round-trip.
+	t.dataGen++
 	t.table.Refresh()
 }
 
@@ -313,6 +334,7 @@ type WidgetCell struct {
 	widget.BaseWidget
 	content   fyne.CanvasObject
 	currentID widget.TableCellID
+	lastGen   int // FlexTable.dataGen this cell last ran UpdateCell at (0 = never)
 }
 
 func NewWidgetCell() *WidgetCell {
