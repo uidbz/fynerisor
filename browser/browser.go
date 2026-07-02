@@ -52,10 +52,11 @@ type Browser struct {
 // New creates a new Browser instance
 func New(window *gui.Window, config Config) *Browser {
 	b := &Browser{
-		window: window,
-		config: config,
-		url:    binding.NewString(),
-		status: binding.NewString(),
+		window:  window,
+		config:  config,
+		url:     binding.NewString(),
+		status:  binding.NewString(),
+		homeURL: config.HomeURL,
 	}
 
 	// Create history with callbacks
@@ -137,10 +138,16 @@ func (b *Browser) buildSideMenu() {
 	b.sideMenu.Hide()
 }
 
-// SetHomeURL sets the home URL for the home button
+// SetHomeURL sets the home URL for the home button and navigates to it.
 func (b *Browser) SetHomeURL(url string) {
 	b.homeURL = url
 	b.navigate(url, true)
+}
+
+// SetHome sets the home URL for the home button without navigating to it.
+// Use this when the startup page differs from the home page.
+func (b *Browser) SetHome(url string) {
+	b.homeURL = url
 }
 
 // Navigate navigates to the given URL and records it in history
