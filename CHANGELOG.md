@@ -14,6 +14,10 @@
     - `browser.Open(url)` - Navigate to a URL from Risor scripts
     - `browser.GetURL()` - Get current URL
     - `browser.SetStatus(text)` - Set status bar text
+  - **URL query parameters:**
+    - `browser.params` - Map of the current URL's query parameters, e.g. `https://server/page?myarg=value` exposes `browser.params["myarg"]`
+    - `browser.GetParam(name)` - Get a single query parameter value (empty string if absent)
+    - Available to external apps via `Browser.GetParams()` and `Browser.GetParam(name)`
   - Hybrid plugin system:
     - MenuProvider interface for custom menu items
     - AuthProvider interface for custom authentication UI

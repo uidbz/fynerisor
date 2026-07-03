@@ -2,6 +2,7 @@ package browser
 
 import (
 	"log"
+	"net/url"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -44,6 +45,7 @@ type Browser struct {
 	statusBar        *widget.Label
 	sideMenu         *fyne.Container
 	homeURL          string
+	params           url.Values
 	sourceProvider   SourceViewProvider
 	onOpenInBrowser  func(url string)
 	sourceViewActive bool
@@ -57,6 +59,7 @@ func New(window *gui.Window, config Config) *Browser {
 		url:     binding.NewString(),
 		status:  binding.NewString(),
 		homeURL: config.HomeURL,
+		params:  url.Values{},
 	}
 
 	// Create history with callbacks
@@ -160,6 +163,9 @@ func (b *Browser) navigate(url string, recordVisit bool) {
 	// Correct relative URLs
 	url = CorrectRelativeURL(b.history.Current(), url)
 	log.Println("browser: navigating to", url)
+
+	// Parse query parameters from the URL and expose them to scripts
+	b.params = parseParams(url)
 
 	// Store display URL (without index.risor suffix)
 	displayURL := url
@@ -266,6 +272,24 @@ func (b *Browser) showAuthDialog(url string) {
 func (b *Browser) GetURL() string {
 	url, _ := b.url.Get()
 	return url
+}
+
+// GetParams returns the query parameters of the current URL.
+// A copy is returned so callers cannot mutate the browser's state.
+func (b *Browser) GetParams() url.Values {
+	out := make(url.Values, len(b.params))
+	for k, v := range b.params {
+		vals := make([]string, len(v))
+		copy(vals, v)
+		out[k] = vals
+	}
+	return out
+}
+
+// GetParam returns the first value for the given query parameter,
+// or an empty string if it is not present.
+func (b *Browser) GetParam(name string) string {
+	return b.params.Get(name)
 }
 
 // SetStatus updates the status bar

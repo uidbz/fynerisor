@@ -78,6 +78,8 @@ func (rb *RisorBrowser) Attrs() []object.AttrSpec {
 		{Name: "Open", Doc: "Navigate to a URL programmatically: browser.Open(\"https://example.com\")"},
 		{Name: "GetURL", Doc: "Get current URL: browser.GetURL()"},
 		{Name: "SetStatus", Doc: "Set status bar text: browser.SetStatus(\"Loading...\")"},
+		{Name: "params", Doc: "Query parameters of the current URL as a map: browser.params[\"myarg\"]"},
+		{Name: "GetParam", Doc: "Get a single query parameter: browser.GetParam(\"myarg\")"},
 	}
 	if rb.app != nil {
 		attrs = append(attrs, object.AttrSpec{Name: "CopyToClipboard", Doc: "Copy text to clipboard: browser.CopyToClipboard(\"text\")"})
@@ -127,6 +129,26 @@ func (rb *RisorBrowser) GetAttr(name string) (object.Object, bool) {
 
 			rb.browser.SetStatus(status)
 			return object.Nil, nil
+		}), true
+
+	case "params":
+		params := rb.browser.GetParams()
+		m := make(map[string]object.Object, len(params))
+		for k := range params {
+			m[k] = object.NewString(params.Get(k))
+		}
+		return object.NewMap(m), true
+
+	case "GetParam":
+		return object.NewBuiltin("browser.GetParam", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 1 {
+				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+			}
+			name, err := object.AsString(args[0])
+			if err != nil {
+				return nil, err
+			}
+			return object.NewString(rb.browser.GetParam(name)), nil
 		}), true
 
 	case "CopyToClipboard":

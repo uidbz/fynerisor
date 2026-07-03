@@ -189,6 +189,12 @@ print("Current URL:", currentURL)
 // Set status bar text
 browser.SetStatus("Loading...")
 browser.SetStatus("Ready")
+
+// Read URL query parameters
+// For https://example.com/page?myarg=value&other=value2
+let myarg = browser.GetParam("myarg")   // "value"
+let other = browser.params["other"]      // "value2"
+let missing = browser.GetParam("nope")   // "" (empty string when absent)
 ```
 
 **Example script:**
@@ -242,6 +248,22 @@ The browser automatically handles:
 - Appending `/index.risor` to directory URLs
 - Resolving relative URLs (e.g., `../other.risor`)
 - Both HTTP(S) and `file://` protocols
+
+### Query Parameters
+
+Query parameters on the current URL (e.g. `https://server/page?myarg=value&other=value2`)
+are parsed on every navigation and exposed to both scripts and host Go code:
+
+**From Risor scripts** (via the `browser` global):
+- `browser.params` — a map of parameter name to value
+- `browser.GetParam(name)` — the value for a single parameter (empty string if absent)
+
+**From external Go apps** (via the `*browser.Browser` instance):
+
+```go
+params := b.GetParams()        // url.Values (a copy; safe to mutate)
+value := b.GetParam("myarg")   // first value, or "" if absent
+```
 
 ## History Navigation
 

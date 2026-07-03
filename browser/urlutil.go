@@ -120,6 +120,16 @@ func correctRelativeURL(currentUrl, relativeUrl string) string {
 	return relativeUrl
 }
 
+// parseParams extracts the query parameters from a URL. It returns an empty
+// (non-nil) url.Values if the URL cannot be parsed or has no query string.
+func parseParams(rawURL string) url.Values {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return url.Values{}
+	}
+	return parsed.Query()
+}
+
 // urlJoin joins a base URL with path segments
 func urlJoin(baseURL string, paths ...string) (string, error) {
 	base, err := url.Parse(baseURL)
