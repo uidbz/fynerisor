@@ -1,0 +1,17 @@
+Website = "https://github.com/uidbz/fynerisor"
+
+[Details]
+Icon = "Icon.png"
+Name = "Fynerisor Browser"
+ID = "com.fynerisor.browser"
+Version = "0.6.0"
+Build = 1
+
+# HomeURL is baked into the app as custom metadata (fyne.CurrentApp().Metadata().Custom).
+# Mobile apps have no command-line arguments, so this is how the startup page is set.
+# Override at package time with: fyne package -os android --metadata HomeURL=...
+[Development]
+HomeURL = "https://fynerisor.com/app"
+
+[Release]
+HomeURL = "https://fynerisor.com/app"

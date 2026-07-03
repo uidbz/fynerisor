@@ -51,7 +51,67 @@ File paths are automatically detected and converted to `file://` URLs. Both Unix
 
 ### Command-line Flags
 
-- `-home <url>` - Set home URL (default: https://example.com)
+- `-home <url>` - Set home URL (default: https://fynerisor.com/app)
+
+## Android
+
+The browser can be packaged as an Android app. Because mobile apps receive no
+command-line arguments, the startup (home) URL is baked in at build time as
+custom app metadata.
+
+### Requirements
+
+- The `fyne` command: `go install fyne.io/fyne/v2/cmd/fyne@latest`
+- Android SDK and NDK installed, with `adb` and the NDK on your `PATH`
+  (`ANDROID_HOME` / `ANDROID_NDK_HOME` set). See the
+  [Fyne mobile docs](https://docs.fyne.io/started/mobile).
+
+### Build
+
+Run from this directory (where `FyneApp.toml` lives):
+
+```bash
+# Uses the HomeURL from FyneApp.toml
+fyne package -os android -app-id com.fynerisor.browser -icon Icon.png
+
+# Bake in a different startup URL without editing FyneApp.toml
+fyne package -os android -app-id com.fynerisor.browser -icon Icon.png \
+    --metadata HomeURL=https://your.server/app
+
+# Release build (for distribution)
+fyne package -os android -app-id com.fynerisor.browser -icon Icon.png --release
+```
+
+`fyne package` auto-generates the `AndroidManifest.xml` (including the
+`INTERNET` permission required to fetch scripts over HTTP/HTTPS), so no manifest
+file is needed in the repo. The result is a `.apk` in this directory. Install it
+with:
+
+```bash
+adb install -r "Fynerisor Browser.apk"
+```
+
+### How the home URL is resolved
+
+`main.go` picks the startup URL in this order:
+
+1. `-home` flag or positional argument (desktop only)
+2. `HomeURL` custom metadata (from `FyneApp.toml` or `--metadata HomeURL=...`)
+3. Built-in `fallbackHomeURL`
+
+Custom metadata is read at runtime via `fyne.CurrentApp().Metadata().Custom`.
+During development (`go run` / `go build`) it comes from the `[Development]`
+table in `FyneApp.toml`; a `--release` build uses the `[Release]` table.
+
+### Packaging files
+
+- `FyneApp.toml` - App metadata (name, ID, icon, version, and the `HomeURL`
+  custom metadata under `[Development]` / `[Release]`)
+- `Icon.png` - Launcher icon
+
+> **Note:** The table widget's right-click "copy to clipboard" uses a native
+> clipboard library that requires initialization on mobile. Clipboard copy from
+> tables is a no-op on Android; all other functionality works.
 
 ## Architecture
 

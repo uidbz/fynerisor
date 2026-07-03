@@ -32,6 +32,13 @@
   - Programmatic navigation enabled via `browser` global object
   - Serves as starting point for custom browser applications
   - ~350 lines with clear comments
+  - **Android/mobile packaging support:**
+    - Uses `app.NewWithID` so preferences and storage work on mobile
+    - Startup (home) URL resolved from `HomeURL` custom app metadata, since
+      mobile apps receive no command-line arguments; set it in `FyneApp.toml`
+      or via `fyne package --metadata HomeURL=...`
+    - `FyneApp.toml` + `Icon.png` added; `fyne package -os android` builds an APK
+      (auto-generated manifest already grants the `INTERNET` permission)
 
 **Window Enhancements:**
 - **window.RegisterGlobal(name, value)** - Add global objects after window creation

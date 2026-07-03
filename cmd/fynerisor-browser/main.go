@@ -24,33 +24,54 @@ import (
 
 const version = "0.6.0"
 
+// appID is the application identifier used for on-device storage and packaging.
+const appID = "com.fynerisor.browser"
+
+// fallbackHomeURL is used when no home URL is configured any other way.
+const fallbackHomeURL = "https://fynerisor.com/app"
+
 func main() {
-	// Parse command-line flags
-	homeURL := flag.String("home", "https://fynerisor.com/app", "Home URL to load on startup")
+	// Create the browser application first so its Fyne app metadata is available.
+	app := NewBrowserApp("fynerisor-browser")
+
+	// Determine the startup URL, in order of precedence:
+	//   1. -home flag or positional argument (desktop only)
+	//   2. "HomeURL" custom metadata baked in at build time (mobile-friendly)
+	//   3. fallbackHomeURL
+	//
+	// Mobile apps (Android/iOS) receive no command-line arguments, so the home
+	// URL is set at package time via FyneApp.toml or:
+	//   fyne package -os android --metadata HomeURL=https://your.server/app
+	homeURL := flag.String("home", "", "Home URL to load on startup")
 	flag.Parse()
 
-	// If URL provided as argument, use it instead
+	resolved := app.metadataHomeURL()
+	if resolved == "" {
+		resolved = fallbackHomeURL
+	}
+	if *homeURL != "" {
+		resolved = *homeURL
+	}
+
+	// If a URL was provided as a positional argument, use it instead.
 	if flag.NArg() > 0 {
 		arg := flag.Arg(0)
 
 		// Convert relative paths to absolute file:// URLs
 		if !strings.HasPrefix(arg, "http://") && !strings.HasPrefix(arg, "https://") && !strings.HasPrefix(arg, "file://") {
-			// It's a relative path, convert to absolute file:// URL
 			absPath, err := filepath.Abs(arg)
 			if err != nil {
 				log.Printf("Warning: failed to resolve path %q: %v", arg, err)
-				*homeURL = arg // Use as-is if we can't resolve
+				resolved = arg // Use as-is if we can't resolve
 			} else {
-				*homeURL = "file://" + absPath
+				resolved = "file://" + absPath
 			}
 		} else {
-			*homeURL = arg
+			resolved = arg
 		}
 	}
 
-	// Create the browser application
-	app := NewBrowserApp("fynerisor-browser")
-	app.SetHomeURL(*homeURL)
+	app.SetHomeURL(resolved)
 	app.ShowAndRun()
 }
 
@@ -67,7 +88,7 @@ type BrowserApp struct {
 // NewBrowserApp creates a new browser application
 func NewBrowserApp(title string) *BrowserApp {
 	b := &BrowserApp{
-		app:    app.New(),
+		app:    app.NewWithID(appID),
 		loader: NewScriptLoader(),
 	}
 
@@ -132,6 +153,13 @@ func NewBrowserApp(title string) *BrowserApp {
 // SetHomeURL sets the home URL and navigates to it
 func (b *BrowserApp) SetHomeURL(url string) {
 	b.browser.SetHomeURL(url)
+}
+
+// metadataHomeURL returns the "HomeURL" value from the app's custom metadata,
+// or an empty string if it is not set. This is how the startup URL is baked
+// into mobile builds (via FyneApp.toml or `fyne package --metadata`).
+func (b *BrowserApp) metadataHomeURL() string {
+	return b.app.Metadata().Custom["HomeURL"]
 }
 
 // ShowAndRun displays the window and starts the app
@@ -346,8 +374,8 @@ func (sl *ScriptLoader) LoadScript(url, username, password string) (string, erro
 func normalizeURL(url string) string {
 	// Already a URL scheme
 	if strings.HasPrefix(url, "http://") ||
-	   strings.HasPrefix(url, "https://") ||
-	   strings.HasPrefix(url, "file://") {
+		strings.HasPrefix(url, "https://") ||
+		strings.HasPrefix(url, "file://") {
 		return url
 	}
 
@@ -358,7 +386,7 @@ func normalizeURL(url string) string {
 	isUnixPath := strings.HasPrefix(url, "/")
 	isWindowsPath := len(url) >= 3 && url[1] == ':' && (url[2] == '\\' || url[2] == '/')
 	isRelativePath := strings.HasPrefix(url, "./") || strings.HasPrefix(url, "../") ||
-	                  !strings.Contains(url, "://")
+		!strings.Contains(url, "://")
 
 	if isUnixPath || isWindowsPath || isRelativePath {
 		// Convert to absolute path
