@@ -39,6 +39,10 @@
       or via `fyne package --metadata HomeURL=...`
     - `FyneApp.toml` + `Icon.png` added; `fyne package -os android` builds an APK
       (auto-generated manifest already grants the `INTERNET` permission)
+    - Table widget clipboard copy is now behind build tags: on mobile the
+      `golang.design/x/clipboard` dependency pulls in `golang.org/x/mobile/app`,
+      which clashes with Fyne's mobile driver (duplicate C symbols). It is
+      excluded on android/ios, where table clipboard copy is a no-op.
 
 **Window Enhancements:**
 - **window.RegisterGlobal(name, value)** - Add global objects after window creation

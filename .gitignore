@@ -38,6 +38,13 @@ Thumbs.db
 dist/
 build/
 
+# Mobile packaging output (fyne package / fyne-cross)
+*.apk
+*.aab
+*.ipa
+*.app/
+fyne-cross/
+
 # Test files
 *.risor.tmp
 test-*.risor

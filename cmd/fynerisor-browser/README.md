@@ -109,9 +109,13 @@ table in `FyneApp.toml`; a `--release` build uses the `[Release]` table.
   custom metadata under `[Development]` / `[Release]`)
 - `Icon.png` - Launcher icon
 
-> **Note:** The table widget's right-click "copy to clipboard" uses a native
-> clipboard library that requires initialization on mobile. Clipboard copy from
-> tables is a no-op on Android; all other functionality works.
+> **Note:** The table widget's right-click "copy to clipboard" uses the
+> `golang.design/x/clipboard` library, which on mobile pulls in the standalone
+> `golang.org/x/mobile/app` package. That package defines the same C entry
+> points as Fyne's own mobile driver, causing duplicate-symbol link errors. It
+> is therefore excluded from mobile builds via build tags (see
+> `gui/widget/tablewidget/clipboard_mobile.go`), so table clipboard copy is a
+> no-op on Android/iOS; all other functionality works.
 
 ## Architecture
 

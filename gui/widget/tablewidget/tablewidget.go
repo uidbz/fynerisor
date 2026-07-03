@@ -20,8 +20,6 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
-	"golang.design/x/clipboard"
-
 	"github.com/xuri/excelize/v2"
 )
 
@@ -200,7 +198,7 @@ func (ctx *TableWidget) cellOnClick(c *TableCell) {
 func (ctx *TableWidget) cellOnSecondaryClick(c *TableCell) {
 	items := []*fyne.MenuItem{
 		fyne.NewMenuItem("Copy value to clipboard", func() {
-			clipboard.Write(clipboard.FmtText, []byte(c.Text()))
+			writeClipboard(c.Text())
 		}),
 		fyne.NewMenuItem("Copy row to clipboard", func() {
 			row := make([]string, ctx.currentData.ColumnCount())
@@ -208,7 +206,7 @@ func (ctx *TableWidget) cellOnSecondaryClick(c *TableCell) {
 				val := ctx.currentData.Get(j, c.Id.Row)
 				row[j] = val
 			}
-			clipboard.Write(clipboard.FmtText, []byte(strings.Join(row, "\t")))
+			writeClipboard(strings.Join(row, "\t"))
 		}),
 	}
 	canvas := fyne.CurrentApp().Driver().CanvasForObject(c)
