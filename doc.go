@@ -15,7 +15,7 @@
 //
 // # Version
 //
-// Current Version: 0.6.0
+// Current Version: 0.7.0
 // Risor Compatibility: v2.1+ (arrow functions required)
 // Fyne Compatibility: v2.7+
 //
@@ -29,7 +29,8 @@
 //   - SQL module for MySQL, PostgreSQL, SQLite, SQL Server
 //   - HTTP module for REST API calls
 //   - Layout containers (VBox, HBox, Border, Split, Scroll, Grid, Stack, etc.)
-//   - Canvas objects and charts
+//   - Canvas objects and charts (bar, line, scatter, histogram, box plot)
+//   - Reusable browser package for loading Risor scripts from URLs (see browser/)
 //   - Thread-safe callback handling
 //   - Widget visibility control (Hide/Show methods)
 //   - Constants global for Fyne enums
@@ -93,12 +94,27 @@
 // The core package excludes all GUI code, allowing your binary to be statically linked
 // without OpenGL, X11, or other GUI dependencies.
 //
+// # Browser Package
+//
+// The browser package provides a reusable, browser-style UI for applications that
+// load Risor scripts from HTTP(S) or file:// URLs. It handles navigation (address
+// bar, back/forward/refresh/home), history, source view, and pluggable menu and
+// authentication providers. Scripts loaded in the browser can navigate
+// programmatically and read URL query parameters via a "browser" global:
+//
+//	browser.Open("https://example.com/page")  // Navigate to a URL
+//	browser.GetURL()                           // Current URL
+//	browser.params["myarg"]                    // Query parameter value
+//
+// See cmd/fynerisor-browser for a complete reference implementation, which can
+// also be packaged as an Android app with "fyne package -os android".
+//
 // # Requirements
 //
 // Scripts can declare version and module requirements:
 //
-//	require(["v0.6", "@sql", "@http"])  // Multiple requirements
-//	require("v0.6.0")                   // Minimum version
+//	require(["v0.7", "@sql", "@http"])  // Multiple requirements
+//	require("v0.7.0")                   // Minimum version
 //	require("@sql")                     // Module must be enabled
 //
 // # Global Objects

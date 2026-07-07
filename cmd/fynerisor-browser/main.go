@@ -22,7 +22,7 @@ import (
 	"github.com/uidbz/fynerisor/gui"
 )
 
-const version = "0.6.0"
+const version = "0.7.0"
 
 // appID is the application identifier used for on-device storage and packaging.
 const appID = "com.fynerisor.browser"

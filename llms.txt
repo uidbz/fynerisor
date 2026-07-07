@@ -2,7 +2,7 @@
 
 Build cross-platform desktop GUIs using Risor v2 scripts with Fyne widgets.
 
-Version: 0.6.0
+Version: 0.7.0
 Risor: v2.x (arrow functions, no for loops, functional iteration)
 Fyne: v2.7+
 
@@ -24,6 +24,8 @@ Always import the specific package you need.
 - Custom Go type integration (core.WithGlobal, gui.WithGlobal)
 - Application versioning (core.SetAppVersion)
 - Modules: HTTP, SQL, OS, Time, Strings, Filepath, IO, Exec
+- Charts: bar, line, scatter, histogram, box plot (with statistical overlays)
+- Browser package: load Risor scripts from URLs (see browser/)
 - Static compilation support (core package)
 - Widget visibility control (Hide/Show methods)
 
@@ -31,7 +33,7 @@ Always import the specific package you need.
 
 ```risor
 // Specify requirements (optional but recommended)
-require(["v0.6", "@sql", "@http"])
+require(["v0.7", "@sql", "@http"])
 
 // Create a simple button with counter
 let count = 0
@@ -93,11 +95,11 @@ Declare version and module requirements:
 
 ```risor
 // Single requirement
-require("v0.6.0")         // Minimum version
+require("v0.7.0")         // Minimum version
 require("@sql")           // Module must be enabled
 
 // Multiple requirements
-require(["v0.6", "@sql", "@http", "@os"])
+require(["v0.7", "@sql", "@http", "@os"])
 
 // Version formats
 require("v0.4")           // Minimum version (>=)
@@ -764,9 +766,63 @@ let line = canvas.NewLine()
 
 ## Charts
 
+The `chart` global provides several chart types:
+
 ```risor
-let chart = chart.NewBarChart([10, 20, 15, 30])
+// Bar chart: title, y-axis label, categories, values
+let bar = chart.NewBarChart(
+    "Quarterly Sales", "Revenue ($K)",
+    ["Q1", "Q2", "Q3", "Q4"], [120, 150, 180, 200])
+
+// Line chart: title, x-label, y-label, x-values, y-values
+let line = chart.NewLineChart(
+    "Growth", "Month", "Revenue ($K)",
+    [1, 2, 3, 4, 5], [10, 15, 13, 17, 20])
+
+// Scatter plot: title, x-label, y-label, x-values, y-values
+let scatter = chart.NewScatterChart(
+    "Data Points", "X", "Y",
+    [1, 2, 3, 4], [12, 16, 15, 18])
+
+// Histogram: title, x-label, y-label, values, bin count
+// Automatically overlays a fitted normal-distribution curve
+let hist = chart.NewHistogram(
+    "Distribution", "Value", "Frequency",
+    [1.2, 1.5, 2.1, 2.5, 3.1, 3.5, 4.1], 15)
+
+// Box plot: title, y-label, group labels, list of value groups
+// Shows five-number summary plus fitted normal-distribution curves
+let box = chart.NewBoxPlot(
+    "Group Comparison", "Values",
+    ["A", "B", "C"],
+    [[12, 14, 16, 18], [15, 18, 22, 25], [10, 13, 16, 20]])
 ```
+
+## Browser Package
+
+The `browser/` Go package provides a reusable, browser-style app that loads Risor
+scripts from HTTP(S) or `file://` URLs (navigation bar, history, source view,
+menu/auth plugins). Scripts loaded inside the browser get a `browser` global:
+
+```risor
+// Navigate programmatically
+browser.Open("https://example.com/page")
+browser.Open("file:///path/to/script.risor")
+
+// Read the current URL and its query parameters
+// For https://server/page?myarg=value&other=value2 :
+let url = browser.GetURL()
+let myarg = browser.GetParam("myarg")   // "value"
+let other = browser.params["other"]      // "value2"
+
+// Status bar and clipboard
+browser.SetStatus("Loading...")
+browser.CopyToClipboard("text")
+```
+
+The reference implementation is `cmd/fynerisor-browser`; it can be packaged as an
+Android app with `fyne package -os android`. See `browser/README.md` for embedding
+the package in your own Go application.
 
 ## Example Prompts for LLMs
 

@@ -73,9 +73,19 @@ fynerisor enables building cross-platform desktop applications using Risor scrip
 
 ## Version
 
-**Current Version**: 0.6.0  
+**Current Version**: 0.7.0  
 **Risor Compatibility**: v2.1+ (arrow functions required)  
 **Fyne Compatibility**: v2.7+
+
+### What's New in v0.7.0
+
+- **Browser Package**: Reusable `browser/` UI for building browser-style apps that load Risor scripts from HTTP(S)/`file://` URLs, with navigation, history, source view, plugins, and programmatic navigation from scripts (`browser.Open`, `browser.params`, etc.)
+- **Reference Browser + Android**: `cmd/fynerisor-browser` can be packaged as an Android APK (`fyne package -os android`)
+- **Charts**: Bar, line, scatter, histogram, and box plot charts with statistical helpers
+- **Concurrency Guard**: `vmguard` detects concurrent Risor VM access and recovers from callback panics
+- **time.unix(seconds)**: Construct a time value from a Unix timestamp
+- **Table Performance**: Column resize no longer does a per-cell VM round-trip
+- **Browser Security**: IO module disabled by default in the reference browser
 
 ### What's New in v0.6.0
 

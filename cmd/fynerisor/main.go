@@ -23,7 +23,7 @@ import (
 	"github.com/uidbz/fynerisor/gui"
 )
 
-const version = "0.5.0"
+const version = "0.7.0"
 
 var (
 	title      = flag.String("title", "", "Window title (default: script filename)")

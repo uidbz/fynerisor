@@ -7,9 +7,11 @@ Fynerisor provides Risor script bindings for the Fyne GUI toolkit, allowing you 
 ## Features
 
 - 🎨 **Comprehensive Widgets** - 48+ widgets covering all common UI needs
+- 📊 **Charts** - Bar, line, scatter, histogram, and box plot charts with statistical overlays
 - ⌨️ **Keyboard Shortcuts** - Global shortcuts and menu integration
 - 🌐 **HTTP, SQL, OS & More** - Built-in modules for web requests, databases, file I/O
 - 📦 **Script Imports** - Load reusable code with namespace isolation
+- 🧭 **Browser Package** - Reusable browser UI that loads Risor scripts from URLs
 - 🔧 **Embeddable** - Easy integration into Go applications
 - 🧵 **Concurrency** - Background tasks with thread-safe GUI updates
 - 📱 **Cross-Platform** - Linux, Windows, macOS, Android
@@ -325,11 +327,17 @@ canvas.NewImageFromFile(path)
 
 ### chart
 
-Charting (experimental):
+Charting with several chart types:
 
 ```js
-chart.NewBarChart(data, title, xlabel, ylabel)
+chart.NewBarChart(title, ylabel, categories, values)
+chart.NewLineChart(title, xlabel, ylabel, xvalues, yvalues)
+chart.NewScatterChart(title, xlabel, ylabel, xvalues, yvalues)
+chart.NewHistogram(title, xlabel, ylabel, values, binCount)  // normal-curve overlay
+chart.NewBoxPlot(title, ylabel, groupLabels, valueGroups)     // normal-curve overlay
 ```
+
+See `examples/35-charts` for a complete demonstration.
 
 ## Concurrency
 

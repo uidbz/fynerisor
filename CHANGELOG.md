@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+_Targeting 0.7.0 — release pending Fyne 2.8.0._
+
 ### Added
 
 **Browser Package:**
@@ -44,6 +46,24 @@
       which clashes with Fyne's mobile driver (duplicate C symbols). It is
       excluded on android/ios, where table clipboard copy is a no-op.
 
+**Charts:**
+- **New chart types** - Added to the `gui/chart` package alongside the existing bar chart
+  - **chart.NewLineChart** - Show trends over continuous data
+  - **chart.NewScatterChart** - Visualize individual data points
+  - **chart.NewHistogram** - Distribution of numerical data with an automatic normal-distribution overlay (fitted from the data's mean and standard deviation)
+  - **chart.NewBoxPlot** - Compare distributions across groups (five-number summary plus fitted normal-distribution curves)
+  - Statistical helpers (mean, standard deviation, normal PDF) in `gui/chart/stats.go`
+  - Example: 35-charts
+
+**Concurrency & Safety:**
+- **VM access guard (`gui/vmguard`)** - Detects concurrent access to the single-threaded Risor VM
+  - Non-blocking guard that surfaces concurrent-access bugs instead of corrupting the VM stack
+  - Reentrant per-goroutine, so nested calls on the same goroutine are allowed
+  - Recovers from panics in script callbacks and reports them as errors
+
+**Time Module:**
+- **time.unix(seconds)** - Construct a time value from a Unix timestamp (seconds since epoch)
+
 **Window Enhancements:**
 - **window.RegisterGlobal(name, value)** - Add global objects after window creation
   - Useful for objects that need to reference window or components created after initialization
@@ -67,6 +87,15 @@
   - Previously only HTTP(S) URLs got `/index.risor` appended
   - Now `file:///path/to/dir` → `file:///path/to/dir/index.risor`
   - Consistent behavior across all URL schemes
+
+### Changed
+- **Table column resize performance** - Resizing a column no longer performs a
+  per-cell `UpdateCell` VM round-trip, making resizes smoother on large tables
+
+### Security
+- **IO module disabled by default in fynerisor-browser** - The reference browser
+  no longer enables the IO module (filesystem write access) by default, reducing
+  the attack surface when loading untrusted remote scripts
 
 ## [0.6.1] - 2026-06-23
 

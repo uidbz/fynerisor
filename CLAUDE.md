@@ -6,7 +6,7 @@ This file provides context and guidelines for AI assistants working on fynerisor
 
 Fynerisor provides Risor v2 language bindings for the Fyne GUI framework, enabling cross-platform desktop applications written in Risor scripts.
 
-**Current Version:** 0.6.0  
+**Current Version:** 0.7.0  
 **Language:** Go 1.21+  
 **Dependencies:** Fyne v2.7+, Risor v2.x
 
