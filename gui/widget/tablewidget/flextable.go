@@ -147,6 +147,7 @@ func (t *FlexTable) SetData(data *TableData) {
 	// for i, _ := range data.Columns {
 	// 	t.table.SetColumnWidth(i, 300)
 	// }
+	t.table.Refresh()
 }
 
 func (t *FlexTable) SetColumnWidth(id int, width float32) {
