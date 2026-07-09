@@ -111,6 +111,10 @@ func (obj *Select) GetAttr(name string) (object.Object, bool) {
 
 			return object.Nil, nil
 		}), true
+	case "Selected":
+		return object.NewString(obj.instance.Selected), true
+	case "SelectedIndex":
+		return object.NewInt(int64(obj.instance.SelectedIndex())), true
 	case "Hide":
 		return object.NewBuiltin("widget.Select.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
