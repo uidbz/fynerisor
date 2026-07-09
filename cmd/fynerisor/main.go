@@ -23,8 +23,6 @@ import (
 	"github.com/uidbz/fynerisor/gui"
 )
 
-const version = "0.7.0"
-
 var (
 	title      = flag.String("title", "", "Window title (default: script filename)")
 	width      = flag.Int("width", 800, "Window width")
@@ -56,7 +54,7 @@ func main() {
 	flag.Parse()
 
 	if *versionPtr {
-		fmt.Printf("fynerisor version %s\n", version)
+		fmt.Printf("fynerisor version %s\n", core.Version)
 		os.Exit(0)
 	}
 

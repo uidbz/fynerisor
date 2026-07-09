@@ -22,8 +22,6 @@ import (
 	"github.com/uidbz/fynerisor/gui"
 )
 
-const version = "0.7.0"
-
 // appID is the application identifier used for on-device storage and packaging.
 const appID = "com.fynerisor.browser"
 
@@ -93,7 +91,7 @@ func NewBrowserApp(title string) *BrowserApp {
 	}
 
 	// Set version for require() checks
-	core.SetAppVersion(version)
+	core.SetAppVersion(core.Version)
 
 	// Create fynerisor window
 	fyneWindow := b.app.NewWindow(title)
@@ -257,7 +255,7 @@ let content = container.NewVBox(
 )
 
 window.SetContent(content)
-`, version)
+`, core.Version)
 
 	b.window.Clear()
 	b.source = aboutScript

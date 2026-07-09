@@ -4,7 +4,7 @@ Website = "https://github.com/uidbz/fynerisor"
 Icon = "Icon.png"
 Name = "Fynerisor Browser"
 ID = "com.fynerisor.browser"
-Version = "0.6.0"
+Version = "0.7.0"
 Build = 1
 
 # HomeURL is baked into the app as custom metadata (fyne.CurrentApp().Metadata().Custom).

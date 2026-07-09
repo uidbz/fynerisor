@@ -109,9 +109,18 @@ fynerisor/
 
 ### Updating Version
 
-1. Update `core/version.go` - `const Version = "X.Y.Z"`
-2. Update `doc.go` - Version comment
-3. Update `llms.txt` - Version line
+The single source of truth for code is `core.Version` in `core/version.go`.
+Both CLIs (`cmd/fynerisor`, `cmd/fynerisor-browser`) read it via `core.Version`,
+so they never need a manual bump. Only these files carry a hardcoded copy:
+
+1. Update `core/version.go` - `const Version = "X.Y.Z"` (authoritative)
+2. Update the version strings in the docs (they cannot reference Go code):
+   - `doc.go` - `Current Version:` comment
+   - `llms.txt` - `Version:` line
+   - `docs/README.md` - `**Current Version**:` line
+   - `CLAUDE.md` - `**Current Version:**` line (top of this file)
+3. Update `cmd/fynerisor-browser/FyneApp.toml` - `Version` (packaging metadata
+   read by `fyne package`; sets the APK versionName, so it cannot use Go code)
 4. Update `CHANGELOG.md` - Add release notes under new version heading
 5. Update examples that use `require()` if major/minor version changed
 
