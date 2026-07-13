@@ -21,7 +21,7 @@ func GetVersion() VersionInfo {
 		Version:     Version,
 		AppVersion:  appVersion,
 		RisorCompat: "v2.x",
-		FyneCompat:  "v2.7+",
+		FyneCompat:  "v2.8+",
 	}
 }
 

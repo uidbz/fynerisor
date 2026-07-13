@@ -1,8 +1,6 @@
 # Changelog
 
-## [Unreleased]
-
-_Targeting 0.7.0 — release pending Fyne 2.8.0._
+## [0.7.0] - 2026-07-13
 
 ### Added
 

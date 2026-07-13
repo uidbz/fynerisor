@@ -8,7 +8,7 @@ Fynerisor provides Risor v2 language bindings for the Fyne GUI framework, enabli
 
 **Current Version:** 0.7.0  
 **Language:** Go 1.21+  
-**Dependencies:** Fyne v2.7+, Risor v2.x
+**Dependencies:** Fyne v2.8+, Risor v2.x
 
 ## Architecture
 
