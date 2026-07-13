@@ -184,57 +184,46 @@ func (td *TableData) RenameColumn(oldName, newName string) {
 func (td *TableData) Sort(column string, ascending bool) {
 	td.columnToSortBy = column
 	td.sortAscending = ascending
+	// Pad every column to rowCount so row i is a complete, aligned tuple across
+	// all columns. Without this, a shorter column would make the sorter index
+	// out of bounds or sort only a prefix of the rows.
+	for _, x := range td.Columns {
+		for len(td.data[x]) < td.rowCount {
+			td.data[x] = append(td.data[x], DataCell{cellType: cellIsEmpty})
+		}
+	}
 	sort.Sort(td.tableSorter)
 }
 
 func (ts *tableSorter) Len() int {
-	return len(ts.tableData.data[ts.tableData.columnToSortBy])
+	return ts.tableData.rowCount
 }
 
 func (ts *tableSorter) Swap(i, j int) {
-	sortBy := ts.tableData.columnToSortBy
+	// Swap every column at once so each row stays an aligned tuple. Swapping the
+	// value and type together across ALL columns (including the sort column) is
+	// what keeps paired columns in step; the positional Row field stays put.
 	for _, x := range ts.tableData.Columns {
-		if x != sortBy {
-			for len(ts.tableData.data[x]) < len(ts.tableData.data[sortBy]) {
-				ts.tableData.data[x] = append(ts.tableData.data[x], DataCell{cellType: cellIsEmpty})
-			}
-			ts.tableData.doTheSwap(x, i, j)
-		}
+		col := ts.tableData.data[x]
+		col[i].StringValue, col[j].StringValue = col[j].StringValue, col[i].StringValue
+		col[i].cellType, col[j].cellType = col[j].cellType, col[i].cellType
 	}
-	ts.tableData.doTheSwap(sortBy, i, j)
-}
-
-func (td *TableData) doTheSwap(column string, i, j int) error {
-	if td.data[column][i].cellType != td.data[column][j].cellType {
-		return errors.New("Mismatcing cell type")
-	}
-	switch td.data[column][i].cellType {
-	case cellIsString:
-		td.data[column][i].StringValue, td.data[column][j].StringValue = td.data[column][j].StringValue, td.data[column][i].StringValue
-	default:
-		return errors.New("Unsupported cell type")
-	}
-
-	return nil
 }
 
 func (ts *tableSorter) Less(i, j int) bool {
-	column := ts.tableData.columnToSortBy
-	data := ts.tableData.data
+	td := ts.tableData
+	a := td.data[td.columnToSortBy][i]
+	b := td.data[td.columnToSortBy][j]
 
-	if ts.tableData.sortAscending {
-		switch data[column][i].cellType {
-		case cellIsString:
-			return data[column][i].StringValue < data[column][j].StringValue
-		default:
-			return true
-		}
-	} else {
-		switch data[column][i].cellType {
-		case cellIsString:
-			return data[column][i].StringValue > data[column][j].StringValue
-		default:
-			return true
-		}
+	// Empty cells always sort last, independent of direction. The comparator
+	// must be consistent: sort.Sort corrupts data if Less(i,j) and Less(j,i)
+	// can both be true.
+	if a.cellType == cellIsEmpty || b.cellType == cellIsEmpty {
+		return b.cellType == cellIsEmpty && a.cellType != cellIsEmpty
 	}
+
+	if td.sortAscending {
+		return a.StringValue < b.StringValue
+	}
+	return a.StringValue > b.StringValue
 }
