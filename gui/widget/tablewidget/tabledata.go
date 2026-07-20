@@ -182,6 +182,11 @@ func (td *TableData) RenameColumn(oldName, newName string) {
 }
 
 func (td *TableData) Sort(column string, ascending bool) {
+	// A sort column that isn't present in the data would leave td.data[column]
+	// as a nil/empty slice, so Less would index out of range. Skip the sort.
+	if _, ok := td.data[column]; !ok {
+		return
+	}
 	td.columnToSortBy = column
 	td.sortAscending = ascending
 	// Pad every column to rowCount so row i is a complete, aligned tuple across
