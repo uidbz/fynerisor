@@ -1,0 +1,11 @@
+Website = "https://github.com/uidbz/fynerisor"
+
+[Details]
+  Icon = "Icon.png"
+  Name = "fynerisor"
+  ID = "com.fynerisor.cli"
+  Version = "0.7.0"
+  Build = 1
+
+[Migrations]
+  fyneDo = true

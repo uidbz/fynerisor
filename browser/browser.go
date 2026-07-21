@@ -12,6 +12,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/uidbz/fynerisor/gui"
+	"github.com/uidbz/fynerisor/gui/guithread"
 )
 
 // Config configures a Browser instance
@@ -294,7 +295,9 @@ func (b *Browser) GetParam(name string) string {
 
 // SetStatus updates the status bar
 func (b *Browser) SetStatus(text string) {
-	b.status.Set(text)
+	guithread.Do(func() {
+		b.status.Set(text)
+	})
 	if b.config.OnStatusChange != nil {
 		b.config.OnStatusChange(text)
 	}
