@@ -231,8 +231,10 @@ func NewCell(table *FlexTable) *TableCell {
 }
 
 func (c *TableCell) CreateRenderer() fyne.WidgetRenderer {
-	item := container.NewStack(c.background, c.label)
-	return widget.NewSimpleRenderer(item)
+	// Use container.Stack for layering and container.Clip to prevent overflow
+	content := container.NewStack(c.background, c.label)
+	clipped := container.NewClip(content)
+	return widget.NewSimpleRenderer(clipped)
 }
 
 func (c *TableCell) Tapped(_ *fyne.PointEvent) {
@@ -356,19 +358,21 @@ func (w *WidgetCell) SetWidget(content fyne.CanvasObject, id widget.TableCellID)
 }
 
 func (w *WidgetCell) CreateRenderer() fyne.WidgetRenderer {
-	return &widgetCellRenderer{cell: w}
+	return &widgetCellRenderer{
+		cell: w,
+		clip: container.NewClip(w.content),
+	}
 }
 
 type widgetCellRenderer struct {
 	cell *WidgetCell
+	clip *container.Clip
 }
 
 func (r *widgetCellRenderer) Destroy() {}
 
 func (r *widgetCellRenderer) Layout(size fyne.Size) {
-	if r.cell.content != nil {
-		r.cell.content.Resize(size)
-	}
+	r.clip.Resize(size)
 }
 
 func (r *widgetCellRenderer) MinSize() fyne.Size {
@@ -379,14 +383,13 @@ func (r *widgetCellRenderer) MinSize() fyne.Size {
 }
 
 func (r *widgetCellRenderer) Objects() []fyne.CanvasObject {
-	if r.cell.content != nil {
-		return []fyne.CanvasObject{r.cell.content}
-	}
-	return []fyne.CanvasObject{}
+	return []fyne.CanvasObject{r.clip}
 }
 
 func (r *widgetCellRenderer) Refresh() {
-	if r.cell.content != nil {
-		r.cell.content.Refresh()
+	// Update the clip container's content when cell content changes
+	if r.clip.Content != r.cell.content {
+		r.clip.Content = r.cell.content
 	}
+	r.clip.Refresh()
 }
