@@ -12,6 +12,25 @@ import (
 	"fyne.io/fyne/v2/theme"
 )
 
+// stripeAltColor returns the alternate-row background for the current theme.
+// It blends the theme background toward the foreground by a small factor so the
+// stripe is always visible in both light and dark variants (unlike a fixed theme
+// color name such as OverlayBackground, which equals Background in light mode).
+func stripeAltColor() color.Color {
+	bg := theme.Color(theme.ColorNameBackground)
+	fg := theme.Color(theme.ColorNameForeground)
+	return blendColor(bg, fg, 0.07)
+}
+
+func blendColor(base, over color.Color, t float64) color.NRGBA {
+	br, bg, bb, ba := base.RGBA()
+	or, og, ob, _ := over.RGBA()
+	lerp := func(a, b uint32) uint8 {
+		return uint8(float64(a>>8)*(1-t) + float64(b>>8)*t)
+	}
+	return color.NRGBA{R: lerp(br, or), G: lerp(bg, og), B: lerp(bb, ob), A: uint8(ba >> 8)}
+}
+
 type FlexTable struct {
 	widget.BaseWidget
 	data             *TableData
@@ -92,6 +111,17 @@ func NewFlexTable(data *TableData, onClick func(cell *TableCell)) *FlexTable {
 						table.updateCellFunc(id.Col, originalRow, widgetCell.content)
 						widgetCell.lastGen = table.dataGen
 					}
+					// Apply row striping to widget-mode cells
+					if id.Row == table.selectedRow {
+						widgetCell.background.FillColor = table.SelectionColor
+					} else {
+						if id.Row%2 == 0 {
+							widgetCell.background.FillColor = theme.Color(theme.ColorNameBackground)
+						} else {
+							widgetCell.background.FillColor = stripeAltColor()
+						}
+					}
+					widgetCell.background.Refresh()
 				}
 			} else{
 				// String mode: update Label (current behavior)
@@ -115,9 +145,9 @@ func NewFlexTable(data *TableData, onClick func(cell *TableCell)) *FlexTable {
 						cell.background.FillColor = table.SelectionColor
 					} else {
 						if id.Row%2 == 0 {
-							cell.background.FillColor = table.CellBgColor
+							cell.background.FillColor = theme.Color(theme.ColorNameBackground)
 						} else {
-							cell.background.FillColor = table.CellBgColorAlt
+							cell.background.FillColor = stripeAltColor()
 						}
 					}
 				}
@@ -335,14 +365,16 @@ func (h *Header) Tapped(_ *fyne.PointEvent) {
 // WidgetCell is a cell that can hold any widget (for widget mode)
 type WidgetCell struct {
 	widget.BaseWidget
-	content   fyne.CanvasObject
-	currentID widget.TableCellID
-	lastGen   int // FlexTable.dataGen this cell last ran UpdateCell at (0 = never)
+	background *canvas.Rectangle
+	content    fyne.CanvasObject
+	currentID  widget.TableCellID
+	lastGen    int // FlexTable.dataGen this cell last ran UpdateCell at (0 = never)
 }
 
 func NewWidgetCell() *WidgetCell {
 	cell := &WidgetCell{
-		currentID: widget.TableCellID{Col: -1, Row: -1},
+		background: canvas.NewRectangle(theme.Color(theme.ColorNameBackground)),
+		currentID:  widget.TableCellID{Col: -1, Row: -1},
 	}
 	cell.ExtendBaseWidget(cell)
 	return cell
@@ -358,21 +390,25 @@ func (w *WidgetCell) SetWidget(content fyne.CanvasObject, id widget.TableCellID)
 }
 
 func (w *WidgetCell) CreateRenderer() fyne.WidgetRenderer {
+	clip := container.NewClip(w.content)
+	stack := container.NewStack(w.background, clip)
 	return &widgetCellRenderer{
-		cell: w,
-		clip: container.NewClip(w.content),
+		cell:  w,
+		clip:  clip,
+		stack: stack,
 	}
 }
 
 type widgetCellRenderer struct {
-	cell *WidgetCell
-	clip *container.Clip
+	cell  *WidgetCell
+	clip  *container.Clip
+	stack *fyne.Container
 }
 
 func (r *widgetCellRenderer) Destroy() {}
 
 func (r *widgetCellRenderer) Layout(size fyne.Size) {
-	r.clip.Resize(size)
+	r.stack.Resize(size)
 }
 
 func (r *widgetCellRenderer) MinSize() fyne.Size {
@@ -383,7 +419,7 @@ func (r *widgetCellRenderer) MinSize() fyne.Size {
 }
 
 func (r *widgetCellRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{r.clip}
+	return []fyne.CanvasObject{r.stack}
 }
 
 func (r *widgetCellRenderer) Refresh() {
@@ -391,5 +427,6 @@ func (r *widgetCellRenderer) Refresh() {
 	if r.clip.Content != r.cell.content {
 		r.clip.Content = r.cell.content
 	}
-	r.clip.Refresh()
+	r.cell.background.Refresh()
+	r.stack.Refresh()
 }
