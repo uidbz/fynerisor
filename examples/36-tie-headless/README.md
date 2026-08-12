@@ -44,4 +44,9 @@ go run main.go dump-stream-test.risor
 
 ## Data Model
 
-Tie stores **triples**: `(key, relation, value)`. For example, `pizza | topping | cheese` means "pizza has topping cheese". A key's forward associations (what relations and values it has) come from `get()`. Reverse associations (which keys point *to* a value) come from `query({reverse: true})`.
+Tie stores **triples**: `(key, relation, value)`. For example, `rust-guide | tag | programming` means "rust-guide has tag programming". 
+
+- **Forward associations**: `get(key)` returns what relations and values a key has
+- **Reverse associations**: `query({terms: ["value"], reverse: true})` finds which keys have that value
+
+**Note**: Reverse queries only work for relations in the daemon's `ReverseRelations` config. The relation `"tag"` is in the default list, which is why this example uses tags. Other relations like `"author"` won't work for reverse queries without explicit configuration.

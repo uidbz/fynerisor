@@ -6,16 +6,35 @@ let db = tie.connect("http://localhost:1161", {
     password: "defaultpassword"
 })
 
-// Seed some initial data
-db.add("pizza", "topping", "cheese")
-db.add("pizza", "topping", "pepperoni")
-db.add("pizza", "style", "italian")
-db.add("burger", "topping", "cheese")
-db.add("burger", "topping", "lettuce")
-db.add("burger", "style", "american")
-db.add("taco", "topping", "cheese")
-db.add("taco", "topping", "salsa")
-db.add("taco", "style", "mexican")
+// Seed some initial documents with tags
+// Technical documents
+db.add("rust-guide", "tag", "rust")
+db.add("rust-guide", "tag", "programming")
+db.add("rust-guide", "tag", "tutorial")
+
+db.add("go-concurrency", "tag", "golang")
+db.add("go-concurrency", "tag", "programming")
+db.add("go-concurrency", "tag", "advanced")
+
+db.add("python-async", "tag", "python")
+db.add("python-async", "tag", "programming")
+db.add("python-async", "tag", "async")
+
+// Personal notes
+db.add("vacation-2026", "tag", "personal")
+db.add("vacation-2026", "tag", "travel")
+
+db.add("recipe-sourdough", "tag", "personal")
+db.add("recipe-sourdough", "tag", "cooking")
+
+// Project notes
+db.add("website-redesign", "tag", "project")
+db.add("website-redesign", "tag", "frontend")
+db.add("website-redesign", "tag", "urgent")
+
+db.add("api-refactor", "tag", "project")
+db.add("api-refactor", "tag", "backend")
+
 db.sync()
 
 // App state
@@ -24,20 +43,20 @@ let currentResults = []
 function runQuery() {
     let queryTerm = queryEntry.Text
     if queryTerm == "" {
-        setStatus("Enter a query term (e.g., 'cheese')")
+        setStatus("Enter a tag to search for (e.g., 'programming', 'personal', 'project')")
         return
     }
 
-    setStatus("Querying for: " + queryTerm)
+    setStatus("Querying for tag: " + queryTerm)
 
     let result = db.query({
         terms: [queryTerm],
-        reverse: true  // Find what has this value
+        reverse: true  // Find what has this tag
     })
 
     currentResults = result.rows
     updateTable()
-    setStatus("Found " + string(result.total_count) + " results for '" + queryTerm + "' (showing " + string(len(result.rows)) + ")")
+    setStatus("Found " + string(result.total_count) + " documents tagged '" + queryTerm + "' (showing " + string(len(result.rows)) + ")")
 }
 
 function updateTable() {
@@ -81,13 +100,13 @@ function addTriple() {
 }
 
 // Build UI
-let window = app.NewWindow("Tie Triple Browser")
+let window = app.NewWindow("Tie Document Browser")
 window.Resize(fyne.NewSize(800, 600))
 
 // Query section
-let queryLabel = widget.NewLabel("Query (reverse lookup):")
+let queryLabel = widget.NewLabel("Search by tag:")
 let queryEntry = widget.NewEntry()
-queryEntry.SetPlaceHolder("Enter value to find (e.g., 'cheese')")
+queryEntry.SetPlaceHolder("Enter tag (e.g., 'programming', 'personal', 'project')")
 
 let queryButton = widget.NewButton("Search", () => {
     runQuery()
@@ -116,13 +135,14 @@ let tableBox = container.NewBorder(
 )
 
 // Add triple form
-let addLabel = widget.NewLabel("Add Triple:")
+let addLabel = widget.NewLabel("Add document with tag:")
 let keyEntry = widget.NewEntry()
-keyEntry.SetPlaceHolder("key")
+keyEntry.SetPlaceHolder("document-name")
 let relationEntry = widget.NewEntry()
-relationEntry.SetPlaceHolder("relation")
+relationEntry.SetPlaceHolder("tag")
+relationEntry.SetText("tag")  // Default to "tag" relation
 let valueEntry = widget.NewEntry()
-valueEntry.SetPlaceHolder("value")
+valueEntry.SetPlaceHolder("tag-value")
 
 let addButton = widget.NewButton("Add", () => {
     addTriple()
@@ -152,4 +172,4 @@ let content = container.NewBorder(
 
 window.SetContent(content)
 
-setStatus("Connected to tie daemon. Try querying for 'cheese' or add your own triples.")
+setStatus("Connected to tie daemon. Try querying for 'programming', 'personal', or 'project'.")

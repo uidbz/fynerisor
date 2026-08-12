@@ -6,57 +6,75 @@ let db = tie.connect("http://localhost:1161", {
     password: "defaultpassword"
 })
 
-print("=== Adding triples ===")
-db.add("pizza", "topping", "cheese")
-db.add("pizza", "topping", "pepperoni")
-db.add("pizza", "topping", "mushrooms")
-db.add("pizza", "style", "neapolitan")
-db.add("burger", "topping", "cheese")
-db.add("burger", "topping", "lettuce")
-db.add("burger", "style", "american")
+print("=== Adding documents with tags ===")
+// Technical documents
+db.add("rust-guide", "tag", "rust")
+db.add("rust-guide", "tag", "programming")
+db.add("rust-guide", "tag", "tutorial")
+db.add("rust-guide", "author", "Alex Chen")
+
+db.add("go-concurrency", "tag", "golang")
+db.add("go-concurrency", "tag", "programming")
+db.add("go-concurrency", "tag", "concurrency")
+db.add("go-concurrency", "author", "Jordan Lee")
+
+// Personal notes
+db.add("vacation-2026", "tag", "personal")
+db.add("vacation-2026", "tag", "travel")
+db.add("vacation-2026", "tag", "photos")
+
+db.add("recipe-sourdough", "tag", "personal")
+db.add("recipe-sourdough", "tag", "cooking")
+db.add("recipe-sourdough", "author", "Jamie Smith")
 
 // Sync to ensure writes are committed
 db.sync()
 print("Writes synced")
 
-print("\n=== Get pizza ===")
-let pizza = db.get("pizza")
-print("Pizza:", pizza)
+print("\n=== Get a single document ===")
+let rustGuide = db.get("rust-guide")
+print("rust-guide:", rustGuide)
 
-print("\n=== Get burger ===")
-let burger = db.get("burger")
-print("Burger:", burger)
-
-print("\n=== Query: what has cheese? (reverse query) ===")
+print("\n=== Query: what has 'programming' tag? (reverse query) ===")
+// This works because 'tag' is in the default ReverseRelations list
 let result = db.query({
-    terms: ["cheese"],
+    terms: ["programming"],
     reverse: true
 })
-print("Items with cheese:", result.rows)
+print("Documents tagged 'programming':", result.rows)
 print("Total count:", result.total_count)
 
-print("\n=== Expand multiple keys ===")
-let items = db.expand(["pizza", "burger"])
-print("All items:", items)
+print("\n=== Query: what has 'personal' tag? ===")
+let personal = db.query({
+    terms: ["personal"],
+    reverse: true
+})
+print("Personal documents:", personal.rows)
+print("Total count:", personal.total_count)
+
+print("\n=== Expand multiple documents ===")
+let docs = db.expand(["rust-guide", "vacation-2026"])
+print("Multiple documents:", docs)
 
 print("\n=== Batch operations ===")
 let batch = db.batch()
-batch.add("taco", "topping", "cheese")
-batch.add("taco", "topping", "salsa")
-batch.set("taco", "style", ["mexican", "street"])
+batch.add("python-async", "tag", "python")
+batch.add("python-async", "tag", "programming")
+batch.add("python-async", "tag", "async")
+batch.set("python-async", "author", ["Pat Wilson"])
 batch.run()
 print("Batch complete")
 
-let taco = db.get("taco")
-print("Taco:", taco)
+let pythonDoc = db.get("python-async")
+print("python-async:", pythonDoc)
 
 print("\n=== Exists check ===")
-print("pizza exists:", db.exists("pizza"))
-print("sushi exists:", db.exists("sushi"))
+print("rust-guide exists:", db.exists("rust-guide"))
+print("nonexistent exists:", db.exists("nonexistent"))
 
 print("\n=== Update example ===")
-db.update("pizza", "style", "neapolitan", "italian")
-let updated = db.get("pizza")
-print("Updated pizza:", updated)
+db.update("rust-guide", "tag", "tutorial", "beginner")
+let updated = db.get("rust-guide")
+print("Updated rust-guide:", updated)
 
 print("\nDone!")
