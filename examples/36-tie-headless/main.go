@@ -19,7 +19,10 @@ func main() {
 		log.Fatalf("failed to read script: %v", err)
 	}
 
-	ctx := core.NewContext(core.WithTie())
+	ctx := core.NewContext(
+		core.WithTie(),
+		core.WithStrings(),
+	)
 	result, err := ctx.Eval(string(script))
 	if err != nil {
 		log.Fatalf("script error: %v", err)

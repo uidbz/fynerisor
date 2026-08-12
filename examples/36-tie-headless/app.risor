@@ -1,10 +1,36 @@
-require(["v0.7", "@tie"])
+require(["v0.7", "@tie", "@strings"])
 
 // Connect to tie daemon
 let db = tie.connect("http://localhost:1161", {
     username: "defaultuser",
     password: "defaultpassword"
 })
+
+// Helper to format a single document nicely
+function printDoc(doc) {
+    print("  " + doc.key + ":")
+    let lines = []
+    // Tag attribute (most common)
+    if (doc.attributes.get("tag")) {
+        lines.append("tag=[" + strings.join(doc.attributes.get("tag"), ", ") + "]")
+    }
+    // Author attribute
+    if (doc.attributes.get("author")) {
+        lines.append("author=[" + strings.join(doc.attributes.get("author"), ", ") + "]")
+    }
+    if (len(lines) > 0) {
+        print("    " + strings.join(lines, ", "))
+    }
+}
+
+// Helper to format a list of documents
+function printDocs(docs) {
+    if (len(docs) == 0) {
+        print("  (none)")
+        return
+    }
+    docs.each(doc => printDoc(doc))
+}
 
 print("=== Adding documents with tags ===")
 // Technical documents
@@ -33,7 +59,7 @@ print("Writes synced")
 
 print("\n=== Get a single document ===")
 let rustGuide = db.get("rust-guide")
-print("rust-guide:", rustGuide)
+printDoc(rustGuide)
 
 print("\n=== Query: what has 'programming' tag? (reverse query) ===")
 // This works because 'tag' is in the default ReverseRelations list
@@ -41,7 +67,7 @@ let result = db.query({
     terms: ["programming"],
     reverse: true
 })
-print("Documents tagged 'programming':", result.rows)
+printDocs(result.rows)
 print("Total count:", result.total_count)
 
 print("\n=== Query: what has 'personal' tag? ===")
@@ -49,12 +75,12 @@ let personal = db.query({
     terms: ["personal"],
     reverse: true
 })
-print("Personal documents:", personal.rows)
+printDocs(personal.rows)
 print("Total count:", personal.total_count)
 
 print("\n=== Expand multiple documents ===")
 let docs = db.expand(["rust-guide", "vacation-2026"])
-print("Multiple documents:", docs)
+printDocs(docs)
 
 print("\n=== Batch operations ===")
 let batch = db.batch()
@@ -66,7 +92,7 @@ batch.run()
 print("Batch complete")
 
 let pythonDoc = db.get("python-async")
-print("python-async:", pythonDoc)
+printDoc(pythonDoc)
 
 print("\n=== Exists check ===")
 print("rust-guide exists:", db.exists("rust-guide"))
@@ -75,6 +101,6 @@ print("nonexistent exists:", db.exists("nonexistent"))
 print("\n=== Update example ===")
 db.update("rust-guide", "tag", "tutorial", "beginner")
 let updated = db.get("rust-guide")
-print("Updated rust-guide:", updated)
+printDoc(updated)
 
 print("\nDone!")
