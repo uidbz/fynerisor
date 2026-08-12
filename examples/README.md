@@ -58,6 +58,9 @@ Each example has its own README with detailed explanation. Browse the directorie
 - **32-table-widgets** - Widget mode for table cells
 - **33-image-gallery** - Images in table cells
 - **34-keyboard-shortcuts** - Global shortcuts and menu integration
+- **35-charts** - Various chart visualizations (bar, line, scatter, pie)
+- **36-tie-headless** - Triple store client (headless, requires tie-daemon)
+- **37-tie-gui** - Triple browser GUI with query and add (requires tie-daemon)
 
 ## Example Structure
 

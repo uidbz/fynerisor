@@ -141,6 +141,7 @@ func main() {
 			gui.WithFilepath(),
 			gui.WithTime(),
 			gui.WithSQL(),
+			gui.WithTie(),
 			gui.WithIO(),
 			gui.WithRisorOptions(customGlobals...),
 			gui.WithStatusCallback(func(status string) {
@@ -158,6 +159,7 @@ func main() {
 			gui.WithFilepath(),
 			gui.WithTime(),
 			gui.WithSQL(),
+			gui.WithTie(),
 			gui.WithIO(),
 			gui.WithRisorOptions(customGlobals...),
 			gui.WithStatusCallback(func(status string) {

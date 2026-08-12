@@ -1,0 +1,155 @@
+require(["v0.7", "@tie"])
+
+// Connect to tie daemon
+let db = tie.connect("http://localhost:1161", {
+    username: "defaultuser",
+    password: "defaultpassword"
+})
+
+// Seed some initial data
+db.add("pizza", "topping", "cheese")
+db.add("pizza", "topping", "pepperoni")
+db.add("pizza", "style", "italian")
+db.add("burger", "topping", "cheese")
+db.add("burger", "topping", "lettuce")
+db.add("burger", "style", "american")
+db.add("taco", "topping", "cheese")
+db.add("taco", "topping", "salsa")
+db.add("taco", "style", "mexican")
+db.sync()
+
+// App state
+let currentResults = []
+
+function runQuery() {
+    let queryTerm = queryEntry.Text
+    if queryTerm == "" {
+        setStatus("Enter a query term (e.g., 'cheese')")
+        return
+    }
+
+    setStatus("Querying for: " + queryTerm)
+
+    let results = db.query({
+        terms: [queryTerm],
+        reverse: true  // Find what has this value
+    })
+
+    currentResults = results
+    updateTable()
+    setStatus("Found " + string(len(results)) + " results for '" + queryTerm + "'")
+}
+
+function updateTable() {
+    let data = currentResults.map(row => {
+        let attrs = []
+        for k in row.attributes.keys().sort() {
+            let values = row.attributes[k].join(", ")
+            attrs.append(k + ": " + values)
+        }
+        return [row.key, attrs.join("; ")]
+    })
+
+    tableData.UpdateData(data)
+    table.Refresh()
+}
+
+function addTriple() {
+    let key = keyEntry.Text
+    let rel = relationEntry.Text
+    let val = valueEntry.Text
+
+    if key == "" || rel == "" || val == "" {
+        setStatus("ERROR: All fields required (key, relation, value)")
+        return
+    }
+
+    db.add(key, rel, val)
+    db.sync()
+
+    setStatus("Added: " + key + " | " + rel + " | " + val)
+
+    // Clear the form
+    keyEntry.SetText("")
+    relationEntry.SetText("")
+    valueEntry.SetText("")
+
+    // Refresh if the current query would include this
+    if queryEntry.Text != "" {
+        runQuery()
+    }
+}
+
+// Build UI
+let window = app.NewWindow("Tie Triple Browser")
+window.Resize(fyne.NewSize(800, 600))
+
+// Query section
+let queryLabel = widget.NewLabel("Query (reverse lookup):")
+let queryEntry = widget.NewEntry()
+queryEntry.SetPlaceHolder("Enter value to find (e.g., 'cheese')")
+
+let queryButton = widget.NewButton("Search", () => {
+    runQuery()
+})
+
+let queryBox = container.NewBorder(
+    nil, nil,
+    queryLabel,
+    queryButton,
+    queryEntry
+)
+
+// Results table
+let tableData = binding.NewTableData([
+    ["key", "attributes"]
+])
+
+let table = widget.NewTableWithData(tableData)
+table.SetColumnWidth(0, 150)
+table.SetColumnWidth(1, 600)
+
+let tableLabel = widget.NewLabel("Results:")
+let tableBox = container.NewBorder(
+    tableLabel, nil, nil, nil,
+    table
+)
+
+// Add triple form
+let addLabel = widget.NewLabel("Add Triple:")
+let keyEntry = widget.NewEntry()
+keyEntry.SetPlaceHolder("key")
+let relationEntry = widget.NewEntry()
+relationEntry.SetPlaceHolder("relation")
+let valueEntry = widget.NewEntry()
+valueEntry.SetPlaceHolder("value")
+
+let addButton = widget.NewButton("Add", () => {
+    addTriple()
+})
+
+let formBox = container.NewHBox(
+    keyEntry,
+    widget.NewLabel("|"),
+    relationEntry,
+    widget.NewLabel("|"),
+    valueEntry,
+    addButton
+)
+
+let addBox = container.NewBorder(
+    addLabel, nil, nil, nil,
+    formBox
+)
+
+// Main layout
+let content = container.NewBorder(
+    container.NewVBox(queryBox, widget.NewSeparator()),
+    container.NewVBox(widget.NewSeparator(), addBox),
+    nil, nil,
+    tableBox
+)
+
+window.SetContent(content)
+
+setStatus("Connected to tie daemon. Try querying for 'cheese' or add your own triples.")

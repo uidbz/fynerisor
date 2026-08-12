@@ -9,6 +9,7 @@ import (
 	"github.com/uidbz/fynerisor/modules/os"
 	"github.com/uidbz/fynerisor/modules/sql"
 	"github.com/uidbz/fynerisor/modules/strings"
+	"github.com/uidbz/fynerisor/modules/tie"
 	"github.com/uidbz/fynerisor/modules/time"
 )
 
@@ -208,6 +209,28 @@ func WithSQL() Option {
 		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
 			env["sql"] = sql.Module()
 			modules["sql"] = true
+		},
+	}
+}
+
+// WithTie enables the Tie module for triple store operations from Risor scripts.
+// The module provides a client for the tie triple store database.
+//
+// Example:
+//
+//	ctx := core.NewContext(core.WithTie())
+//
+// Usage in script:
+//
+//	let db = tie.connect("http://localhost:1161")
+//	db.add("pizza", "topping", "cheese")
+//	db.sync()
+//	print(db.get("pizza"))
+func WithTie() Option {
+	return moduleOption{
+		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
+			env["tie"] = tie.Module()
+			modules["tie"] = true
 		},
 	}
 }

@@ -1,0 +1,61 @@
+require(["v0.7", "@tie"])
+
+// Connect to tie daemon
+let db = tie.connect("http://localhost:1161", {
+    username: "defaultuser",
+    password: "defaultpassword"
+})
+
+print("=== Adding triples ===")
+db.add("pizza", "topping", "cheese")
+db.add("pizza", "topping", "pepperoni")
+db.add("pizza", "topping", "mushrooms")
+db.add("pizza", "style", "neapolitan")
+db.add("burger", "topping", "cheese")
+db.add("burger", "topping", "lettuce")
+db.add("burger", "style", "american")
+
+// Sync to ensure writes are committed
+db.sync()
+print("Writes synced")
+
+print("\n=== Get pizza ===")
+let pizza = db.get("pizza")
+print("Pizza:", pizza)
+
+print("\n=== Get burger ===")
+let burger = db.get("burger")
+print("Burger:", burger)
+
+print("\n=== Query: what has cheese? (reverse query) ===")
+let cheesy = db.query({
+    terms: ["cheese"],
+    reverse: true
+})
+print("Items with cheese:", cheesy)
+
+print("\n=== Expand multiple keys ===")
+let items = db.expand(["pizza", "burger"])
+print("All items:", items)
+
+print("\n=== Batch operations ===")
+let batch = db.batch()
+batch.add("taco", "topping", "cheese")
+batch.add("taco", "topping", "salsa")
+batch.set("taco", "style", ["mexican", "street"])
+batch.run()
+print("Batch complete")
+
+let taco = db.get("taco")
+print("Taco:", taco)
+
+print("\n=== Exists check ===")
+print("pizza exists:", db.exists("pizza"))
+print("sushi exists:", db.exists("sushi"))
+
+print("\n=== Update example ===")
+db.update("pizza", "style", "neapolitan", "italian")
+let updated = db.get("pizza")
+print("Updated pizza:", updated)
+
+print("\nDone!")
