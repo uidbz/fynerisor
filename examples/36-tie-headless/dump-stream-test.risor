@@ -1,0 +1,19 @@
+require(["v0.7", "@tie"])
+
+// Connect to tie daemon
+let db = tie.connect("http://localhost:1161", {
+    username: "defaultuser",
+    password: "defaultpassword"
+})
+
+print("=== Dump all triples using streaming ===")
+let count = 0
+db.dump_stream((triple) => {
+    print("  [" + string(count) + "] " + triple[0] + " | " + triple[1] + " | " + triple[2])
+    count = count + 1
+})
+print("\nStreamed " + string(count) + " triples total")
+
+print("\n=== Compare with non-streaming dump ===")
+let allTriples = db.dump()
+print("Non-streaming returned " + string(len(allTriples)) + " triples")

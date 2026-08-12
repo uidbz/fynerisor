@@ -28,11 +28,12 @@ let burger = db.get("burger")
 print("Burger:", burger)
 
 print("\n=== Query: what has cheese? (reverse query) ===")
-let cheesy = db.query({
+let result = db.query({
     terms: ["cheese"],
     reverse: true
 })
-print("Items with cheese:", cheesy)
+print("Items with cheese:", result.rows)
+print("Total count:", result.total_count)
 
 print("\n=== Expand multiple keys ===")
 let items = db.expand(["pizza", "burger"])

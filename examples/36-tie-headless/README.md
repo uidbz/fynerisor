@@ -25,15 +25,21 @@ The daemon listens on `http://localhost:1161` by default.
 - Syncing writes with `db.sync()`
 - Getting a key's attributes with `db.get(key)`
 - Reverse association queries with `db.query({terms, reverse: true})`
+  - Query returns `{rows: [...], total_count: N}` for pagination support
 - Batch operations: `batch.add/set/run()`
 - Expanding multiple keys in one call with `db.expand([keys])`
 - Checking existence with `db.exists(key)`
 - Updating triples with `db.update(key, relation, old, new)`
+- **Streaming**: `db.dump_stream(callback)` for memory-efficient dumps (see `dump-stream-test.risor`)
 
 ## Run
 
 ```bash
+# Main example
 go run main.go
+
+# Streaming dump example
+go run main.go dump-stream-test.risor
 ```
 
 ## Data Model

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"git.sr.ht/~uid/tie/client"
+	"git.sr.ht/~uid/tie/tiedb"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 )
@@ -85,6 +86,8 @@ func (c *Client) GetAttr(name string) (object.Object, bool) {
 		return object.NewBuiltin("tie.batch", c.Batch), true
 	case "dump":
 		return object.NewBuiltin("tie.dump", c.Dump), true
+	case "dump_stream":
+		return object.NewBuiltin("tie.dump_stream", c.DumpStream), true
 	case "restore":
 		return object.NewBuiltin("tie.restore", c.Restore), true
 	case "drop":
@@ -107,6 +110,7 @@ func (c *Client) Attrs() []object.AttrSpec {
 		{Name: "sync"},
 		{Name: "batch"},
 		{Name: "dump"},
+		{Name: "dump_stream"},
 		{Name: "restore"},
 		{Name: "drop"},
 	}
@@ -358,10 +362,13 @@ func (c *Client) Query(ctx context.Context, args ...object.Object) (object.Objec
 		spec.Limit = int(limit)
 	}
 
-	rows, _, err := c.tc.Query(spec)
+	rows, totalCount, err := c.tc.Query(spec)
 	if err != nil {
 		if errors.Is(err, client.ErrNotFound) {
-			return object.NewList([]object.Object{}), nil
+			return object.NewMap(map[string]object.Object{
+				"rows":        object.NewList([]object.Object{}),
+				"total_count": object.NewInt(0),
+			}), nil
 		}
 		return nil, err
 	}
@@ -371,7 +378,12 @@ func (c *Client) Query(ctx context.Context, args ...object.Object) (object.Objec
 		rowList.Append(rowToObject(row))
 	}
 
-	return rowList, nil
+	result := object.NewMap(map[string]object.Object{
+		"rows":        rowList,
+		"total_count": object.NewInt(int64(totalCount)),
+	})
+
+	return result, nil
 }
 
 func (c *Client) Expand(ctx context.Context, args ...object.Object) (object.Object, error) {
@@ -494,6 +506,34 @@ func (c *Client) Dump(ctx context.Context, args ...object.Object) (object.Object
 	}
 
 	return tripleList, nil
+}
+
+func (c *Client) DumpStream(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) != 1 {
+		return nil, fmt.Errorf("tie.dump_stream: expected 1 argument (callback), got %d", len(args))
+	}
+
+	callback, ok := args[0].(object.Callable)
+	if !ok {
+		return nil, fmt.Errorf("tie.dump_stream: argument must be callable")
+	}
+
+	err := c.tc.DumpStream(func(triple tiedb.StringTriple) error {
+		tripleArray := object.NewList([]object.Object{
+			object.NewString(triple.Key),
+			object.NewString(triple.Value1),
+			object.NewString(triple.Value2),
+		})
+
+		_, err := callback.Call(ctx, tripleArray)
+		return err
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return object.Nil, nil
 }
 
 func (c *Client) Restore(ctx context.Context, args ...object.Object) (object.Object, error) {

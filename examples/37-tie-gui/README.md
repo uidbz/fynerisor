@@ -23,6 +23,7 @@ The daemon listens on `http://localhost:1161` by default.
 - A complete tie triple browser GUI built with Fyne
 - Connecting to a tie daemon
 - **Reverse query**: search for a value (e.g., "cheese") and find all keys that have it
+  - Status bar shows total count from `result.total_count` (useful for pagination)
 - **Add triples**: form to add `key | relation | value` triples
 - **Table display**: showing query results with key and attributes
 - Real-time updates when adding new triples

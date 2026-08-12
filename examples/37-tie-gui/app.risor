@@ -30,14 +30,14 @@ function runQuery() {
 
     setStatus("Querying for: " + queryTerm)
 
-    let results = db.query({
+    let result = db.query({
         terms: [queryTerm],
         reverse: true  // Find what has this value
     })
 
-    currentResults = results
+    currentResults = result.rows
     updateTable()
-    setStatus("Found " + string(len(results)) + " results for '" + queryTerm + "'")
+    setStatus("Found " + string(result.total_count) + " results for '" + queryTerm + "' (showing " + string(len(result.rows)) + ")")
 }
 
 function updateTable() {
