@@ -144,7 +144,12 @@ let addButton = widget.NewButton("Add", () => {
 })
 
 let addLabel = widget.NewLabel("Add document with tag:")
-let formBox = container.NewHBox(keyEntry, widget.NewLabel("|"), relationEntry, widget.NewLabel("|"), valueEntry, addButton)
+let formBox = widget.NewForm(
+    widget.NewFormItem("Document", keyEntry),
+    widget.NewFormItem("Relation", relationEntry),
+    widget.NewFormItem("Value", valueEntry),
+    widget.NewFormItem("", addButton)
+)
 let addBox = container.NewVBox(addLabel, formBox)
 
 // Main layout
