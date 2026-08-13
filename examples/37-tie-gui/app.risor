@@ -41,8 +41,8 @@ db.sync()
 let currentResults = []
 
 // Build UI
-let window = app.NewWindow("Tie Document Browser")
-window.Resize(fyne.NewSize(800, 600))
+let myWindow = app.NewWindow("Tie Document Browser")
+myWindow.Resize(fyne.NewSize(800, 600))
 
 // Query section
 let queryLabel = widget.NewLabel("Search by tag:")
@@ -161,6 +161,6 @@ let content = container.NewBorder(
     tableBox
 )
 
-window.SetContent(content)
+myWindow.SetContent(content)
 
 setStatus("Connected to tie daemon. Try querying for 'programming', 'personal', or 'project'.")
