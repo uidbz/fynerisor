@@ -7,7 +7,6 @@ let db = tie.connect("http://localhost:1161", {
 })
 
 // Seed some initial documents with tags
-// Technical documents
 db.add("rust-guide", "tag", "rust")
 db.add("rust-guide", "tag", "programming")
 db.add("rust-guide", "tag", "tutorial")
@@ -20,14 +19,12 @@ db.add("python-async", "tag", "python")
 db.add("python-async", "tag", "programming")
 db.add("python-async", "tag", "async")
 
-// Personal notes
 db.add("vacation-2026", "tag", "personal")
 db.add("vacation-2026", "tag", "travel")
 
 db.add("recipe-sourdough", "tag", "personal")
 db.add("recipe-sourdough", "tag", "cooking")
 
-// Project notes
 db.add("website-redesign", "tag", "project")
 db.add("website-redesign", "tag", "frontend")
 db.add("website-redesign", "tag", "urgent")
@@ -37,36 +34,51 @@ db.add("api-refactor", "tag", "backend")
 
 db.sync()
 
-// App state
-let currentResults = []
-
-// Build UI
-let myWindow = app.NewWindow("Tie Document Browser")
-myWindow.Resize(fyne.NewSize(800, 600))
+// App state - store table data as regular array
+let tableData = [
+    ["", ""]  // Empty initial row
+]
 
 // Query section
-let queryLabel = widget.NewLabel("Search by tag:")
 let queryEntry = widget.NewEntry()
 queryEntry.SetPlaceHolder("Enter tag (e.g., 'programming', 'personal', 'project')")
+
+// Results table with callbacks - declare before button that uses it
+let table = widget.NewTable("results", 20)
+
+table.Columns(() => {
+    return ["Document", "Attributes"]
+})
+
+table.RowCount(() => {
+    return len(tableData)
+})
+
+table.Data((offset, limit) => {
+    let start = offset
+    let end = offset + limit
+    if (end > len(tableData)) {
+        end = len(tableData)
+    }
+    return tableData[start:end]
+})
 
 let queryButton = widget.NewButton("Search", () => {
     let queryTerm = queryEntry.Text
     if (queryTerm == "") {
-        setStatus("Enter a tag to search for (e.g., 'programming', 'personal', 'project')")
+        window.SetStatus("Enter a tag to search for")
         return
     }
 
-    setStatus("Querying for tag: " + queryTerm)
+    window.SetStatus("Querying for tag: " + queryTerm)
 
     let result = db.query({
         terms: [queryTerm],
         reverse: true
     })
 
-    currentResults = result.rows
-
-    // Update table
-    let data = currentResults.map(row => {
+    // Convert results to table data
+    tableData = result.rows.map(row => {
         let parts = []
         if (row.attributes.get("tag")) {
             parts.append("tag: " + strings.join(row.attributes.get("tag"), ", "))
@@ -76,41 +88,25 @@ let queryButton = widget.NewButton("Search", () => {
         }
         return [row.key, strings.join(parts, "; ")]
     })
-    tableData.UpdateData(data)
-    table.Refresh()
 
-    setStatus("Found " + string(result.total_count) + " documents tagged '" + queryTerm + "' (showing " + string(len(result.rows)) + ")")
+    table.Refresh()
+    window.SetStatus("Found " + string(result.total_count) + " documents tagged '" + queryTerm + "'")
 })
 
-let queryBox = container.NewBorder(
-    nil, nil,
-    queryLabel,
-    queryButton,
-    queryEntry
-)
-
-// Results table
-let tableData = binding.NewTableData([
-    ["key", "attributes"]
-])
-
-let table = widget.NewTableWithData(tableData)
-table.SetColumnWidth(0, 150)
-table.SetColumnWidth(1, 600)
+let queryLabel = widget.NewLabel("Search by tag:")
+let queryBox = container.NewHBox(queryLabel, queryEntry, queryButton)
 
 let tableLabel = widget.NewLabel("Results:")
-let tableBox = container.NewBorder(
-    tableLabel, nil, nil, nil,
-    table
-)
+let tableBox = container.NewVBox(tableLabel, table)
 
 // Add triple form
-let addLabel = widget.NewLabel("Add document with tag:")
 let keyEntry = widget.NewEntry()
 keyEntry.SetPlaceHolder("document-name")
+
 let relationEntry = widget.NewEntry()
 relationEntry.SetPlaceHolder("tag")
-relationEntry.SetText("tag")  // Default to "tag" relation
+relationEntry.SetText("tag")
+
 let valueEntry = widget.NewEntry()
 valueEntry.SetPlaceHolder("tag-value")
 
@@ -120,14 +116,14 @@ let addButton = widget.NewButton("Add", () => {
     let val = valueEntry.Text
 
     if (key == "" || rel == "" || val == "") {
-        setStatus("ERROR: All fields required (key, relation, value)")
+        window.SetStatus("ERROR: All fields required")
         return
     }
 
     db.add(key, rel, val)
     db.sync()
 
-    setStatus("Added: " + key + " | " + rel + " | " + val)
+    window.SetStatus("Added: " + key + " | " + rel + " | " + val)
 
     keyEntry.SetText("")
     relationEntry.SetText("")
@@ -139,28 +135,18 @@ let addButton = widget.NewButton("Add", () => {
     }
 })
 
-let formBox = container.NewHBox(
-    keyEntry,
-    widget.NewLabel("|"),
-    relationEntry,
-    widget.NewLabel("|"),
-    valueEntry,
-    addButton
-)
-
-let addBox = container.NewBorder(
-    addLabel, nil, nil, nil,
-    formBox
-)
+let addLabel = widget.NewLabel("Add document with tag:")
+let formBox = container.NewHBox(keyEntry, widget.NewLabel("|"), relationEntry, widget.NewLabel("|"), valueEntry, addButton)
+let addBox = container.NewVBox(addLabel, formBox)
 
 // Main layout
 let content = container.NewBorder(
-    container.NewVBox(queryBox, widget.NewSeparator()),
-    container.NewVBox(widget.NewSeparator(), addBox),
-    nil, nil,
+    queryBox,
+    addBox,
+    nil,
+    nil,
     tableBox
 )
 
-myWindow.SetContent(content)
-
-setStatus("Connected to tie daemon. Try querying for 'programming', 'personal', or 'project'.")
+window.SetContent(content)
+window.SetStatus("Connected to tie daemon. Try querying for 'programming', 'personal', or 'project'.")

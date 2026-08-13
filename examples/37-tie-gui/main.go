@@ -12,6 +12,7 @@ func main() {
 	// Create fynerisor window
 	fyneWindow := gui.NewApp("Tie Triple Browser",
 		gui.WithTie(),
+		gui.WithStrings(),
 		gui.WithStatusCallback(func(status string) {
 			fmt.Println("Status:", status)
 		}),
