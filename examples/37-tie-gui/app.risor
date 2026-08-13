@@ -1,4 +1,4 @@
-require(["v0.7", "@tie"])
+require(["v0.7", "@tie", "@strings"])
 
 // Connect to tie daemon
 let db = tie.connect("http://localhost:1161", {
@@ -42,7 +42,7 @@ let currentResults = []
 
 function runQuery() {
     let queryTerm = queryEntry.Text
-    if queryTerm == "" {
+    if (queryTerm == "") {
         setStatus("Enter a tag to search for (e.g., 'programming', 'personal', 'project')")
         return
     }
@@ -61,12 +61,16 @@ function runQuery() {
 
 function updateTable() {
     let data = currentResults.map(row => {
-        let attrs = []
-        row.attributes.keys().each(k => {
-            let values = row.attributes[k].join(", ")
-            attrs.append(k + ": " + values)
-        })
-        return [row.key, attrs.join("; ")]
+        let parts = []
+        // Show tag attribute if present
+        if (row.attributes.get("tag")) {
+            parts.append("tag: " + strings.join(row.attributes.get("tag"), ", "))
+        }
+        // Show author attribute if present
+        if (row.attributes.get("author")) {
+            parts.append("author: " + strings.join(row.attributes.get("author"), ", "))
+        }
+        return [row.key, strings.join(parts, "; ")]
     })
 
     tableData.UpdateData(data)
@@ -78,7 +82,7 @@ function addTriple() {
     let rel = relationEntry.Text
     let val = valueEntry.Text
 
-    if key == "" || rel == "" || val == "" {
+    if (key == "" || rel == "" || val == "") {
         setStatus("ERROR: All fields required (key, relation, value)")
         return
     }
@@ -94,7 +98,7 @@ function addTriple() {
     valueEntry.SetText("")
 
     // Refresh if the current query would include this
-    if queryEntry.Text != "" {
+    if (queryEntry.Text != "") {
         runQuery()
     }
 }
