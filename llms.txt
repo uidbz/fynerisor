@@ -23,7 +23,7 @@ Always import the specific package you need.
 - Module-scoped imports with namespace isolation
 - Custom Go type integration (core.WithGlobal, gui.WithGlobal)
 - Application versioning (core.SetAppVersion)
-- Modules: HTTP, SQL, OS, Time, Strings, Filepath, IO, Exec
+- Modules: HTTP, SQL, Tie (triple store), OS, Time, Strings, Filepath, IO, Exec
 - Charts: bar, line, scatter, histogram, box plot (with statistical overlays)
 - Browser package: load Risor scripts from URLs (see browser/)
 - Static compilation support (core package)
@@ -659,6 +659,59 @@ let rows = conn.query("SELECT * FROM users").collect()
 conn.close()
 ```
 
+### Tie Module
+
+Enable with `fynerisor.WithTie()` option. Declare requirement with `require("@tie")`.
+
+Tie is a triple store database for storing and querying graph-like relationships as `(key, relation, value)` triples.
+
+**Requires:** A running tie-daemon at `http://localhost:1161` (or custom URL)
+
+```risor
+require("@tie")  // Ensure Tie module is enabled
+
+// Connect
+let db = tie.connect("http://localhost:1161")
+let db = tie.connect("http://localhost:1161", {
+    username: "user",
+    password: "pass",
+    namespace: "myapp",
+    collection: "docs"
+})
+
+// Add triples
+db.add("rust-guide", "tag", "programming")
+db.add("rust-guide", "tag", "tutorial")
+db.add("rust-guide", "author", "Alex Chen")
+db.sync()  // Commit writes
+
+// Get (forward association)
+let doc = db.get("rust-guide")
+print(doc.key)                      // "rust-guide"
+print(doc.attributes.get("tag"))    // ["programming", "tutorial"]
+print(doc.attributes.get("author")) // ["Alex Chen"]
+
+// Query (reverse association - find keys by value)
+let result = db.query({
+    terms: ["programming"],
+    reverse: true,
+    expand: true
+})
+print("Found:", result.total_count)
+result.rows.each(doc => {
+    print(doc.key, ":", doc.attributes.get("tag"))
+})
+
+// Batch operations
+let batch = db.batch()
+batch.add("python-async", "tag", "python")
+batch.add("python-async", "tag", "async")
+batch.set("python-async", "author", ["Pat Wilson"])
+batch.run()
+
+// See docs/TIE_MODULE.md for complete documentation
+```
+
 ### HTTP Module
 
 Enable with `fynerisor.WithHTTP()` option. Declare requirement with `require("@http")`.
@@ -952,6 +1005,7 @@ func main() {
     ctx := core.NewContext(
         core.WithHTTP(),
         core.WithSQL(),
+        core.WithTie(),
         core.WithOS(),
     )
 
@@ -995,7 +1049,7 @@ result, err := ctx.EvalWithImports(script, fetchFunc)
 ```
 
 **Available options in core package:**
-- `core.WithHTTP()`, `core.WithSQL()`, `core.WithOS()`, `core.WithStrings()`, `core.WithFilepath()`, `core.WithTime()`, `core.WithIO()`, `core.WithGlobals()`
+- `core.WithHTTP()`, `core.WithSQL()`, `core.WithTie()`, `core.WithOS()`, `core.WithStrings()`, `core.WithFilepath()`, `core.WithTime()`, `core.WithIO()`, `core.WithGlobals()`
 - GUI-specific options (`WithStatusCallback`, `WithResultCallback`) are not available in core
 - Scripts using `require("@gui")` will fail in core (headless mode)
 
@@ -1138,6 +1192,7 @@ func main() {
     fw := gui.NewApp("My Application",
         gui.WithHTTP(),
         gui.WithSQL(),
+        gui.WithTie(),
     )
 
     script := `

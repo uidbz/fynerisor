@@ -142,6 +142,7 @@
 //	fw := gui.NewApp("My App",
 //	    gui.WithHTTP(),           // HTTP client
 //	    gui.WithSQL(),            // Database connectivity
+//	    gui.WithTie(),            // Tie triple store database
 //	    gui.WithOS(),             // OS utilities
 //	    gui.WithIO(),             // File I/O (cp, etc.)
 //	    gui.WithExec(),           // Execute commands

@@ -207,6 +207,7 @@ Customize fynerisor behavior via `With*()` options when creating `gui.Window` or
 - `WithOS()` - Enable OS operations
 - `WithIO()` - Enable file I/O operations
 - `WithSQL()` - Enable database connectivity
+- `WithTie()` - Enable Tie triple store database
 - `WithStrings()` - Enable string utilities
 - `WithFilepath()` - Enable path operations
 - `WithTime()` - Enable time/date functions
@@ -235,6 +236,7 @@ Enable modules via `With*()` options. Scripts can optionally use `require(["@mod
 | `@os` | `WithOS()` | OS operations, open browser |
 | `@io` | `WithIO()` | File I/O operations (cp, etc.) |
 | `@sql` | `WithSQL()` | Database connectivity |
+| `@tie` | `WithTie()` | Tie triple store database |
 | `@strings` | `WithStrings()` | String manipulation |
 | `@filepath` | `WithFilepath()` | Path operations |
 | `@time` | `WithTime()` | Time and date functions |
@@ -475,8 +477,9 @@ Eventually I dream of making an other browser app, that incorporates the origina
 
 ## Documentation
 
-- [Examples](examples/README.md) - 33 working examples with detailed READMEs
+- [Examples](examples/README.md) - 37 working examples with detailed READMEs
 - [Examples Guide](docs/EXAMPLES.md) - Usage patterns and concepts
+- [Tie Module](docs/TIE_MODULE.md) - Triple store database guide
 - [Changelog](CHANGELOG.md) - Version history
 - [Concurrency Guide](docs/CONCURRENCY.md) - Threading patterns
 - [Widget Status](docs/WIDGET_STATUS.md) - Supported Fyne widgets
