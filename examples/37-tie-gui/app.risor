@@ -57,6 +57,9 @@ table.RowCount(() => {
 table.Data((offset, limit) => {
     let start = offset
     let end = offset + limit
+    if (start > len(tableData)) {
+        return []
+    }
     if (end > len(tableData)) {
         end = len(tableData)
     }
@@ -94,7 +97,12 @@ let queryButton = widget.NewButton("Search", () => {
 })
 
 let queryLabel = widget.NewLabel("Search by tag:")
-let queryBox = container.NewHBox(queryLabel, queryEntry, queryButton)
+let queryBox = container.NewBorder(
+    nil, nil,
+    queryLabel,
+    queryButton,
+    queryEntry
+)
 
 let tableLabel = widget.NewLabel("Results:")
 let tableBox = container.NewVBox(tableLabel, table)
