@@ -40,69 +40,6 @@ db.sync()
 // App state
 let currentResults = []
 
-function runQuery() {
-    let queryTerm = queryEntry.Text
-    if (queryTerm == "") {
-        setStatus("Enter a tag to search for (e.g., 'programming', 'personal', 'project')")
-        return
-    }
-
-    setStatus("Querying for tag: " + queryTerm)
-
-    let result = db.query({
-        terms: [queryTerm],
-        reverse: true  // Find what has this tag
-    })
-
-    currentResults = result.rows
-    updateTable()
-    setStatus("Found " + string(result.total_count) + " documents tagged '" + queryTerm + "' (showing " + string(len(result.rows)) + ")")
-}
-
-function updateTable() {
-    let data = currentResults.map(row => {
-        let parts = []
-        // Show tag attribute if present
-        if (row.attributes.get("tag")) {
-            parts.append("tag: " + strings.join(row.attributes.get("tag"), ", "))
-        }
-        // Show author attribute if present
-        if (row.attributes.get("author")) {
-            parts.append("author: " + strings.join(row.attributes.get("author"), ", "))
-        }
-        return [row.key, strings.join(parts, "; ")]
-    })
-
-    tableData.UpdateData(data)
-    table.Refresh()
-}
-
-function addTriple() {
-    let key = keyEntry.Text
-    let rel = relationEntry.Text
-    let val = valueEntry.Text
-
-    if (key == "" || rel == "" || val == "") {
-        setStatus("ERROR: All fields required (key, relation, value)")
-        return
-    }
-
-    db.add(key, rel, val)
-    db.sync()
-
-    setStatus("Added: " + key + " | " + rel + " | " + val)
-
-    // Clear the form
-    keyEntry.SetText("")
-    relationEntry.SetText("")
-    valueEntry.SetText("")
-
-    // Refresh if the current query would include this
-    if (queryEntry.Text != "") {
-        runQuery()
-    }
-}
-
 // Build UI
 let window = app.NewWindow("Tie Document Browser")
 window.Resize(fyne.NewSize(800, 600))
@@ -113,7 +50,36 @@ let queryEntry = widget.NewEntry()
 queryEntry.SetPlaceHolder("Enter tag (e.g., 'programming', 'personal', 'project')")
 
 let queryButton = widget.NewButton("Search", () => {
-    runQuery()
+    let queryTerm = queryEntry.Text
+    if (queryTerm == "") {
+        setStatus("Enter a tag to search for (e.g., 'programming', 'personal', 'project')")
+        return
+    }
+
+    setStatus("Querying for tag: " + queryTerm)
+
+    let result = db.query({
+        terms: [queryTerm],
+        reverse: true
+    })
+
+    currentResults = result.rows
+
+    // Update table
+    let data = currentResults.map(row => {
+        let parts = []
+        if (row.attributes.get("tag")) {
+            parts.append("tag: " + strings.join(row.attributes.get("tag"), ", "))
+        }
+        if (row.attributes.get("author")) {
+            parts.append("author: " + strings.join(row.attributes.get("author"), ", "))
+        }
+        return [row.key, strings.join(parts, "; ")]
+    })
+    tableData.UpdateData(data)
+    table.Refresh()
+
+    setStatus("Found " + string(result.total_count) + " documents tagged '" + queryTerm + "' (showing " + string(len(result.rows)) + ")")
 })
 
 let queryBox = container.NewBorder(
@@ -149,7 +115,28 @@ let valueEntry = widget.NewEntry()
 valueEntry.SetPlaceHolder("tag-value")
 
 let addButton = widget.NewButton("Add", () => {
-    addTriple()
+    let key = keyEntry.Text
+    let rel = relationEntry.Text
+    let val = valueEntry.Text
+
+    if (key == "" || rel == "" || val == "") {
+        setStatus("ERROR: All fields required (key, relation, value)")
+        return
+    }
+
+    db.add(key, rel, val)
+    db.sync()
+
+    setStatus("Added: " + key + " | " + rel + " | " + val)
+
+    keyEntry.SetText("")
+    relationEntry.SetText("")
+    valueEntry.SetText("")
+
+    // Refresh if there's a current query
+    if (queryEntry.Text != "") {
+        queryButton.OnTapped()
+    }
 })
 
 let formBox = container.NewHBox(
