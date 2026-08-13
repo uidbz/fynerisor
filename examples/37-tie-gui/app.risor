@@ -46,6 +46,9 @@ queryEntry.SetPlaceHolder("Enter tag (e.g., 'programming', 'personal', 'project'
 // Results table with callbacks - declare before button that uses it
 let table = widget.NewTable("results", 20)
 
+table.SetColumnWidth(0, 200)
+table.SetColumnWidth(1, 500)
+
 table.Columns(() => {
     return ["Document", "Attributes"]
 })
