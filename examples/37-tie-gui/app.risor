@@ -87,13 +87,9 @@ let queryButton = widget.NewButton("Search", () => {
     // Convert results to table data
     tableData = result.rows.map(row => {
         let parts = []
-        // Check for common attributes - need to iterate all but Risor maps don't have .keys().each()
-        // So we check for known attribute names
-        let commonAttrs = ["tag", "author", "test", "status", "type", "category", "priority"]
-        commonAttrs.each(attr => {
-            if (row.attributes.get(attr)) {
-                parts.append(attr + ": " + strings.join(row.attributes.get(attr), ", "))
-            }
+        // Iterate all attributes dynamically using list(map.keys()).each()
+        list(row.attributes.keys()).each(attr => {
+            parts.append(attr + ": " + strings.join(row.attributes.get(attr), ", "))
         })
         return [row.key, strings.join(parts, "; ")]
     })
