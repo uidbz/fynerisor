@@ -80,7 +80,8 @@ let queryButton = widget.NewButton("Search", () => {
 
     let result = db.query({
         terms: [queryTerm],
-        reverse: true
+        reverse: true,
+        expand: true
     })
 
     // Convert results to table data
