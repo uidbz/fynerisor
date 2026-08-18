@@ -70,12 +70,40 @@ func fixURL(rawURL string) (string, error) {
 	return parsed.String(), nil
 }
 
+// pathToFileURL converts an absolute filesystem path to a valid file:// URL.
+//
+// On Unix an absolute path already begins with "/", so "file://" + "/home/x"
+// yields "file:///home/x". On Windows the path is "C:\\Users\\x": backslashes
+// must become forward slashes and a leading slash is required before the drive
+// letter, otherwise url.Parse reads "C" as the host and ":\\Users..." as an
+// invalid port.
+func pathToFileURL(absPath string) string {
+	p := filepath.ToSlash(absPath)
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	return "file://" + p
+}
+
+// fileURLToPath converts a file:// URL back into a native filesystem path.
+//
+// On Windows the URL is "file:///C:/Users/x": the leading slash before the
+// drive letter must be dropped and forward slashes turned back into
+// backslashes, otherwise the path cannot be resolved.
+func fileURLToPath(fileURL string) string {
+	p := strings.TrimPrefix(fileURL, "file://")
+	if len(p) >= 3 && p[0] == '/' && p[2] == ':' {
+		p = p[1:]
+	}
+	return filepath.FromSlash(p)
+}
+
 // correctRelativeURL resolves a relative URL against a current URL
 func correctRelativeURL(currentUrl, relativeUrl string) string {
 	if isRelativeURL(relativeUrl) {
 		// For file:// URLs, handle filesystem paths
 		if strings.HasPrefix(currentUrl, "file://") {
-			currentPath := strings.TrimPrefix(currentUrl, "file://")
+			currentPath := fileURLToPath(currentUrl)
 
 			// If currentPath doesn't end with .risor, it's a directory URL
 			// In this case, use it as-is rather than taking its parent
@@ -90,7 +118,7 @@ func correctRelativeURL(currentUrl, relativeUrl string) string {
 			resolvedPath := filepath.Join(currentDir, relativeUrl)
 			absPath, err := filepath.Abs(resolvedPath)
 			if err == nil {
-				return "file://" + absPath
+				return pathToFileURL(absPath)
 			}
 			// On error, return original
 			return relativeUrl
