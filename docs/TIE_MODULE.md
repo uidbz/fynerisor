@@ -12,6 +12,7 @@ The **tie module** provides Risor bindings for [Tie](https://git.sr.ht/~uid/tie)
 - [Query Operations](#query-operations)
 - [Batch Operations](#batch-operations)
 - [Utility Operations](#utility-operations)
+- [Tables](#tables)
 - [Backup and Restore](#backup-and-restore)
 - [Data Model](#data-model)
 - [Complete Examples](#complete-examples)
@@ -516,6 +517,56 @@ let confirm = dialog.ShowConfirm("Drop Collection",
         print("Collection dropped")
     }
 )
+```
+
+## Tables
+
+Store a spreadsheet/CSV as a table (ordered headers + rows) and read it back as
+a grid, without hand-rolling a triple encoding. This is a client-side
+convenience over the triple primitives — the daemon still stores only triples.
+The same wire encoding is used by the Go and Python clients, so a table written
+by one is readable by the others.
+
+### db.insert_table(uid, headers, rows)
+
+Writes `headers` + `rows` as a table entity and returns its uid.
+
+- `uid`: pass `""` to mint a fresh uid (returned); pass an existing uid to
+  replace that table in place (idempotent re-import — old rows are cleared first).
+- `headers`: a list of column-name strings.
+- `rows`: a list of rows, each a list of cell strings in header order. Short rows
+  are padded and cells past the header count are ignored. Empty cells are not
+  stored (they read back as `""`).
+
+All cells must be strings — convert numbers with `string(n)` first. Headers must
+be unique and none may be named `"tie-type"` (it would collide with the row type
+marker); either case raises an error. Targets sheet-sized tables (hundreds to low
+thousands of rows).
+
+**Returns:** `string` (the table uid)
+
+**Example:**
+```js
+let uid = db.insert_table("", ["Name", "Age", "City"], [
+    ["Alice", "30", "NYC"],
+    ["Bob",   "25", "LA"],
+])
+```
+
+### db.read_table(uid)
+
+Reads a table back as a grid. Returns `nil` if `uid` holds no table.
+
+**Returns:** a map `{headers: [...], rows: [[...], ...]}` (row-major, header
+order), or `nil` if not found.
+
+**Example:**
+```js
+let t = db.read_table(uid)
+print(t["headers"])          // ["Name", "Age", "City"]
+t["rows"].each(row => {
+    print(row[0], "is", row[1])
+})
 ```
 
 ## Backup and Restore

@@ -92,6 +92,10 @@ func (c *Client) GetAttr(name string) (object.Object, bool) {
 		return object.NewBuiltin("tie.restore", c.Restore), true
 	case "drop":
 		return object.NewBuiltin("tie.drop", c.Drop), true
+	case "insert_table":
+		return object.NewBuiltin("tie.insert_table", c.InsertTable), true
+	case "read_table":
+		return object.NewBuiltin("tie.read_table", c.ReadTable), true
 	}
 	return nil, false
 }
@@ -113,6 +117,8 @@ func (c *Client) Attrs() []object.AttrSpec {
 		{Name: "dump_stream"},
 		{Name: "restore"},
 		{Name: "drop"},
+		{Name: "insert_table"},
+		{Name: "read_table"},
 	}
 }
 
@@ -592,6 +598,96 @@ func (c *Client) Drop(ctx context.Context, args ...object.Object) (object.Object
 	}
 
 	return object.Nil, nil
+}
+
+// asStringList converts a Risor *object.List of strings to []string. name is
+// used in error messages to identify the offending argument.
+func asStringList(obj object.Object, name string) ([]string, error) {
+	list, ok := obj.(*object.List)
+	if !ok {
+		return nil, fmt.Errorf("%s must be a list (got %s)", name, obj.Type())
+	}
+	out := make([]string, 0, len(list.Value()))
+	for i, elem := range list.Value() {
+		s, err := object.AsString(elem)
+		if err != nil {
+			return nil, fmt.Errorf("%s[%d] must be a string: %w", name, i, err)
+		}
+		out = append(out, s)
+	}
+	return out, nil
+}
+
+func (c *Client) InsertTable(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) != 3 {
+		return nil, fmt.Errorf("tie.insert_table: expected 3 arguments (uid, headers, rows), got %d", len(args))
+	}
+
+	uid, err := object.AsString(args[0])
+	if err != nil {
+		return nil, err
+	}
+
+	headers, err := asStringList(args[1], "tie.insert_table: headers")
+	if err != nil {
+		return nil, err
+	}
+
+	rowsList, ok := args[2].(*object.List)
+	if !ok {
+		return nil, fmt.Errorf("tie.insert_table: rows must be a list (got %s)", args[2].Type())
+	}
+	rows := make([][]string, 0, len(rowsList.Value()))
+	for i, rowObj := range rowsList.Value() {
+		cells, err := asStringList(rowObj, fmt.Sprintf("tie.insert_table: rows[%d]", i))
+		if err != nil {
+			return nil, err
+		}
+		rows = append(rows, cells)
+	}
+
+	newUID, err := c.tc.InsertTable(uid, headers, rows)
+	if err != nil {
+		return nil, err
+	}
+	return object.NewString(newUID), nil
+}
+
+func (c *Client) ReadTable(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) != 1 {
+		return nil, fmt.Errorf("tie.read_table: expected 1 argument, got %d", len(args))
+	}
+
+	uid, err := object.AsString(args[0])
+	if err != nil {
+		return nil, err
+	}
+
+	headers, rows, err := c.tc.ReadTable(uid)
+	if err != nil {
+		if errors.Is(err, client.ErrNotFound) {
+			return object.Nil, nil
+		}
+		return nil, err
+	}
+
+	headerList := object.NewList(make([]object.Object, 0, len(headers)))
+	for _, h := range headers {
+		headerList.Append(object.NewString(h))
+	}
+	rowList := object.NewList(make([]object.Object, 0, len(rows)))
+	for _, r := range rows {
+		cellList := object.NewList(make([]object.Object, 0, len(r)))
+		for _, cell := range r {
+			cellList.Append(object.NewString(cell))
+		}
+		rowList.Append(cellList)
+	}
+
+	return object.NewMap(map[string]object.Object{
+		"headers": headerList,
+		"rows":    rowList,
+	}), nil
 }
 
 // rowToObject converts a tiedb.Row to a Risor map object
