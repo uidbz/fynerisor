@@ -1,5 +1,72 @@
 # Changelog
 
+## [0.8.0] - 2026-08-21
+
+### Added
+
+**Parallel batch execution (`core.EvalBatch`):**
+- `core.EvalBatch(ctx, script, inputs, cfg, opts...)` compiles a Risor script once
+  and runs it over many inputs concurrently, each on its own isolated `Context`+VM
+  ("compile once, run many"). Real multi-core throughput for headless data work.
+- Each input `map[string]any` is exposed to the script as global variables; results
+  are index-aligned with inputs via `[]core.BatchResult{Value, Err}`. Per-input
+  failures are isolated in `BatchResult.Err`; the returned error covers only setup
+  (e.g. compilation) failures.
+- `core.BatchConfig{Concurrency}` bounds parallelism (defaults to `GOMAXPROCS`).
+- Headless only (no GUI dependency). See [docs/CONCURRENCY.md](docs/CONCURRENCY.md)
+  for the isolation model and why a script-level `parallel()` builtin was not added.
+- Example: `40-concurrent-batch`
+
+**Tie Module (`@tie`):**
+- Client for the [tie](https://git.sr.ht/~uid/tie) triple store, storing and querying
+  `(key, relation, value)` triples. Enable with `core.WithTie()` / `gui.WithTie()`;
+  require with `require(["@tie"])`.
+- `tie.connect(url, opts?)` - Connect to a tie-daemon (optional `{username, password}`)
+- Writes: `db.add`, `db.set`, `db.update`, `db.delete`, `db.sync`
+- Reads: `db.get`, `db.query` (returns `{rows, total_count}` for pagination),
+  `db.expand([keys])`, `db.associated`, `db.exists`
+- Bulk: `db.batch()` with `batch.add/set/update/delete/run()`
+- Tables: `db.insert_table` / `db.read_table`
+- Maintenance: `db.dump`, `db.dump_stream(callback)` (memory-efficient streaming),
+  `db.restore`, `db.drop`
+- Documentation: [docs/TIE_MODULE.md](docs/TIE_MODULE.md)
+- Examples: `36-tie-headless` (core) and `37-tie-gui`
+
+**JSON Module (`@json`):**
+- `json.parse(text)` - Parse a JSON string into a Risor value
+- `json.marshal(obj)` - Encode a Risor value to a compact JSON string
+- `json.marshal_indent(obj, indent="  ")` - Encode to a pretty-printed JSON string
+- `json.valid(text)` - Report whether a string is valid JSON
+- `json.read(path)` / `json.write(path, obj, indent?)` - Read/write JSON files
+- Enable with `core.WithJSON()` / `gui.WithJSON()`; require with `require(["@json"])`
+
+**CSV Module (`@csv`):**
+- `csv.parse(text, opts?)` - Parse CSV. By default row 1 is treated as headers and
+  rows are returned as a list of maps; pass `{header: false}` for a list of lists.
+  Supports `{delimiter: ";"}`.
+- `csv.format(rows, opts?)` - Encode a list of maps or list of lists to CSV. For map
+  rows, columns default to alphabetical order; pass `{columns: [...]}` to control order,
+  `{header: false}` to omit the header row, and `{delimiter: ";"}`.
+- `csv.read(path, opts?)` / `csv.write(path, rows, opts?)` - Read/write CSV files
+- Enable with `core.WithCSV()` / `gui.WithCSV()`; require with `require(["@csv"])`
+- Examples: `38-csv-headless` and `39-json-headless` (both core, headless)
+
+**Widgets & Containers:**
+- `AppTabs.OnSelected` callback, invoked when the selected tab changes
+- Alternating row colors in tables, adapting to light and dark themes
+
+### Changed
+
+- Upgraded Risor language runtime to v2.2.0
+- Depend on published `tie` v0.4.3 (dropped the local `replace` directive)
+
+### Fixed
+
+- Correct `file://` URL handling for Windows filesystem paths
+- Route status bar updates onto the GUI thread (opt into `fyne.Do`)
+- Guard `TableData.Sort` against a missing sort column
+- Enable text clipping in table cells to prevent overflow
+
 ## [0.7.0] - 2026-07-13
 
 ### Added
@@ -72,6 +139,9 @@
 - **browser.CopyToClipboard(text)** - Copy text to system clipboard from scripts
 - **Terminal error logging** - All errors logged to terminal for debugging
 
+**Widget Enhancements:**
+- **widget.Select** - Added `Selected` and `SelectedIndex` getters
+
 ### Fixed
 
 **Canvas Image Loading:**
@@ -87,6 +157,7 @@
   - Consistent behavior across all URL schemes
 
 ### Changed
+- **Fyne upgraded to v2.8.0**
 - **Table column resize performance** - Resizing a column no longer performs a
   per-cell `UpdateCell` VM round-trip, making resizes smoother on large tables
 

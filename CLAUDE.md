@@ -6,8 +6,8 @@ This file provides context and guidelines for AI assistants working on fynerisor
 
 Fynerisor provides Risor v2 language bindings for the Fyne GUI framework, enabling cross-platform desktop applications written in Risor scripts.
 
-**Current Version:** 0.7.0  
-**Language:** Go 1.21+  
+**Current Version:** 0.8.0  
+**Language:** Go 1.25+  
 **Dependencies:** Fyne v2.8+, Risor v2.x
 
 ## Architecture
@@ -119,8 +119,10 @@ so they never need a manual bump. Only these files carry a hardcoded copy:
    - `llms.txt` - `Version:` line
    - `docs/README.md` - `**Current Version**:` line
    - `CLAUDE.md` - `**Current Version:**` line (top of this file)
-3. Update `cmd/fynerisor-browser/FyneApp.toml` - `Version` (packaging metadata
-   read by `fyne package`; sets the APK versionName, so it cannot use Go code)
+3. Update the `Version` in both `FyneApp.toml` packaging files (read by `fyne package`;
+   e.g. sets the APK versionName, so they cannot use Go code):
+   - `cmd/fynerisor/FyneApp.toml`
+   - `cmd/fynerisor-browser/FyneApp.toml`
 4. Update `CHANGELOG.md` - Add release notes under new version heading
 5. Update examples that use `require()` if major/minor version changed
 

@@ -1,0 +1,15 @@
+require(["v0.8", "@csv"])
+
+// `file` is supplied per-input by core.EvalBatch — one run per CSV file, each
+// on its own isolated VM. This script is the unit of work that runs in parallel.
+let rows = csv.read(file)
+
+// The final expression is this run's result (a map, returned to Go as
+// map[string]any). Do a little per-file work so the batch has something to do.
+let total = 0
+rows.each(row => { total = total + int(row["amount"]) })
+
+{
+    "rows": len(rows),
+    "total": total,
+}

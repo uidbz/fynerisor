@@ -73,9 +73,16 @@ fynerisor enables building cross-platform desktop applications using Risor scrip
 
 ## Version
 
-**Current Version**: 0.7.0  
-**Risor Compatibility**: v2.1+ (arrow functions required)  
+**Current Version**: 0.8.0  
+**Risor Compatibility**: v2.2+ (arrow functions required)  
 **Fyne Compatibility**: v2.7+
+
+### What's New in v0.8.0
+
+- **Tie Module**: Triple store client (`tie.connect`, then `add`/`get`/`set`/`update`/`delete`, `query`, `expand`, `batch`, `dump_stream`, `insert_table`/`read_table`, etc.) — see [TIE_MODULE.md](TIE_MODULE.md) (enable with `require(["@tie"])`)
+- **JSON Module**: `json.parse`, `json.marshal`, `json.marshal_indent`, `json.valid`, `json.read`, `json.write` (enable with `require(["@json"])`)
+- **CSV Module**: `csv.parse`, `csv.format`, `csv.read`, `csv.write` — header rows map to lists of maps by default, with `{header: false}`, `delimiter`, and `columns` options (enable with `require(["@csv"])`)
+- **Risor v2.2.0**: Upgraded the Risor language runtime
 
 ### What's New in v0.7.0
 
@@ -281,10 +288,15 @@ result, err := ctx.EvalWithImports(script, fetchFunc)
 **Available options (same as Window):**
 - `WithHTTP()` - HTTP module
 - `WithSQL()` - SQL module  
+- `WithTie()` - Tie triple store module
 - `WithOS()` - OS module
+- `WithIO()` - File I/O module
+- `WithExec()` - Exec module
 - `WithStrings()` - Strings module
 - `WithFilepath()` - Filepath module
 - `WithTime()` - Time module
+- `WithJSON()` - JSON module
+- `WithCSV()` - CSV module
 - `WithRisorOptions()` - Custom globals
 
 Note: Window-specific options like `WithStatusCallback()` and `WithResultCallback()` are silently ignored when used with ContextBuilder.

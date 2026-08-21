@@ -143,6 +143,8 @@ func main() {
 			gui.WithSQL(),
 			gui.WithTie(),
 			gui.WithIO(),
+			gui.WithJSON(),
+			gui.WithCSV(),
 			gui.WithRisorOptions(customGlobals...),
 			gui.WithStatusCallback(func(status string) {
 				log.Printf("[STATUS] %s", status)
@@ -161,6 +163,8 @@ func main() {
 			gui.WithSQL(),
 			gui.WithTie(),
 			gui.WithIO(),
+			gui.WithJSON(),
+			gui.WithCSV(),
 			gui.WithRisorOptions(customGlobals...),
 			gui.WithStatusCallback(func(status string) {
 				if strings.HasPrefix(status, "ERROR:") {

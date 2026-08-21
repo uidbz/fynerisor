@@ -38,6 +38,9 @@ Thumbs.db
 dist/
 build/
 
+# Generated example outputs (regenerated when the example runs)
+examples/*/*-out.csv
+
 # Mobile packaging output (fyne package / fyne-cross)
 *.apk
 *.aab

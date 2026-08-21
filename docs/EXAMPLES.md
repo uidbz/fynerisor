@@ -17,9 +17,12 @@ Production-ready examples demonstrating fynerisor widget and container usage.
 - [Bar Chart](#bar-chart)
 - [Complex Layout](#complex-layout)
 - [File Drop Handler](#file-drop-handler)
+- [Tips & Tricks](#tips--tricks)
 - [Calendar Date Picker](#calendar-date-picker)
 - [List with Virtualization](#list-with-virtualization)
 - [Code Organization with ImportScript](#code-organization-with-importscript)
+- [Dialogs and User Interaction](#dialogs-and-user-interaction)
+- [Complete Examples](#complete-examples)
 - [Background Tasks with go()](#background-tasks-with-go)
 - [File Operations with io module](#file-operations-with-io-module)
 - [Detecting Application Context](#detecting-application-context)
@@ -728,33 +731,54 @@ dialog.ShowCustom("Custom Dialog", "OK", content)
 
 ## Complete Examples
 
-The `examples/` directory contains complete working applications:
+The `examples/` directory contains complete working applications. See
+[examples/README.md](../examples/README.md) for the canonical index.
 
 **GUI Examples:**
-1. **01-hello-world** - Minimal app with label
-2. **02-button-callback** - Interactive button with state
-3. **03-form-input** - Form with validation
-4. **04-table-display** - Table with paginated data
-5. **05-progress-widgets** - Progress bars and sliders
-6. **06-icon-hyperlink-card** - Icons, links, and cards
-7. **07-radiogroup** - Radio button groups
-8. **08-accordion** - Collapsible sections
-9. **09-toolbar** - Action toolbar with icons
-10. **10-calendar** - Date picker with time module
-11. **11-list** - Virtualized scrolling list
-12. **12-tree** - Hierarchical tree widget
-13. **12-imports** - Code organization with ImportScript
-14. **13-http-fetch** - HTTP requests and JSON parsing
-15. **15-sql-test** - Database connectivity
-30. **30-dialogs** - Dialog windows (info, error, confirm, file picker, color picker, forms)
+- **01-hello-world** - Minimal app with a label
+- **02-button-callback** - Interactive button with state
+- **03-form-input** - Form widgets and input validation
+- **04-table-display** - Table with paginated data and row clicks
+- **05-progress-widgets** - Progress bars, activity indicators, sliders
+- **06-icon-hyperlink-card** - Theme icons, hyperlinks, and cards
+- **07-radiogroup** - Single-selection radio button groups
+- **08-accordion** - Collapsible accordion sections
+- **09-toolbar** - Action toolbar with icons and spacers
+- **10-calendar** - Date picker using the time module
+- **11-list** - Virtualized scrolling list
+- **12-tree** - Hierarchical tree widget
+- **13-http-fetch** - HTTP requests and JSON parsing (`@http`)
+- **14-module-imports** - Module-scoped `import()` system
+- **15-sql-test** - SQL database connectivity (`@sql`)
+- **17-gridwrap** - GridWrap virtualized grid layout
+- **18-textgrid** - TextGrid monospace text grid
+- **19-richtext** - RichText with markdown support
+- **20-button-importance** - Button importance/styling levels
+- **21-form-validation** - Entry validation with visual feedback
+- **22-popup** - PopUp floating overlays
+- **23-menu** - Menu and PopUpMenu context menus
+- **24-constants** - Fyne constants and enums
+- **25-data-binding** - Data binding basics
+- **26-data-binding-types** - All supported data binding types
+- **27-app-versioning** - App version compatibility checks
+- **28-custom-struct** - Expose custom Go structs to scripts
+- **30-dialogs** - Info, error, confirm, file, color, and form dialogs
+- **31-apptabs** - Tabbed navigation with AppTabs
+- **32-table-widgets** - Widgets (buttons, entries) inside table cells
+- **33-image-gallery** - List image files via widget-mode table
+- **34-keyboard-shortcuts** - Global keyboard shortcuts
+- **35-charts** - Bar, line, scatter, histogram, and box plot charts
+- **37-tie-gui** - Tie triple store browser GUI (`@tie`, requires tie-daemon)
 
-**Headless Example:**
-16. **16-context-builder** - Headless script execution
+**Headless Examples (core only, no GUI):**
+- **16-context-builder** - Headless script execution with ContextBuilder
+- **36-tie-headless** - Tie triple store client (`@tie`, requires tie-daemon)
+- **38-csv-headless** - CSV module: parse/format/read/write (`@csv`)
+- **39-json-headless** - JSON module: parse/marshal/valid/read/write (`@json`)
+- **40-concurrent-batch** - Parallel batch execution with `core.EvalBatch` (compile once, run many)
 
-Each example includes:
-- Complete Go program (main.go)
-- Risor script (*.risor)
-- README with explanations
+Each example includes a Go program (`main.go`); most include a Risor script
+(`*.risor`) and a `README.md` with explanations.
 
 ---
 

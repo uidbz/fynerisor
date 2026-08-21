@@ -61,6 +61,9 @@ Each example has its own README with detailed explanation. Browse the directorie
 - **35-charts** - Various chart visualizations (bar, line, scatter, pie)
 - **36-tie-headless** - Triple store client (headless, requires tie-daemon)
 - **37-tie-gui** - Triple browser GUI with query and add (requires tie-daemon)
+- **38-csv-headless** - CSV module: parse/format/read/write (headless, core only)
+- **39-json-headless** - JSON module: parse/marshal/valid/read/write (headless, core only)
+- **40-concurrent-batch** - Parallel batch execution with `core.EvalBatch` (headless, core only)
 
 ## Example Structure
 

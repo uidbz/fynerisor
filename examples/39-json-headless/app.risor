@@ -1,0 +1,44 @@
+require(["v0.8", "@json"])
+
+// ---------------------------------------------------------------------------
+// json.parse — decode a JSON string into Risor values (maps, lists, scalars)
+// ---------------------------------------------------------------------------
+print("=== json.parse ===")
+let user = json.parse(`{"name": "Ada", "age": 36, "admin": true, "tags": ["x", "y"]}`)
+print("  name  = " + user["name"])
+print("  age   = " + string(user["age"]))
+print("  admin = " + string(user["admin"]))
+print("  tags  = " + string(user["tags"]))
+
+// ---------------------------------------------------------------------------
+// json.marshal — encode a Risor value to a compact JSON string
+// ---------------------------------------------------------------------------
+print("\n=== json.marshal (compact) ===")
+let record = {id: 1, items: ["pen", "paper"], nested: {ok: true}}
+print("  " + json.marshal(record))
+
+// ---------------------------------------------------------------------------
+// json.marshal_indent — pretty-printed JSON (default 2-space, or custom indent)
+// ---------------------------------------------------------------------------
+print("\n=== json.marshal_indent (pretty) ===")
+print(json.marshal_indent(record))
+print("--- custom 4-space indent ---")
+print(json.marshal_indent(record, "    "))
+
+// ---------------------------------------------------------------------------
+// json.valid — check whether a string is valid JSON
+// ---------------------------------------------------------------------------
+print("\n=== json.valid ===")
+print("  valid   `{\"a\": 1}` -> " + string(json.valid(`{"a": 1}`)))
+print("  invalid `{bad`      -> " + string(json.valid("{bad")))
+
+// ---------------------------------------------------------------------------
+// json.write then json.read — round-trip through a file
+// ---------------------------------------------------------------------------
+print("\n=== json.write + json.read (file round-trip) ===")
+let path = "record-out.json"
+json.write(path, record, "  ")   // optional indent -> pretty file
+let reloaded = json.read(path)
+print("  wrote and re-read " + path)
+print("  reloaded.id       = " + string(reloaded["id"]))
+print("  reloaded.nested.ok = " + string(reloaded["nested"]["ok"]))

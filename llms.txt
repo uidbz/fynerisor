@@ -2,7 +2,7 @@
 
 Build cross-platform desktop GUIs using Risor v2 scripts with Fyne widgets.
 
-Version: 0.7.0
+Version: 0.8.0
 Risor: v2.x (arrow functions, no for loops, functional iteration)
 Fyne: v2.7+
 
@@ -23,7 +23,7 @@ Always import the specific package you need.
 - Module-scoped imports with namespace isolation
 - Custom Go type integration (core.WithGlobal, gui.WithGlobal)
 - Application versioning (core.SetAppVersion)
-- Modules: HTTP, SQL, Tie (triple store), OS, Time, Strings, Filepath, IO, Exec
+- Modules: HTTP, SQL, Tie (triple store), OS, Time, Strings, Filepath, IO, Exec, JSON, CSV
 - Charts: bar, line, scatter, histogram, box plot (with statistical overlays)
 - Browser package: load Risor scripts from URLs (see browser/)
 - Static compilation support (core package)
@@ -33,7 +33,7 @@ Always import the specific package you need.
 
 ```risor
 // Specify requirements (optional but recommended)
-require(["v0.7", "@sql", "@http"])
+require(["v0.8", "@sql", "@http"])
 
 // Create a simple button with counter
 let count = 0
@@ -95,11 +95,11 @@ Declare version and module requirements:
 
 ```risor
 // Single requirement
-require("v0.7.0")         // Minimum version
+require("v0.8.0")         // Minimum version
 require("@sql")           // Module must be enabled
 
 // Multiple requirements
-require(["v0.7", "@sql", "@http", "@os"])
+require(["v0.8", "@sql", "@http", "@os"])
 
 // Version formats
 require("v0.4")           // Minimum version (>=)
@@ -113,6 +113,8 @@ require("@strings")       // Strings module
 require("@filepath")      // Filepath module
 require("@time")          // Time module
 require("@io")            // File I/O module
+require("@json")          // JSON module
+require("@csv")           // CSV module
 ```
 
 ### Combined Example
@@ -807,6 +809,46 @@ let contents = io.read_all("file.txt")  // Read entire file as string
 // Use io.read_all for text files, os.read_file for binary data
 ```
 
+### JSON Module
+
+Enable with `fynerisor.WithJSON()`. JSON encoding and decoding.
+
+```risor
+require("@json")
+
+let obj = json.parse(`{"name": "Ada", "tags": ["x", "y"]}`)
+let text = json.marshal(obj)                 // compact
+let pretty = json.marshal_indent(obj)        // 2-space indent (optional indent arg)
+let ok = json.valid(`{"a": 1}`)              // true
+
+// File helpers
+let data = json.read("config.json")
+json.write("out.json", obj, "  ")            // optional indent -> pretty file
+```
+
+### CSV Module
+
+Enable with `fynerisor.WithCSV()`. CSV encoding and decoding.
+
+```risor
+require("@csv")
+
+// Header row -> list of maps (default)
+let rows = csv.parse("name,age\nAda,36\nBob,40")
+// rows == [{age: "36", name: "Ada"}, {age: "40", name: "Bob"}]
+
+// No header -> list of lists
+let raw = csv.parse("a,b\nc,d", {header: false})   // [["a","b"], ["c","d"]]
+
+// Encode. Map columns default to alphabetical order; pass columns to control it.
+let text = csv.format(rows, {columns: ["name", "age"]})
+let semi = csv.format(rows, {delimiter: ";"})
+
+// File helpers
+let table = csv.read("data.csv")
+csv.write("out.csv", rows)
+```
+
 ## Canvas Objects
 
 ```risor
@@ -1049,7 +1091,7 @@ result, err := ctx.EvalWithImports(script, fetchFunc)
 ```
 
 **Available options in core package:**
-- `core.WithHTTP()`, `core.WithSQL()`, `core.WithTie()`, `core.WithOS()`, `core.WithStrings()`, `core.WithFilepath()`, `core.WithTime()`, `core.WithIO()`, `core.WithGlobals()`
+- `core.WithHTTP()`, `core.WithSQL()`, `core.WithTie()`, `core.WithOS()`, `core.WithStrings()`, `core.WithFilepath()`, `core.WithTime()`, `core.WithIO()`, `core.WithJSON()`, `core.WithCSV()`, `core.WithGlobals()`
 - GUI-specific options (`WithStatusCallback`, `WithResultCallback`) are not available in core
 - Scripts using `require("@gui")` will fail in core (headless mode)
 

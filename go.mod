@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	fyne.io/fyne/v2 v2.8.0
 	git.sr.ht/~uid/tie v0.4.3
-	github.com/deepnoodle-ai/risor/v2 v2.1.1-0.20260512125632-a263ecce1b9d
+	github.com/deepnoodle-ai/risor/v2 v2.2.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/lib/pq v1.10.9
@@ -36,7 +36,7 @@ require (
 	github.com/bodgit/windows v1.0.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/deepnoodle-ai/wonton v0.0.25 // indirect
+	github.com/deepnoodle-ai/wonton v0.0.37 // indirect
 	github.com/dhowden/tag v0.0.0-20230630033851-978a0926ee25 // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
 	github.com/fredbi/uri v1.1.1 // indirect
@@ -91,7 +91,7 @@ require (
 	golang.org/x/image v0.34.0 // indirect
 	golang.org/x/mobile v0.0.0-20250606033058-a2a15c67f36f // indirect
 	golang.org/x/net v0.50.0 // indirect
-	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

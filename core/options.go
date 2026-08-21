@@ -2,10 +2,12 @@ package core
 
 import (
 	"github.com/deepnoodle-ai/risor/v2"
+	csvmod "github.com/uidbz/fynerisor/modules/csv"
 	"github.com/uidbz/fynerisor/modules/exec"
 	filepathmod "github.com/uidbz/fynerisor/modules/filepath"
 	"github.com/uidbz/fynerisor/modules/http"
 	iomod "github.com/uidbz/fynerisor/modules/io"
+	jsonmod "github.com/uidbz/fynerisor/modules/json"
 	"github.com/uidbz/fynerisor/modules/os"
 	"github.com/uidbz/fynerisor/modules/sql"
 	"github.com/uidbz/fynerisor/modules/strings"
@@ -271,6 +273,50 @@ func WithExec() Option {
 		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
 			env["exec"] = exec.Module()
 			modules["exec"] = true
+		},
+	}
+}
+
+// WithJSON enables the json module for JSON encoding/decoding from Risor scripts.
+// The module provides functions: parse, marshal, marshal_indent, valid, read, write.
+//
+// Example:
+//
+//	ctx := core.NewContext(core.WithJSON())
+//
+// Usage in script:
+//
+//	let obj = json.parse(`{"a": 1}`)
+//	print(json.marshal_indent(obj))
+func WithJSON() Option {
+	return moduleOption{
+		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
+			env["json"] = jsonmod.Module()
+			modules["json"] = true
+		},
+	}
+}
+
+// WithCSV enables the csv module for CSV encoding/decoding from Risor scripts.
+// The module provides functions: parse, format, read, write.
+//
+// By default parse treats the first row as headers and returns a list of maps;
+// pass {header: false} for a list of lists. format accepts {columns: [...]} to
+// control column order for map rows (otherwise columns are sorted alphabetically).
+//
+// Example:
+//
+//	ctx := core.NewContext(core.WithCSV())
+//
+// Usage in script:
+//
+//	let rows = csv.parse("name,age\nAda,36")
+//	print(csv.format(rows))
+func WithCSV() Option {
+	return moduleOption{
+		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
+			env["csv"] = csvmod.Module()
+			modules["csv"] = true
 		},
 	}
 }

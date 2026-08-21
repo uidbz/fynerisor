@@ -211,6 +211,9 @@ Customize fynerisor behavior via `With*()` options when creating `gui.Window` or
 - `WithStrings()` - Enable string utilities
 - `WithFilepath()` - Enable path operations
 - `WithTime()` - Enable time/date functions
+- `WithExec()` - Enable running external commands
+- `WithJSON()` - Enable JSON encoding/decoding
+- `WithCSV()` - Enable CSV encoding/decoding
 
 **Example:**
 ```go
@@ -240,6 +243,9 @@ Enable modules via `With*()` options. Scripts can optionally use `require(["@mod
 | `@strings` | `WithStrings()` | String manipulation |
 | `@filepath` | `WithFilepath()` | Path operations |
 | `@time` | `WithTime()` | Time and date functions |
+| `@exec` | `WithExec()` | Run external commands |
+| `@json` | `WithJSON()` | JSON encoding/decoding |
+| `@csv` | `WithCSV()` | CSV encoding/decoding |
 
 **Note:** The `require()` function is **optional**. It's a validation mechanism for scripts to declare their dependencies and minimum version requirements. If a script doesn't call `require()`, it will simply use whatever modules the embedding application has enabled. Use `require()` when you want scripts to fail fast with clear error messages if expected modules or versions are missing.
 
@@ -487,9 +493,9 @@ Eventually I dream of making an other browser app, that incorporates the origina
 
 ## Requirements
 
-- Go 1.21+
-- Fyne v2.7+
-- Risor v2.1+
+- Go 1.25+
+- Fyne v2.8+
+- Risor v2.2+
 
 ## License
 

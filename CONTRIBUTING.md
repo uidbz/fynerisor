@@ -41,7 +41,7 @@ Be respectful, collaborative, and constructive. We want to create a welcoming en
 
 ### Prerequisites
 
-- Go 1.21 or later
+- Go 1.25 or later
 - Fyne v2.7+ dependencies (see [Fyne documentation](https://docs.fyne.io/started/))
 
 ### Building

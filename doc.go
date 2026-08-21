@@ -15,8 +15,8 @@
 //
 // # Version
 //
-// Current Version: 0.7.0
-// Risor Compatibility: v2.1+ (arrow functions required)
+// Current Version: 0.8.0
+// Risor Compatibility: v2.2+ (arrow functions required)
 // Fyne Compatibility: v2.7+
 //
 // # Features
@@ -113,8 +113,8 @@
 //
 // Scripts can declare version and module requirements:
 //
-//	require(["v0.7", "@sql", "@http"])  // Multiple requirements
-//	require("v0.7.0")                   // Minimum version
+//	require(["v0.8", "@sql", "@http"])  // Multiple requirements
+//	require("v0.8.0")                   // Minimum version
 //	require("@sql")                     // Module must be enabled
 //
 // # Global Objects
@@ -149,6 +149,8 @@
 //	    gui.WithStrings(),        // String manipulation
 //	    gui.WithFilepath(),       // Path utilities
 //	    gui.WithTime(),           // Time operations
+//	    gui.WithJSON(),           // JSON encoding/decoding
+//	    gui.WithCSV(),            // CSV encoding/decoding
 //	    gui.WithHTTPImport(),     // Import modules from URLs
 //	    gui.WithGlobal("myapi", apiObject),  // Custom named global
 //	    gui.WithStatusCallback(func(status string) {

@@ -2,10 +2,12 @@ package gui
 
 import (
 	"github.com/deepnoodle-ai/risor/v2"
+	csvmod "github.com/uidbz/fynerisor/modules/csv"
 	"github.com/uidbz/fynerisor/modules/exec"
 	filepathmod "github.com/uidbz/fynerisor/modules/filepath"
 	"github.com/uidbz/fynerisor/modules/http"
 	iomod "github.com/uidbz/fynerisor/modules/io"
+	jsonmod "github.com/uidbz/fynerisor/modules/json"
 	"github.com/uidbz/fynerisor/modules/os"
 	"github.com/uidbz/fynerisor/modules/sql"
 	"github.com/uidbz/fynerisor/modules/strings"
@@ -205,6 +207,30 @@ func WithOS() Option {
 	}
 }
 
+// WithJSON enables the json module for JSON encoding/decoding from Risor scripts.
+// The module provides functions: parse, marshal, marshal_indent, valid, read, write.
+func WithJSON() Option {
+	return moduleOption{
+		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
+			env["json"] = jsonmod.Module()
+			modules["json"] = true
+		},
+	}
+}
+
+// WithCSV enables the csv module for CSV encoding/decoding from Risor scripts.
+// The module provides functions: parse, format, read, write. By default parse
+// treats the first row as headers (list of maps); pass {header: false} for a
+// list of lists.
+func WithCSV() Option {
+	return moduleOption{
+		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
+			env["csv"] = csvmod.Module()
+			modules["csv"] = true
+		},
+	}
+}
+
 // WithStrings enables the strings module for string manipulation from Risor scripts.
 func WithStrings() Option {
 	return moduleOption{
@@ -359,7 +385,6 @@ func WithGlobal(name string, value any) Option {
 		},
 	}
 }
-
 
 // WithExec enables the exec module for running external commands from Risor scripts.
 func WithExec() Option {

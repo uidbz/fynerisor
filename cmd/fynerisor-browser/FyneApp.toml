@@ -4,7 +4,7 @@ Website = "https://github.com/uidbz/fynerisor"
 Icon = "Icon.png"
 Name = "Fynerisor Browser"
 ID = "com.fynerisor.browser"
-Version = "0.7.0"
+Version = "0.8.0"
 Build = 1
 
 [Migrations]

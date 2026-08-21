@@ -288,6 +288,56 @@ case "UpdateNode":
     }
 ```
 
+## Headless Parallelism: `core.EvalBatch`
+
+Everything above concerns the GUI, where a single VM is shared across callbacks
+and must never be re-entered concurrently. The headless `core` package offers the
+opposite: **safe, real multi-core parallelism** via `core.EvalBatch`.
+
+### The model: compile once, run many
+
+`EvalBatch` compiles the script a single time into an immutable `*bytecode.Code`,
+then runs it over each input on its **own fresh VM**. Compiled bytecode is
+read-only and safe to share across goroutines; a running VM is not shared. This is
+the pattern from Risor's own `examples/go/concurrent_vms`.
+
+```go
+results, err := core.EvalBatch(ctx, script, inputs,
+    core.BatchConfig{Concurrency: 4}, core.WithCSV())
+// results[i] corresponds to inputs[i]; results[i].Err isolates per-input failures.
+```
+
+### Why it is safe
+
+- **Fresh `Context` per worker.** Each goroutine calls `NewContext(opts...)`, giving
+  it its own `env`, module objects, module cache, and import stack. Concurrent
+  `import()` calls therefore cannot race on shared cache/stack state.
+- **Immutable shared code.** All workers execute the same compiled bytecode; the VM
+  keeps its mutable globals per-instance, never mutating the shared `Code`.
+- **Warm-up before fan-out.** The first input runs synchronously to initialize
+  Risor's lazily-created package globals (e.g. the default type registry), so the
+  concurrent workers only ever read that shared state.
+
+### Caveats
+
+- **Stateful shared globals.** `WithGlobal(name, value)` passes one pointer to all
+  workers. Stateless modules (`csv`, `json`, `strings`) are safe; a stateful custom
+  global (DB handle, mutable map) must be made concurrency-safe by the caller.
+- **Headless only.** Do not use `EvalBatch` to drive Fyne widgets — its workers run
+  off any UI thread and create independent VMs.
+
+### Why not a script-level `parallel(items, fn)` builtin?
+
+We deliberately did **not** add a `parallel()`/`pmap()` builtin callable from Risor.
+To run a closure on a fresh VM, that VM must first `Run()` its root program, which
+re-executes the main script's entire top-level once per worker — catastrophic for
+side-effectful scripts and infinitely recursive if `parallel()` sits at top level.
+Closures also capture free variables (`*Cell`) that alias the defining VM's frame,
+so invoking one from multiple goroutines is a data race. Fanning out the context's
+`CallFunc` is likewise unguarded (see the stack-underflow bug below). Parallelism
+belongs at the Go/embedder boundary (`EvalBatch`), where each unit of work is a
+whole script on an isolated VM, not a closure shared across VMs.
+
 ## References
 
 ### Widget callback bug

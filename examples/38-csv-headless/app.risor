@@ -1,0 +1,57 @@
+require(["v0.8", "@csv"])
+
+// ---------------------------------------------------------------------------
+// csv.parse — first row becomes headers, returns a list of maps (the default)
+// ---------------------------------------------------------------------------
+print("=== csv.parse (header -> list of maps) ===")
+let people = csv.parse("name,age,city\nAda,36,London\nBob,40,Paris")
+people.each(row => print("  " + row["name"] + " is " + row["age"] + " (" + row["city"] + ")"))
+
+// ---------------------------------------------------------------------------
+// csv.parse with {header: false} — returns a list of lists (raw rows)
+// ---------------------------------------------------------------------------
+print("\n=== csv.parse ({header: false} -> list of lists) ===")
+let grid = csv.parse("a,b,c\n1,2,3\n4,5,6", {header: false})
+grid.each(row => print("  row: " + row[0] + " | " + row[1] + " | " + row[2]))
+
+// ---------------------------------------------------------------------------
+// csv.parse with a custom delimiter
+// ---------------------------------------------------------------------------
+print("\n=== csv.parse ({delimiter: \";\"}) ===")
+let semi = csv.parse("id;label\n1;alpha\n2;beta", {delimiter: ";"})
+semi.each(row => print("  " + row["id"] + " -> " + row["label"]))
+
+// ---------------------------------------------------------------------------
+// csv.format — list of maps. Columns are sorted alphabetically by default.
+// ---------------------------------------------------------------------------
+print("\n=== csv.format (default sorted columns) ===")
+print(csv.format(people))
+
+// ---------------------------------------------------------------------------
+// csv.format with {columns: [...]} — control column order / subset
+// ---------------------------------------------------------------------------
+print("=== csv.format ({columns: [...]} controls order) ===")
+print(csv.format(people, {columns: ["city", "name"]}))
+
+// ---------------------------------------------------------------------------
+// csv.format with {header: false} — omit the header row
+// ---------------------------------------------------------------------------
+print("=== csv.format ({header: false}) ===")
+print(csv.format(people, {columns: ["name", "age", "city"], header: false}))
+
+// ---------------------------------------------------------------------------
+// csv.format — a list of lists is written verbatim, no header handling
+// ---------------------------------------------------------------------------
+print("=== csv.format (list of lists) ===")
+let rows = [["x", "y"], ["1", "2"], ["3", "4"]]
+print(csv.format(rows, {delimiter: ";"}))
+
+// ---------------------------------------------------------------------------
+// csv.write then csv.read — round-trip through a file
+// ---------------------------------------------------------------------------
+print("=== csv.write + csv.read (file round-trip) ===")
+let path = "people-out.csv"
+csv.write(path, people)
+let reloaded = csv.read(path)
+print("  wrote and re-read " + string(len(reloaded)) + " rows from " + path)
+reloaded.each(row => print("    " + row["name"] + ", " + row["age"] + ", " + row["city"]))
