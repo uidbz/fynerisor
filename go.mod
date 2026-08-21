@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	fyne.io/fyne/v2 v2.8.0
-	git.sr.ht/~uid/tie v0.4.1
+	git.sr.ht/~uid/tie v0.4.3
 	github.com/deepnoodle-ai/risor/v2 v2.1.1-0.20260512125632-a263ecce1b9d
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-sql-driver/mysql v1.8.1
@@ -16,8 +16,6 @@ require (
 	golang.design/x/clipboard v0.7.1
 	gonum.org/v1/plot v0.17.0
 )
-
-replace git.sr.ht/~uid/tie => /home/johan/go/src/sourcehut/tie
 
 require (
 	codeberg.org/go-fonts/liberation v0.5.0 // indirect
