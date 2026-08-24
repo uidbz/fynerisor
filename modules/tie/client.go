@@ -96,6 +96,8 @@ func (c *Client) GetAttr(name string) (object.Object, bool) {
 		return object.NewBuiltin("tie.insert_table", c.InsertTable), true
 	case "read_table":
 		return object.NewBuiltin("tie.read_table", c.ReadTable), true
+	case "delete_table":
+		return object.NewBuiltin("tie.delete_table", c.DeleteTable), true
 	}
 	return nil, false
 }
@@ -119,6 +121,7 @@ func (c *Client) Attrs() []object.AttrSpec {
 		{Name: "drop"},
 		{Name: "insert_table"},
 		{Name: "read_table"},
+		{Name: "delete_table"},
 	}
 }
 
@@ -688,6 +691,22 @@ func (c *Client) ReadTable(ctx context.Context, args ...object.Object) (object.O
 		"headers": headerList,
 		"rows":    rowList,
 	}), nil
+}
+
+func (c *Client) DeleteTable(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) != 1 {
+		return nil, fmt.Errorf("tie.delete_table: expected 1 argument, got %d", len(args))
+	}
+
+	uid, err := object.AsString(args[0])
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.tc.DeleteTable(uid); err != nil {
+		return nil, err
+	}
+	return object.Nil, nil
 }
 
 // rowToObject converts a tiedb.Row to a Risor map object

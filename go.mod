@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	fyne.io/fyne/v2 v2.8.0
-	git.sr.ht/~uid/tie v0.4.3
+	git.sr.ht/~uid/tie v0.4.4-0.20260824093126-295eac4aa02c
 	github.com/deepnoodle-ai/risor/v2 v2.2.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-sql-driver/mysql v1.8.1
