@@ -25,6 +25,7 @@ package vmguard
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -33,6 +34,14 @@ import (
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 )
+
+// ErrConcurrentAccess is returned by Call when a DIFFERENT goroutine is already
+// inside the VM. It is expected, transient contention (Fyne's render goroutine
+// hitting a widget getter while the VM goroutine runs a handler), not a script
+// bug — callers should recover by returning a last-known value rather than
+// logging. Compare with errors.Is.
+var ErrConcurrentAccess = errors.New("concurrent VM access detected: a go() worker is racing the GUI thread. " +
+	"The Risor VM is single-threaded — move work out of go() or keep it in Go (see docs/CONCURRENCY.md)")
 
 var (
 	mu    sync.Mutex // guards owner/depth; held only for brief bookkeeping, never across the VM call
@@ -63,8 +72,7 @@ func Call(callFunc object.CallFunc, ctx context.Context, fn *object.Closure, arg
 		depth = 1
 	} else {
 		mu.Unlock()
-		return object.Nil, fmt.Errorf("concurrent VM access detected: a go() worker is racing the GUI thread. " +
-			"The Risor VM is single-threaded — move work out of go() or keep it in Go (see docs/CONCURRENCY.md)")
+		return object.Nil, ErrConcurrentAccess
 	}
 	mu.Unlock()
 

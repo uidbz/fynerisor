@@ -7,6 +7,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/vmguard"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -21,6 +22,7 @@ const ListType object.Type = "widget.List"
 type List struct {
 	instance *widget.List
 	w        WindowInterface
+	lastLen  int // last length returned by the Length callback, reused during VM contention
 }
 
 func NewList(w WindowInterface) *List {
@@ -113,17 +115,23 @@ func (obj *List) GetAttr(name string) (object.Object, bool) {
 			}
 
 			obj.instance.Length = func() int {
-				result, err := callFunc(ctx, fn, []object.Object{})
+				result, err := vmguard.Call(callFunc, ctx, fn, []object.Object{})
 				if err != nil {
-					fmt.Printf("List.Length error: %v\n", err)
-					return 0
+					// Transient render/VM contention: keep the last-known length
+					// so the list doesn't collapse to empty for a frame. Only a
+					// genuine script error is worth logging.
+					if !errors.Is(err, vmguard.ErrConcurrentAccess) {
+						fmt.Printf("List.Length error: %v\n", err)
+					}
+					return obj.lastLen
 				}
 				count, err := object.AsInt(result)
 				if err != nil {
 					fmt.Printf("List.Length: expected int, got %s\n", result.Type())
-					return 0
+					return obj.lastLen
 				}
-				return int(count)
+				obj.lastLen = int(count)
+				return obj.lastLen
 			}
 
 			return object.Nil, nil
@@ -146,10 +154,12 @@ func (obj *List) GetAttr(name string) (object.Object, bool) {
 			}
 
 			obj.instance.CreateItem = func() fyne.CanvasObject {
-				result, err := callFunc(ctx, fn, []object.Object{})
+				result, err := vmguard.Call(callFunc, ctx, fn, []object.Object{})
 				if err != nil {
-					fmt.Printf("List.CreateItem error: %v\n", err)
-					return widget.NewLabel("error")
+					if !errors.Is(err, vmguard.ErrConcurrentAccess) {
+						fmt.Printf("List.CreateItem error: %v\n", err)
+					}
+					return widget.NewLabel("")
 				}
 
 				canvasObj, ok := result.(interface{ CanvasObject() fyne.CanvasObject })
@@ -184,11 +194,11 @@ func (obj *List) GetAttr(name string) (object.Object, bool) {
 				// Call synchronously to avoid race condition with Length/CreateItem
 				// Wrap the canvas object so Risor can access it
 				wrappedItem := wrapCanvasObject(item)
-				_, err := callFunc(ctx, fn, []object.Object{
+				_, err := vmguard.Call(callFunc, ctx, fn, []object.Object{
 					object.NewInt(int64(id)),
 					wrappedItem,
 				})
-				if err != nil {
+				if err != nil && !errors.Is(err, vmguard.ErrConcurrentAccess) {
 					fmt.Printf("List.UpdateItem error: %v\n", err)
 				}
 			}
@@ -214,7 +224,7 @@ func (obj *List) GetAttr(name string) (object.Object, bool) {
 
 			obj.instance.OnSelected = func(id widget.ListItemID) {
 				// Call synchronously to avoid race condition
-				callFunc(ctx, fn, []object.Object{object.NewInt(int64(id))})
+				vmguard.Call(callFunc, ctx, fn, []object.Object{object.NewInt(int64(id))})
 			}
 
 			return object.Nil, nil
