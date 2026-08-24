@@ -22,9 +22,16 @@ type ProgressBarInfinite struct {
 	instance *widget.ProgressBarInfinite
 }
 
-// NewProgressBarInfinite creates a new infinite progress bar
+// NewProgressBarInfinite creates a new infinite progress bar. Fyne's
+// ProgressBarInfinite force-starts its animation inside CreateRenderer (which
+// runs the moment the bar is first shown), so a pre-render Stop() cannot keep
+// it idle. We create it hidden instead; a hidden widget never builds its
+// renderer, so it stays idle until an explicit Start(). Start()/Stop() below
+// show/hide the bar, so it is visible only while spinning.
 func NewProgressBarInfinite() *ProgressBarInfinite {
-	return &ProgressBarInfinite{instance: widget.NewProgressBarInfinite()}
+	instance := widget.NewProgressBarInfinite()
+	instance.Hide()
+	return &ProgressBarInfinite{instance: instance}
 }
 
 func (obj *ProgressBarInfinite) Type() object.Type {
@@ -77,6 +84,7 @@ func (obj *ProgressBarInfinite) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
 			guithread.Do(func() {
+				obj.instance.Show()
 				obj.instance.Start()
 			})
 			return object.Nil, nil
@@ -88,6 +96,7 @@ func (obj *ProgressBarInfinite) GetAttr(name string) (object.Object, bool) {
 			}
 			guithread.Do(func() {
 				obj.instance.Stop()
+				obj.instance.Hide()
 			})
 			return object.Nil, nil
 		}), true

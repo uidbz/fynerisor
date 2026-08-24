@@ -550,6 +550,13 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 	case "Canvas":
 		return w, true  // Window itself implements Canvas() method
 
+	case "Size":
+		size := w.FyneWindow.Canvas().Size()
+		return object.NewMap(map[string]object.Object{
+			"width":  object.NewFloat(float64(size.Width)),
+			"height": object.NewFloat(float64(size.Height)),
+		}), true
+
 	case "Resize":
 		return object.NewBuiltin("w.Resize", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 2 {

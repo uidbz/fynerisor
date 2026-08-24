@@ -91,6 +91,24 @@ func (obj *ConfirmDialog) GetAttr(name string) (object.Object, bool) {
 			})
 			return object.Nil, nil
 		}), true
+	case "Resize":
+		return object.NewBuiltin("dialog.ConfirmDialog.Resize", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 2 {
+				return object.Errorf("wrong number of arguments. got=%d, want=2", len(args)), nil
+			}
+			width, err := object.AsFloat(args[0])
+			if err != nil {
+				return object.Errorf("argument error: width must be a number, got %s", args[0].Type()), nil
+			}
+			height, err := object.AsFloat(args[1])
+			if err != nil {
+				return object.Errorf("argument error: height must be a number, got %s", args[1].Type()), nil
+			}
+			guithread.Do(func() {
+				obj.instance.Resize(fyne.NewSize(float32(width), float32(height)))
+			})
+			return object.Nil, nil
+		}), true
 	case "SetDismissText":
 		return object.NewBuiltin("dialog.ConfirmDialog.SetDismissText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
