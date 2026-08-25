@@ -339,6 +339,22 @@ func (c *Client) Query(ctx context.Context, args ...object.Object) (object.Objec
 		spec.SortBy = sortBy
 	}
 
+	if sortValObj := specMap.GetWithDefault("sort_by_value", nil); sortValObj != nil {
+		sortByValue, err := object.AsString(sortValObj)
+		if err != nil {
+			return nil, fmt.Errorf("tie.query: 'sort_by_value' must be a string: %w", err)
+		}
+		spec.SortByValue = sortByValue
+	}
+
+	if descObj := specMap.GetWithDefault("descending", nil); descObj != nil {
+		descending, err := object.AsBool(descObj)
+		if err != nil {
+			return nil, fmt.Errorf("tie.query: 'descending' must be a boolean: %w", err)
+		}
+		spec.Descending = descending
+	}
+
 	if reverseObj := specMap.GetWithDefault("reverse", nil); reverseObj != nil {
 		reverse, err := object.AsBool(reverseObj)
 		if err != nil {
