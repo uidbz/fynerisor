@@ -2,6 +2,7 @@ package widget
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"fyne.io/fyne/v2"
@@ -25,6 +26,13 @@ type Table struct {
 	instance *tablewidget.TableWidget
 	Columns  func() []string
 	w WindowInterface
+
+	// last-known getter results, reused during transient VM/render contention
+	// (vmguard.ErrConcurrentAccess) so the grid never collapses to empty for a
+	// frame — mirrors the resilience already built into widget.List.Length.
+	lastColumns  []string
+	lastRowCount int
+	lastData     *tablewidget.TableData
 }
 
 func (obj *Table) CanvasObject() fyne.CanvasObject {
@@ -87,12 +95,17 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 			obj.Columns = func() []string {
 				o, err := vmguard.Call(callFunc, ctx, fn, []object.Object{})
 				if err != nil {
-					fmt.Println("ERROR:", err)
+					if !errors.Is(err, vmguard.ErrConcurrentAccess) {
+						fmt.Println("Table.Columns error:", err)
+					}
+					return obj.lastColumns
 				}
 				s, err2 := object.AsStringSlice(o)
 				if err2 != nil {
-					fmt.Println("ERROR:", err)
+					fmt.Println("Table.Columns: expected []string:", err2)
+					return obj.lastColumns
 				}
+				obj.lastColumns = s
 				return s
 			}
 			return object.Nil, nil
@@ -115,15 +128,18 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 			obj.instance.RowCount = func() int {
 				o, err := vmguard.Call(callFunc, ctx, fn, []object.Object{})
 				if err != nil {
-					fmt.Println("RowCount: ERROR:", err)
-					return 0
+					if !errors.Is(err, vmguard.ErrConcurrentAccess) {
+						fmt.Println("Table.RowCount error:", err)
+					}
+					return obj.lastRowCount
 				}
 				s, err2 := object.AsInt(o)
 				if err2 != nil {
-					fmt.Println("RowCount: ERROR:", err)
-					return 0
+					fmt.Println("Table.RowCount: expected int:", err2)
+					return obj.lastRowCount
 				}
-				return int(s)
+				obj.lastRowCount = int(s)
+				return obj.lastRowCount
 			}
 			return object.Nil, nil
 		}), true
@@ -193,14 +209,23 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 			}
 
 			obj.instance.Data = func(offset, limit int) *tablewidget.TableData {
+				lastOrEmpty := func() *tablewidget.TableData {
+					if obj.lastData != nil {
+						return obj.lastData
+					}
+					return tablewidget.NewTableData(obj.instance.Title)
+				}
 				o, err := vmguard.Call(callFunc, ctx, fn, []object.Object{object.NewInt(int64(offset)), object.NewInt(int64(limit))})
 				if err != nil {
-					fmt.Println("widget.Table.Data: ERROR:", err)
-					return tablewidget.NewTableData(obj.instance.Title)
+					if !errors.Is(err, vmguard.ErrConcurrentAccess) {
+						fmt.Println("Table.Data error:", err)
+					}
+					return lastOrEmpty()
 				}
 				outer, err2 := object.AsList(o)
 				if err2 != nil {
-					fmt.Println("ERROR:", err2)
+					fmt.Println("Table.Data: expected list:", err2)
+					return lastOrEmpty()
 				}
 				td := tablewidget.NewTableData(obj.instance.Title)
 				for _, inner := range outer.Value() {
@@ -209,9 +234,10 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 						td.AddStringRow(obj.Columns(), stringsFromList(inner))
 					default:
 						fmt.Printf("type error: expected list (got %s)\n", inner.Type())
-						return tablewidget.NewTableData(obj.instance.Title)
+						return lastOrEmpty()
 					}
 				}
+				obj.lastData = td
 				return td
 			}
 			return object.Nil, nil
