@@ -178,6 +178,12 @@ func (t *FlexTable) SetData(data *TableData) {
 	// 	t.table.SetColumnWidth(i, 300)
 	// }
 	t.table.Refresh()
+	// Replacing the data invalidates the old scroll position. widget.Table keeps
+	// a cached offset (t.offset.Y) that Refresh neither resets nor re-clamps, so
+	// filtering a scrolled list to a shorter result leaves the viewport stranded
+	// past the new content — the grid renders blank until a manual scroll/resize.
+	// ScrollToTop zeroes both content.Offset.Y and the cached offset.
+	t.table.ScrollToTop()
 }
 
 func (t *FlexTable) SetColumnWidth(id int, width float32) {
