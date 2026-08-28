@@ -73,9 +73,17 @@ fynerisor enables building cross-platform desktop applications using Risor scrip
 
 ## Version
 
-**Current Version**: 0.8.0  
+**Current Version**: 0.8.1  
 **Risor Compatibility**: v2.2+ (arrow functions required)  
-**Fyne Compatibility**: v2.7+
+**Fyne Compatibility**: v2.8+
+
+### What's New in v0.8.1
+
+- **Fyne v2.8.1**: Upgraded the Fyne GUI framework
+- **Dialog sizing**: `Resize(width, height)` on custom/confirm/form dialogs, plus a `window.Size` getter (`{width, height}`) for computing relative sizes
+- **ProgressBarInfinite**: Now starts idle — visible only while running (`Start()`/`Stop()`)
+- **Tie Module**: `delete_table`, plus `sort_by_value` and `descending` options on `query`
+- **Stability**: Table/List getters stay resilient under VM contention; `ErrConcurrentAccess` is now exported; FlexTable resets scroll offset on `SetData`
 
 ### What's New in v0.8.0
 

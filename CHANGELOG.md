@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.8.1] - 2026-08-28
+
+### Added
+
+- `tie.delete_table` to drop a table via the `@tie` module
+- `tie.query` now accepts `sort_by_value` and `descending` options
+- Dialog `Resize(width, height)` on `CustomDialog`, `ConfirmDialog` and `FormDialog`,
+  plus a `window.Size` getter (returns `{width, height}`) so scripts can size dialogs
+  relative to the window
+- `ProgressBarInfinite` now starts idle (created hidden); `Start()` shows and spins it,
+  `Stop()` stops and hides it, so it is visible only while running
+
+### Fixed
+
+- FlexTable now resets its scroll offset on `SetData`
+- Table getters stay resilient under VM contention
+- List stays resilient under VM contention; `ErrConcurrentAccess` is now exported
+
+### Changed
+
+- Upgraded Fyne to v2.8.1
+
 ## [0.8.0] - 2026-08-21
 
 ### Added

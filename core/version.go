@@ -1,7 +1,7 @@
 package core
 
 // Version is the current version of the fynerisor library
-const Version = "0.8.0"
+const Version = "0.8.1"
 
 // appVersion stores the embedding application's version
 // Set via SetAppVersion() to enable version checking in require() calls

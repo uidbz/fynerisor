@@ -4,7 +4,7 @@ Website = "https://github.com/uidbz/fynerisor"
   Icon = "Icon.png"
   Name = "fynerisor"
   ID = "com.fynerisor.cli"
-  Version = "0.8.0"
+  Version = "0.8.1"
   Build = 1
 
 [Migrations]

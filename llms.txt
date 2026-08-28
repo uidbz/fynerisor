@@ -2,7 +2,7 @@
 
 Build cross-platform desktop GUIs using Risor v2 scripts with Fyne widgets.
 
-Version: 0.8.0
+Version: 0.8.1
 Risor: v2.x (arrow functions, no for loops, functional iteration)
 Fyne: v2.7+
 

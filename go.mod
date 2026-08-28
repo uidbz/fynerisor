@@ -3,7 +3,7 @@ module github.com/uidbz/fynerisor
 go 1.25.0
 
 require (
-	fyne.io/fyne/v2 v2.8.0
+	fyne.io/fyne/v2 v2.8.1
 	git.sr.ht/~uid/tie v0.4.4-0.20260825123543-f61d3ef540b4
 	github.com/deepnoodle-ai/risor/v2 v2.2.0
 	github.com/fsnotify/fsnotify v1.9.0
@@ -22,7 +22,7 @@ require (
 	codeberg.org/go-latex/latex v0.2.0 // indirect
 	codeberg.org/go-pdf/fpdf v0.11.1 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
-	fyne.io/systray v1.12.2 // indirect
+	fyne.io/systray v1.12.3-0.20260810170012-af4e8e793ec4 // indirect
 	git.sr.ht/~sbinet/gg v0.7.0 // indirect
 	git.sr.ht/~uid/conf v1.1.5 // indirect
 	github.com/BurntSushi/toml v1.6.0 // indirect
@@ -39,7 +39,6 @@ require (
 	github.com/deepnoodle-ai/wonton v0.0.37 // indirect
 	github.com/dhowden/tag v0.0.0-20230630033851-978a0926ee25 // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
-	github.com/fredbi/uri v1.1.1 // indirect
 	github.com/fyne-io/gl-js v0.2.1-0.20260315212741-029c47fd27e8 // indirect
 	github.com/fyne-io/glfw-js v0.4.0 // indirect
 	github.com/fyne-io/image v0.1.1 // indirect
