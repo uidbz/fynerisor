@@ -1,6 +1,6 @@
 # Tie Module
 
-The **tie module** provides Risor bindings for [Tie](https://git.sr.ht/~uid/tie), a triple store database designed for storing and querying relationships between entities. Triple stores excel at representing graph-like data structures where information is stored as `(key, relation, value)` triples.
+The **tie module** provides Risor bindings for [Tie](https://github.com/uidbz/tie), a triple store database designed for storing and querying relationships between entities. Triple stores excel at representing graph-like data structures where information is stored as `(key, relation, value)` triples.
 
 ## Table of Contents
 
@@ -40,22 +40,22 @@ rust-guide | author      | Alex Chen
 
 ## Requirements
 
-The tie module requires a running **tie-daemon**. Install and start it from the [Tie repository](https://git.sr.ht/~uid/tie):
+The tie module requires a running **tie-triplestore** server. Install and start it from the [Tie repository](https://github.com/uidbz/tie):
 
 ```bash
 # Clone and build
-git clone https://git.sr.ht/~uid/tie
+git clone https://github.com/uidbz/tie
 cd tie
 
 # Option 1: Use test environment (includes default config)
 ./test-env/build.sh
 ./test-env/start.sh
 
-# Option 2: Run daemon directly
-go run ./cmd/tie-daemon
+# Option 2: Run the triplestore server directly
+go run ./cmd/tie-triplestore
 ```
 
-The daemon listens on `http://localhost:1161` by default.
+The server listens on `http://localhost:1161` by default.
 
 ## Enabling the Module
 
@@ -1030,7 +1030,7 @@ db.add("x123", "type", "tutorial")  // Unclear
 
 ## See Also
 
-- [Tie Repository](https://git.sr.ht/~uid/tie) - Upstream tie database
+- [Tie Repository](https://github.com/uidbz/tie) - Upstream tie database
 - [Example 36: Tie Headless](../examples/36-tie-headless/) - Complete CLI example
 - [Example 37: Tie GUI](../examples/37-tie-gui/) - Interactive GUI browser
 - [HTTP Module](HTTP_MODULE.md) - Remote tie connections

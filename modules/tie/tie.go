@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"git.sr.ht/~uid/tie/client"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
+	"github.com/uidbz/tie/client"
 )
 
 func Connect(ctx context.Context, args ...object.Object) (object.Object, error) {
@@ -27,7 +27,7 @@ func Connect(ctx context.Context, args ...object.Object) (object.Object, error) 
 		if len(url) < 5 {
 			return nil, fmt.Errorf("tie.connect: webservice URL too short (got %q)", url)
 		}
-		cfg.Webservice = url
+		cfg.TripleStoreURL = url
 	}
 
 	// Optional second arg: options map

@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Upgraded the tie dependency to v0.5.0, which migrated its module path from
+  `git.sr.ht/~uid/tie` to `github.com/uidbz/tie`. The `@tie` module's public API is
+  unchanged. Note: upstream renamed the server binary `tie-daemon` to `tie-triplestore`.
+
 ## [0.8.1] - 2026-08-28
 
 ### Added
@@ -40,7 +48,7 @@
 - Example: `40-concurrent-batch`
 
 **Tie Module (`@tie`):**
-- Client for the [tie](https://git.sr.ht/~uid/tie) triple store, storing and querying
+- Client for the [tie](https://github.com/uidbz/tie) triple store, storing and querying
   `(key, relation, value)` triples. Enable with `core.WithTie()` / `gui.WithTie()`;
   require with `require(["@tie"])`.
 - `tie.connect(url, opts?)` - Connect to a tie-daemon (optional `{username, password}`)

@@ -4,13 +4,13 @@ go 1.25.0
 
 require (
 	fyne.io/fyne/v2 v2.8.1
-	git.sr.ht/~uid/tie v0.4.4-0.20260825123543-f61d3ef540b4
 	github.com/deepnoodle-ai/risor/v2 v2.2.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/microsoft/go-mssqldb v1.8.0
+	github.com/uidbz/tie v0.5.0
 	github.com/xo/dburl v0.24.2
 	github.com/xuri/excelize/v2 v2.10.1
 	golang.design/x/clipboard v0.7.1
@@ -24,7 +24,6 @@ require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	fyne.io/systray v1.12.3-0.20260810170012-af4e8e793ec4 // indirect
 	git.sr.ht/~sbinet/gg v0.7.0 // indirect
-	git.sr.ht/~uid/conf v1.1.5 // indirect
 	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/FyshOS/fancyfs v0.0.1 // indirect
 	github.com/STARRY-S/zip v0.2.3 // indirect
@@ -37,7 +36,6 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deepnoodle-ai/wonton v0.0.37 // indirect
-	github.com/dhowden/tag v0.0.0-20230630033851-978a0926ee25 // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
 	github.com/fyne-io/gl-js v0.2.1-0.20260315212741-029c47fd27e8 // indirect
 	github.com/fyne-io/glfw-js v0.4.0 // indirect
@@ -80,6 +78,7 @@ require (
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/tiendc/go-deepcopy v1.7.2 // indirect
+	github.com/uidbz/conf v1.1.6-0.20260830150407-08bf80e17ef6 // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	github.com/xuri/efp v0.0.1 // indirect
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect

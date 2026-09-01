@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"git.sr.ht/~uid/tie/api"
-	"git.sr.ht/~uid/tie/client"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
+	"github.com/uidbz/tie/api"
+	"github.com/uidbz/tie/client"
 )
 
 const BatchType object.Type = "tie.batch"
