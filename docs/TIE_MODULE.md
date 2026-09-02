@@ -533,7 +533,8 @@ Writes `headers` + `rows` as a table entity and returns its uid.
 
 - `uid`: pass `""` to mint a fresh uid (returned); pass an existing uid to
   replace that table in place (idempotent re-import — old rows are cleared first).
-- `headers`: a list of column-name strings.
+- `headers`: a list of column-name strings, **or** a list of header rows for a
+  multi-row (hierarchical) header — see below.
 - `rows`: a list of rows, each a list of cell strings in header order. Short rows
   are padded and cells past the header count are ignored. Empty cells are not
   stored (they read back as `""`).
@@ -553,17 +554,54 @@ let uid = db.insert_table("", ["Name", "Age", "City"], [
 ])
 ```
 
+### Multi-row (hierarchical) headers
+
+Pass header **rows** instead of labels when the top row groups the columns below
+it. The list is row-major, so `headers[i][j]` is level `i` of column `j` — the
+order the source sheet reads in:
+
+```js
+let uid = db.insert_table("", [
+    ["Sample", "Temperature (20°C)", "Temperature (20°C)"],
+    ["",       "Replicate 1",        "Replicate 2"],
+], [
+    ["S1", "4.2", "4.4"],
+])
+```
+
+Header rows must be rectangular, with a merged parent cell already repeated
+across its columns and blanks explicit — working out where a merged cell ends is
+file-parsing that belongs to your converter, not to storage.
+
+Because a column's name is the key every one of its cells is stored under, each
+column still needs exactly one unique string: its non-empty levels joined by
+`\x1f` (Unit Separator). That joined key is what `headers` reports, so
+`"Sample"` stays `"Sample"` while the replicate columns become
+`"Temperature (20°C)\x1fReplicate 1"`. A level may contain neither `\x1f` nor
+`\x00`. Join with `" / "` only for display — never as the key, or a real header
+containing `" / "` would collide.
+
+Passing a single header row stores exactly what the flat form stores, so there is
+no migration and no need to decide up front which form a table uses.
+
 ### db.read_table(uid)
 
 Reads a table back as a grid. Returns `nil` if `uid` holds no table.
 
-**Returns:** a map `{headers: [...], rows: [[...], ...]}` (row-major, header
-order), or `nil` if not found.
+**Returns:** a map `{headers: [...], header_levels: [[...], ...], rows: [[...], ...]}`
+(row-major, header order), or `nil` if not found.
+
+- `headers`: the column keys — one string per column, what each cell is keyed by.
+- `header_levels`: the header rows, in the shape `insert_table` accepts. A table
+  stored with a single header row reports exactly one row here, so rendering does
+  not have to special-case depth.
+- `rows`: the cells, row-major in header order.
 
 **Example:**
 ```js
 let t = db.read_table(uid)
 print(t["headers"])          // ["Name", "Age", "City"]
+print(len(t["header_levels"]))  // 1 for a flat header, 2 for a two-row header
 t["rows"].each(row => {
     print(row[0], "is", row[1])
 })

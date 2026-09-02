@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Multi-row (hierarchical) table headers in the `@tie` module.**
+  `db.insert_table` now accepts a list of header *rows* as well as a flat list of
+  labels, so a two-row header (`Temperature (20°C)` over
+  `Replicate 1 | Replicate 2`) survives storage instead of having to be flattened
+  by hand, and `db.read_table` returns a new `header_levels` key holding those
+  rows. Adding a map key is non-breaking: `headers` still reports the flat column
+  keys every cell is stored under, and a one-row header reports one row in
+  `header_levels`, so existing scripts need no change. See
+  [TIE_MODULE.md](docs/TIE_MODULE.md).
+
 ### Changed
 
 - Upgraded the tie dependency to v0.5.0, which migrated its module path from

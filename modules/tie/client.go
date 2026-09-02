@@ -637,6 +637,54 @@ func asStringList(obj object.Object, name string) ([]string, error) {
 	return out, nil
 }
 
+// asStringListList converts a Risor list of string lists to [][]string — the shape
+// both table rows and multi-row headers take.
+func asStringListList(obj object.Object, name string) ([][]string, error) {
+	list, ok := obj.(*object.List)
+	if !ok {
+		return nil, fmt.Errorf("%s must be a list (got %s)", name, obj.Type())
+	}
+	out := make([][]string, 0, len(list.Value()))
+	for i, elem := range list.Value() {
+		inner, err := asStringList(elem, fmt.Sprintf("%s[%d]", name, i))
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, inner)
+	}
+	return out, nil
+}
+
+// isListOfLists reports whether a Risor list holds lists. It is how insert_table
+// tells a multi-row header (a list of header rows) from a flat one (a list of
+// labels); an empty list counts as flat, since there is nothing to group.
+func isListOfLists(obj object.Object) bool {
+	list, ok := obj.(*object.List)
+	if !ok || len(list.Value()) == 0 {
+		return false
+	}
+	_, nested := list.Value()[0].(*object.List)
+	return nested
+}
+
+// stringList converts []string to a Risor list.
+func stringList(values []string) *object.List {
+	list := object.NewList(make([]object.Object, 0, len(values)))
+	for _, v := range values {
+		list.Append(object.NewString(v))
+	}
+	return list
+}
+
+// stringListList converts [][]string to a Risor list of lists.
+func stringListList(values [][]string) *object.List {
+	list := object.NewList(make([]object.Object, 0, len(values)))
+	for _, v := range values {
+		list.Append(stringList(v))
+	}
+	return list
+}
+
 func (c *Client) InsertTable(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 3 {
 		return nil, fmt.Errorf("tie.insert_table: expected 3 arguments (uid, headers, rows), got %d", len(args))
@@ -647,27 +695,34 @@ func (c *Client) InsertTable(ctx context.Context, args ...object.Object) (object
 		return nil, err
 	}
 
-	headers, err := asStringList(args[1], "tie.insert_table: headers")
+	rows, err := asStringListList(args[2], "tie.insert_table: rows")
 	if err != nil {
 		return nil, err
 	}
 
-	rowsList, ok := args[2].(*object.List)
-	if !ok {
-		return nil, fmt.Errorf("tie.insert_table: rows must be a list (got %s)", args[2].Type())
-	}
-	rows := make([][]string, 0, len(rowsList.Value()))
-	for i, rowObj := range rowsList.Value() {
-		cells, err := asStringList(rowObj, fmt.Sprintf("tie.insert_table: rows[%d]", i))
+	// headers is either a flat list of labels or, for a multi-row (hierarchical)
+	// header, a list of header rows (row-major: headers[i][j] is level i of column
+	// j). Both land in the same table; a one-row header stores identically to the
+	// flat form.
+	var newUID string
+	if isListOfLists(args[1]) {
+		headerRows, err := asStringListList(args[1], "tie.insert_table: headers")
 		if err != nil {
 			return nil, err
 		}
-		rows = append(rows, cells)
-	}
-
-	newUID, err := c.tc.InsertTable(uid, headers, rows)
-	if err != nil {
-		return nil, err
+		newUID, err = c.tc.InsertTableLevels(uid, headerRows, rows)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		headers, err := asStringList(args[1], "tie.insert_table: headers")
+		if err != nil {
+			return nil, err
+		}
+		newUID, err = c.tc.InsertTable(uid, headers, rows)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return object.NewString(newUID), nil
 }
@@ -682,7 +737,7 @@ func (c *Client) ReadTable(ctx context.Context, args ...object.Object) (object.O
 		return nil, err
 	}
 
-	headers, rows, err := c.tc.ReadTable(uid)
+	headers, headerRows, rows, err := c.tc.ReadTableFull(uid)
 	if err != nil {
 		if errors.Is(err, client.ErrNotFound) {
 			return object.Nil, nil
@@ -690,22 +745,15 @@ func (c *Client) ReadTable(ctx context.Context, args ...object.Object) (object.O
 		return nil, err
 	}
 
-	headerList := object.NewList(make([]object.Object, 0, len(headers)))
-	for _, h := range headers {
-		headerList.Append(object.NewString(h))
-	}
-	rowList := object.NewList(make([]object.Object, 0, len(rows)))
-	for _, r := range rows {
-		cellList := object.NewList(make([]object.Object, 0, len(r)))
-		for _, cell := range r {
-			cellList.Append(object.NewString(cell))
-		}
-		rowList.Append(cellList)
-	}
-
+	// header_levels is the multi-row header, row-major, in the shape insert_table
+	// accepts; a table stored with a single header row reports one row here, so a
+	// caller can render it without special-casing depth. headers stays the flat
+	// column keys — the identity every cell is keyed by — so existing callers are
+	// unaffected by the added key.
 	return object.NewMap(map[string]object.Object{
-		"headers": headerList,
-		"rows":    rowList,
+		"headers":       stringList(headers),
+		"header_levels": stringListList(headerRows),
+		"rows":          stringListList(rows),
 	}), nil
 }
 
