@@ -584,6 +584,10 @@ containing `" / "` would collide.
 Passing a single header row stores exactly what the flat form stores, so there is
 no migration and no need to decide up front which form a table uses.
 
+To display the levels instead of the joined keys, pass `read_table`'s
+`header_levels` straight to the table widget's `HeaderLevels` callback — see
+[Table](README.md#table).
+
 ### db.read_table(uid)
 
 Reads a table back as a grid. Returns `nil` if `uid` holds no table.

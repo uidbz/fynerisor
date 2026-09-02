@@ -439,6 +439,32 @@ table.SetOnClick((row, col) => {
 })
 ```
 
+#### Multi-row (hierarchical) headers
+
+`HeaderLevels` draws several header rows above the columns, for data where the top
+row groups the columns below it. The list is row-major — `levels[i][j]` is level
+`i` of column `j` — which is the shape `db.read_table` reports `header_levels` in,
+so a table read from tie can be wired straight through:
+
+```js
+table.Columns(() => ["Sample", "20°C\x1fRep 1", "20°C\x1fRep 2", "37°C\x1fRep 1"])
+table.HeaderLevels(() => [
+    ["Sample", "20°C",  "20°C",  "37°C"],
+    ["",       "Rep 1", "Rep 2", "Rep 1"],
+])
+```
+
+A parent that covers several columns is repeated across them (as `20°C` is above),
+and the widget draws it once across the run — so pass the levels forward-filled,
+with blanks explicit, and do not try to pre-merge them yourself.
+
+`HeaderLevels` is display-only: `Columns` stays the column identity used for
+sorting, filtering and export, and the header row height follows the number of
+levels. Returning an empty list restores the single-row default, where each column
+shows its own name.
+
+See `examples/41-table-header-levels`.
+
 ### Log
 Scrolling log widget with item limit.
 

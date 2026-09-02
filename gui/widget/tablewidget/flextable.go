@@ -51,6 +51,12 @@ type FlexTable struct {
 	createCellFunc func(col, row int) fyne.CanvasObject
 	updateCellFunc func(col, row int, obj fyne.CanvasObject)
 
+	// headerDisplay is the multi-row header to draw, row-major and rectangular:
+	// headerDisplay[level][col]. It lives on the table rather than on TableData
+	// because paging and filtering rebuild TableData from scratch, while the header
+	// belongs to the view. Empty means the single-row default (the column name).
+	headerDisplay [][]string
+
 	// dataGen bumps on every SetData (a real data change). A WidgetCell records
 	// the generation it last ran UpdateCell at; a geometry-only refresh (e.g. a
 	// column-resize drag, which forces a full re-render of every visible cell)
@@ -165,15 +171,7 @@ func NewFlexTable(data *TableData, onClick func(cell *TableCell)) *FlexTable {
 func (t *FlexTable) SetData(data *TableData) {
 	t.data = data
 	t.dataGen++
-	t.table.CreateHeader = func() fyne.CanvasObject {
-		return NewHeader("", t.headerBgColor, t)
-	}
-	t.table.UpdateHeader = func(id widget.TableCellID, o fyne.CanvasObject) {
-		h := o.(*Header)
-		h.SetText(data.Columns[id.Col])
-		h.colId = data.Columns[id.Col]
-		h.RefreshSortIcon()
-	}
+	t.installHeader()
 	// for i, _ := range data.Columns {
 	// 	t.table.SetColumnWidth(i, 300)
 	// }
@@ -184,6 +182,125 @@ func (t *FlexTable) SetData(data *TableData) {
 	// past the new content — the grid renders blank until a manual scroll/resize.
 	// ScrollToTop zeroes both content.Offset.Y and the cached offset.
 	t.table.ScrollToTop()
+}
+
+// SetHeaderLevels sets a multi-row (hierarchical) header. rows is row-major —
+// rows[i][j] is level i of column j — the shape tie's read_table reports and a
+// spreadsheet reads. Rows need not be rectangular; short ones are padded. Passing
+// nil restores the single-row default, where each column shows its own name.
+//
+// Levels are display-only: the bottom level is not the column identity, so sorting,
+// cell lookup and export keep using TableData.Columns.
+func (t *FlexTable) SetHeaderLevels(rows [][]string) {
+	display := spanHeaderRuns(rows)
+	if headerGridsEqual(display, t.headerDisplay) {
+		return
+	}
+	t.headerDisplay = display
+	t.installHeader()
+	t.table.Refresh()
+}
+
+func (t *FlexTable) installHeader() {
+	depth := len(t.headerDisplay)
+	if depth < 1 {
+		depth = 1
+	}
+	t.table.CreateHeader = func() fyne.CanvasObject {
+		return newHeaderWithDepth(depth, t.headerBgColor, t)
+	}
+	t.table.UpdateHeader = func(id widget.TableCellID, o fyne.CanvasObject) {
+		h := o.(*Header)
+		h.SetTexts(t.headerLabels(id.Col))
+		h.colId = t.columnName(id.Col)
+		h.RefreshSortIcon()
+	}
+}
+
+// headerLabels returns what to draw on each level of one column's header. A column
+// the levels grid does not reach falls back to its name on the bottom level, so a
+// grid out of step with the data still names every column.
+func (t *FlexTable) headerLabels(col int) []string {
+	if len(t.headerDisplay) == 0 {
+		return []string{t.columnName(col)}
+	}
+	labels := make([]string, len(t.headerDisplay))
+	if col >= len(t.headerDisplay[0]) {
+		labels[len(labels)-1] = t.columnName(col)
+		return labels
+	}
+	for i, row := range t.headerDisplay {
+		labels[i] = row[col]
+	}
+	return labels
+}
+
+func (t *FlexTable) columnName(col int) string {
+	if col >= 0 && col < len(t.data.Columns) {
+		return t.data.Columns[col]
+	}
+	return ""
+}
+
+// spanHeaderRuns pads a row-major header grid to a rectangle and blanks the
+// continuation columns of every run of equal adjacent labels. That is how a merged
+// parent cell reads: the converter forward-fills it across the columns it covers,
+// so drawing it once at the start of the run restores the merge. Fyne cannot span
+// header cells, but the label is not clipped to its column, so a run's first cell
+// carries the text across the ones after it.
+//
+// A run breaks as soon as any level above it changes, which keeps two identically
+// named groups under different parents apart.
+func spanHeaderRuns(rows [][]string) [][]string {
+	width := 0
+	for _, row := range rows {
+		if len(row) > width {
+			width = len(row)
+		}
+	}
+	if width == 0 {
+		return nil
+	}
+	grid := make([][]string, len(rows))
+	for i, row := range rows {
+		grid[i] = make([]string, width)
+		copy(grid[i], row)
+	}
+	out := make([][]string, len(grid))
+	for i, row := range grid {
+		out[i] = make([]string, width)
+		copy(out[i], row)
+		for col := 1; col < width; col++ {
+			same := true
+			for level := 0; level <= i; level++ {
+				if grid[level][col] != grid[level][col-1] {
+					same = false
+					break
+				}
+			}
+			if same {
+				out[i][col] = ""
+			}
+		}
+	}
+	return out
+}
+
+func headerGridsEqual(a, b [][]string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if len(a[i]) != len(b[i]) {
+			return false
+		}
+		for j := range a[i] {
+			if a[i][j] != b[i][j] {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func (t *FlexTable) SetColumnWidth(id int, width float32) {
@@ -319,21 +436,56 @@ type Header struct {
 	bgColor color.Color
 	icon    *widget.Icon
 	colId   string
+
+	// levels holds one label per header level, top to bottom. The last is
+	// TableCell.label — the column's own level, where the sort icon sits.
+	levels []*widget.Label
+	stack  *fyne.Container
 }
 
 func NewHeader(columnName string, bgColor color.Color, table *FlexTable) *Header {
+	header := newHeaderWithDepth(1, bgColor, table)
+	header.SetText(columnName)
+	return header
+}
+
+// newHeaderWithDepth builds a header cell that stacks depth level labels, for a
+// multi-row (hierarchical) header. Fyne pools and reuses header cells across
+// refreshes, so a cell also adapts its depth in SetTexts; depth here only has to
+// make the template tall enough, since Fyne derives the header row height from
+// CreateHeader().MinSize() on every refresh.
+func newHeaderWithDepth(depth int, bgColor color.Color, table *FlexTable) *Header {
 	header := &Header{}
 	header.background = canvas.NewRectangle(bgColor)
-	// header.label = canvas.NewText(columnName, color.RGBA{211, 211, 233, 255})
-	header.label = widget.NewLabel(columnName)
-	header.label.TextStyle.Bold = true
-	header.label.Importance = widget.HighImportance
-	// header.label.TextSize = theme.TextSize() * 1.2
 	header.table = table
 	header.bgColor = theme.Color(theme.ColorNameBackground)
+	header.setDepth(depth)
 
 	header.ExtendBaseWidget(header)
 	return header
+}
+
+func newHeaderLabel() *widget.Label {
+	label := widget.NewLabel("")
+	label.TextStyle.Bold = true
+	label.Importance = widget.HighImportance
+	// label.TextSize = theme.TextSize() * 1.2
+	return label
+}
+
+func (h *Header) setDepth(depth int) {
+	if depth < 1 {
+		depth = 1
+	}
+	if depth == len(h.levels) {
+		return
+	}
+	for len(h.levels) < depth {
+		h.levels = append(h.levels, newHeaderLabel())
+	}
+	h.levels = h.levels[:depth]
+	h.label = h.levels[depth-1]
+	h.layoutLevels()
 }
 
 func (h *Header) SetText(columnName string) {
@@ -341,10 +493,46 @@ func (h *Header) SetText(columnName string) {
 	h.label.Refresh()
 }
 
+// SetTexts sets one label per header level, top to bottom, growing or shrinking the
+// stack to match.
+func (h *Header) SetTexts(labels []string) {
+	h.setDepth(len(labels))
+	for i, label := range h.levels {
+		text := ""
+		if i < len(labels) {
+			text = labels[i]
+		}
+		if label.Text != text {
+			label.Text = text
+			label.Refresh()
+		}
+	}
+}
+
 func (h *Header) CreateRenderer() fyne.WidgetRenderer {
 	h.icon = widget.NewIcon(nil)
-	item := container.NewStack(h.background, container.NewBorder(nil, nil, nil, h.icon, h.label))
+	h.stack = container.NewVBox()
+	h.layoutLevels()
+	item := container.NewStack(h.background, h.stack)
 	return widget.NewSimpleRenderer(item)
+}
+
+// layoutLevels stacks the level labels, the sort icon beside the bottom one. It is
+// a no-op until the renderer exists, which is where the container comes from.
+func (h *Header) layoutLevels() {
+	if h.stack == nil {
+		return
+	}
+	objects := make([]fyne.CanvasObject, 0, len(h.levels))
+	for i, label := range h.levels {
+		if i == len(h.levels)-1 {
+			objects = append(objects, container.NewBorder(nil, nil, nil, h.icon, label))
+			continue
+		}
+		objects = append(objects, label)
+	}
+	h.stack.Objects = objects
+	h.stack.Refresh()
 }
 
 func (h *Header) RefreshSortIcon() {

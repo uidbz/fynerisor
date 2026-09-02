@@ -1,0 +1,77 @@
+require(["v0.7", "@tie"])
+
+// A two-row (hierarchical) header, row-major and with the merged parent cells
+// forward-filled: exactly the shape db.insert_table accepts, db.read_table reports
+// as header_levels, and table.HeaderLevels renders.
+let headerRows = [
+    ["Sample", "Temperature (20°C)", "Temperature (20°C)", "Temperature (37°C)", "Temperature (37°C)"],
+    ["",       "Replicate 1",        "Replicate 2",        "Replicate 1",        "Replicate 2"],
+]
+
+let db = tie.connect("http://localhost:2161", {
+    username: "defaultuser",
+    password: "defaultpassword",
+    namespace: "testing",
+    collection: "testing",
+})
+
+let uid = db.insert_table("example_header_levels", headerRows, [
+    ["S1", "4.2", "4.4", "5.9", "6.1"],
+    ["S2", "4.1", "4.3", "5.8", "6.0"],
+    ["S3", "4.4", "4.5", "6.0", "6.2"],
+])
+
+// Read it back, so what the table renders came out of the store.
+let stored = db.read_table(uid)
+let state = { levels: true }
+
+let table = widget.NewTable("Measurements", 100)
+
+// Columns stays the flat column keys — the identity every cell is stored under and
+// what sorting, filtering and export use.
+table.Columns(() => { return stored["headers"] })
+
+// HeaderLevels is display-only. An empty list falls back to one header row showing
+// the keys, which is what every table looked like before header levels existed.
+table.HeaderLevels(() => {
+    if (state.levels) {
+        return stored["header_levels"]
+    }
+    return []
+})
+
+table.RowCount(() => { return len(stored["rows"]) })
+table.Data((offset, limit) => {
+    let end = offset + limit
+    if (end > len(stored["rows"])) { end = len(stored["rows"]) }
+    if (offset >= end) { return [] }
+    return stored["rows"][offset:end]
+})
+
+let column = 0
+stored["headers"].each(h => {
+    table.SetColumnWidth(column, 150.0)
+    column = column + 1
+})
+table.Refresh()
+
+let toggle = widget.NewButton("Toggle header rows", () => {
+    if (state.levels) {
+        state.levels = false
+        window.SetStatus("One header row: the joined column keys")
+    } else {
+        state.levels = true
+        window.SetStatus("Two header rows: the parent spans its replicates")
+    }
+    table.Refresh()
+})
+
+let controls = container.NewVBox([
+    widget.NewLabel("Header:"),
+    widget.NewSeparator(),
+    toggle,
+])
+
+window.SetContent(container.NewBorder(nil, nil, nil, controls, table))
+window.Resize(1000, 420)
+window.SetStatus("Two header rows: the parent spans its replicates")

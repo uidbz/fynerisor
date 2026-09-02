@@ -64,6 +64,7 @@ Each example has its own README with detailed explanation. Browse the directorie
 - **38-csv-headless** - CSV module: parse/format/read/write (headless, core only)
 - **39-json-headless** - JSON module: parse/marshal/valid/read/write (headless, core only)
 - **40-concurrent-batch** - Parallel batch execution with `core.EvalBatch` (headless, core only)
+- **41-table-header-levels** - Two-row (hierarchical) table header from a tie table (requires tie-daemon)
 
 ## Example Structure
 

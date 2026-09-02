@@ -44,6 +44,7 @@ type TableWidget struct {
 	pageSize             int
 	RowCount             func() int
 	Data                 func(offset, limit int) *TableData
+	HeaderLevels         func() [][]string
 	Offset               int
 	Limit                int // this is currently not used. Offset for fetching data is pageSize
 }
@@ -140,6 +141,7 @@ func NewTableWidget(title string, pageSize int) *TableWidget {
 	ctx.Instance = container.NewBorder(nil, footer, nil, nil, container.NewPadded(ctx.table))
 	ctx.Data = func(offset, limit int) *TableData { return NewTableData("empty") }
 	ctx.RowCount = func() int { return 0 }
+	ctx.HeaderLevels = func() [][]string { return nil }
 	ctx.Refresh()
 
 	return ctx
@@ -169,6 +171,9 @@ func (ctx *TableWidget) Refresh() {
 
 	ctx.totalResults.Set(totalCount)
 	ctx.totalPages.Set((totalCount + ctx.pageSize - 1) / ctx.pageSize)
+
+	// Before SetData, so the header stack is in place for the refresh it triggers.
+	ctx.table.SetHeaderLevels(ctx.HeaderLevels())
 
 	ctx.currentData = data
 	if ctx.currentFilter != "" {

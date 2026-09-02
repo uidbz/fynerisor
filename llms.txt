@@ -450,6 +450,19 @@ table.SetColumnWidth(2, 200)  // Email column
 table.Refresh()  // trigger update
 ```
 
+Multi-row (hierarchical) header — row-major, `levels[i][j]` is level `i` of column
+`j`, the shape `db.read_table` reports `header_levels` in. Repeat a parent across
+the columns it covers and it is drawn once across the run. Display only: `Columns`
+stays the identity used for sorting, filtering and export.
+
+```risor
+table.Columns(() => ["Sample", "20°C\x1fRep 1", "20°C\x1fRep 2"])
+table.HeaderLevels(() => [
+    ["Sample", "20°C",  "20°C"],
+    ["",       "Rep 1", "Rep 2"],
+])
+```
+
 ### Tree (Hierarchical Data)
 ```risor
 let treeData = {

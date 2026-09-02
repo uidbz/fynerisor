@@ -30,9 +30,10 @@ type Table struct {
 	// last-known getter results, reused during transient VM/render contention
 	// (vmguard.ErrConcurrentAccess) so the grid never collapses to empty for a
 	// frame — mirrors the resilience already built into widget.List.Length.
-	lastColumns  []string
-	lastRowCount int
-	lastData     *tablewidget.TableData
+	lastColumns      []string
+	lastRowCount     int
+	lastData         *tablewidget.TableData
+	lastHeaderLevels [][]string
 }
 
 func (obj *Table) CanvasObject() fyne.CanvasObject {
@@ -107,6 +108,39 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 				}
 				obj.lastColumns = s
 				return s
+			}
+			return object.Nil, nil
+		}), true
+
+	case "HeaderLevels":
+		return object.NewBuiltin("widget.Table.HeaderLevels", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 1 {
+				return object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args)), nil
+			}
+			fn, ok := args[0].(*object.Closure)
+			if !ok {
+				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			}
+			callFunc, ok := object.GetCallFunc(ctx)
+			if !ok {
+				return object.Errorf("table (%s): unable to get call function", name), nil
+			}
+
+			obj.instance.HeaderLevels = func() [][]string {
+				o, err := vmguard.Call(callFunc, ctx, fn, []object.Object{})
+				if err != nil {
+					if !errors.Is(err, vmguard.ErrConcurrentAccess) {
+						fmt.Println("Table.HeaderLevels error:", err)
+					}
+					return obj.lastHeaderLevels
+				}
+				rows, err2 := stringRowsFromObject(o)
+				if err2 != nil {
+					fmt.Println("Table.HeaderLevels: expected list of lists of strings:", err2)
+					return obj.lastHeaderLevels
+				}
+				obj.lastHeaderLevels = rows
+				return rows
 			}
 			return object.Nil, nil
 		}), true
@@ -339,6 +373,24 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 		}), true
 	}
 	return nil, false
+}
+
+// stringRowsFromObject converts a Risor list of string lists — the shape tie's
+// read_table reports header_levels in — to rows of strings.
+func stringRowsFromObject(o object.Object) ([][]string, error) {
+	outer, err := object.AsList(o)
+	if err != nil {
+		return nil, err
+	}
+	rows := make([][]string, 0, len(outer.Value()))
+	for _, inner := range outer.Value() {
+		list, ok := inner.(*object.List)
+		if !ok {
+			return nil, fmt.Errorf("type error: expected list (got %s)", inner.Type())
+		}
+		rows = append(rows, stringsFromList(list))
+	}
+	return rows, nil
 }
 
 func stringsFromList(l *object.List) []string {

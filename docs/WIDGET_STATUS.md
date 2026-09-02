@@ -34,6 +34,7 @@ This document lists the Fyne widgets and features available in fynerisor.
 - **Table** - Paginated table with filtering, sorting, export (CSV/XLSX/JSON)
   - Widget mode: use any widget type in cells (buttons, icons, images, etc.)
   - CreateCell and UpdateCell callbacks for custom rendering
+  - Multi-row (hierarchical) headers via the HeaderLevels callback
 - **Tree** - Hierarchical data display with expand/collapse
 - **List** - Virtualized scrolling list with CreateItem/UpdateItem callbacks
 - **GridWrap** - Grid layout with virtualization and selection

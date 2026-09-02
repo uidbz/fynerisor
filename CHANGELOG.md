@@ -13,6 +13,14 @@
   keys every cell is stored under, and a one-row header reports one row in
   `header_levels`, so existing scripts need no change. See
   [TIE_MODULE.md](docs/TIE_MODULE.md).
+- **`table.HeaderLevels(fn)`** renders a multi-row header above the columns, so a
+  hierarchical table shows its levels instead of the joined column keys. The
+  callback returns the header rows row-major — the shape `db.read_table` reports
+  `header_levels` in — and a parent repeated across the columns it covers is drawn
+  once across the run, restoring the merged cell of the source sheet. Display only:
+  `Columns` stays the identity used for sorting, filtering and export, and the
+  header row grows taller by itself. A table that sets no levels renders exactly as
+  before. See `examples/41-table-header-levels`.
 
 ### Changed
 
