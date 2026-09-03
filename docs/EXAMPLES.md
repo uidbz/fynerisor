@@ -768,11 +768,12 @@ The `examples/` directory contains complete working applications. See
 - **33-image-gallery** - List image files via widget-mode table
 - **34-keyboard-shortcuts** - Global keyboard shortcuts
 - **35-charts** - Bar, line, scatter, histogram, and box plot charts
-- **37-tie-gui** - Tie triple store browser GUI (`@tie`, requires tie-daemon)
+- **37-tie-gui** - Tie triple store browser GUI (`@tie`, requires tie-triplestore)
+- **41-table-header-levels** - Multi-row (hierarchical) table header via `table.HeaderLevels` (`@tie`, requires tie-triplestore)
 
 **Headless Examples (core only, no GUI):**
 - **16-context-builder** - Headless script execution with ContextBuilder
-- **36-tie-headless** - Tie triple store client (`@tie`, requires tie-daemon)
+- **36-tie-headless** - Tie triple store client (`@tie`, requires tie-triplestore)
 - **38-csv-headless** - CSV module: parse/format/read/write (`@csv`)
 - **39-json-headless** - JSON module: parse/marshal/valid/read/write (`@json`)
 - **40-concurrent-batch** - Parallel batch execution with `core.EvalBatch` (compile once, run many)

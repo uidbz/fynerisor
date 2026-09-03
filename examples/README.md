@@ -59,12 +59,12 @@ Each example has its own README with detailed explanation. Browse the directorie
 - **33-image-gallery** - Images in table cells
 - **34-keyboard-shortcuts** - Global shortcuts and menu integration
 - **35-charts** - Various chart visualizations (bar, line, scatter, pie)
-- **36-tie-headless** - Triple store client (headless, requires tie-daemon)
-- **37-tie-gui** - Triple browser GUI with query and add (requires tie-daemon)
+- **36-tie-headless** - Triple store client (headless, requires tie-triplestore)
+- **37-tie-gui** - Triple browser GUI with query and add (requires tie-triplestore)
 - **38-csv-headless** - CSV module: parse/format/read/write (headless, core only)
 - **39-json-headless** - JSON module: parse/marshal/valid/read/write (headless, core only)
 - **40-concurrent-batch** - Parallel batch execution with `core.EvalBatch` (headless, core only)
-- **41-table-header-levels** - Two-row (hierarchical) table header from a tie table (requires tie-daemon)
+- **41-table-header-levels** - Two-row (hierarchical) table header from a tie table (requires tie-triplestore)
 
 ## Example Structure
 

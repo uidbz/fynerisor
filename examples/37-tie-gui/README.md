@@ -4,19 +4,21 @@ GUI example demonstrating the tie triple store module with a Fyne interface.
 
 ## Requirements
 
-**This example requires a running tie-daemon.** Start one from the tie repository:
+**This example requires a running tie-triplestore.** Start one from a checkout of
+[tie](https://github.com/uidbz/tie):
 
 ```bash
-cd /home/johan/go/src/sourcehut/tie
-# Option 1: use the test environment
+# Option 1: use the test environment — listens on http://localhost:2161
 ./test-env/build.sh
 ./test-env/start.sh
 
-# Option 2: run the daemon directly
-go run ./cmd/tie-daemon
+# Option 2: run the server directly — listens on http://localhost:1161
+go run ./cmd/tie-triplestore
 ```
 
-The daemon listens on `http://localhost:1161` by default.
+Mind which one you started — the two options listen on **different ports**.
+`app.risor` connects to `1161`, so with the test environment change that URL to
+`2161` first.
 
 ## What it demonstrates
 
