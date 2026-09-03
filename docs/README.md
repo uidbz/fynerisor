@@ -73,9 +73,15 @@ fynerisor enables building cross-platform desktop applications using Risor scrip
 
 ## Version
 
-**Current Version**: 0.8.1  
+**Current Version**: 0.8.2  
 **Risor Compatibility**: v2.2+ (arrow functions required)  
 **Fyne Compatibility**: v2.8+
+
+### What's New in v0.8.2
+
+- **Multi-row (hierarchical) table headers**: `table.HeaderLevels(fn)` draws a stacked header above the columns, repeating a parent once across the run it covers so a merged source cell survives — see `examples/41-table-header-levels`
+- **Tie Module**: `insert_table` accepts header *rows* as well as a flat label list, and `read_table` returns them as `header_levels` — see [TIE_MODULE.md](TIE_MODULE.md)
+- **Tie v0.5.1**: Upgraded the tie dependency, which stores the header levels alongside the table
 
 ### What's New in v0.8.1
 

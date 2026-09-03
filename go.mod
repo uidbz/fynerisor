@@ -10,7 +10,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/microsoft/go-mssqldb v1.8.0
-	github.com/uidbz/tie v0.5.0
+	github.com/uidbz/tie v0.5.1
 	github.com/xo/dburl v0.24.2
 	github.com/xuri/excelize/v2 v2.10.1
 	golang.design/x/clipboard v0.7.1

@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-09-03
+
 ### Added
 
 - **Multi-row (hierarchical) table headers in the `@tie` module.**
@@ -24,9 +26,11 @@
 
 ### Changed
 
-- Upgraded the tie dependency to v0.5.0, which migrated its module path from
-  `git.sr.ht/~uid/tie` to `github.com/uidbz/tie`. The `@tie` module's public API is
-  unchanged. Note: upstream renamed the server binary `tie-daemon` to `tie-triplestore`.
+- Upgraded the tie dependency to v0.5.1, which stores a table's header levels and
+  reads them back with its columns in one call — the storage half of the two
+  features above. v0.5.0 migrated the module path from `git.sr.ht/~uid/tie` to
+  `github.com/uidbz/tie`; the `@tie` module's public API is unchanged. Note:
+  upstream renamed the server binary `tie-daemon` to `tie-triplestore`.
 
 ## [0.8.1] - 2026-08-28
 
