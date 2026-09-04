@@ -2,6 +2,7 @@ package tie
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -76,10 +77,65 @@ func Connect(ctx context.Context, args ...object.Object) (object.Object, error) 
 			}
 			cfg.WebserviceInsecure = ins
 		}
+
+		// The filehost is a separate service on its own port, so without this the
+		// config keeps DefaultConfig's hardcoded localhost address and upload/
+		// download can only ever reach a local daemon.
+		if fh := optMap.GetWithDefault("filehost", nil); fh != nil {
+			host, err := fileHostFromOption(fh)
+			if err != nil {
+				return nil, err
+			}
+			// Replace the "default" entry so an empty host name still resolves.
+			cfg.FileHosts = map[string]client.FileHost{"default": host}
+			cfg.DefaultFileHosts = []string{"default"}
+		}
 	}
 
 	tc := client.NewTieClient(cfg)
 	return New(tc), nil
+}
+
+// fileHostFromOption decodes the 'filehost' connect option, which is either a
+// URL string or a map of {url, insecure, username, password, store}.
+func fileHostFromOption(obj object.Object) (client.FileHost, error) {
+	if s, ok := obj.(*object.String); ok {
+		return client.FileHost{URL: s.Value()}, nil
+	}
+
+	optMap, ok := obj.(*object.Map)
+	if !ok {
+		return client.FileHost{}, fmt.Errorf("tie.connect: 'filehost' must be a string or a map (got %s)", obj.Type())
+	}
+
+	var host client.FileHost
+	for key, field := range map[string]*string{
+		"url":      &host.URL,
+		"username": &host.Username,
+		"password": &host.Password,
+		"store":    &host.Store,
+	} {
+		if v := optMap.GetWithDefault(key, nil); v != nil {
+			s, err := object.AsString(v)
+			if err != nil {
+				return client.FileHost{}, fmt.Errorf("tie.connect: filehost '%s' must be a string (got %s)", key, v.Type())
+			}
+			*field = s
+		}
+	}
+
+	if v := optMap.GetWithDefault("insecure", nil); v != nil {
+		ins, err := object.AsBool(v)
+		if err != nil {
+			return client.FileHost{}, fmt.Errorf("tie.connect: filehost 'insecure' must be a boolean (got %s)", v.Type())
+		}
+		host.Insecure = ins
+	}
+
+	if host.URL == "" {
+		return client.FileHost{}, errors.New("tie.connect: filehost 'url' is required")
+	}
+	return host, nil
 }
 
 func Module() *object.Module {

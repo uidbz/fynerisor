@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -98,6 +99,12 @@ func (c *Client) GetAttr(name string) (object.Object, bool) {
 		return object.NewBuiltin("tie.read_table", c.ReadTable), true
 	case "delete_table":
 		return object.NewBuiltin("tie.delete_table", c.DeleteTable), true
+	case "upload":
+		return object.NewBuiltin("tie.upload", c.Upload), true
+	case "download":
+		return object.NewBuiltin("tie.download", c.Download), true
+	case "download_size":
+		return object.NewBuiltin("tie.download_size", c.DownloadSize), true
 	}
 	return nil, false
 }
@@ -122,6 +129,9 @@ func (c *Client) Attrs() []object.AttrSpec {
 		{Name: "insert_table"},
 		{Name: "read_table"},
 		{Name: "delete_table"},
+		{Name: "upload"},
+		{Name: "download"},
+		{Name: "download_size"},
 	}
 }
 
@@ -771,6 +781,168 @@ func (c *Client) DeleteTable(ctx context.Context, args ...object.Object) (object
 		return nil, err
 	}
 	return object.Nil, nil
+}
+
+// hostNameFromOpts reads the optional {host: "name"} key shared by the filehost
+// methods. An empty name selects the connection's default filehost.
+func hostNameFromOpts(obj object.Object, fn string) (string, *object.Map, error) {
+	if obj == nil || obj == object.Nil {
+		return "", nil, nil
+	}
+	optMap, ok := obj.(*object.Map)
+	if !ok {
+		return "", nil, fmt.Errorf("%s: options must be a map (got %s)", fn, obj.Type())
+	}
+	name := ""
+	if v := optMap.GetWithDefault("host", nil); v != nil {
+		s, err := object.AsString(v)
+		if err != nil {
+			return "", nil, fmt.Errorf("%s: 'host' must be a string (got %s)", fn, v.Type())
+		}
+		name = s
+	}
+	return name, optMap, nil
+}
+
+// Upload stores a local file (or directory) on the filehost, addressed by the
+// hash of its contents, and returns {hash, filename, media_type, size, items}.
+//
+// Options: {host, retention, owner}. retention is a Go duration or "infinite";
+// pass "infinite" for a blob a record will keep pointing at, otherwise the
+// store's default retention applies and the filehost reaper may collect it.
+func (c *Client) Upload(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) < 1 || len(args) > 2 {
+		return nil, fmt.Errorf("tie.upload: expected 1-2 arguments (path, opts), got %d", len(args))
+	}
+
+	path, err := object.AsString(args[0])
+	if err != nil {
+		return nil, err
+	}
+
+	var hostName string
+	var opts client.UploadOptions
+	if len(args) == 2 {
+		name, optMap, err := hostNameFromOpts(args[1], "tie.upload")
+		if err != nil {
+			return nil, err
+		}
+		hostName = name
+		if optMap != nil {
+			for key, field := range map[string]*string{
+				"retention": &opts.Retention,
+				"owner":     &opts.OwnerToken,
+			} {
+				if v := optMap.GetWithDefault(key, nil); v != nil {
+					s, err := object.AsString(v)
+					if err != nil {
+						return nil, fmt.Errorf("tie.upload: '%s' must be a string (got %s)", key, v.Type())
+					}
+					*field = s
+				}
+			}
+		}
+	}
+
+	result, err := c.tc.UploadWithOptions(hostName, path, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	// The filehost answers 200 even when its recomputed checksum disagrees with
+	// ours — it drops the blob but still reports a hash — so a populated Items
+	// list is not proof of success. Raise instead, so a caller's try/catch sees
+	// the failure rather than storing a hash that resolves to nothing.
+	if msg := strings.TrimSpace(result.ErrorMsg); msg != "" {
+		return nil, fmt.Errorf("tie.upload: %s", msg)
+	}
+	if len(result.Items) == 0 {
+		return nil, fmt.Errorf("tie.upload: filehost stored nothing for %q", path)
+	}
+
+	items := object.NewList(make([]object.Object, 0, len(result.Items)))
+	for _, item := range result.Items {
+		items.Append(uploadedItemMap(item))
+	}
+
+	// Children are uploaded before their parent, so the last item is the root:
+	// the file itself, or for a directory the manifest blob that lists the tree.
+	root := uploadedItemMap(result.Items[len(result.Items)-1])
+	root.Set("items", items)
+	return root, nil
+}
+
+func uploadedItemMap(item client.UploadedItem) *object.Map {
+	return object.NewMap(map[string]object.Object{
+		"hash":       object.NewString(item.Hash),
+		"filename":   object.NewString(item.Filename),
+		"media_type": object.NewString(item.MediaType),
+		"size":       object.NewInt(int64(item.Size)),
+	})
+}
+
+// Download fetches the blob addressed by hash from the filehost into dest.
+// Options: {host}.
+func (c *Client) Download(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) < 2 || len(args) > 3 {
+		return nil, fmt.Errorf("tie.download: expected 2-3 arguments (hash, dest, opts), got %d", len(args))
+	}
+
+	hash, err := object.AsString(args[0])
+	if err != nil {
+		return nil, err
+	}
+	dest, err := object.AsString(args[1])
+	if err != nil {
+		return nil, err
+	}
+
+	var hostName string
+	if len(args) == 3 {
+		name, _, err := hostNameFromOpts(args[2], "tie.download")
+		if err != nil {
+			return nil, err
+		}
+		hostName = name
+	}
+
+	if err := c.tc.Download(hostName, hash, dest); err != nil {
+		return nil, err
+	}
+	return object.Nil, nil
+}
+
+// DownloadSize reports how many bytes downloading hash would transfer, recursing
+// into directories. Callers use it to size a progress bar, or to check a blob is
+// still present before offering it. Options: {host}.
+func (c *Client) DownloadSize(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) < 1 || len(args) > 2 {
+		return nil, fmt.Errorf("tie.download_size: expected 1-2 arguments (hash, opts), got %d", len(args))
+	}
+
+	hash, err := object.AsString(args[0])
+	if err != nil {
+		return nil, err
+	}
+
+	var hostName string
+	if len(args) == 2 {
+		name, _, err := hostNameFromOpts(args[1], "tie.download_size")
+		if err != nil {
+			return nil, err
+		}
+		hostName = name
+	}
+
+	host, err := c.tc.ResolveHost(hostName)
+	if err != nil {
+		return nil, err
+	}
+	size, err := client.DownloadSize(host, hash)
+	if err != nil {
+		return nil, err
+	}
+	return object.NewInt(size), nil
 }
 
 // rowToObject converts a tiedb.Row to a Risor map object
