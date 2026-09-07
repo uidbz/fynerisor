@@ -251,6 +251,8 @@ github.com/uidbz/conf v1.1.6-0.20260830150407-08bf80e17ef6 h1:GTI/4+CFJJDcBplnIY
 github.com/uidbz/conf v1.1.6-0.20260830150407-08bf80e17ef6/go.mod h1:XIwt3LLWCVqucBqkfBSAvr6Qs52z8VS+NXGRcdr6FQ8=
 github.com/uidbz/tie v0.5.1 h1:s9e5ppSXi4SwxWePwWj7rmqeFLUi52mSJuc5PNX3Cy8=
 github.com/uidbz/tie v0.5.1/go.mod h1:saTRPurAJUARw8KlXQTP9uJWN3qid0aEozhrRJUT2FY=
+github.com/uidbz/tie v0.5.2-0.20260904115826-410474f21ff3 h1:YTScYDYSgl/em63fqQ36jIR/1e2elgMK1H9ZxxzoJwI=
+github.com/uidbz/tie v0.5.2-0.20260904115826-410474f21ff3/go.mod h1:saTRPurAJUARw8KlXQTP9uJWN3qid0aEozhrRJUT2FY=
 github.com/ulikunitz/xz v0.5.8/go.mod h1:nbz6k7qbPmH4IRqmfOplQw/tblSgqTqBwxkY0oWt/14=
 github.com/ulikunitz/xz v0.5.15 h1:9DNdB5s+SgV3bQ2ApL10xRc35ck0DuIX/isZvIk+ubY=
 github.com/ulikunitz/xz v0.5.15/go.mod h1:nbz6k7qbPmH4IRqmfOplQw/tblSgqTqBwxkY0oWt/14=

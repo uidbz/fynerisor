@@ -2,6 +2,30 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Relation value types in the `@tie` module.** `db.value_types()` returns the
+  value type declared for each relation in the collection (`relation -> type`
+  string map; `string` is the default and is omitted), and
+  `db.set_value_types({...})` declares the type of the named relations, merging
+  into whatever the collection already holds — relations not named are left
+  alone. Types are advisory annotations on a *relation*, not a constraint on
+  stored values: the store keeps values as plain strings and never validates a
+  value against its relation's declared type. This types table columns for free,
+  since a column's key is a relation.
+- **`numeric` option in `tie.query`.** `db.query({sort_by_value: "mass",
+  numeric: true})` reads the sorted values as numbers instead of strings, so 9
+  precedes 10. Values that do not parse sort last in either direction. It is the
+  ordering half of the value-types feature: declare a numeric relation with
+  `set_value_types`, then sort on it with `numeric`.
+
+### Changed
+
+- Upgraded the tie dependency to the per-collection value-type registry commit
+  (410474f, `v0.5.2-0.20260904115826-410474f21ff3`), which `value_types` and the
+  `numeric` query option build on. The `@tie` module's public API is otherwise
+  unchanged.
+
 ## [0.8.2] - 2026-09-03
 
 ### Added

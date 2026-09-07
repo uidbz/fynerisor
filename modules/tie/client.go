@@ -99,6 +99,10 @@ func (c *Client) GetAttr(name string) (object.Object, bool) {
 		return object.NewBuiltin("tie.read_table", c.ReadTable), true
 	case "delete_table":
 		return object.NewBuiltin("tie.delete_table", c.DeleteTable), true
+	case "value_types":
+		return object.NewBuiltin("tie.value_types", c.ValueTypes), true
+	case "set_value_types":
+		return object.NewBuiltin("tie.set_value_types", c.SetValueTypes), true
 	case "upload":
 		return object.NewBuiltin("tie.upload", c.Upload), true
 	case "download":
@@ -129,6 +133,8 @@ func (c *Client) Attrs() []object.AttrSpec {
 		{Name: "insert_table"},
 		{Name: "read_table"},
 		{Name: "delete_table"},
+		{Name: "value_types"},
+		{Name: "set_value_types"},
 		{Name: "upload"},
 		{Name: "download"},
 		{Name: "download_size"},
@@ -355,6 +361,14 @@ func (c *Client) Query(ctx context.Context, args ...object.Object) (object.Objec
 			return nil, fmt.Errorf("tie.query: 'sort_by_value' must be a string: %w", err)
 		}
 		spec.SortByValue = sortByValue
+	}
+
+	if numericObj := specMap.GetWithDefault("numeric", nil); numericObj != nil {
+		numeric, err := object.AsBool(numericObj)
+		if err != nil {
+			return nil, fmt.Errorf("tie.query: 'numeric' must be a boolean: %w", err)
+		}
+		spec.SortByValueNumeric = numeric
 	}
 
 	if descObj := specMap.GetWithDefault("descending", nil); descObj != nil {
@@ -778,6 +792,57 @@ func (c *Client) DeleteTable(ctx context.Context, args ...object.Object) (object
 	}
 
 	if err := c.tc.DeleteTable(uid); err != nil {
+		return nil, err
+	}
+	return object.Nil, nil
+}
+
+// ValueTypes reports the value type declared for every relation in the
+// collection, keyed by relation. Relations with no declaration are string and
+// are omitted, so the map holds only advisory non-string types.
+func (c *Client) ValueTypes(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) != 0 {
+		return nil, fmt.Errorf("tie.value_types: expected 0 arguments, got %d", len(args))
+	}
+
+	types, err := c.tc.ValueTypes()
+	if err != nil {
+		return nil, err
+	}
+
+	result := object.NewMap(make(map[string]object.Object, len(types)))
+	for relation, t := range types {
+		result.Set(relation, object.NewString(string(t)))
+	}
+	return result, nil
+}
+
+// SetValueTypes declares the value type of each named relation, merging into
+// whatever the collection already holds: relations not named are left alone.
+// Types outside the closed vocabulary are rejected before anything is written,
+// so one bad entry declares nothing. An empty map or "string" (or "") clears a
+// relation's declaration, since an absent declaration already means string.
+func (c *Client) SetValueTypes(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) != 1 {
+		return nil, fmt.Errorf("tie.set_value_types: expected 1 argument, got %d", len(args))
+	}
+
+	typesMap, ok := args[0].(*object.Map)
+	if !ok {
+		return nil, fmt.Errorf("tie.set_value_types: argument must be a map (got %s)", args[0].Type())
+	}
+
+	types := make(map[string]client.ValueType, typesMap.Size())
+	for _, name := range typesMap.SortedKeys() {
+		valObj := typesMap.GetWithDefault(name, nil)
+		ty, err := object.AsString(valObj)
+		if err != nil {
+			return nil, fmt.Errorf("tie.set_value_types: value type for %q must be a string (got %s)", name, valObj.Type())
+		}
+		types[name] = client.ValueType(ty)
+	}
+
+	if err := c.tc.SetValueTypes(types); err != nil {
 		return nil, err
 	}
 	return object.Nil, nil
