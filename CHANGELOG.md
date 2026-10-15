@@ -4,6 +4,21 @@
 
 ### Added
 
+- **`clipboard` global** with `clipboard.Copy(text)` and `clipboard.Read()`.
+  Wraps fyne's `app.Clipboard` through `guithread.Do`. Handy for copy buttons on
+  non-selectable widgets (e.g. Markdown/RichText, which fyne cannot select).
+
+- **`canvas.NewText(text, color)`.** A colored, non-wrapping text object (wraps
+  fyne's `canvas.Text`, which has a `Color` field — unlike `widget.Label`, whose
+  color only follows theme Importance). Settable attrs: `Text`, `Color`
+  (name/hex), `Size`. Use to tint a heading to match a custom background.
+
+- **`Selectable` attribute on `widget.Label`.** Maps to fyne's `Label.Selectable`
+  (2.6+); `lbl.Selectable = true` makes label text selectable/copyable. Note
+  fyne's `RichText`/`Markdown` has **no** selection support, so markdown text
+  cannot be made selectable — use a selectable `Label` if selection matters more
+  than markdown formatting.
+
 - **`Wrapping` / `Truncation` attributes on the `Markdown` widget.** fyne's
   `RichText` (which Markdown wraps) defaults to `Wrapping=Off`, whose MinSize
   width is the longest paragraph on one line — inside a `container.Scroll` that

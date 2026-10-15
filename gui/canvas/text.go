@@ -1,0 +1,118 @@
+package risorcanvas
+
+import (
+	"errors"
+	"fmt"
+
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
+
+	"github.com/deepnoodle-ai/risor/v2/pkg/object"
+	"github.com/deepnoodle-ai/risor/v2/pkg/op"
+	"github.com/uidbz/fynerisor/gui/guithread"
+)
+
+var _ object.Object = &Text{}
+
+const TextType object.Type = "canvas.text"
+
+// Text wraps a Fyne canvas.Text — a colored, non-wrapping text object. Unlike
+// widget.Label it exposes an arbitrary Color, so scripts can tint a heading to
+// match a custom background (e.g. a chat bubble hue).
+type Text struct {
+	instance *canvas.Text
+}
+
+func (obj *Text) CanvasObject() fyne.CanvasObject {
+	return obj.instance
+}
+
+func (obj *Text) Type() object.Type {
+	return TextType
+}
+
+func (obj *Text) Inspect() string {
+	return "canvas.text"
+}
+
+func (obj *Text) Interface() interface{} {
+	return obj.instance
+}
+
+func (obj *Text) IsTruthy() bool {
+	return true
+}
+
+func (obj *Text) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("type error: unable to marshal 'canvas.text'")
+}
+
+func (obj *Text) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
+	err := errors.New("eval error: unsupported operation for " + string(TextType))
+	errObj := object.Errorf("eval error: unsupported operation for %s: %v", TextType, opType)
+	return errObj, err
+}
+
+func (obj *Text) Equals(other object.Object) bool {
+	return obj == other
+}
+
+func (obj *Text) Attrs() []object.AttrSpec {
+	return nil
+}
+
+func (obj *Text) SetAttr(name string, value object.Object) error {
+	switch name {
+	case "Text":
+		s, err := object.AsString(value)
+		if err != nil {
+			return err
+		}
+		guithread.Do(func() {
+			obj.instance.Text = s
+			obj.instance.Refresh()
+		})
+		return nil
+	case "Color":
+		s, err := object.AsString(value)
+		if err != nil {
+			return err
+		}
+		c, err := ParseColor(s)
+		if err != nil {
+			return err
+		}
+		guithread.Do(func() {
+			obj.instance.Color = c
+			obj.instance.Refresh()
+		})
+		return nil
+	case "Size":
+		f, err := object.AsFloat(value)
+		if err != nil {
+			return err
+		}
+		guithread.Do(func() {
+			obj.instance.TextSize = float32(f)
+			obj.instance.Refresh()
+		})
+		return nil
+	}
+	return fmt.Errorf("attribute error: %s object has no attribute %q", TextType, name)
+}
+
+func (obj *Text) GetAttr(name string) (object.Object, bool) {
+	switch name {
+	case "Text":
+		return object.NewString(obj.instance.Text), true
+	case "Color":
+		return object.NewString(colorToHex(obj.instance.Color)), true
+	case "Size":
+		return object.NewFloat(float64(obj.instance.TextSize)), true
+	}
+	return nil, false
+}
+
+func NewText(instance *canvas.Text) *Text {
+	return &Text{instance: instance}
+}

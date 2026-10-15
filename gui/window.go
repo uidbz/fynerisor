@@ -173,6 +173,7 @@ func NewWindow(window fyne.Window, opts ...Option) *Window {
 		"chart":     chart,
 		"dialog":    dialogobj,
 		"app":       app,
+		"clipboard": NewFyneClipboard(),
 		"constants": constants,
 		"fyne":      fyneobj,
 		"binding":   bindingobj,
