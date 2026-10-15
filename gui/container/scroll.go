@@ -86,6 +86,26 @@ func (obj *Scroll) GetAttr(name string) (object.Object, bool) {
 			})
 			return object.Nil, nil
 		}), true
+	case "ScrollToBottom":
+		return object.NewBuiltin("container.Scroll.ScrollToBottom", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			guithread.Do(func() {
+				obj.instance.ScrollToBottom()
+			})
+			return object.Nil, nil
+		}), true
+	case "ScrollToTop":
+		return object.NewBuiltin("container.Scroll.ScrollToTop", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			guithread.Do(func() {
+				obj.instance.ScrollToTop()
+			})
+			return object.Nil, nil
+		}), true
 	}
 	return nil, false
 }

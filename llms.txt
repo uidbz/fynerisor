@@ -582,6 +582,8 @@ let vsplit = container.NewVSplit(top, bottom)
 ### Scroll (Scrollable Container)
 ```risor
 let scroll = container.NewScroll(content)
+scroll.ScrollToBottom()  // jump to the bottom (chat apps, logs)
+scroll.ScrollToTop()     // jump back to the top
 ```
 
 ### More Containers (v0.4.0+)

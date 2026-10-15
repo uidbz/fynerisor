@@ -4,6 +4,11 @@
 
 ### Added
 
+- **`ScrollToBottom()` / `ScrollToTop()` on `container.Scroll`.** Wraps Fyne's
+  `Scroll.ScrollToBottom`/`ScrollToTop` through `guithread.Do`, so scripts can
+  keep a chat or log view pinned to the newest content after appending to a
+  scroll (e.g. `s.ScrollToBottom()` right after `window.SetContent(...)`).
+
 - **Relation value types in the `@tie` module.** `db.value_types()` returns the
   value type declared for each relation in the collection (`relation -> type`
   string map; `string` is the default and is omitted), and
