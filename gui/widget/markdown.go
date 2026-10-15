@@ -65,11 +65,37 @@ func (obj *Markdown) Attrs() []object.AttrSpec {
 }
 
 func (obj *Markdown) SetAttr(name string, value object.Object) error {
+	switch name {
+	case "Wrapping":
+		i, err := object.AsInt(value)
+		if err != nil {
+			return fmt.Errorf("type error: %v", err)
+		}
+		guithread.Do(func() {
+			obj.instance.Wrapping = fyne.TextWrap(i)
+			obj.instance.Refresh()
+		})
+		return nil
+	case "Truncation":
+		i, err := object.AsInt(value)
+		if err != nil {
+			return fmt.Errorf("type error: %v", err)
+		}
+		guithread.Do(func() {
+			obj.instance.Truncation = fyne.TextTruncation(i)
+			obj.instance.Refresh()
+		})
+		return nil
+	}
 	return fmt.Errorf("attribute error: %s object has no attribute %q", MarkdownType, name)
 }
 
 func (obj *Markdown) GetAttr(name string) (object.Object, bool) {
 	switch name {
+	case "Wrapping":
+		return object.NewInt(int64(obj.instance.Wrapping)), true
+	case "Truncation":
+		return object.NewInt(int64(obj.instance.Truncation)), true
 	case "SetOnTapped":
 		return object.NewBuiltin("widget.Markdown.SetOnTapped", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {

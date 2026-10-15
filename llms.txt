@@ -548,6 +548,10 @@ let accordion = widget.NewAccordion(
 ### Markdown
 ```risor
 let md = widget.NewMarkdown(`# Title\n\nContent here`)
+// IMPORTANT: set Wrapping for any multi-line/paragraph markdown, otherwise
+// RichText MinSize width = longest line and a Scroll grows a horizontal
+// scrollbar instead of wrapping:
+md.Wrapping = constants.TextWrapWord
 ```
 
 ## Containers (Layouts)

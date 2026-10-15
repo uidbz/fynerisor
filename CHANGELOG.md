@@ -4,6 +4,13 @@
 
 ### Added
 
+- **`Wrapping` / `Truncation` attributes on the `Markdown` widget.** fyne's
+  `RichText` (which Markdown wraps) defaults to `Wrapping=Off`, whose MinSize
+  width is the longest paragraph on one line — inside a `container.Scroll` that
+  grows a horizontal scrollbar instead of wrapping. Setting
+  `md.Wrapping = constants.TextWrapWord` collapses the MinSize width so the
+  scroll sizes to the viewport and markdown text autowraps.
+
 - **`canvas.NewRectangle(fillColor, cornerRadius)`.** Rounded/filled rectangles
   for card and chat-bubble backgrounds. Colors accept names or hex
   (`#RGB`/`#RRGGBB`/`#RRGGBBAA`); `FillColor`, `StrokeColor`, `StrokeWidth` and
