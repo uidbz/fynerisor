@@ -872,6 +872,15 @@ let img = canvas.NewImageFromFile("/path/to/image.png")
 
 // Line
 let line = canvas.NewLine()
+
+// Rectangle (fill color + corner radius; colors are names or
+// "#RGB"/"#RRGGBB"/"#RRGGBBAA"). Attributes: FillColor, StrokeColor,
+// StrokeWidth, CornerRadius.
+let bg = canvas.NewRectangle("#3b82f633", 8.0)
+bg.StrokeColor = "#3b82f6"
+bg.StrokeWidth = 1.0
+// rounded background behind content:
+let card = container.NewStack(bg, container.NewPadded(content))
 ```
 
 ## Charts

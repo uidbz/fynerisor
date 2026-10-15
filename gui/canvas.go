@@ -108,6 +108,31 @@ func (obj *Canvas) GetAttr(name string) (object.Object, bool) {
 			return risorcanvas.NewLine(line), nil
 		}), true
 
+	case "NewRectangle":
+		return object.NewBuiltin("canvas.NewRectangle", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 2 {
+				return object.Errorf("wrong number of arguments. got=%d, want=2", len(args)), nil
+			}
+			colorName, err := object.AsString(args[0])
+			if err != nil {
+				return nil, err
+			}
+			cornerRadius, err := object.AsFloat(args[1])
+			if err != nil {
+				return nil, err
+			}
+
+			c, err := risorcanvas.ParseColor(colorName)
+			if err != nil {
+				return nil, err
+			}
+
+			rect := canvas.NewRectangle(c)
+			rect.CornerRadius = float32(cornerRadius)
+
+			return risorcanvas.NewRectangle(rect), nil
+		}), true
+
 	case "NewImageFromURI":
 		return object.NewBuiltin("canvas.NewImageFromURI", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {

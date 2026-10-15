@@ -4,6 +4,12 @@
 
 ### Added
 
+- **`canvas.NewRectangle(fillColor, cornerRadius)`.** Rounded/filled rectangles
+  for card and chat-bubble backgrounds. Colors accept names or hex
+  (`#RGB`/`#RRGGBB`/`#RRGGBBAA`); `FillColor`, `StrokeColor`, `StrokeWidth` and
+  `CornerRadius` are settable attributes. Combine with
+  `container.NewStack(bg, container.NewPadded(content))` for a rounded card.
+
 - **`ScrollToBottom()` / `ScrollToTop()` on `container.Scroll`.** Wraps Fyne's
   `Scroll.ScrollToBottom`/`ScrollToTop` through `guithread.Do`, so scripts can
   keep a chat or log view pinned to the newest content after appending to a
