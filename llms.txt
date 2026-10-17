@@ -646,7 +646,7 @@ label.Alignment = constants.TextAlignTrailing
 
 ### SQL Module
 
-Enable with `fynerisor.WithSQL()` option. Declare requirement with `require("@sql")`.
+Enable with `fynerisor.WithSQL()` option (GUI) or `db.WithSQL()` from `github.com/uidbz/fynerisor/core/db` (headless core — opt-in so DB drivers are only linked when used). Declare requirement with `require("@sql")`.
 
 ```risor
 require("@sql")  // Ensure SQL module is enabled
@@ -1061,7 +1061,7 @@ func main() {
     // Create context with desired modules (no GUI dependencies)
     ctx := core.NewContext(
         core.WithHTTP(),
-        core.WithSQL(),
+        db.WithSQL(), // opt-in: import "github.com/uidbz/fynerisor/core/db"
         core.WithTie(),
         core.WithOS(),
     )
@@ -1106,7 +1106,8 @@ result, err := ctx.EvalWithImports(script, fetchFunc)
 ```
 
 **Available options in core package:**
-- `core.WithHTTP()`, `core.WithSQL()`, `core.WithTie()`, `core.WithOS()`, `core.WithStrings()`, `core.WithFilepath()`, `core.WithTime()`, `core.WithIO()`, `core.WithJSON()`, `core.WithCSV()`, `core.WithGlobals()`
+- `core.WithHTTP()`, `core.WithTie()`, `core.WithOS()`, `core.WithStrings()`, `core.WithFilepath()`, `core.WithTime()`, `core.WithIO()`, `core.WithJSON()`, `core.WithCSV()`, `core.WithGlobals()`
+- SQL in core is opt-in: `db.WithSQL()` from `github.com/uidbz/fynerisor/core/db` (importing it links the MySQL/PostgreSQL/SQLite/SQL Server drivers; not importing them keeps them out of the binary)
 - GUI-specific options (`WithStatusCallback`, `WithResultCallback`) are not available in core
 - Scripts using `require("@gui")` will fail in core (headless mode)
 

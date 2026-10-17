@@ -78,7 +78,7 @@
 //	func main() {
 //	    ctx := core.NewContext(
 //	        core.WithHTTP(),
-//	        core.WithSQL(),
+//	        db.WithSQL(), // opt-in: import "github.com/uidbz/fynerisor/core/db"
 //	    )
 //
 //	    script := `
@@ -191,7 +191,10 @@
 //
 // # SQL Module
 //
-// The SQL module supports MySQL, PostgreSQL, SQLite, and SQL Server:
+// The SQL module supports MySQL, PostgreSQL, SQLite, and SQL Server.
+// For headless core contexts it is opt-in via the core/db subpackage
+// (db.WithSQL()), so binaries that do not use databases do not link the
+// database drivers. GUI contexts use gui.WithSQL() as before:
 //
 //	let conn = sql.connect("sqlite3::memory:")
 //	conn.exec("CREATE TABLE users (id INT, name TEXT)")

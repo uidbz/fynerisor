@@ -26,6 +26,14 @@
 
 ### Changed
 
+- **SQL is now opt-in in the headless `core` package.** `core.WithSQL()` was
+  removed: importing `core` pulled go-sql-driver/mysql, lib/pq,
+  microsoft/go-mssqldb and mattn/go-sqlite3 into every binary through
+  `modules/sql`, even when no database was used. Headless users now import
+  `github.com/uidbz/fynerisor/core/db` and pass `db.WithSQL()`; binaries that
+  do not import it link without the DB drivers (several MB smaller static
+  builds). `gui.WithSQL()` is unchanged.
+
 - Upgraded the tie dependency to the per-collection value-type registry commit
   (410474f, `v0.5.2-0.20260904115826-410474f21ff3`), which `value_types` and the
   `numeric` query option build on. The `@tie` module's public API is otherwise

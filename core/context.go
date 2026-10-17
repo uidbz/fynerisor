@@ -32,7 +32,8 @@ type Context struct {
 // NewContext creates a new Risor context for non-GUI applications.
 //
 // Parameters:
-//   - opts: Optional configuration using functional options (WithHTTP, WithSQL, etc.)
+//   - opts: Optional configuration using functional options (WithHTTP, WithOS, etc.;
+//     for SQL use the opt-in core/db subpackage)
 //
 // Returns:
 //   - *Context: Execution context for Risor scripts
@@ -41,7 +42,7 @@ type Context struct {
 //
 //	ctx := core.NewContext(
 //	    core.WithHTTP(),
-//	    core.WithSQL(),
+//	    db.WithSQL(), // import "github.com/uidbz/fynerisor/core/db"
 //	    core.WithOS(),
 //	)
 //
