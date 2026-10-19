@@ -15,7 +15,7 @@
 //
 // # Version
 //
-// Current Version: 0.8.2
+// Current Version: 0.9.0
 // Risor Compatibility: v2.2+ (arrow functions required)
 // Fyne Compatibility: v2.7+
 //

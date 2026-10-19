@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.9.0] - 2026-10-19
+
+### Breaking
+- **tie dependency v0.7.3.** `tie.associated()` now flattens the flat
+  `[]tiedb.Row` reply internally; the Risor-visible list of
+  `{key, value1, value2}` maps is unchanged, but callers embedding the
+  Go client must target tie v0.7.3.
+- **SQL is opt-in in headless `core`.** `core.WithSQL()` was removed;
+  import `github.com/uidbz/fynerisor/core/db` and pass `db.WithSQL()`
+  to opt in. Binaries that never touch SQL now link zero database
+  drivers (verified against the lars static build). `gui.WithSQL()`
+  is unchanged.
+
 ## [Unreleased]
 
 ### Added
