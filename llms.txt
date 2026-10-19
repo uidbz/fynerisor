@@ -548,6 +548,10 @@ let accordion = widget.NewAccordion(
 ### Markdown
 ```risor
 let md = widget.NewMarkdown(`# Title\n\nContent here`)
+// IMPORTANT: set Wrapping for any multi-line/paragraph markdown, otherwise
+// RichText MinSize width = longest line and a Scroll grows a horizontal
+// scrollbar instead of wrapping:
+md.Wrapping = constants.TextWrapWord
 ```
 
 ## Containers (Layouts)
@@ -867,11 +871,33 @@ csv.write("out.csv", rows)
 ## Canvas Objects
 
 ```risor
-// Image from file
-let img = canvas.NewImageFromFile("/path/to/image.png")
+// Image from URI (file:// or http(s)://)
+let img = canvas.NewImageFromURI("file:///path/to/image.png")
 
-// Line
-let line = canvas.NewLine()
+// Line (named color)
+let line = canvas.NewLine("red")
+
+// Colored, non-wrapping text (canvas.Text has a real Color, unlike Label).
+// Attributes: Text, Color (name/hex), Size.
+let heading = canvas.NewText("Askbot", "#22c55e")
+
+// Rectangle (fill color + corner radius; colors are names or
+// "#RGB"/"#RRGGBB"/"#RRGGBBAA"). Attributes: FillColor, StrokeColor,
+// StrokeWidth, CornerRadius.
+let bg = canvas.NewRectangle("#3b82f633", 8.0)
+bg.StrokeColor = "#3b82f6"
+bg.StrokeWidth = 1.0
+// rounded background behind content:
+let card = container.NewStack(bg, container.NewPadded(content))
+```
+
+## Clipboard
+
+```risor
+// The clipboard global (fyne app.Clipboard). Useful for copy buttons on
+// non-selectable widgets — fyne's Markdown/RichText cannot be selected.
+clipboard.Copy("text to copy")
+let cur = clipboard.Read()
 ```
 
 ## Charts

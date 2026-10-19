@@ -486,14 +486,21 @@ func (c *Client) Associated(ctx context.Context, args ...object.Object) (object.
 	}
 
 	tripleList := object.NewList(make([]object.Object, 0))
-	reply.Result.ForEachValue2(func(key, value1, value2 string) {
-		tripleMap := object.NewMap(map[string]object.Object{
-			"key":    object.NewString(key),
-			"value1": object.NewString(value1),
-			"value2": object.NewString(value2),
-		})
-		tripleList.Append(tripleMap)
-	})
+	// tie v0.7.3: AssociatedReply carries flat []tiedb.Row instead of the old
+	// nested TripleSet; flatten each row back to (key, relation, value) maps so
+	// the Risor-visible shape is unchanged.
+	for _, row := range reply.Rows {
+		for relation, values := range row.Attributes {
+			for _, value := range values {
+				tripleMap := object.NewMap(map[string]object.Object{
+					"key":    object.NewString(row.Key),
+					"value1": object.NewString(relation),
+					"value2": object.NewString(value),
+				})
+				tripleList.Append(tripleMap)
+			}
+		}
+	}
 
 	return tripleList, nil
 }

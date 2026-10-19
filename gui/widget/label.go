@@ -111,6 +111,16 @@ func (obj *Label) SetAttr(name string, value object.Object) error {
 			obj.instance.Refresh()
 		})
 		return nil
+	case "Selectable":
+		b, err := object.AsBool(value)
+		if err != nil {
+			return fmt.Errorf("type error: %v", err)
+		}
+		guithread.Do(func() {
+			obj.instance.Selectable = b
+			obj.instance.Refresh()
+		})
+		return nil
 	case "TextStyle":
 		return fmt.Errorf("attribute error: TextStyle is read-only, set Bold/Italic/Monospace properties instead")
 	}
@@ -129,6 +139,8 @@ func (obj *Label) GetAttr(name string) (object.Object, bool) {
 		return object.NewInt(int64(obj.instance.Alignment)), true
 	case "Importance":
 		return object.NewInt(int64(obj.instance.Importance)), true
+	case "Selectable":
+		return object.NewBool(obj.instance.Selectable), true
 	case "TextStyle":
 		return NewTextStyle(&obj.instance.TextStyle, obj.instance), true
 	case "SetText":
