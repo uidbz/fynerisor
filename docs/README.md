@@ -242,13 +242,14 @@ import (
 	"fmt"
 	"log"
 	"github.com/uidbz/fynerisor/core"
+	"github.com/uidbz/fynerisor/core/db"
 )
 
 func main() {
 	// Create context with desired modules (same options as Window)
 	ctx := core.NewContext(
 		core.WithHTTP(),
-		core.WithSQL(),
+		db.WithSQL(), // opt-in SQL: links the DB drivers only when imported
 		core.WithOS(),
 	)
 
@@ -301,7 +302,7 @@ result, err := ctx.EvalWithImports(script, fetchFunc)
 
 **Available options (same as Window):**
 - `WithHTTP()` - HTTP module
-- `WithSQL()` - SQL module  
+- `db.WithSQL()` - SQL module (opt-in subpackage `github.com/uidbz/fynerisor/core/db`; links DB drivers only when imported)
 - `WithTie()` - Tie triple store module
 - `WithOS()` - OS module
 - `WithIO()` - File I/O module

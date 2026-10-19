@@ -143,7 +143,7 @@ func main() {
     // Create headless context (no GUI dependencies)
     ctx := core.NewContext(
         core.WithHTTP(),
-        core.WithSQL(),
+        db.WithSQL(), // opt-in: import "github.com/uidbz/fynerisor/core/db"
     )
     
     // Execute script
@@ -206,7 +206,7 @@ Customize fynerisor behavior via `With*()` options when creating `gui.Window` or
 - `WithHTTP()` - Enable HTTP requests
 - `WithOS()` - Enable OS operations
 - `WithIO()` - Enable file I/O operations
-- `WithSQL()` - Enable database connectivity
+- `WithSQL()` - Enable database connectivity (in `gui`; in headless `core` use `db.WithSQL()` from `github.com/uidbz/fynerisor/core/db` so DB drivers are only linked when needed)
 - `WithTie()` - Enable Tie triple store database
 - `WithStrings()` - Enable string utilities
 - `WithFilepath()` - Enable path operations
@@ -238,7 +238,7 @@ Enable modules via `With*()` options. Scripts can optionally use `require(["@mod
 | `@http` | `WithHTTP()` | HTTP requests |
 | `@os` | `WithOS()` | OS operations, open browser |
 | `@io` | `WithIO()` | File I/O operations (cp, etc.) |
-| `@sql` | `WithSQL()` | Database connectivity |
+| `@sql` | `WithSQL()` (`db.WithSQL()` in headless core) | Database connectivity |
 | `@tie` | `WithTie()` | Tie triple store database |
 | `@strings` | `WithStrings()` | String manipulation |
 | `@filepath` | `WithFilepath()` | Path operations |

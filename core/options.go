@@ -9,7 +9,6 @@ import (
 	iomod "github.com/uidbz/fynerisor/modules/io"
 	jsonmod "github.com/uidbz/fynerisor/modules/json"
 	"github.com/uidbz/fynerisor/modules/os"
-	"github.com/uidbz/fynerisor/modules/sql"
 	"github.com/uidbz/fynerisor/modules/strings"
 	"github.com/uidbz/fynerisor/modules/tie"
 	"github.com/uidbz/fynerisor/modules/time"
@@ -194,26 +193,14 @@ func WithTime() Option {
 	}
 }
 
-// WithSQL enables the SQL module for database connectivity from Risor scripts.
-// Supports: MySQL, PostgreSQL, SQLite, SQL Server
+// WithSQL was removed from core: it forced the MySQL/PostgreSQL/SQLite/SQL
+// Server drivers into every binary that imported core, even when no database
+// was used. Use the opt-in subpackage instead:
 //
-// Example:
+//	import "github.com/uidbz/fynerisor/core/db"
+//	ctx := core.NewContext(db.WithSQL())
 //
-//	ctx := core.NewContext(core.WithSQL())
-//
-// Usage in script:
-//
-//	let conn = sql.connect("sqlite3::memory:")
-//	conn.exec("CREATE TABLE users (id INT, name TEXT)")
-//	let rows = conn.query("SELECT * FROM users").collect()
-func WithSQL() Option {
-	return moduleOption{
-		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
-			env["sql"] = sql.Module()
-			modules["sql"] = true
-		},
-	}
-}
+// The gui package still offers gui.WithSQL() unchanged.
 
 // WithTie enables the Tie module for triple store operations from Risor scripts.
 // The module provides a client for the tie triple store database.
