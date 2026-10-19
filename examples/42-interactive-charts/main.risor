@@ -1,0 +1,106 @@
+
+// Interactive charts: hover tooltips, tap/right-click callbacks, wheel zoom,
+// drag pan, live data updates, and SVG export. All charts are built from Fyne
+// canvas primitives; nothing needs to be opted into for hover/zoom to work.
+
+window.Resize(1100, 800)
+
+// ---------------------------------------------------------------------------
+// Bar chart: callbacks + live toggles + right-click menu
+// ---------------------------------------------------------------------------
+
+let labels = ["Q1", "Q2", "Q3", "Q4"]
+let values = [120, 150, 180, 200]
+
+let bar = chart.NewBarChart("Quarterly Sales", "Revenue ($K)", labels, values)
+
+let detailLabel = widget.NewLabel("(right-click a bar)")
+let menuPop = nil
+
+let palette = ["#e11d48", "#059669", "#d97706", "#7c3aed"]
+
+// Hover highlights the bar and shows a tooltip automatically; OnTap fires on
+// click (try clicking a bar).
+bar.OnTap((i, label, value) => {
+    window.SetStatus(sprintf("Clicked %s: %v", label, value))
+})
+
+// Right-click shows an action popup anchored on the chart.
+bar.OnSecondaryTap((i, label, value) => {
+    detailLabel.SetText(sprintf("Last right-click: %s = %v", label, value))
+    let popContent = container.NewVBox(
+        widget.NewLabel(sprintf("%s: %v", label, value)),
+        widget.NewButton("Recolor bar", () => {
+            bar.SetBarColor(i, palette[i % len(palette)])
+        }),
+        widget.NewButton("Close", () => menuPop.Hide())
+    )
+    menuPop = widget.NewPopUp(container.NewPadded(popContent), window.Canvas)
+    menuPop.Show()
+})
+
+// Dynamic feature toggles: plain checkboxes calling plain methods.
+let gridCheck = widget.NewCheck("Show grid", (on) => bar.ShowGrid(on))
+gridCheck.SetChecked(true)
+let valuesCheck = widget.NewCheck("Show value labels", (on) => bar.ShowValues(on))
+valuesCheck.SetChecked(false)
+
+let randomBtn = widget.NewButton("Randomize data", () => {
+    range(len(labels)).each((i) => bar.SetValue(i, 50 + rand.int(250)))
+    window.SetStatus("Data randomized (the view resets to fit the new data)")
+})
+
+let resetBtn = widget.NewButton("Reset zoom", () => bar.ResetZoom())
+let saveBtn = widget.NewButton("Export bar chart to SVG", () => {
+    bar.SaveImage("sales-chart.svg")
+    window.SetStatus("Wrote sales-chart.svg (exactly what you see)")
+})
+
+let barControls = container.NewHBox(gridCheck, valuesCheck, randomBtn, resetBtn, saveBtn)
+let barPane = container.NewBorder(nil, container.NewPadded(barControls), nil, nil, bar)
+
+// ---------------------------------------------------------------------------
+// Scatter plot: 2D zoom/pan showcase
+// ---------------------------------------------------------------------------
+
+let sx = []
+let sy = []
+range(100).each((i) => {
+    sx.append(float(i) * 1.5)
+    sy.append(math.sin(float(i) / 8.0) * 40.0 + rand.normal(0, 12))
+})
+
+let scatter = chart.NewScatterChart("Wave + noise", "t", "amplitude", sx, sy)
+scatter.SetMarkerSize(5.0)
+scatter.OnTap((i, label, value) => {
+    window.SetStatus(sprintf("Point %d at %v", i, value))
+})
+let scatterHint = widget.NewLabel("Scroll to zoom around the cursor, drag to pan, double-click to reset")
+let scatterPane = container.NewBorder(nil, container.NewPadded(scatterHint), nil, nil, scatter)
+
+// ---------------------------------------------------------------------------
+// Histogram with togglable normal overlay
+// ---------------------------------------------------------------------------
+
+let samples = []
+range(400).each((i) => samples.append(rand.normal(100, 15)))
+
+let hist = chart.NewHistogram("Sample distribution", "value", "count", samples, 24)
+let normalCheck = widget.NewCheck("Normal curve", (on) => hist.ShowNormal(on))
+normalCheck.SetChecked(true)
+let binsSlider = widget.NewSlider(4, 48)
+binsSlider.OnChanged((n) => hist.SetBins(int(n)))
+let histPane = container.NewBorder(
+    container.NewHBox(normalCheck, binsSlider), nil, nil, nil, hist)
+
+// ---------------------------------------------------------------------------
+// Layout
+// ---------------------------------------------------------------------------
+
+let topTabs = container.NewAppTabs(
+    container.NewTabItem("Bar chart", barPane),
+    container.NewTabItem("Scatter", scatterPane),
+    container.NewTabItem("Histogram", histPane)
+)
+
+window.SetContent(container.NewBorder(nil, container.NewPadded(detailLabel), nil, nil, topTabs))

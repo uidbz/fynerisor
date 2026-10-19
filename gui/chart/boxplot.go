@@ -1,36 +1,77 @@
 package risorchart
 
 import (
-	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"image/color"
-	"math"
-
-	"gonum.org/v1/plot"
-	"gonum.org/v1/plot/plotter"
-	"gonum.org/v1/plot/vg"
-	"gonum.org/v1/plot/vg/draw"
-	"gonum.org/v1/plot/vg/vgimg"
+	"sort"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
-	"fyne.io/fyne/v2/container"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
+	"github.com/uidbz/fynerisor/gui/guithread"
 )
 
 var _ object.Object = &BoxPlot{}
+var _ chartDelegate = &BoxPlot{}
+var _ fyne.CanvasObject = &BoxPlot{}
 
 const BoxPlotType object.Type = "chart.boxplot"
 
-type BoxPlot struct {
-	container *fyne.Container
+// boxColors cycles across datasets (same palette as the legacy renderer).
+var boxColors = []color.NRGBA{
+	{R: 70, G: 130, B: 180, A: 255}, // steel blue
+	{R: 220, G: 20, B: 60, A: 255},  // crimson
+	{R: 50, G: 205, B: 50, A: 255},  // lime green
+	{R: 255, G: 140, B: 0, A: 255},  // dark orange
+	{R: 138, G: 43, B: 226, A: 255}, // blue violet
 }
 
+// boxStats holds the pre-computed five-number summary per dataset.
+type boxStats struct {
+	n           int
+	lo, hi      float64 // whisker ends (within 1.5*IQR)
+	q1, med, q3 float64
+	mean        float64
+	outliers    []float64
+	valid       bool
+}
+
+// BoxPlot is an interactive box plot built from Fyne canvas primitives. Each
+// category shows the Tukey box (IQR), median, whiskers (1.5*IQR), mean marker
+// and outlier points. Hovering a category summarizes the dataset; wheel zoom
+// and drag pan inspect value ranges (double-click resets).
+type BoxPlot struct {
+	*chartCore
+
+	labels   []string
+	datasets [][]float64
+	stats    []boxStats
+}
+
+// NewBoxPlot creates an interactive box plot with the given title, y-axis
+// label, category labels and datasets. Returns an error if labels and
+// datasets lengths do not match.
+func NewBoxPlot(title, ylabel string, labels []string, datasets [][]float64) (*BoxPlot, error) {
+	if len(labels) != len(datasets) {
+		return nil, fmt.Errorf("chart error: labels and datasets must have same length (got %d labels, %d datasets)", len(labels), len(datasets))
+	}
+
+	b := &BoxPlot{labels: labels, datasets: datasets}
+	b.computeStats()
+	b.chartCore = newChartCore(string(BoxPlotType), b)
+	b.title = title
+	b.yLabel = ylabel
+	b.ExtendBaseWidget(b)
+	return b, nil
+}
+
+// --- object.Object ----------------------------------------------------------
+
 func (obj *BoxPlot) CanvasObject() fyne.CanvasObject {
-	return obj.container
+	return obj
 }
 
 func (r *BoxPlot) Type() object.Type {
@@ -42,7 +83,7 @@ func (r *BoxPlot) Inspect() string {
 }
 
 func (r *BoxPlot) Interface() interface{} {
-	return r.container
+	return r
 }
 
 func (r *BoxPlot) IsTruthy() bool {
@@ -72,131 +113,205 @@ func (r *BoxPlot) SetAttr(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", BoxPlotType, name)
 }
 
-func (g *BoxPlot) GetAttr(name string) (object.Object, bool) {
-	return nil, false
-}
+// --- statistics ---------------------------------------------------------------
 
-func createBoxPlot(title, ylabel string, labels []string, datasets [][]float64) ([]byte, error) {
-	p := plot.New()
-	p.Title.Text = title
-	p.Title.TextStyle.Font.Size = 16
-	p.Y.Label.Text = ylabel
-	p.Y.Label.TextStyle.Font.Size = 12
-
-	// Colors for box plots and curves
-	colors := []color.RGBA{
-		{R: 70, G: 130, B: 180, A: 255},  // Steel blue
-		{R: 220, G: 20, B: 60, A: 255},   // Crimson
-		{R: 50, G: 205, B: 50, A: 255},   // Lime green
-		{R: 255, G: 140, B: 0, A: 255},   // Dark orange
-		{R: 138, G: 43, B: 226, A: 255},  // Blue violet
-	}
-
-	// Find global min/max for scaling the normal distribution
-	globalMin, globalMax := math.Inf(1), math.Inf(-1)
-	for _, data := range datasets {
-		for _, v := range data {
-			if v < globalMin {
-				globalMin = v
-			}
-			if v > globalMax {
-				globalMax = v
-			}
-		}
-	}
-
-	// Create box plots and normal distribution curves
-	for i, data := range datasets {
+func (b *BoxPlot) computeStats() {
+	b.stats = make([]boxStats, len(b.datasets))
+	for i, data := range b.datasets {
+		st := &b.stats[i]
 		if len(data) == 0 {
 			continue
 		}
+		sorted := append([]float64(nil), data...)
+		sort.Float64s(sorted)
+		st.n = len(sorted)
+		st.valid = true
+		st.lo = sorted[0]
+		st.hi = sorted[len(sorted)-1]
+		st.q1 = quantile(sorted, 0.25)
+		st.med = quantile(sorted, 0.5)
+		st.q3 = quantile(sorted, 0.75)
+		st.mean = meanOf(sorted)
 
-		// Create box plot
-		values := make(plotter.Values, len(data))
-		copy(values, data)
-
-		boxPlot, err := plotter.NewBoxPlot(vg.Points(40), float64(i), values)
-		if err != nil {
-			return nil, fmt.Errorf("could not create box plot: %w", err)
+		// Tukey fences for whiskers and outliers.
+		iqr := st.q3 - st.q1
+		fenceLo, fenceHi := st.q1-1.5*iqr, st.q3+1.5*iqr
+		loW, hiW := st.hi, st.lo
+		for _, v := range sorted {
+			if v < fenceLo || v > fenceHi {
+				st.outliers = append(st.outliers, v)
+				continue
+			}
+			if v < loW {
+				loW = v
+			}
+			if v > hiW {
+				hiW = v
+			}
 		}
-
-		colorIdx := i % len(colors)
-		fillColor := colors[colorIdx]
-		fillColor.A = 100 // Semi-transparent
-		boxPlot.FillColor = fillColor
-
-		p.Add(boxPlot)
-
-		// Calculate mean and standard deviation
-		mean, stddev := calculateStats(data)
-
-		// Create normal distribution curve
-		// Scale the curve to fit next to the box plot
-		numPoints := 100
-		xOffset := float64(i)
-		curveWidth := 0.35 // Half-width of curve relative to box position
-
-		pts := make(plotter.XYs, numPoints)
-		yRange := globalMax - globalMin
-		yStep := yRange / float64(numPoints-1)
-
-		// Find max PDF value to scale the curve
-		maxPDF := normalPDF(mean, mean, stddev)
-		if maxPDF == 0 {
-			maxPDF = 1 // Avoid division by zero
-		}
-
-		for j := 0; j < numPoints; j++ {
-			y := globalMin + float64(j)*yStep
-			pdfVal := normalPDF(y, mean, stddev)
-			// Scale and position the curve
-			xScaled := xOffset + (pdfVal/maxPDF)*curveWidth
-			pts[j].X = xScaled
-			pts[j].Y = y
-		}
-
-		// Create line for normal distribution
-		line, err := plotter.NewLine(pts)
-		if err != nil {
-			return nil, fmt.Errorf("could not create normal curve: %w", err)
-		}
-		line.LineStyle.Color = colors[colorIdx]
-		line.LineStyle.Width = vg.Points(2)
-
-		p.Add(line)
+		st.lo, st.hi = loW, hiW
 	}
-
-	// Set nominal X labels
-	p.NominalX(labels...)
-
-	// Fixed resolution for consistent chart quality
-	img := vgimg.New(8*vg.Inch, 6*vg.Inch)
-	dc := draw.New(img)
-	p.Draw(dc)
-
-	var buf bytes.Buffer
-	png := vgimg.PngCanvas{Canvas: img}
-	if _, err := png.WriteTo(&buf); err != nil {
-		return nil, fmt.Errorf("could not write PNG to buffer: %w", err)
-	}
-
-	return buf.Bytes(), nil
 }
 
-// NewBoxPlot creates a new box plot widget with optional normal distribution overlays.
-// Each dataset is shown as a box plot with a normal distribution curve fitted to the data.
-// Returns an error if the chart cannot be created.
-func NewBoxPlot(title, ylabel string, labels []string, datasets [][]float64) (*BoxPlot, error) {
-	if len(labels) != len(datasets) {
-		return nil, fmt.Errorf("chart error: labels and datasets must have same length (got %d labels, %d datasets)", len(labels), len(datasets))
+func meanOf(sorted []float64) float64 {
+	sum := 0.0
+	for _, v := range sorted {
+		sum += v
 	}
+	return sum / float64(len(sorted))
+}
 
-	b, err := createBoxPlot(title, ylabel, labels, datasets)
-	if err != nil {
-		return nil, fmt.Errorf("create box plot: %w", err)
+// --- chartDelegate ------------------------------------------------------------
+
+func (b *BoxPlot) dataExtent() (float64, float64, float64, float64) {
+	n := float64(len(b.datasets))
+	if n == 0 {
+		return 0, 1, 0, 1
 	}
+	first := true
+	var ymin, ymax float64
+	for _, data := range b.datasets {
+		for _, v := range data {
+			if first || v < ymin {
+				ymin = v
+			}
+			if first || v > ymax {
+				ymax = v
+			}
+			first = false
+		}
+	}
+	if first {
+		return 0, n, 0, 1
+	}
+	pad := (ymax - ymin) * 0.08
+	return 0, n, ymin - pad, ymax + pad
+}
 
-	img := canvas.NewImageFromResource(fyne.NewStaticResource("boxplot", b))
-	img.FillMode = canvas.ImageFillOriginal
-	return &BoxPlot{container: container.NewStack(img)}, nil
+func (b *BoxPlot) xTicks() ([]float64, []string) {
+	pos := make([]float64, len(b.labels))
+	for i := range b.labels {
+		pos[i] = float64(i) + 0.5
+	}
+	return pos, b.labels
+}
+
+func (b *BoxPlot) buildSeries(p *plotPainter, xs, ys *linearScale, opts *seriesOpts) {
+	unit := xs.toPixel(1) - xs.toPixel(0)
+	boxW := unit * 0.5
+	capW := unit * 0.22
+
+	for i := range b.datasets {
+		st := &b.stats[i]
+		if !st.valid {
+			continue
+		}
+		col := boxColors[i%len(boxColors)]
+		hover := i == opts.hoverIdx
+		cx := xs.toPixel(float64(i) + 0.5)
+
+		// IQR box.
+		fill := color.NRGBA{R: col.R, G: col.G, B: col.B, A: 110}
+		if hover {
+			fill = color.NRGBA{R: col.R / 2, G: col.G / 2, B: col.B / 2, A: 160}
+		}
+		boxTop := ys.toPixel(st.q3)
+		boxBot := ys.toPixel(st.q1)
+		p.rect(cx-boxW/2, boxTop, boxW, boxBot-boxTop, fill)
+
+		// Box outline + median.
+		p.line(cx-boxW/2, boxTop, cx+boxW/2, boxTop, col, 1)
+		p.line(cx-boxW/2, boxBot, cx+boxW/2, boxBot, col, 1)
+		p.line(cx-boxW/2, boxTop, cx-boxW/2, boxBot, col, 1)
+		p.line(cx+boxW/2, boxTop, cx+boxW/2, boxBot, col, 1)
+		medY := ys.toPixel(st.med)
+		p.line(cx-boxW/2, medY, cx+boxW/2, medY, darken(col, 0.6), 2)
+
+		// Whiskers with caps.
+		loY, hiY := ys.toPixel(st.lo), ys.toPixel(st.hi)
+		p.line(cx, loY, cx, boxBot, col, 1)
+		p.line(cx, boxTop, cx, hiY, col, 1)
+		p.line(cx-capW/2, loY, cx+capW/2, loY, col, 1)
+		p.line(cx-capW/2, hiY, cx+capW/2, hiY, col, 1)
+
+		// Mean marker.
+		mY := ys.toPixel(st.mean)
+		p.rect(cx-3, mY-3, 6, 6, darken(col, 0.5))
+
+		// Outliers.
+		for _, o := range st.outliers {
+			oY := ys.toPixel(o)
+			p.rect(cx-2.5, oY-2.5, 5, 5, col)
+		}
+
+		if opts.showValues {
+			p.text(cx-40, hiY-16, 80, 12, "med "+formatTick(st.med), colText, 10, fyne.TextAlignCenter)
+		}
+	}
+}
+
+func (b *BoxPlot) hitTest(px, py float32, xs, ys *linearScale) (hitResult, bool) {
+	if len(b.datasets) == 0 {
+		return hitResult{}, false
+	}
+	i := int(xs.fromPixel(px))
+	if i < 0 {
+		i = 0
+	}
+	if i >= len(b.datasets) {
+		i = len(b.datasets) - 1
+	}
+	label := ""
+	if i < len(b.labels) {
+		label = b.labels[i]
+	}
+	st := &b.stats[i]
+	summary := "n/a"
+	med := 0.0
+	if st.valid {
+		med = st.med
+		summary = fmt.Sprintf("median %s (n=%d)", formatTick(st.med), st.n)
+	}
+	return hitResult{Index: i, Label: label, Value: med, ValueStr: summary}, true
+}
+
+// --- Risor method surface ----------------------------------------------------
+
+func (g *BoxPlot) GetAttr(name string) (object.Object, bool) {
+	switch name {
+	case "SetData":
+		return object.NewBuiltin("chart.boxplot.SetData", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 2 {
+				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=2", len(args))
+			}
+			labels, err := stringSliceArg(args[0])
+			if err != nil {
+				return nil, err
+			}
+			list, ok := args[1].(*object.List)
+			if !ok {
+				return nil, fmt.Errorf("type error: expected a list of lists for datasets, got %s", args[1].Type())
+			}
+			datasets := make([][]float64, 0, len(list.Value()))
+			for _, item := range list.Value() {
+				ds, err := floatSliceArg(item)
+				if err != nil {
+					return nil, err
+				}
+				datasets = append(datasets, ds)
+			}
+			if len(labels) != len(datasets) {
+				return nil, fmt.Errorf("chart error: labels and datasets must have same length (got %d labels, %d datasets)", len(labels), len(datasets))
+			}
+			guithread.Do(func() {
+				g.labels, g.datasets = labels, datasets
+				g.computeStats()
+				g.clearHover()
+				g.recomputeDomains()
+				g.refresh()
+			})
+			return object.Nil, nil
+		}), true
+	}
+	return g.chartCore.getAttr(name)
 }

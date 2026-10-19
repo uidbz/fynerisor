@@ -109,13 +109,21 @@ All standard Fyne containers are supported:
 - **binding.NewBool()** - Boolean data binding
 - Widget properties can be bound to data sources for reactive updates
 
-## Charts (via go-echarts)
+## Charts (native canvas engine)
 
-- **Line charts** - Line plots with multiple series
-- **Bar charts** - Bar/column charts
-- **Pie charts** - Pie/donut charts
-- **Scatter plots** - XY scatter plots
-- Interactive features: zoom, pan, tooltips, legends
+Rendered from Fyne canvas primitives (no image snapshots), with a shared
+interactive engine in `gui/chart/`:
+
+- **chart.NewBarChart** - Categorical bars (nominal X axis)
+- **chart.NewLineChart** - Line plots (continuous axes)
+- **chart.NewScatterChart** - XY scatter plots (2D zoom/pan)
+- **chart.NewHistogram** - Distribution bins + togglable normal-curve overlay
+- **chart.NewBoxPlot** - Tukey boxes: IQR, median, whiskers (1.5*IQR), mean, outliers
+
+Interactive on every type: hover tooltip + highlight, `OnTap`/`OnHover`/
+`OnSecondaryTap` callbacks, wheel zoom at cursor, drag pan, double-click
+reset, live data methods (`SetValue`/`SetData`/`SetPoints`/...), and SVG
+export (`SaveImage`/`WriteSVG`) that reproduces exactly what is on screen.
 
 ## Modules Available
 

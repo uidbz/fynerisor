@@ -35,3 +35,26 @@ func normalPDF(x, mean, stddev float64) float64 {
 	exponent := -0.5 * math.Pow((x-mean)/stddev, 2)
 	return (1.0 / (stddev * math.Sqrt(2*math.Pi))) * math.Exp(exponent)
 }
+
+// quantile returns the q-th quantile (0..1) of a sorted slice using linear
+// interpolation. Returns 0 for empty input.
+func quantile(sorted []float64, q float64) float64 {
+	n := len(sorted)
+	if n == 0 {
+		return 0
+	}
+	if n == 1 {
+		return sorted[0]
+	}
+	pos := q * float64(n-1)
+	lo := int(math.Floor(pos))
+	hi := int(math.Ceil(pos))
+	if hi >= n {
+		hi = n - 1
+	}
+	if lo == hi {
+		return sorted[lo]
+	}
+	frac := pos - float64(lo)
+	return sorted[lo]*(1-frac) + sorted[hi]*frac
+}

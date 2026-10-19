@@ -6,7 +6,7 @@ This example demonstrates the various chart types available in fynerisor:
 - **Line Chart** - Show trends over continuous data
 - **Scatter Plot** - Visualize individual data points
 - **Histogram** - Show distribution of numerical data with normal distribution overlay
-- **Box Plot** - Compare distributions across groups with normal distribution curves
+- **Box Plot** - Compare distributions across groups (Tukey boxes with whiskers and outliers)
 
 ## Features Demonstrated
 
@@ -73,12 +73,18 @@ chart.NewBoxPlot(title, ylabel, labels, datasets)
 - `labels` (array of strings): Group labels
 - `datasets` (array of arrays): Each inner array contains the data for one group
 
-The box plot shows quartiles, median, and outliers for each group, with fitted normal distribution curves overlaid for visual comparison of the distributions.
+The box plot shows a Tukey summary for each group: IQR box, median line,
+whiskers at 1.5*IQR, mean marker, and outlier points.
 
 ## Notes
 
-All charts are rendered at a fixed resolution of 8x6 inches for consistent quality regardless of the number of data points. Charts are generated using the [gonum/plot](https://github.com/gonum/plot) library.
+All charts are live widgets rendered from Fyne canvas primitives. Hovering
+highlights elements with a tooltip; mouse wheel zooms, dragging pans, and
+double-clicking resets the view. Every chart also supports event callbacks
+(`OnTap`, `OnHover`, `OnSecondaryTap`), live data updates, and SVG export
+(`SaveImage`). See `examples/42-interactive-charts` for those features.
 
 Statistical features:
-- **Histogram**: Automatically calculates and overlays the normal distribution curve based on the data's mean and standard deviation
-- **Box Plot**: Shows both the five-number summary (box and whiskers) and fitted normal distribution curves for each group
+- **Histogram**: Overlays the normal distribution curve fitted to the data's
+  mean and standard deviation (toggle with `ShowNormal(bool)`)
+- **Box Plot**: Five-number summary with Tukey whiskers and outlier markers

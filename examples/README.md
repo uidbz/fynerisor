@@ -65,6 +65,7 @@ Each example has its own README with detailed explanation. Browse the directorie
 - **39-json-headless** - JSON module: parse/marshal/valid/read/write (headless, core only)
 - **40-concurrent-batch** - Parallel batch execution with `core.EvalBatch` (headless, core only)
 - **41-table-header-levels** - Two-row (hierarchical) table header from a tie table (requires tie-triplestore)
+- **42-interactive-charts** - Hover tooltips, tap/right-click callbacks, zoom/pan, live toggles, and SVG export on canvas-based charts
 
 ## Example Structure
 

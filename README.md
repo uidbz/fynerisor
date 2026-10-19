@@ -7,7 +7,7 @@ Fynerisor provides Risor script bindings for the Fyne GUI toolkit, allowing you 
 ## Features
 
 - 🎨 **Comprehensive Widgets** - 48+ widgets covering all common UI needs
-- 📊 **Charts** - Bar, line, scatter, histogram, and box plot charts with statistical overlays
+- 📊 **Interactive Charts** - Bar, line, scatter, histogram, and box plot charts built from Fyne canvas primitives with hover tooltips, click/right-click events, zoom/pan, live data updates, and SVG export
 - ⌨️ **Keyboard Shortcuts** - Global shortcuts and menu integration
 - 🌐 **HTTP, SQL, OS & More** - Built-in modules for web requests, databases, file I/O
 - 📦 **Script Imports** - Load reusable code with namespace isolation
@@ -335,17 +335,33 @@ canvas.NewImageFromFile(path)
 
 ### chart
 
-Charting with several chart types:
+Interactive charts built from Fyne canvas primitives. Hover tooltips, element
+highlighting, click/right-click callbacks, wheel zoom, drag pan (double-click
+resets), feature toggles, live data updates, and SVG export — on every type:
 
 ```js
 chart.NewBarChart(title, ylabel, categories, values)
 chart.NewLineChart(title, xlabel, ylabel, xvalues, yvalues)
 chart.NewScatterChart(title, xlabel, ylabel, xvalues, yvalues)
-chart.NewHistogram(title, xlabel, ylabel, values, binCount)  // normal-curve overlay
-chart.NewBoxPlot(title, ylabel, groupLabels, valueGroups)     // normal-curve overlay
+chart.NewHistogram(title, xlabel, ylabel, values, binCount)  // togglable normal-curve overlay
+chart.NewBoxPlot(title, ylabel, groupLabels, valueGroups)    // Tukey boxes, whiskers, outliers
 ```
 
-See `examples/35-charts` for a complete demonstration.
+Every chart object also provides:
+
+```js
+chartObj.OnTap((i, label, value) => ...)        // left click
+chartObj.OnHover((i, label, value) => ...)      // hover enter
+chartObj.OnSecondaryTap((i, label, value) => ...) // right click (context menus)
+chartObj.ShowGrid(bool); chartObj.ShowValues(bool)
+chartObj.SetZoomEnabled(bool); chartObj.ResetZoom()
+chartObj.SaveImage("out.svg"[, width, height]); chartObj.WriteSVG()
+chartObj.SetTitle("new title")
+// plus per-type data methods: SetValue/SetData/SetPoints/SetBins/SetColor/...
+```
+
+See `examples/35-charts` for the basic types and `examples/42-interactive-charts`
+for the interactive features.
 
 ## Concurrency
 

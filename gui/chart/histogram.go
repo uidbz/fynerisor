@@ -1,35 +1,68 @@
 package risorchart
 
 import (
-	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"image/color"
 
-	"gonum.org/v1/plot"
-	"gonum.org/v1/plot/plotter"
-	"gonum.org/v1/plot/vg"
-	"gonum.org/v1/plot/vg/draw"
-	"gonum.org/v1/plot/vg/vgimg"
-
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
-	"fyne.io/fyne/v2/container"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
+	"github.com/uidbz/fynerisor/gui/guithread"
 )
 
 var _ object.Object = &Histogram{}
+var _ chartDelegate = &Histogram{}
+var _ fyne.CanvasObject = &Histogram{}
 
 const HistogramType object.Type = "chart.histogram"
 
+var colNormal = color.NRGBA{R: 220, G: 20, B: 60, A: 255} // crimson
+
+// Histogram is an interactive histogram built from Fyne canvas primitives,
+// optionally overlaid with a fitted normal distribution curve. Hovering a bin
+// shows its range and count; wheel zoom and drag pan inspect regions of the
+// distribution (double-click resets).
 type Histogram struct {
-	container *fyne.Container
+	*chartCore
+
+	values []float64
+	bins   int
+
+	// computed binning
+	edgeMin, edgeMax, binWidth float64
+	counts                     []int
+
+	showNormal bool
 }
 
+// NewHistogram creates an interactive histogram with the given title, axis
+// labels, values, and number of bins. Returns an error if bins <= 0.
+func NewHistogram(title, xlabel, ylabel string, values []float64, bins int) (*Histogram, error) {
+	if bins <= 0 {
+		return nil, fmt.Errorf("chart error: bins must be greater than 0 (got %d)", bins)
+	}
+
+	h := &Histogram{
+		values:     values,
+		bins:       bins,
+		showNormal: true,
+	}
+	h.computeBins()
+	h.chartCore = newChartCore(string(HistogramType), h)
+	h.title = title
+	h.xLabel = xlabel
+	h.yLabel = ylabel
+	h.ExtendBaseWidget(h)
+	return h, nil
+}
+
+// --- object.Object ----------------------------------------------------------
+
 func (obj *Histogram) CanvasObject() fyne.CanvasObject {
-	return obj.container
+	return obj
 }
 
 func (r *Histogram) Type() object.Type {
@@ -41,7 +74,7 @@ func (r *Histogram) Inspect() string {
 }
 
 func (r *Histogram) Interface() interface{} {
-	return r.container
+	return r
 }
 
 func (r *Histogram) IsTruthy() bool {
@@ -71,97 +104,175 @@ func (r *Histogram) SetAttr(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", HistogramType, name)
 }
 
+// --- binning -----------------------------------------------------------------
+
+func (h *Histogram) computeBins() {
+	h.counts = make([]int, h.bins)
+	if len(h.values) == 0 {
+		h.edgeMin, h.edgeMax, h.binWidth = 0, 1, 1.0/float64(h.bins)
+		return
+	}
+	minV, maxV := h.values[0], h.values[0]
+	for _, v := range h.values {
+		if v < minV {
+			minV = v
+		}
+		if v > maxV {
+			maxV = v
+		}
+	}
+	if maxV == minV {
+		minV, maxV = minV-0.5, maxV+0.5
+	}
+	h.edgeMin, h.edgeMax = minV, maxV
+	h.binWidth = (maxV - minV) / float64(h.bins)
+	for _, v := range h.values {
+		i := int((v - minV) / h.binWidth)
+		if i >= h.bins {
+			i = h.bins - 1
+		}
+		if i < 0 {
+			i = 0
+		}
+		h.counts[i]++
+	}
+}
+
+// --- chartDelegate ----------------------------------------------------------
+
+func (h *Histogram) dataExtent() (float64, float64, float64, float64) {
+	maxCount := 0
+	for _, c := range h.counts {
+		if c > maxCount {
+			maxCount = c
+		}
+	}
+	if maxCount == 0 {
+		maxCount = 1
+	}
+	return h.edgeMin, h.edgeMax, 0, float64(maxCount) * 1.15
+}
+
+func (h *Histogram) xTicks() ([]float64, []string) {
+	return autoTicks(h.xScale)
+}
+
+func (h *Histogram) buildSeries(p *plotPainter, xs, ys *linearScale, opts *seriesOpts) {
+	base := color.NRGBA{R: 70, G: 130, B: 180, A: 180} // translucent steel blue
+	baseline := ys.toPixel(0)
+	for i, c := range h.counts {
+		x0 := xs.toPixel(h.edgeMin + float64(i)*h.binWidth)
+		x1 := xs.toPixel(h.edgeMin + float64(i+1)*h.binWidth)
+		top := ys.toPixel(float64(c))
+		var col color.Color = base
+		if i == opts.hoverIdx {
+			col = darken(base, 0.7)
+		}
+		p.rect(x0, top, x1-x0, baseline-top, col)
+
+		if opts.showValues && c > 0 {
+			p.text((x0+x1)/2-20, top-14, 40, 12, fmt.Sprintf("%d", c), colText, 10, fyne.TextAlignCenter)
+		}
+	}
+
+	if h.showNormal {
+		mean, stddev := calculateStats(h.values)
+		if stddev > 0 && len(h.values) > 0 {
+			totalArea := float64(len(h.values)) * h.binWidth
+			const samples = 60
+			pxs := make([]float32, samples)
+			pys := make([]float32, samples)
+			for i := 0; i < samples; i++ {
+				x := h.edgeMin + (h.edgeMax-h.edgeMin)*float64(i)/float64(samples-1)
+				pxs[i] = xs.toPixel(x)
+				pys[i] = ys.toPixel(normalPDF(x, mean, stddev) * totalArea)
+			}
+			p.polyline(pxs, pys, colNormal, 2.5)
+
+			// Legend for the two overlays, top-left of the plot area.
+			lx, ly := p.left+10, p.top+8
+			p.rect(lx, ly, 12, 12, base)
+			p.text(lx+16, ly, 110, 12, "Data", colText, 10, fyne.TextAlignLeading)
+			p.rect(lx, ly+18, 12, 12, colNormal)
+			p.text(lx+16, ly+18, 130, 12, "Normal Distribution", colText, 10, fyne.TextAlignLeading)
+		}
+	}
+}
+
+func (h *Histogram) hitTest(px, py float32, xs, ys *linearScale) (hitResult, bool) {
+	if len(h.counts) == 0 {
+		return hitResult{}, false
+	}
+	x := xs.fromPixel(px)
+	i := int((x - h.edgeMin) / h.binWidth)
+	if i < 0 || i >= len(h.counts) {
+		return hitResult{}, false
+	}
+	a := h.edgeMin + float64(i)*h.binWidth
+	b := a + h.binWidth
+	return hitResult{
+		Index:    i,
+		Label:    formatTick(a) + " - " + formatTick(b),
+		Value:    float64(h.counts[i]),
+		ValueStr: fmt.Sprintf("%d", h.counts[i]),
+	}, true
+}
+
+// --- Risor method surface ----------------------------------------------------
+
 func (g *Histogram) GetAttr(name string) (object.Object, bool) {
-	return nil, false
-}
-
-func createHistogram(title, xlabel, ylabel string, values []float64, bins int) ([]byte, error) {
-	p := plot.New()
-	p.Title.Text = title
-	p.Title.TextStyle.Font.Size = 16
-	p.X.Label.Text = xlabel
-	p.X.Label.TextStyle.Font.Size = 12
-	p.Y.Label.Text = ylabel
-	p.Y.Label.TextStyle.Font.Size = 12
-
-	v := make(plotter.Values, len(values))
-	for i, val := range values {
-		v[i] = val
+	switch name {
+	case "SetValues":
+		return object.NewBuiltin("chart.histogram.SetValues", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 1 {
+				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=1", len(args))
+			}
+			values, err := floatSliceArg(args[0])
+			if err != nil {
+				return nil, err
+			}
+			guithread.Do(func() {
+				g.values = values
+				g.computeBins()
+				g.clearHover()
+				g.recomputeDomains()
+				g.refresh()
+			})
+			return object.Nil, nil
+		}), true
+	case "SetBins":
+		return object.NewBuiltin("chart.histogram.SetBins", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 1 {
+				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=1", len(args))
+			}
+			n, err := object.AsInt(args[0])
+			if err != nil {
+				return nil, err
+			}
+			if n < 1 || n > 200 {
+				return nil, fmt.Errorf("chart error: bins must be in [1, 200] (got %d)", n)
+			}
+			guithread.Do(func() {
+				g.bins = int(n)
+				g.computeBins()
+				g.clearHover()
+				g.recomputeDomains()
+				g.refresh()
+			})
+			return object.Nil, nil
+		}), true
+	case "ShowNormal":
+		return object.NewBuiltin("chart.histogram.ShowNormal", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 1 {
+				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=1", len(args))
+			}
+			on := args[0].IsTruthy()
+			guithread.Do(func() {
+				g.showNormal = on
+				g.refresh()
+			})
+			return object.Nil, nil
+		}), true
 	}
-
-	hist, err := plotter.NewHist(v, bins)
-	if err != nil {
-		return nil, fmt.Errorf("could not create histogram: %w", err)
-	}
-	hist.FillColor = color.RGBA{R: 70, G: 130, B: 180, A: 180}
-
-	p.Add(hist)
-
-	// Calculate mean and standard deviation from the data
-	mean, stddev := calculateStats(values)
-
-	// Create normal distribution curve overlay
-	// Scale the curve to match the histogram's total area
-	min, max, _, _ := hist.DataRange()
-	binWidth := (max - min) / float64(bins)
-	totalArea := float64(len(values)) * binWidth // Total area of histogram
-
-	// Create points for the normal distribution curve
-	numPoints := 200
-	pts := make(plotter.XYs, numPoints)
-	xStep := (max - min) / float64(numPoints-1)
-
-	for i := 0; i < numPoints; i++ {
-		x := min + float64(i)*xStep
-		// PDF scaled by total area to match histogram height
-		y := normalPDF(x, mean, stddev) * totalArea
-		pts[i].X = x
-		pts[i].Y = y
-	}
-
-	// Create line for normal distribution
-	line, err := plotter.NewLine(pts)
-	if err != nil {
-		return nil, fmt.Errorf("could not create normal curve: %w", err)
-	}
-	line.LineStyle.Color = color.RGBA{R: 220, G: 20, B: 60, A: 255} // Crimson
-	line.LineStyle.Width = vg.Points(2.5)
-
-	p.Add(line)
-
-	// Add legend
-	p.Legend.Add("Data", hist)
-	p.Legend.Add("Normal Distribution", line)
-	p.Legend.Top = true
-	p.Legend.Left = true
-
-	// Fixed resolution for consistent chart quality
-	img := vgimg.New(8*vg.Inch, 6*vg.Inch)
-	dc := draw.New(img)
-	p.Draw(dc)
-
-	var buf bytes.Buffer
-	png := vgimg.PngCanvas{Canvas: img}
-	if _, err := png.WriteTo(&buf); err != nil {
-		return nil, fmt.Errorf("could not write PNG to buffer: %w", err)
-	}
-
-	return buf.Bytes(), nil
-}
-
-// NewHistogram creates a new histogram widget with the given title, axis labels, values, and number of bins.
-// Returns an error if the chart cannot be created.
-func NewHistogram(title, xlabel, ylabel string, values []float64, bins int) (*Histogram, error) {
-	if bins <= 0 {
-		return nil, fmt.Errorf("chart error: bins must be greater than 0 (got %d)", bins)
-	}
-
-	b, err := createHistogram(title, xlabel, ylabel, values, bins)
-	if err != nil {
-		return nil, fmt.Errorf("create histogram: %w", err)
-	}
-
-	img := canvas.NewImageFromResource(fyne.NewStaticResource("histogram", b))
-	img.FillMode = canvas.ImageFillOriginal
-	return &Histogram{container: container.NewStack(img)}, nil
+	return g.chartCore.getAttr(name)
 }

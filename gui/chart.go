@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	risorchart "github.com/uidbz/fynerisor/gui/chart"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
+	risorchart "github.com/uidbz/fynerisor/gui/chart"
 )
 
 var _ object.Object = &Chart{}
@@ -16,13 +16,19 @@ const ChartType object.Type = "chart"
 
 // Chart is a factory object that provides chart creation functions to Risor scripts.
 // It implements object.Object and exposes methods via GetAttr() for creating
-// visualization widgets like bar charts, line charts, scatter plots, and histograms.
+// interactive visualization widgets like bar charts, line charts, scatter plots,
+// and histograms. Charts are built from Fyne canvas primitives, so they support
+// hover tooltips, click/right-click callbacks, wheel zoom, drag pan, live data
+// updates, and SVG export via SaveImage/WriteSVG.
 //
 // Available in Risor scripts as the global 'chart' object.
 //
 // Example usage in Risor:
 //
 //	let bars = chart.NewBarChart("Sales", "Revenue", ["Q1", "Q2", "Q3"], [100, 150, 200])
+//	bars.OnTap((i, label, value) => print(sprintf("%s: %.1f", label, value)))
+//	bars.ShowValues(true)
+//	bars.SaveImage("sales.svg")
 //	let line = chart.NewLineChart("Growth", "Time", "Value", [1, 2, 3, 4], [10, 20, 15, 30])
 //	let scatter = chart.NewScatterChart("Data Points", "X", "Y", [1, 2, 3], [4, 5, 6])
 //	let hist = chart.NewHistogram("Distribution", "Value", "Frequency", [1, 2, 2, 3, 3, 3, 4], 10)
@@ -73,7 +79,7 @@ func (obj *Chart) GetAttr(name string) (object.Object, bool) {
 	case "NewBarChart":
 		return object.NewBuiltin("chart.NewBarChart", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 4 {
-				return object.Errorf("wrong number of arguments. got=%d, want=4", len(args)), nil
+				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=4", len(args))
 			}
 			title, err := object.AsString(args[0])
 			if err != nil {
@@ -97,7 +103,7 @@ func (obj *Chart) GetAttr(name string) (object.Object, bool) {
 
 			chart, err := risorchart.NewBarChart(title, ylabel, labels, values)
 			if err != nil {
-				return object.NewError(err), nil
+				return nil, err
 			}
 
 			return chart, nil
@@ -105,7 +111,7 @@ func (obj *Chart) GetAttr(name string) (object.Object, bool) {
 	case "NewLineChart":
 		return object.NewBuiltin("chart.NewLineChart", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 5 {
-				return object.Errorf("wrong number of arguments. got=%d, want=5", len(args)), nil
+				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=5", len(args))
 			}
 			title, err := object.AsString(args[0])
 			if err != nil {
@@ -134,7 +140,7 @@ func (obj *Chart) GetAttr(name string) (object.Object, bool) {
 
 			chart, err := risorchart.NewLineChart(title, xlabel, ylabel, xvalues, yvalues)
 			if err != nil {
-				return object.NewError(err), nil
+				return nil, err
 			}
 
 			return chart, nil
@@ -142,7 +148,7 @@ func (obj *Chart) GetAttr(name string) (object.Object, bool) {
 	case "NewScatterChart":
 		return object.NewBuiltin("chart.NewScatterChart", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 5 {
-				return object.Errorf("wrong number of arguments. got=%d, want=5", len(args)), nil
+				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=5", len(args))
 			}
 			title, err := object.AsString(args[0])
 			if err != nil {
@@ -171,7 +177,7 @@ func (obj *Chart) GetAttr(name string) (object.Object, bool) {
 
 			chart, err := risorchart.NewScatterChart(title, xlabel, ylabel, xvalues, yvalues)
 			if err != nil {
-				return object.NewError(err), nil
+				return nil, err
 			}
 
 			return chart, nil
@@ -179,7 +185,7 @@ func (obj *Chart) GetAttr(name string) (object.Object, bool) {
 	case "NewHistogram":
 		return object.NewBuiltin("chart.NewHistogram", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 5 {
-				return object.Errorf("wrong number of arguments. got=%d, want=5", len(args)), nil
+				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=5", len(args))
 			}
 			title, err := object.AsString(args[0])
 			if err != nil {
@@ -208,7 +214,7 @@ func (obj *Chart) GetAttr(name string) (object.Object, bool) {
 
 			chart, err := risorchart.NewHistogram(title, xlabel, ylabel, values, int(bins))
 			if err != nil {
-				return object.NewError(err), nil
+				return nil, err
 			}
 
 			return chart, nil
@@ -216,7 +222,7 @@ func (obj *Chart) GetAttr(name string) (object.Object, bool) {
 	case "NewBoxPlot":
 		return object.NewBuiltin("chart.NewBoxPlot", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 4 {
-				return object.Errorf("wrong number of arguments. got=%d, want=4", len(args)), nil
+				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=4", len(args))
 			}
 			title, err := object.AsString(args[0])
 			if err != nil {
@@ -236,7 +242,7 @@ func (obj *Chart) GetAttr(name string) (object.Object, bool) {
 			// Get list of datasets (each dataset is a list of numbers)
 			datasetsList, ok := args[3].(*object.List)
 			if !ok {
-				return object.Errorf("type error: expected a list of lists for datasets"), nil
+				return nil, fmt.Errorf("type error: expected a list of lists for datasets")
 			}
 
 			datasets := make([][]float64, 0, len(datasetsList.Value()))
@@ -250,7 +256,7 @@ func (obj *Chart) GetAttr(name string) (object.Object, bool) {
 
 			chart, err := risorchart.NewBoxPlot(title, ylabel, labels, datasets)
 			if err != nil {
-				return object.NewError(err), nil
+				return nil, err
 			}
 
 			return chart, nil

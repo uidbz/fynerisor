@@ -768,6 +768,7 @@ The `examples/` directory contains complete working applications. See
 - **33-image-gallery** - List image files via widget-mode table
 - **34-keyboard-shortcuts** - Global keyboard shortcuts
 - **35-charts** - Bar, line, scatter, histogram, and box plot charts
+- **42-interactive-charts** - Interactive canvas-based charts: hover tooltips, tap/right-click callbacks, zoom/pan, live data toggles, SVG export
 - **37-tie-gui** - Tie triple store browser GUI (`@tie`, requires tie-triplestore)
 - **41-table-header-levels** - Multi-row (hierarchical) table header via `table.HeaderLevels` (`@tie`, requires tie-triplestore)
 

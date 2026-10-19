@@ -24,7 +24,7 @@ Always import the specific package you need.
 - Custom Go type integration (core.WithGlobal, gui.WithGlobal)
 - Application versioning (core.SetAppVersion)
 - Modules: HTTP, SQL, Tie (triple store), OS, Time, Strings, Filepath, IO, Exec, JSON, CSV
-- Charts: bar, line, scatter, histogram, box plot (with statistical overlays)
+- Charts: bar, line, scatter, histogram, box plot — interactive (hover, click events, zoom/pan) with SVG export
 - Browser package: load Risor scripts from URLs (see browser/)
 - Static compilation support (core package)
 - Widget visibility control (Hide/Show methods)
@@ -902,7 +902,10 @@ let cur = clipboard.Read()
 
 ## Charts
 
-The `chart` global provides several chart types:
+The `chart` global provides interactive chart types built from Fyne canvas
+primitives. All charts support hover tooltips, click/right-click callbacks,
+wheel zoom, drag pan (double-click resets), feature toggles, live data
+updates, and SVG export — no options or setup required:
 
 ```risor
 // Bar chart: title, y-axis label, categories, values
@@ -910,29 +913,60 @@ let bar = chart.NewBarChart(
     "Quarterly Sales", "Revenue ($K)",
     ["Q1", "Q2", "Q3", "Q4"], [120, 150, 180, 200])
 
+// Events: (index, label, value) per hit
+bar.OnTap((i, label, value) => print(sprintf("%s: %v", label, value)))
+bar.OnSecondaryTap((i, label, value) => showContextMenu(i, label, value))
+
+// Feature toggles and live data
+bar.ShowGrid(false)
+bar.ShowValues(true)              // value labels above bars
+bar.SetBarColor(1, "#e11d48")     // name or #hex
+bar.SetValue(2, 260)              // live update (view resets to fit)
+bar.SetData(["A", "B"], [1, 2])   // replace all data
+
+// Zoom / pan
+bar.SetZoomEnabled(true)
+bar.ResetZoom()                   // also bound to double-click
+
+// Static export (SVG, exactly what is on screen; optional width/height)
+bar.SaveImage("sales.svg")
+let svg = bar.WriteSVG(800, 600)
+
 // Line chart: title, x-label, y-label, x-values, y-values
 let line = chart.NewLineChart(
     "Growth", "Month", "Revenue ($K)",
     [1, 2, 3, 4, 5], [10, 15, 13, 17, 20])
+line.SetPoints(xs, ys)
+line.SetColor("red")
+line.SetLineWidth(3)
 
 // Scatter plot: title, x-label, y-label, x-values, y-values
+// Wheel zoom and drag pan work in 2D around the cursor.
 let scatter = chart.NewScatterChart(
     "Data Points", "X", "Y",
     [1, 2, 3, 4], [12, 16, 15, 18])
+scatter.SetPoints(xs, ys)
+scatter.SetMarkerSize(8)
 
 // Histogram: title, x-label, y-label, values, bin count
-// Automatically overlays a fitted normal-distribution curve
+// Overlays a fitted normal-distribution curve (togglable)
 let hist = chart.NewHistogram(
     "Distribution", "Value", "Frequency",
     [1.2, 1.5, 2.1, 2.5, 3.1, 3.5, 4.1], 15)
+hist.SetBins(20)
+hist.ShowNormal(false)
 
 // Box plot: title, y-label, group labels, list of value groups
-// Shows five-number summary plus fitted normal-distribution curves
+// Tukey box (IQR), median, whiskers (1.5*IQR), mean marker, outliers
 let box = chart.NewBoxPlot(
     "Group Comparison", "Values",
     ["A", "B", "C"],
     [[12, 14, 16, 18], [15, 18, 22, 25], [10, 13, 16, 20]])
+box.SetData(labels, groups)
 ```
+
+Hover a bar/point/bin to see a tooltip automatically; the hovered element
+highlights. See `examples/42-interactive-charts` for a full demo.
 
 ## Browser Package
 

@@ -17,6 +17,49 @@
 
 ### Added
 
+- **Interactive charts.** All five chart types (`chart.NewBarChart`,
+  `NewLineChart`, `NewScatterChart`, `NewHistogram`, `NewBoxPlot`) are now
+  live widgets built from Fyne canvas primitives instead of static PNG
+  snapshots rendered by gonum/plot. On every chart, with no setup:
+  hovering highlights the element and shows a label/value tooltip; the mouse
+  wheel zooms around the cursor; dragging pans; double-click resets the view.
+  New script API per chart: `OnTap/OnHover/OnSecondaryTap((i, label, value) => ...)`
+  (right-click + `widget.NewPopUp` enables context menus), feature toggles
+  (`ShowGrid`, `ShowValues`, histogram `ShowNormal`), zoom controls
+  (`SetZoomEnabled`, `ResetZoom`), live data updates (`SetValue`, `SetData`,
+  `SetPoints`, `SetBins`, `SetValues`, and `SetLabel`),
+  appearance setters (`SetColor`, `SetBarColor`, `SetMarkerSize`,
+  `SetLineWidth`), and `SetTitle`.
+  See `examples/42-interactive-charts`.
+
+- **SVG chart export.** `SaveImage(path[, w, h])` and `WriteSVG([w, h])` on
+  every chart serialize the exact scene being displayed (static, selectable
+  text; crisp at any scale). PNG is intentionally not supported; SVG converts
+  cleanly for reports (pandoc embeds it automatically). The old "chart as a
+  generated image" use case is fully covered by exporting, so the static
+  renderer was removed entirely; gonum/plot is no longer a dependency.
+
+### Changed
+
+- **Chart engine internals (`gui/chart/`).** New shared engine: `scale.go`
+  (linear scales with clamped zoom/pan and nice-tick generation), `scene.go`
+  (serializable primitive scene + clip-aware painter + SVG writer),
+  `core.go` (widget/renderer, pooled canvas objects, axes/grid/tooltip
+  chrome), `interact.go` (hover/tap/scroll/drag handling + shared Risor
+  verbs). Chart types supply geometry + hit-testing only.
+- **Chart errors are real Risor exceptions.** Chart builtins now return Go
+  errors (which throw and are catchable with `try/catch`) instead of the
+  previous silently-returned error objects. Constructor validation is
+  unchanged.
+- **Box plot visuals.** Now a Tukey box plot (IQR box, median, 1.5*IQR
+  whiskers, mean marker, outlier points) instead of box + fitted normal
+  curve overlay. The histogram normal curve remains (togglable via
+  `ShowNormal`).
+- **`log.Fatalf` removed from chart construction** (bad data no longer
+  crashes the process; it raises a Risor error).
+
+### Added
+
 - **`clipboard` global** with `clipboard.Copy(text)` and `clipboard.Read()`.
   Wraps fyne's `app.Clipboard` through `guithread.Do`. Handy for copy buttons on
   non-selectable widgets (e.g. Markdown/RichText, which fyne cannot select).
