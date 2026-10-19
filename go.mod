@@ -1,6 +1,6 @@
 module github.com/uidbz/fynerisor
 
-go 1.25.0
+go 1.27.2
 
 require (
 	fyne.io/fyne/v2 v2.8.2
@@ -10,7 +10,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/microsoft/go-mssqldb v1.8.0
-	github.com/uidbz/tie v0.5.2-0.20260904115826-410474f21ff3
+	github.com/uidbz/tie v0.7.3
 	github.com/xo/dburl v0.24.2
 	github.com/xuri/excelize/v2 v2.10.1
 	golang.design/x/clipboard v0.7.1
@@ -89,7 +89,7 @@ require (
 	golang.org/x/image v0.34.0 // indirect
 	golang.org/x/mobile v0.0.0-20250606033058-a2a15c67f36f // indirect
 	golang.org/x/net v0.50.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
