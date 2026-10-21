@@ -3,26 +3,44 @@ package os
 
 import (
 	"context"
+	"io"
 	"os"
 	"os/exec"
 	"os/user"
+	"path/filepath"
 	"runtime"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 )
+
+// scriptArgs holds the command-line arguments passed to the running script.
+// Hosts populate it via SetScriptArgs; the args builtin exposes it to scripts.
+var scriptArgs []string
+
+// SetScriptArgs stores the script's command-line arguments so scripts can
+// access them through os.args(). It mirrors risor v1's SetScriptArgs.
+func SetScriptArgs(args []string) {
+	scriptArgs = args
+}
 
 // Module returns the os module for risor
 func Module() *object.Module {
 	return object.NewBuiltinsModule("os", map[string]object.Object{
 		"goos":         object.NewBuiltin("os.goos", goos),
 		"current_user": object.NewBuiltin("os.current_user", currentUser),
+		"home_dir":     object.NewBuiltin("os.home_dir", homeDir),
 		"open_browser": object.NewBuiltin("os.open_browser", openBrowser),
 		"read_file":    object.NewBuiltin("os.read_file", readFile),
 		"write_file":   object.NewBuiltin("os.write_file", writeFile),
+		"create":       object.NewBuiltin("os.create", create),
+		"copy_file":    object.NewBuiltin("os.copy_file", copyFile),
 		"read_dir":     object.NewBuiltin("os.read_dir", readDir),
+		"mkdir":        object.NewBuiltin("os.mkdir", mkdir),
 		"mkdir_all":    object.NewBuiltin("os.mkdir_all", mkdirAll),
+		"remove_all":   object.NewBuiltin("os.remove_all", removeAll),
 		"is_dir":       object.NewBuiltin("os.is_dir", isDir),
 		"getwd":        object.NewBuiltin("os.getwd", getwd),
+		"args":         object.NewBuiltin("os.args", scriptArgsFunc),
 		"exec":         object.NewBuiltin("os.exec", execCommand),
 	})
 }
@@ -55,6 +73,21 @@ func currentUser(ctx context.Context, args ...object.Object) (object.Object, err
 	}
 
 	return object.NewMap(userMap), nil
+}
+
+// homeDir returns the current user's home directory, a shortcut for
+// current_user().home_dir
+func homeDir(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) != 0 {
+		return object.Errorf("os.home_dir: expected 0 arguments, got %d", len(args)), nil
+	}
+
+	u, err := user.Current()
+	if err != nil {
+		return object.NewError(err), nil
+	}
+
+	return object.NewString(u.HomeDir), nil
 }
 
 // openBrowser opens a URL in the default browser
@@ -135,6 +168,73 @@ func writeFile(ctx context.Context, args ...object.Object) (object.Object, error
 	return object.Nil, nil
 }
 
+// create creates an empty file (truncating it if it already exists)
+func create(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) != 1 {
+		return object.Errorf("os.create: expected 1 argument, got %d", len(args)), nil
+	}
+
+	path, err := object.AsString(args[0])
+	if err != nil {
+		return nil, err
+	}
+
+	f, err := os.Create(path)
+	if err != nil {
+		return object.NewError(err), nil
+	}
+
+	if err := f.Close(); err != nil {
+		return object.NewError(err), nil
+	}
+
+	return object.Nil, nil
+}
+
+// copyFile copies a file from src to dst, preserving the source file mode
+func copyFile(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) != 2 {
+		return object.Errorf("os.copy_file: expected 2 arguments, got %d", len(args)), nil
+	}
+
+	src, err := object.AsString(args[0])
+	if err != nil {
+		return nil, err
+	}
+
+	dst, err := object.AsString(args[1])
+	if err != nil {
+		return nil, err
+	}
+
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return object.NewError(err), nil
+	}
+
+	in, err := os.Open(src)
+	if err != nil {
+		return object.NewError(err), nil
+	}
+	defer in.Close()
+
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, srcInfo.Mode())
+	if err != nil {
+		return object.NewError(err), nil
+	}
+
+	if _, err := io.Copy(out, in); err != nil {
+		out.Close()
+		return object.NewError(err), nil
+	}
+
+	if err := out.Close(); err != nil {
+		return object.NewError(err), nil
+	}
+
+	return object.Nil, nil
+}
+
 // readDir reads the directory and returns an iterator of directory entries
 func readDir(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 1 {
@@ -157,6 +257,7 @@ func readDir(ctx context.Context, args ...object.Object) (object.Object, error) 
 		info, _ := entry.Info()
 		entryMap := map[string]object.Object{
 			"name":   object.NewString(entry.Name()),
+			"path":   object.NewString(filepath.Join(path, entry.Name())),
 			"is_dir": object.NewBool(entry.IsDir()),
 		}
 		if info != nil {
@@ -198,6 +299,54 @@ func mkdirAll(ctx context.Context, args ...object.Object) (object.Object, error)
 	return object.Nil, nil
 }
 
+// mkdir creates a single directory (parents must already exist)
+func mkdir(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) < 1 || len(args) > 2 {
+		return object.Errorf("os.mkdir: expected 1 or 2 arguments, got %d", len(args)), nil
+	}
+
+	path, err := object.AsString(args[0])
+	if err != nil {
+		return nil, err
+	}
+
+	// Default permission is 0755
+	perm := os.FileMode(0755)
+	if len(args) == 2 {
+		permInt, err := object.AsInt(args[1])
+		if err != nil {
+			return nil, err
+		}
+		perm = os.FileMode(permInt)
+	}
+
+	err = os.Mkdir(path, perm)
+	if err != nil {
+		return object.NewError(err), nil
+	}
+
+	return object.Nil, nil
+}
+
+// removeAll removes a directory or file along with any children it contains
+func removeAll(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) != 1 {
+		return object.Errorf("os.remove_all: expected 1 argument, got %d", len(args)), nil
+	}
+
+	path, err := object.AsString(args[0])
+	if err != nil {
+		return nil, err
+	}
+
+	err = os.RemoveAll(path)
+	if err != nil {
+		return object.NewError(err), nil
+	}
+
+	return object.Nil, nil
+}
+
 // isDir checks if a path is a directory
 func isDir(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 1 {
@@ -230,6 +379,16 @@ func getwd(ctx context.Context, args ...object.Object) (object.Object, error) {
 	}
 
 	return object.NewString(wd), nil
+}
+
+// scriptArgsFunc returns the command-line arguments passed to the script,
+// as populated by SetScriptArgs
+func scriptArgsFunc(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) != 0 {
+		return object.Errorf("os.args: expected 0 arguments, got %d", len(args)), nil
+	}
+
+	return object.NewStringList(scriptArgs), nil
 }
 
 // execCommand executes a command with arguments

@@ -185,7 +185,9 @@ func WithHTTPImport() Option {
 }
 
 // WithOS enables the OS module for accessing OS functionality from Risor scripts.
-// The module provides functions: goos, current_user, and open_browser.
+// The module provides functions: goos, current_user, home_dir, open_browser,
+// read_file, write_file, create, copy_file, read_dir, mkdir, mkdir_all,
+// remove_all, is_dir, getwd, args, and exec.
 //
 // Example:
 //
@@ -203,6 +205,30 @@ func WithOS() Option {
 		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
 			env["os"] = os.Module()
 			modules["os"] = true
+		},
+	}
+}
+
+// WithScriptArgs sets the command-line arguments exposed to scripts via
+// os.args(). Hosts embedding fynerisor should pass the script's trailing
+// arguments here.
+//
+// Example:
+//
+//	window := fynerisor.NewWindow(w,
+//	    fynerisor.WithOS(),
+//	    fynerisor.WithScriptArgs("input.csv", "--force"),
+//	)
+//
+// Usage in script:
+//
+//	for arg in os.args() {
+//	    print(arg)
+//	}
+func WithScriptArgs(args ...string) Option {
+	return moduleOption{
+		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
+			os.SetScriptArgs(args)
 		},
 	}
 }

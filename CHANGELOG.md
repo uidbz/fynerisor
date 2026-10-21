@@ -32,6 +32,16 @@
   `SetLineWidth`), and `SetTitle`.
   See `examples/42-interactive-charts`.
 
+- **OS module parity with plain risor (issue #1).** `os` gains `copy_file(src,
+  dst)` (preserves mode), `remove_all(path)`, `mkdir(path[, mode])`,
+  `create(path)`, `args()` (script arguments, like risor v1's `os.args`), and
+  `home_dir()` (shortcut for `current_user().home_dir`). These restore names
+  goto-apps expect from the v1 os module that fynerisor's trimmed module had
+  dropped. `os.read_dir` entries now also carry a full `path` field next to
+  `name`. Script arguments are populated by the `fynerisor` CLI automatically;
+  embedding hosts use `core.WithScriptArgs(...)` / `fynerisor.WithScriptArgs(...)`
+  (thin wrapper over `osmodule.SetScriptArgs`).
+
 - **SVG chart export.** `SaveImage(path[, w, h])` and `WriteSVG([w, h])` on
   every chart serialize the exact scene being displayed (static, selectable
   text; crisp at any scale). PNG is intentionally not supported; SVG converts

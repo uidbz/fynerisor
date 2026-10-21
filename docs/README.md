@@ -902,7 +902,27 @@ Enable with `gui.WithOS()`:
 ```js
 let platform = os.goos()           // "linux", "windows", "darwin"
 let user = os.current_user()       // Map with username, uid, home_dir, etc.
+os.home_dir()                      // Shortcut for current_user().home_dir
 os.open_browser("https://example.com")  // Open URL in default browser
+
+// File operations
+os.write_file("data.txt", "Hello!")            // Write string or bytes
+let data = os.read_file("data.txt")            // Read file as bytes
+os.create("empty.txt")                         // Create (or truncate) a file
+os.copy_file("data.txt", "backup.txt")         // Copy, preserving mode
+
+// Directory operations
+os.mkdir("out")                                // Single directory, optional mode
+os.mkdir_all("out/nested/deep")                // Creates parents too
+os.read_dir("out")                             // Entries: name, path, is_dir, size, mode
+os.remove_all("out")                           // Remove recursively
+os.is_dir("out")                               // true if directory
+os.getwd()                                     // Current working directory
+
+// Script arguments (set by the host, e.g. fynerisor <script.risor> arg1 arg2)
+os.args()                                      // List of script arguments
+
+os.exec("xset", "q")                           // Launch a command, non-blocking
 ```
 
 ### Strings Module

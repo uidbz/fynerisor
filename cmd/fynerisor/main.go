@@ -21,6 +21,7 @@ import (
 
 	"github.com/uidbz/fynerisor/core"
 	"github.com/uidbz/fynerisor/gui"
+	osmod "github.com/uidbz/fynerisor/modules/os"
 )
 
 var (
@@ -66,6 +67,9 @@ func main() {
 
 	scriptPath := args[0]
 	scriptArgs := args[1:]
+
+	// Make script arguments available to the os module (os.args())
+	osmod.SetScriptArgs(scriptArgs)
 
 	// Read script
 	var script string

@@ -761,6 +761,7 @@ require("@os")
 
 let platform = os.goos()           // "linux", "windows", "darwin"
 let user = os.current_user()       // Current username
+print(os.home_dir())               // Shortcut for current_user().home_dir
 os.open_browser("https://example.com")  // Open URL in browser
 
 // File operations
@@ -768,14 +769,22 @@ os.write_file("example.txt", "Hello, World!")  // Write string to file
 let data = os.read_file("example.txt")          // Read file as bytes
 let text = string(data)                          // Convert to string
 os.write_file("copy.txt", data)                 // Can also write bytes
+os.create("empty.txt")                          // Create (or truncate) a file
+os.copy_file("example.txt", "backup.txt")       // Copy file, preserving mode
 
 // Directory operations
+os.mkdir("output")                              // Create single directory (optional mode)
+os.mkdir_all("output/nested/deep")              // Create directory with parents
+os.remove_all("output")                         // Remove directory or file recursively
 os.read_dir("/path/to/dir").each((entry) => {
-    print(entry.name, entry.is_dir, entry.size)
+    print(entry.name, entry.path, entry.is_dir, entry.size)
     if (filepath.ext(entry.name) == ".txt") {
-        print("Found text file:", entry.name)
+        print("Found text file:", entry.path)
     }
 })
+
+// Script arguments (populated from `fynerisor script.risor arg1 arg2`)
+print(os.args())                                // List of script arguments
 ```
 
 ### Time Module
