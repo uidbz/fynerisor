@@ -65,6 +65,9 @@ func (obj *HBox) SetAttr(name string, value object.Object) error {
 }
 
 func (obj *HBox) GetAttr(name string) (object.Object, bool) {
+	if o, ok := containerOps("HBox", obj.instance, name); ok {
+		return o, true
+	}
 	switch name {
 	case "Hide":
 		return object.NewBuiltin("container.HBox.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {

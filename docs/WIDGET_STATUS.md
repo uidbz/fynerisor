@@ -44,7 +44,7 @@ This document lists the Fyne widgets and features available in fynerisor.
 - **Toolbar** - Action toolbar with ToolbarAction, ToolbarSeparator, ToolbarSpacer
 
 ### Text Widgets
-- **Markdown** - Markdown rendering (uses RichText internally)
+- **Markdown** - Markdown rendering (uses RichText internally); `md.SetText(s)`, readable/writable `md.Text` (issue #3)
 - **RichText** - Formatted text display via markdown
 - **TextGrid** - Monospace text grid for code display with line numbers
 - **Log** - Custom scrolling log widget
@@ -100,6 +100,26 @@ All standard Fyne containers are supported:
 - **window.AddShortcut()** - Register keyboard shortcuts (Ctrl+S, etc.)
 - **window.RemoveShortcut()** - Remove keyboard shortcuts
 - **window.SetMainMenu()** - Set application menu bar
+
+## Application
+
+- **app.Quit()** - Quit the application (works for apps created with `gui.NewApp`; hosts supplying their own `fyne.Window` own the app lifecycle)
+
+## Dynamic Containers (issue #4)
+
+Layout containers (`VBox`, `HBox`, `Stack`, `Center`, `Max`, `Padded`, `GridWithColumns`, `GridWithRows`) support:
+
+- **c.Append(child...)** - add one or more children
+- **c.Remove(child)** - remove a child (identity match)
+- **c.Refresh()** - re-layout after changes
+
+Additional slot-based operations:
+
+- **border.SetTop/SetBottom/SetLeft/SetRight/SetCenter(child)** - replace a border slot (pass `nil` to clear)
+- **scroll.SetContent(child)** - replace scrolled content
+- **scroll.Refresh()**
+
+All operations run on the GUI thread via `guithread.Do`, so they are safe from script callbacks and `go()` goroutines. Children mutate `*fyne.Container.Objects` + `Refresh()`, the same mechanism `window.SetContent` uses.
 
 ## Data Binding
 

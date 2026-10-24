@@ -66,6 +66,29 @@ func (obj *Scroll) SetAttr(name string, value object.Object) error {
 
 func (obj *Scroll) GetAttr(name string) (object.Object, bool) {
 	switch name {
+	case "SetContent":
+		return object.NewBuiltin("container.Scroll.SetContent", func(_ context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 1 {
+				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+			}
+			co, ok := canvasArg(args[0])
+			if !ok {
+				return object.Errorf("SetContent: expected canvas object, got %s", args[0].Type()), nil
+			}
+			guithread.Do(func() {
+				obj.instance.Content = co
+				obj.instance.Refresh()
+			})
+			return object.Nil, nil
+		}), true
+	case "Refresh":
+		return object.NewBuiltin("container.Scroll.Refresh", func(_ context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			guithread.Do(func() { obj.instance.Refresh() })
+			return object.Nil, nil
+		}), true
 	case "Hide":
 		return object.NewBuiltin("container.Scroll.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {

@@ -65,6 +65,9 @@ func (obj *Max) SetAttr(name string, value object.Object) error {
 }
 
 func (obj *Max) GetAttr(name string) (object.Object, bool) {
+	if o, ok := containerOps("Max", obj.instance, name); ok {
+		return o, true
+	}
 	switch name {
 	case "Hide":
 		return object.NewBuiltin("container.Max.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {

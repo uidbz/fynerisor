@@ -65,6 +65,9 @@ func (obj *Padded) SetAttr(name string, value object.Object) error {
 }
 
 func (obj *Padded) GetAttr(name string) (object.Object, bool) {
+	if o, ok := containerOps("Padded", obj.instance, name); ok {
+		return o, true
+	}
 	switch name {
 	case "Hide":
 		return object.NewBuiltin("container.Padded.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
