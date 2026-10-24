@@ -19,6 +19,7 @@ const MarkdownType object.Type = "widget.Markdown"
 
 type Markdown struct {
 	instance *widget.RichText
+	src      string // last markdown source, so .Text is readable
 	callback func(text, url string)
 }
 
@@ -86,12 +87,39 @@ func (obj *Markdown) SetAttr(name string, value object.Object) error {
 			obj.instance.Refresh()
 		})
 		return nil
+	case "Text":
+		s, err := object.AsString(value)
+		if err != nil {
+			return fmt.Errorf("type error: %v", err)
+		}
+		obj.src = s
+		guithread.Do(func() {
+			obj.instance.ParseMarkdown(s)
+		})
+		return nil
 	}
 	return fmt.Errorf("attribute error: %s object has no attribute %q", MarkdownType, name)
 }
 
 func (obj *Markdown) GetAttr(name string) (object.Object, bool) {
 	switch name {
+	case "Text":
+		return object.NewString(obj.src), true
+	case "SetText":
+		return object.NewBuiltin("widget.Markdown.SetText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 1 {
+				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+			}
+			s, err := object.AsString(args[0])
+			if err != nil {
+				return object.Errorf("type error: %v", err), nil
+			}
+			obj.src = s
+			guithread.Do(func() {
+				obj.instance.ParseMarkdown(s)
+			})
+			return object.Nil, nil
+		}), true
 	case "Wrapping":
 		return object.NewInt(int64(obj.instance.Wrapping)), true
 	case "Truncation":
@@ -143,6 +171,7 @@ func (obj *Markdown) GetAttr(name string) (object.Object, bool) {
 func NewMarkdown(markdown string) *Markdown {
 	richtext := &Markdown{
 		instance: widget.NewRichTextFromMarkdown(markdown),
+		src:      markdown,
 	}
 	for _, s := range richtext.instance.Segments {
 		if link, ok := s.(*widget.HyperlinkSegment); ok {
