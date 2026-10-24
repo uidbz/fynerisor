@@ -54,12 +54,14 @@ func Connect(ctx context.Context, args ...object.Object) (object.Object, error) 
 			cfg.Password = p
 		}
 
+		explicitScope := false
 		if namespace := optMap.GetWithDefault("namespace", nil); namespace != nil {
 			n, err := object.AsString(namespace)
 			if err != nil {
 				return nil, fmt.Errorf("tie.connect: 'namespace' must be a string (got %s)", namespace.Type())
 			}
 			cfg.Namespace = n
+			explicitScope = true
 		}
 
 		if collection := optMap.GetWithDefault("collection", nil); collection != nil {
@@ -68,6 +70,15 @@ func Connect(ctx context.Context, args ...object.Object) (object.Object, error) 
 				return nil, fmt.Errorf("tie.connect: 'collection' must be a string (got %s)", collection.Type())
 			}
 			cfg.Collection = c
+			explicitScope = true
+		}
+
+		// Explicit options must beat the config file's named-collection
+		// default: ResolveCollection("") follows DefaultCollection into a
+		// [Collections.<name>] entry, whose fields (namespace, collection,
+		// even TripleStoreURL) would silently override the options above.
+		if explicitScope {
+			cfg.DefaultCollection = ""
 		}
 
 		if insecure := optMap.GetWithDefault("insecure", nil); insecure != nil {
