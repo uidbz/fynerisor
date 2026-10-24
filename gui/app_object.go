@@ -1,9 +1,12 @@
 package gui
 
 import (
+	"context"
+
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 	"github.com/uidbz/fynerisor/core"
+	"github.com/uidbz/fynerisor/gui/guithread"
 )
 
 const AppType object.Type = "app"
@@ -12,10 +15,11 @@ const AppType object.Type = "app"
 // Available in Risor scripts as the global 'app' object.
 type App struct {
 	appName string
+	win     *Window
 }
 
 func newAppObject(w *Window) *App {
-	return &App{appName: w.appName}
+	return &App{appName: w.appName, win: w}
 }
 
 // newAppObjectForContext removed - not needed in GUI package
@@ -64,6 +68,19 @@ func (a *App) GetAttr(name string) (object.Object, bool) {
 			return object.NewString(appVer), true
 		}
 		return object.NewString(""), true
+	case "Quit":
+		return object.NewBuiltin("app.Quit", func(_ context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			if a.win == nil || a.win.FyneApp == nil {
+				return object.Errorf("runtime error: app.Quit unavailable (no Fyne app; host owns the window)"), nil
+			}
+			guithread.Do(func() {
+				a.win.FyneApp.Quit()
+			})
+			return object.Nil, nil
+		}), true
 	}
 	return nil, false
 }
@@ -76,5 +93,6 @@ func (a *App) Attrs() []object.AttrSpec {
 	return []object.AttrSpec{
 		{Name: "name", Doc: "Name of the embedding application"},
 		{Name: "version", Doc: "Version of the embedding application (if set via SetAppVersion)"},
+		{Name: "Quit", Doc: "Quit the application (app.Quit())"},
 	}
 }

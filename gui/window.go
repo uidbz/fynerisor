@@ -67,7 +67,9 @@ func NewApp(title string, opts ...Option) *Window {
 	guithread.SetMain()
 	a := app.New()
 	w := a.NewWindow(title)
-	return NewWindow(w, opts...)
+	fw := NewWindow(w, opts...)
+	fw.FyneApp = a
+	return fw
 }
 
 
@@ -80,7 +82,10 @@ func NewApp(title string, opts ...Option) *Window {
 // file drops, and window.CaptureStdout() to capture printed output.
 type Window struct {
 	FyneWindow fyne.Window
-	Status     string
+	// FyneApp is the owning Fyne app (set by NewApp; nil when a host
+	// supplies its own fyne.Window via NewWindow). Enables app.Quit().
+	FyneApp fyne.App
+	Status  string
 
 	content        *fyne.Container
 	globals        []risor.Option
@@ -429,6 +434,17 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 	switch name {
 	case "DroppedPaths":
 		return object.NewStringList(w.droppedPaths), true
+
+	case "Close":
+		return object.NewBuiltin("w.Close", func(_ context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 0 {
+				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+			}
+			guithread.Do(func() {
+				w.FyneWindow.Close()
+			})
+			return object.Nil, nil
+		}), true
 
 	case "SetContent":
 		return object.NewBuiltin("w.SetContent", func(ctx context.Context, args ...object.Object) (object.Object, error) {
