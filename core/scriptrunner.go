@@ -24,6 +24,15 @@ func (sr *ScriptRunner) LoadScript(script string) {
 	sr.script = script
 }
 
+// Compile parses and compiles the loaded script without executing it.
+// Host apps use it to validate scripts before running them (CI gates,
+// --check flags). Returns the same errors Eval would report up front.
+func (sr *ScriptRunner) Compile() error {
+	ctx := context.Background()
+	_, err := risor.Compile(ctx, sr.script, sr.globals...)
+	return err
+}
+
 // Eval executes the loaded script.
 //
 // Returns:

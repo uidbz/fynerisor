@@ -282,6 +282,13 @@ func (w *Window) LoadScript(script string) {
 	w.runner.LoadScript(script)
 }
 
+// CompileScript parses and compiles the currently loaded script without
+// executing it, returning any compile error. Use it to validate scripts
+// before Execute (issue #6).
+func (w *Window) CompileScript() error {
+	return w.runner.Compile()
+}
+
 // Clear clears all loaded scripts (imports and main script).
 // Call this before loading a new script to avoid accumulation.
 func (w *Window) Clear() {
