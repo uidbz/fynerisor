@@ -66,6 +66,7 @@ Each example has its own README with detailed explanation. Browse the directorie
 - **40-concurrent-batch** - Parallel batch execution with `core.EvalBatch` (headless, core only)
 - **41-table-header-levels** - Two-row (hierarchical) table header from a tie table (requires tie-triplestore)
 - **42-interactive-charts** - Hover tooltips, tap/right-click callbacks, zoom/pan, live toggles, and SVG export on canvas-based charts
+- **43-embedded-canvas-object** - Embed a Risor script as a `CanvasObject` inside a host Fyne application
 
 ## Example Structure
 

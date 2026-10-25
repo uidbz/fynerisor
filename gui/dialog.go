@@ -6,9 +6,9 @@ import (
 	"image/color"
 
 	"fyne.io/fyne/v2"
-	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
+	"github.com/uidbz/fynerisor/gui/guithread"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -77,6 +77,23 @@ func (d *Dialog) SetAttr(name string, value object.Object) error {
 }
 
 func (d *Dialog) GetAttr(name string) (object.Object, bool) {
+	// Every dialog function needs a Fyne window to attach to. An embedded
+	// CanvasObject only has one when the host passes WithHostWindow. Return a
+	// clear script error instead of dereferencing a nil window.
+	switch name {
+	case "ShowInformation", "ShowError", "ShowConfirm",
+		"ShowFileOpen", "ShowFileSave", "ShowFolderOpen",
+		"ShowCustom", "ShowCustomConfirm", "ShowColorPicker", "ShowForm",
+		"NewFileOpen", "NewFileSave", "NewFolderOpen",
+		"NewConfirm", "NewCustomConfirm", "NewCustom",
+		"NewColorPicker", "NewForm":
+		if d.w.FyneWindow == nil {
+			return object.NewBuiltin("dialog."+name, func(context.Context, ...object.Object) (object.Object, error) {
+				return object.Errorf("dialog.%s: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)", name), nil
+			}), true
+		}
+	}
+
 	switch name {
 	case "ShowInformation":
 		return object.NewBuiltin("dialog.ShowInformation", func(ctx context.Context, args ...object.Object) (object.Object, error) {

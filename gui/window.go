@@ -19,10 +19,10 @@ import (
 	"github.com/uidbz/fynerisor/core"
 
 	"fyne.io/fyne/v2"
-	"github.com/uidbz/fynerisor/gui/guithread"
-	risorwidget "github.com/uidbz/fynerisor/gui/widget"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
+	"github.com/uidbz/fynerisor/gui/guithread"
+	risorwidget "github.com/uidbz/fynerisor/gui/widget"
 )
 
 const WindowType object.Type = "window"
@@ -72,7 +72,6 @@ func NewApp(title string, opts ...Option) *Window {
 	return fw
 }
 
-
 // Window wraps a fyne.Window and provides Risor scripting capabilities.
 // It exposes global objects (window, widget, container, canvas, chart) to Risor scripts
 // and manages script execution in a separate goroutine with callback support.
@@ -109,8 +108,8 @@ type Window struct {
 	moduleMutex sync.Mutex                      // Protect cache from concurrent access
 
 	// Keyboard shortcut system
-	shortcuts      map[string]fyne.Shortcut // Map shortcut string to Shortcut object
-	shortcutMutex  sync.Mutex               // Protect concurrent access
+	shortcuts     map[string]fyne.Shortcut // Map shortcut string to Shortcut object
+	shortcutMutex sync.Mutex               // Protect concurrent access
 }
 
 // NewWindow creates a new fynerisor Window that wraps a Fyne window.
@@ -139,9 +138,21 @@ type Window struct {
 //	fyneWindow.Execute()
 //	fyneWindow.ShowAndRun()
 func NewWindow(window fyne.Window, opts ...Option) *Window {
+	w := newWindow(opts...)
+	w.FyneWindow = window
+	if window != nil {
+		window.SetContent(w.content)
+		w.installDropHandler()
+	}
+	return w
+}
+
+// newWindow builds a Window runtime without attaching its content to a Fyne
+// window. NewWindow uses it for standalone windows; NewCanvasObject uses it to
+// host a script inside a single canvas object in a host application.
+func newWindow(opts ...Option) *Window {
 	guithread.SetMain()
 	w := &Window{
-		FyneWindow:     window,
 		enabledModules: make(map[string]bool),
 		appName:        "fynerisor", // default
 		moduleCache:    make(map[string]*core.ImportedModule),
@@ -210,23 +221,29 @@ func NewWindow(window fyne.Window, opts ...Option) *Window {
 	// Create script runner
 	w.runner = NewScriptRunner(w.globals)
 
-	// Initialize content container and set it on the window
+	// Initialize content container. A standalone NewWindow attaches it to the
+	// Fyne window; an embedded CanvasObject renders it as a widget.
 	w.content = container.NewStack()
-	window.SetContent(w.content)
 
-	// Setup drag-and-drop handler
-	window.SetOnDropped(func(pos fyne.Position, uris []fyne.URI) {
+	return w
+}
+
+// installDropHandler connects Fyne's window-level drop events to the
+// window.OnDropped script binding. Only meaningful when a host window exists.
+func (w *Window) installDropHandler() {
+	if w.FyneWindow == nil {
+		return
+	}
+	w.FyneWindow.SetOnDropped(func(pos fyne.Position, uris []fyne.URI) {
 		paths := make([]string, len(uris))
 		for i, uri := range uris {
 			paths[i] = uri.Path()
 		}
 		w.droppedPaths = paths
-		if w.onDropped != nil {
+		if w.onDropped != nil && w.functionCalls != nil {
 			w.functionCalls <- func() { guithread.Do(func() { w.onDropped(paths) }) }
 		}
 	})
-
-	return w
 }
 
 func newPrintBuiltin() *object.Builtin {
@@ -372,9 +389,24 @@ func (w *Window) Execute() {
 	}()
 }
 
+// Stop cancels the currently executing script and stops processing queued
+// callbacks. It is safe to call when no script is running and is used by
+// CanvasObject to release a script when the embedded object is discarded.
+func (w *Window) Stop() {
+	if w.cancelExec != nil {
+		w.cancelExec()
+	}
+}
+
 // ShowAndRun displays the window and runs the Fyne application main loop.
 // This is a blocking call that runs until the window is closed.
+//
+// For a CanvasObject there is no window to show, so ShowAndRun is a no-op;
+// the host application owns the main loop.
 func (w *Window) ShowAndRun() {
+	if w.FyneWindow == nil {
+		return
+	}
 	w.FyneWindow.ShowAndRun()
 }
 
@@ -389,7 +421,15 @@ func (w *Window) ShowAndRun() {
 //	fw.Execute()
 //	fw.ShowAndRun()
 func (w *Window) Resize(width, height float32) {
-	w.FyneWindow.Resize(fyne.NewSize(width, height))
+	if w.FyneWindow != nil {
+		w.FyneWindow.Resize(fyne.NewSize(width, height))
+		return
+	}
+	// Embedded CanvasObject: there is no window to resize. Resizing the content
+	// at least gives scripts a way to influence their own layout.
+	guithread.Do(func() {
+		w.content.Resize(fyne.NewSize(width, height))
+	})
 }
 
 func (w *Window) Type() object.Type {
@@ -447,6 +487,9 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
+			if w.FyneWindow == nil {
+				return object.Errorf("window.Close: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)"), nil
+			}
 			guithread.Do(func() {
 				w.FyneWindow.Close()
 			})
@@ -460,7 +503,7 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			}
 			obj, ok := args[0].(IsCanvasObject)
 			if !ok {
-				return object.Errorf("argument error: expected IsCanvasObject, got %s", args[1].Type()), nil
+				return object.Errorf("argument error: expected IsCanvasObject, got %s", args[0].Type()), nil
 			}
 
 			guithread.Do(func() {
@@ -515,7 +558,7 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			}
 			fn, ok := args[0].(*object.Closure)
 			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[1].Type()), nil
+				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
 			}
 			callFunc, ok := object.GetCallFunc(ctx)
 			if !ok {
@@ -572,10 +615,20 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 		}), true
 
 	case "Canvas":
-		return w, true  // Window itself implements Canvas() method
+		return w, true // Window itself implements Canvas() method
 
 	case "Size":
-		size := w.FyneWindow.Canvas().Size()
+		if w.FyneWindow != nil {
+			size := w.FyneWindow.Canvas().Size()
+			return object.NewMap(map[string]object.Object{
+				"width":  object.NewFloat(float64(size.Width)),
+				"height": object.NewFloat(float64(size.Height)),
+			}), true
+		}
+		size := w.content.Size()
+		if size.Width == 0 && size.Height == 0 {
+			size = w.content.MinSize()
+		}
 		return object.NewMap(map[string]object.Object{
 			"width":  object.NewFloat(float64(size.Width)),
 			"height": object.NewFloat(float64(size.Height)),
@@ -609,6 +662,9 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 		return object.NewBuiltin("window.AddShortcut", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 2 {
 				return nil, fmt.Errorf("AddShortcut requires 2 arguments (shortcut, callback)")
+			}
+			if w.FyneWindow == nil {
+				return object.Errorf("window.AddShortcut: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)"), nil
 			}
 
 			// Parse shortcut string
@@ -661,6 +717,9 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return nil, fmt.Errorf("RemoveShortcut requires 1 argument (shortcut string)")
 			}
+			if w.FyneWindow == nil {
+				return object.Errorf("window.RemoveShortcut: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)"), nil
+			}
 
 			shortcutStr, ok := args[0].(*object.String)
 			if !ok {
@@ -687,6 +746,9 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return nil, fmt.Errorf("SetMainMenu requires 1 argument (MainMenu)")
 			}
+			if w.FyneWindow == nil {
+				return object.Errorf("window.SetMainMenu: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)"), nil
+			}
 
 			mainMenuObj, ok := args[0].(*MainMenu)
 			if !ok {
@@ -712,6 +774,9 @@ func (w *Window) RegisterGlobal(name string, value any) {
 }
 
 func (w *Window) Canvas() fyne.Canvas {
+	if w.FyneWindow == nil {
+		return nil
+	}
 	return w.FyneWindow.Canvas()
 }
 
@@ -833,4 +898,3 @@ func loadScriptFromURL(url string) (string, error) {
 
 	return string(data), nil
 }
-

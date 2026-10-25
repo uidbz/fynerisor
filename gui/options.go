@@ -1,6 +1,8 @@
 package gui
 
 import (
+	"fyne.io/fyne/v2"
+
 	"github.com/deepnoodle-ai/risor/v2"
 	csvmod "github.com/uidbz/fynerisor/modules/csv"
 	"github.com/uidbz/fynerisor/modules/exec"
@@ -123,6 +125,31 @@ func WithResultCallback(callback func(string)) Option {
 //	}
 func WithAppName(name string) Option {
 	return appNameOption{name: name}
+}
+
+// WithHostWindow tells an embedded CanvasObject which Fyne window it lives in.
+//
+// Fyne has no way to discover the window containing a CanvasObject, so
+// window-level script features (dialogs, shortcuts, main menu, window.Close,
+// window.OnDropped and window.Canvas) need the host window explicitly. The
+// object is still rendered only inside its own CanvasObject; NewCanvasObject
+// never replaces the host window's content.
+//
+// Example:
+//
+//	a := app.New()
+//	host := a.NewWindow("Host")
+//	view := gui.NewCanvasObject(script, gui.WithHostWindow(host))
+//	view.Execute()
+//	host.SetContent(container.NewBorder(header, nil, nil, nil, view))
+//
+// WithHostWindow is ignored by NewWindow, which already receives its window.
+func WithHostWindow(window fyne.Window) Option {
+	return windowOption{
+		fn: func(w *Window) {
+			w.FyneWindow = window
+		},
+	}
 }
 
 // WithHTTP enables the HTTP module for making HTTP requests from Risor scripts.

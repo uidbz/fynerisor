@@ -127,6 +127,51 @@ let btn = widget.NewButton("Fetch Data", () => {
 window.SetContent(btn)
 ```
 
+### Embedding in an Existing Fyne App
+
+To add scripting to part of an existing Fyne application, host the script in a
+`CanvasObject`. The script renders inside that object; the surrounding window
+and UI stay under your Go code's control:
+
+```go
+package main
+
+import (
+    "fyne.io/fyne/v2/app"
+    "fyne.io/fyne/v2/container"
+    "fyne.io/fyne/v2/widget"
+    "github.com/uidbz/fynerisor/gui"
+)
+
+func main() {
+    a := app.New()
+    host := a.NewWindow("My App")
+
+    view := gui.NewCanvasObject(`
+        let btn = widget.NewButton("Risor button", () => {
+            window.SetStatus("clicked")
+        })
+        window.SetContent(btn)
+    `,
+        gui.WithHostWindow(host), // dialogs, shortcuts, menus, window.Canvas
+        gui.WithHTTP(),           // same options as NewWindow
+    )
+    view.Execute()
+
+    host.SetContent(container.NewBorder(
+        widget.NewLabel("Native Fyne header"),
+        nil, nil, nil,
+        view,
+    ))
+    host.ShowAndRun()
+}
+```
+
+`WithHostWindow` is optional. Without it the script is fully self-contained, but
+window-level features (dialogs, shortcuts, `window.Canvas`, `window.Close`)
+return script errors. Creating the view never replaces the host window's
+content.
+
 ### Headless Context (Static Compilation)
 
 For headless execution without GUI dependencies, use the `core` package. This enables static compilation:
@@ -201,6 +246,7 @@ Customize fynerisor behavior via `With*()` options when creating `gui.Window` or
 | `WithRisorOptions(opts)` | Both | Add custom global objects to script environment |
 | `WithStatusCallback(fn)` | `gui` only | Called when `window.SetStatus()` is invoked |
 | `WithResultCallback(fn)` | `gui` only | Called when script execution returns a value |
+| `WithHostWindow(win)` | `gui` only | Host window for an embedded `CanvasObject` (dialogs, shortcuts, menus) |
 
 **Module Options** (available in both `gui` and `core` packages):
 - `WithHTTP()` - Enable HTTP requests

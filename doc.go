@@ -65,6 +65,20 @@
 //	    fw.ShowAndRun()
 //	}
 //
+// # Embedding in a Fyne App
+//
+// NewCanvasObject hosts a script as a regular fyne.CanvasObject, so an existing
+// Fyne application can use Risor for one part of its UI without giving up
+// ownership of the window:
+//
+//	view := gui.NewCanvasObject(script, gui.WithHostWindow(host))
+//	view.Execute()
+//	host.SetContent(container.NewBorder(header, nil, nil, nil, view))
+//
+// window.SetContent in the script renders inside view. WithHostWindow enables
+// dialogs, shortcuts, menus, window.Canvas and window.Close; without it those
+// functions return script errors.
+//
 // # Headless Mode
 //
 // Use the core package for headless execution without GUI dependencies.

@@ -17,6 +17,17 @@
 
 ### Added
 
+- **`gui.NewCanvasObject` for embedding in existing Fyne apps.** A script can
+  now be hosted as a regular `fyne.CanvasObject` and placed anywhere a widget
+  fits (containers, border slots, tabs, dialogs). `window.SetContent` renders
+  inside the object instead of replacing the host window's content.
+  `WithHostWindow(host)` opts the embedded script into window-level features
+  (dialogs, shortcuts, main menu, `window.Canvas`, `window.Close`, drops);
+  without it those functions return clear script errors rather than panicking.
+  The object also exposes `Window()`, `LoadScript`, `CompileScript`, `Execute`,
+  `Stop`, `Clear` and `Status`. See `examples/43-embedded-canvas-object`.
+  `Window.Stop()` is now public for cancelling an execution from Go.
+
 - **Interactive charts.** All five chart types (`chart.NewBarChart`,
   `NewLineChart`, `NewScatterChart`, `NewHistogram`, `NewBoxPlot`) are now
   live widgets built from Fyne canvas primitives instead of static PNG

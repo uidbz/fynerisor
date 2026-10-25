@@ -26,6 +26,7 @@ Always import the specific package you need.
 - Modules: HTTP, SQL, Tie (triple store), OS, Time, Strings, Filepath, IO, Exec, JSON, CSV
 - Charts: bar, line, scatter, histogram, box plot — interactive (hover, click events, zoom/pan) with SVG export
 - Browser package: load Risor scripts from URLs (see browser/)
+- Embeddable `gui.NewCanvasObject` for hosting scripts inside host Fyne apps
 - Static compilation support (core package)
 - Widget visibility control (Hide/Show methods)
 
@@ -1382,6 +1383,22 @@ func main() {
     fw.ShowAndRun()
 }
 ```
+
+### Embedding in an Existing Fyne App
+
+Use a `CanvasObject` to render a script inside a normal Fyne layout. The host
+window and surrounding widgets stay in Go.
+
+```go
+view := gui.NewCanvasObject(script,
+    gui.WithHostWindow(host), // optional: dialogs, shortcuts, menus, window.Canvas
+)
+view.Execute()
+host.SetContent(container.NewBorder(header, nil, nil, nil, view))
+```
+
+`window.SetContent` renders inside `view`; it never replaces the host content.
+Without `WithHostWindow`, window-level script functions return errors.
 
 ## Analyzing Script Requirements
 

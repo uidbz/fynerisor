@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
-	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/widget"
+	"github.com/uidbz/fynerisor/gui/guithread"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -52,8 +52,12 @@ func NewPopUpMenu(ctx context.Context, args ...object.Object) (object.Object, er
 	if !ok {
 		return object.Errorf("argument error: expected canvas (use window.Canvas), got %s", args[1].Type()), nil
 	}
+	canvas := canvasObj.Canvas()
+	if canvas == nil {
+		return object.Errorf("argument error: no canvas available (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)"), nil
+	}
 
-	instance := widget.NewPopUpMenu(menuObj.Instance(), canvasObj.Canvas())
+	instance := widget.NewPopUpMenu(menuObj.Instance(), canvas)
 
 	return &PopUpMenu{
 		instance: instance,

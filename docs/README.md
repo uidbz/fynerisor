@@ -229,6 +229,35 @@ window.SetContent(layout)
 
 Run with: `go run main.go`
 
+## Embedding in an Existing Fyne App
+
+`gui.NewCanvasObject` hosts a script as a regular Fyne `CanvasObject`, so
+fynerisor can power one part of an application while your Go code keeps
+ownership of the window and the rest of the UI.
+
+```go
+a := app.New()
+host := a.NewWindow("My App")
+
+view := gui.NewCanvasObject(script,
+    gui.WithHostWindow(host), // optional: enables dialogs, shortcuts, menus, window.Canvas
+    gui.WithHTTP(),
+)
+view.Execute()
+
+host.SetContent(container.NewBorder(
+    widget.NewLabel("Native Fyne header"),
+    nil, nil, nil,
+    view,
+))
+host.ShowAndRun()
+```
+
+The script calls `window.SetContent(...)` as usual; that content is rendered
+inside `view` only. `NewCanvasObject` never replaces the host window content.
+Without `WithHostWindow`, window-level script functions return clear errors
+instead of panicking.
+
 ## Non-GUI Usage
 
 Use fynerisor's module system (HTTP, SQL, OS, etc.) and import functionality in headless scripts, CLI tools, or server applications without GUI dependencies.
