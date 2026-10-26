@@ -22,12 +22,16 @@
   was written by the Execute goroutine and read by hosts/tests without
   synchronisation (a data race). `CanvasObject.Status()` is unchanged.
   (issue #15)
-- **`go(() => {...})` no longer runs concurrently with the main script body.**
-  The closure is queued on the run's callback channel and executes after the
-  body, serialized with all other callbacks. The old raw-goroutine form
-  raced the single-threaded VM (the corruption class documented in
-  `docs/CONCURRENCY.md`). Concurrency for scripts returns as Go-side async
-  primitives (issue #17). (issue #15)
+- **`go(() => {...})` no longer runs concurrently with the script.** The
+  closure is queued on the script's VM goroutine and runs after the current
+  body or event, in call order, serialized with all other callbacks. The old
+  raw-goroutine form raced the single-threaded VM (the corruption class
+  documented in `docs/CONCURRENCY.md`). This is the permanent semantics
+  (issue #17): the GUI stays responsive while such work runs because script
+  code never runs on Fyne's UI thread; real parallelism belongs in Go (a
+  host global or module that does the work and reports back through a
+  callback). (issues #15, #17)
+- **`gui.safeCall` is gone**; use `vmexec.NewCallback` (issue #17).
 - **`risorwidget.NewMultiLineEntry` takes the window** like the other entry
   constructors; multi-line entries previously panicked in `OnSubmitted`.
   (issue #36)

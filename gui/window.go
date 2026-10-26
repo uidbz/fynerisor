@@ -202,7 +202,7 @@ func newWindow(opts ...Option) *Window {
 		"print":     newPrintBuiltin(),
 		"require":   newRequireBuiltin(w),
 		"import":    w.newImportBuiltin(),
-		"go":        newGoBuiltin(w),
+		"go":        newGoBuiltin(),
 	}
 
 	// Build a single merged environment containing the standard library and all
@@ -266,36 +266,26 @@ func newPrintBuiltin() *object.Builtin {
 	})
 }
 
-func newGoBuiltin(w *Window) *object.Builtin {
+// newGoBuiltin implements go(fn): fn runs on the script's VM goroutine after
+// the current main body or event, like any other queued event (issue #17).
+//
+// It is deliberately not a goroutine. A Risor VM is single-threaded, so a
+// closure running in parallel with the body or another callback corrupts
+// the VM (docs/CONCURRENCY.md). Deferring fn still keeps the GUI responsive:
+// script code never runs on Fyne's UI thread, so while fn works the window
+// keeps repainting and accepting input (events wait their turn, render
+// getters use last-known values). Parallel work belongs in Go — a host
+// global or module that does the work and reports back through a callback.
+func newGoBuiltin() *object.Builtin {
 	return object.NewBuiltin("go", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 		if len(args) != 1 {
 			return nil, fmt.Errorf("go: expected 1 argument (function), got %d", len(args))
 		}
-
-		fn, ok := args[0].(*object.Closure)
-		if !ok {
-			return nil, fmt.Errorf("go: expected function, got %s", args[0].Type())
+		cb, err := vmexec.NewCallback(ctx, "go()", args[0])
+		if err != nil {
+			return nil, err
 		}
-
-		callFunc, ok := object.GetCallFunc(ctx)
-		if !ok {
-			return nil, fmt.Errorf("go: unable to get call function")
-		}
-
-		// Issue #15 (interim for #17): the closure is queued on the run's
-		// callback queue instead of spawned as a raw goroutine. Entering
-		// the single-threaded VM from a fresh goroutine raced the main body
-		// and every other callback; serialized execution removes that class
-		// of corruption. go() no longer runs concurrently with the main
-		// body — scripts needing background work get it via the Go-side
-		// async primitives tracked in #17.
-		w.queueCallback("go()", func() {
-			_, err := safeCall(callFunc, ctx, fn, []object.Object{})
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "go routine error: %v\n", err)
-			}
-		})
-
+		cb.Fire()
 		return object.Nil, nil
 	})
 }
