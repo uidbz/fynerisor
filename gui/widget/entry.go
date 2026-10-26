@@ -168,7 +168,7 @@ func (obj *Entry) GetAttr(name string) (object.Object, bool) {
 	case "OnSubmitted":
 		return object.NewBuiltin("widget.OnSubmitted", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=2", len(args)), nil
+				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
 			fn, ok := args[0].(*object.Closure)
 			if !ok {
@@ -176,7 +176,7 @@ func (obj *Entry) GetAttr(name string) (object.Object, bool) {
 			}
 			callFunc, ok := object.GetCallFunc(ctx)
 			if !ok {
-				return object.Errorf("button (%s): unable to get call function", name), nil
+				return object.Errorf("entry.OnSubmitted: unable to get call function"), nil
 			}
 
 			obj.instance.OnSubmitted = func(text string) {
@@ -311,6 +311,6 @@ func NewEntryWithData(data interface{ Get() (string, error) }, w WindowInterface
 	return &Entry{instance: widget.NewEntryWithData(bindingStr), w: w}
 }
 
-func NewMultiLineEntry() *Entry {
-	return &Entry{instance: widget.NewMultiLineEntry()}
+func NewMultiLineEntry(w WindowInterface) *Entry {
+	return &Entry{instance: widget.NewMultiLineEntry(), w: w}
 }

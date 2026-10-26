@@ -335,7 +335,6 @@ func doRequest(ctx context.Context, method, urlStr string, headers map[string]st
 		bodyReader = bytes.NewReader(body)
 	}
 
-	// Try without context to see if that's the issue
 	req, err := http.NewRequest(method, urlStr, bodyReader)
 	if err != nil {
 		return nil, err

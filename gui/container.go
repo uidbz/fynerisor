@@ -17,18 +17,6 @@ var _ object.Object = &Container{}
 const ContainerType object.Type = "container"
 
 // Container is a factory object that provides container/layout creation functions to Risor scripts.
-// It implements object.Object and exposes methods via GetAttr() for creating various
-// Fyne containers like VBox, HBox, Border, HSplit, VSplit, and Scroll.
-//
-// Available in Risor scripts as the global 'container' object.
-//
-// Example usage in Risor:
-//
-//	let vbox = container.NewVBox(widget1, widget2)
-//	let hbox = container.NewHBox(widget1, widget2)
-//	let border = container.NewBorder(top, bottom, left, right, center)
-
-// Container is a factory object that provides layout container creation functions to Risor scripts.
 // It implements object.Object and exposes methods via GetAttr() for creating
 // layout containers that organize widgets (VBox, HBox, Border, Split, Scroll).
 //
@@ -87,8 +75,8 @@ func (obj *Container) GetAttr(name string) (object.Object, bool) {
 	switch name {
 	case "NewBorder":
 		return object.NewBuiltin("container.NewBorder", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) < 2 {
-				return object.Errorf("wrong number of arguments. got=%d, want=2", len(args)), nil
+			if len(args) < 2 || len(args) > 5 {
+				return object.Errorf("wrong number of arguments. got=%d, want=2 to 5", len(args)), nil
 			}
 
 			var top, bottom, left, right, center fyne.CanvasObject

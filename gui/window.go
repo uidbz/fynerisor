@@ -539,7 +539,7 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			}
 			callFunc, ok := object.GetCallFunc(ctx)
 			if !ok {
-				return object.Errorf("button (%s): unable to get call function", name), nil
+				return object.Errorf("window.CaptureStdout: unable to get call function"), nil
 			}
 
 			w.onNewStdout = func(text string) {
@@ -562,7 +562,7 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			}
 			callFunc, ok := object.GetCallFunc(ctx)
 			if !ok {
-				return object.Errorf("button (%s): unable to get call function", name), nil
+				return object.Errorf("window.OnDropped: unable to get call function"), nil
 			}
 
 			w.onDropped = func(droppedPaths []string) {
@@ -763,11 +763,10 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 	return nil, false
 }
 
-// Canvas returns the Fyne canvas for this window.
-// This allows scripts to create PopUp widgets.
-// RegisterGlobal adds a global object to the script environment after window creation
-// This is useful for objects that need to reference the window or other components
-// that are created after the window initialization (e.g., browser, custom plugins)
+// RegisterGlobal adds a global object to the script environment after window
+// creation. This is useful for objects that need to reference the window or
+// other components that are created after the window initialization
+// (e.g., browser, custom plugins).
 func (w *Window) RegisterGlobal(name string, value any) {
 	w.env[name] = value
 	w.enabledModules[name] = true // Register for require() validation

@@ -127,7 +127,7 @@ func (obj *Markdown) GetAttr(name string) (object.Object, bool) {
 	case "SetOnTapped":
 		return object.NewBuiltin("widget.Markdown.SetOnTapped", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=2", len(args)), nil
+				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
 			fn, ok := args[0].(*object.Closure)
 			if !ok {
@@ -135,7 +135,7 @@ func (obj *Markdown) GetAttr(name string) (object.Object, bool) {
 			}
 			callFunc, ok := object.GetCallFunc(ctx)
 			if !ok {
-				return object.Errorf("button (%s): unable to get call function", name), nil
+				return object.Errorf("markdown.SetOnTapped: unable to get call function"), nil
 			}
 
 			obj.callback = func(text, url string) {

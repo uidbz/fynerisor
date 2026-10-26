@@ -17,20 +17,8 @@ import (
 const WidgetType object.Type = "widget"
 
 // Widget is a factory object that provides widget creation functions to Risor scripts.
-// It implements object.Object and exposes methods via GetAttr() for creating various
+// It implements object.Object and exposes widget creation via GetAttr() for creating
 // Fyne widgets like buttons, labels, entries, forms, tables, and more.
-//
-// Available in Risor scripts as the global 'widget' object.
-//
-// Example usage in Risor:
-//
-//	let btn = widget.NewButton("Click", () => { print("clicked") })
-//	let lbl = widget.NewLabel("Hello")
-//	let entry = widget.NewEntry()
-
-// Widget is a factory object that provides widget creation functions to Risor scripts.
-// It implements object.Object and exposes methods via GetAttr() for creating
-// UI components like buttons, labels, forms, tables, and more.
 //
 // Available in Risor scripts as the global 'widget' object.
 //
@@ -133,7 +121,7 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 			}
 			callFunc, ok := object.GetCallFunc(ctx)
 			if !ok {
-				return object.Errorf("button (%s): unable to get call function", name), nil
+				return object.Errorf("check: unable to get call function"), nil
 			}
 
 			// Create check with closure that captures fn by value
@@ -183,7 +171,7 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 			}
 			callFunc, ok := object.GetCallFunc(ctx)
 			if !ok {
-				return object.Errorf("button (%s): unable to get call function", name), nil
+				return object.Errorf("check group: unable to get call function"), nil
 			}
 
 			// Create check group with closure that captures fn by value
@@ -214,7 +202,7 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 			}
 			callFunc, ok := object.GetCallFunc(ctx)
 			if !ok {
-				return object.Errorf("button (%s): unable to get call function", name), nil
+				return object.Errorf("select: unable to get call function"), nil
 			}
 
 			// Create select with closure that captures fn by value
@@ -264,12 +252,12 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 			var onChanged func(time.Time)
 
 			// First argument: start date (optional)
-			if len(args) >= 1 {
+			if len(args) >= 1 && args[0] != object.Nil && args[0].Type() != object.NIL {
 				// Try to extract time.Time from the TimeObject
 				if timeVal, ok := args[0].Interface().(time.Time); ok {
 					startDate = timeVal
 				} else {
-					startDate = time.Now()
+					return object.Errorf("argument error: expected time.Time or nil, got %s", args[0].Type()), nil
 				}
 			} else {
 				startDate = time.Now()
@@ -326,12 +314,12 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 		}), true
 
 	case "NewMultiLineEntry":
-		return object.NewBuiltin("widget.NewMuliLineEntry", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+		return object.NewBuiltin("widget.NewMultiLineEntry", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
 
-			return risorwidget.NewMultiLineEntry(), nil
+			return risorwidget.NewMultiLineEntry(obj.w), nil
 		}), true
 
 	case "NewForm":
@@ -653,8 +641,7 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return nil, err
 			}
-			// detail is currently unused in NewAccordionItem, but we accept it for API consistency
-			_, err = object.AsString(args[1])
+			detail, err := object.AsString(args[1])
 			if err != nil {
 				return nil, err
 			}
@@ -666,7 +653,7 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 				}
 				content = contentObj.CanvasObject()
 			}
-			return risorwidget.NewAccordionItem(title, "", content), nil
+			return risorwidget.NewAccordionItem(title, detail, content), nil
 		}), true
 
 	case "NewToolbar":

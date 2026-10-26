@@ -212,9 +212,12 @@ type AccordionItem struct {
 }
 
 func NewAccordionItem(title string, detail string, content fyne.CanvasObject) *AccordionItem {
-	return &AccordionItem{
-		instance: widget.NewAccordionItem(title, content),
+	item := widget.NewAccordionItem(title, content)
+	if detail != "" {
+		// Fyne v2.8 renders Detail as a CanvasObject under the header.
+		item.Detail = widget.NewLabel(detail)
 	}
+	return &AccordionItem{instance: item}
 }
 
 func (obj *AccordionItem) Type() object.Type {
