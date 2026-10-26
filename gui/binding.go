@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	risorbinding "github.com/uidbz/fynerisor/gui/binding"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
+	risorbinding "github.com/uidbz/fynerisor/gui/binding"
 )
 
 var _ object.Object = &Binding{}

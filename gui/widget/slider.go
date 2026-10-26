@@ -6,9 +6,9 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
-	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
+	"github.com/uidbz/fynerisor/gui/guithread"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -21,7 +21,7 @@ const SliderType object.Type = "widget.Slider"
 // Slider wraps widget.Slider for Risor scripting
 type Slider struct {
 	instance *widget.Slider
-	w WindowInterface
+	w        WindowInterface
 }
 
 // NewSlider creates a new slider with min and max values

@@ -15,6 +15,61 @@
 
 ## [Unreleased]
 
+### Breaking
+
+- **`Window.Status` is now an accessor, not a field.** `Window.Status()`
+  returns the last status string; writes go through `SetStatus`. The field
+  was written by the Execute goroutine and read by hosts/tests without
+  synchronisation (a data race). `CanvasObject.Status()` is unchanged.
+  (issue #15)
+- **`go(() => {...})` no longer runs concurrently with the main script body.**
+  The closure is queued on the run's callback channel and executes after the
+  body, serialized with all other callbacks. The old raw-goroutine form
+  raced the single-threaded VM (the corruption class documented in
+  `docs/CONCURRENCY.md`). Concurrency for scripts returns as Go-side async
+  primitives (issue #17). (issue #15)
+- **`gui/binding` constructors take the owning window** (`NewString(w)`,
+  `BindString(v, w)`, likewise for Bool/Int/Float) so listener callbacks
+  serialize into the VM through the window's callback queue instead of
+  spawning a goroutine per change. (issue #11)
+- **`risorwidget.NewMultiLineEntry` takes the window** like the other entry
+  constructors; multi-line entries previously panicked in `OnSubmitted`.
+  (issue #36)
+
+### Fixed
+
+- fynerisor-browser no longer enables the `os` module for pages; remote
+  scripts can no longer read, delete or exfiltrate local files or run
+  commands (issue #7, security).
+- `Execute()` now passes its run context to `risor.Eval`: `Stop()`,
+  re-`Execute()` and browser navigation actually cancel the previous VM
+  (issue #9).
+- The callback loop starts before the main body, and event sends never
+  block Fyne's UI thread; the 11th interaction after a script error, a
+  long-running body, or `Stop()` no longer freezes the app (issue #10).
+- `Entry.OnChanged` and `binding` listeners no longer spawn a goroutine
+  per keystroke/change into the VM (issue #11).
+- Data races: `Window.Status`, `ScriptRunner.LoadScript` vs `Eval`, the
+  callback channel pointer, and successive `Execute()` runs are now
+  synchronized; `go test -race ./...` passes (issue #15).
+- `clipboard.Read()` returns the real clipboard content when called off
+  the UI thread (new `guithread.DoAndWait`, also used by chart SVG
+  exports) (issue #18).
+- GUI `import()` of a URL answering 404/500 now fails loudly with the
+  status code; the broken duplicate fetcher was deleted in favour of the
+  shared `core.FetchScript` (timeout + size limit) (issue #19).
+- `require("@")` no longer panics; the "module not enabled" hint names
+  the real option (`WithHTTP`, `WithSQL`, …) (issue #20).
+- `widget.NewForm` list arguments expand the current argument, not
+  `args[0]` (issue #21).
+- The CLI no longer calls the removed `ImportScript` for analysed
+  imports; a script with a top-level `import(...)` line no longer makes
+  it exit(1) (issue #22).
+- Small inconsistencies: `widget.NewMuliLineEntry` typo, copy-pasted
+  "button" error messages, wrong `want=` counts, `NewAccordionItem`
+  detail argument now renders, `NewCalendar` rejects non-time arguments
+  instead of silently defaulting (issue #36).
+
 ### Added
 
 - **`gui.NewCanvasObject` for embedding in existing Fyne apps.** A script can

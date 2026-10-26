@@ -8,9 +8,9 @@ import (
 	"runtime/debug"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/container"
 	"github.com/uidbz/fynerisor/gui/guithread"
 	"github.com/uidbz/fynerisor/gui/vmguard"
-	"fyne.io/fyne/v2/container"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"

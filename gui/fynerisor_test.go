@@ -96,8 +96,8 @@ if (pb.Value != 0.75) {
 	fw.Execute()
 	time.Sleep(200 * time.Millisecond) // Increased timeout for async execution
 
-	if strings.Contains(fw.Status, "ERROR") {
-		t.Errorf("Script failed: %s", fw.Status)
+	if strings.Contains(fw.Status(), "ERROR") {
+		t.Errorf("Script failed: %s", fw.Status())
 	}
 }
 
@@ -124,8 +124,8 @@ window.SetContent(layout)
 	fw.Execute()
 	time.Sleep(200 * time.Millisecond) // Increased timeout for async execution
 
-	if fw.Status != "Ready!" {
-		t.Errorf("Expected Ready!, got %s", fw.Status)
+	if fw.Status() != "Ready!" {
+		t.Errorf("Expected Ready!, got %s", fw.Status())
 	}
 }
 
@@ -161,8 +161,8 @@ window.SetContent(container.NewVBox(btn, chk, rg))
 	fw.Execute()
 	time.Sleep(200 * time.Millisecond) // Increased timeout for async execution
 
-	if fw.Status != "Ready!" {
-		t.Errorf("Expected Ready!, got %s", fw.Status)
+	if fw.Status() != "Ready!" {
+		t.Errorf("Expected Ready!, got %s", fw.Status())
 	}
 }
 
@@ -198,8 +198,8 @@ window.SetContent(table)
 	fw.Execute()
 	time.Sleep(200 * time.Millisecond) // Increased timeout for async execution
 
-	if fw.Status != "Ready!" {
-		t.Errorf("Expected Ready!, got %s", fw.Status)
+	if fw.Status() != "Ready!" {
+		t.Errorf("Expected Ready!, got %s", fw.Status())
 	}
 }
 
@@ -225,8 +225,8 @@ window.SetContent(acc)
 	fw.Execute()
 	time.Sleep(200 * time.Millisecond) // Increased timeout for async execution
 
-	if fw.Status != "Ready!" {
-		t.Errorf("Expected Ready!, got %s", fw.Status)
+	if fw.Status() != "Ready!" {
+		t.Errorf("Expected Ready!, got %s", fw.Status())
 	}
 }
 
@@ -253,8 +253,8 @@ window.SetContent(toolbar)
 	fw.Execute()
 	time.Sleep(200 * time.Millisecond) // Increased timeout for async execution
 
-	if fw.Status != "Ready!" {
-		t.Errorf("Expected Ready!, got %s", fw.Status)
+	if fw.Status() != "Ready!" {
+		t.Errorf("Expected Ready!, got %s", fw.Status())
 	}
 }
 
@@ -281,7 +281,7 @@ window.SetContent(form)
 	fw.Execute()
 	time.Sleep(200 * time.Millisecond) // Increased timeout for async execution
 
-	if fw.Status != "Ready!" {
-		t.Errorf("Expected Ready!, got %s", fw.Status)
+	if fw.Status() != "Ready!" {
+		t.Errorf("Expected Ready!, got %s", fw.Status())
 	}
 }

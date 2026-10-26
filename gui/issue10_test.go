@@ -26,8 +26,8 @@ throw("boom after building UI")
 	fw.Execute()
 	time.Sleep(200 * time.Millisecond)
 
-	if fw.Status != "ERROR: boom after building UI" {
-		t.Fatalf("expected an ERROR status, got: %q", fw.Status)
+	if fw.Status() != "ERROR: boom after building UI" {
+		t.Fatalf("expected an ERROR status, got: %q", fw.Status())
 	}
 
 	btn := findButton(w.Content())
@@ -66,8 +66,8 @@ window.SetContent(btn)
 	fw.Execute()
 	time.Sleep(200 * time.Millisecond)
 
-	if fw.Status != "Ready!" {
-		t.Fatalf("expected Ready!, got: %q", fw.Status)
+	if fw.Status() != "Ready!" {
+		t.Fatalf("expected Ready!, got: %q", fw.Status())
 	}
 
 	fw.Stop()
@@ -145,10 +145,10 @@ waitgo()
 	// The queued callbacks are processed after the body finishes.
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
-		if fw.Status == "tapped" {
+		if fw.Status() == "tapped" {
 			return
 		}
 		time.Sleep(25 * time.Millisecond)
 	}
-	t.Fatalf("queued callbacks were not processed after the body finished, status=%q", fw.Status)
+	t.Fatalf("queued callbacks were not processed after the body finished, status=%q", fw.Status())
 }

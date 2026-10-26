@@ -6,10 +6,10 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
-	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/widget"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
+	"github.com/uidbz/fynerisor/gui/guithread"
 )
 
 const TreeType object.Type = "widget.Tree"

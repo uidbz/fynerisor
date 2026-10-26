@@ -9,15 +9,14 @@ import (
 
 	"fyne.io/fyne/v2/canvas"
 
-	risorcanvas "github.com/uidbz/fynerisor/gui/canvas"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
+	risorcanvas "github.com/uidbz/fynerisor/gui/canvas"
 )
 
 var _ object.Object = &Canvas{}
 
 const CanvasType object.Type = "canvas"
-
 
 // Canvas is a factory object that provides canvas drawing functions to Risor scripts.
 // It implements object.Object and exposes methods via GetAttr() for creating

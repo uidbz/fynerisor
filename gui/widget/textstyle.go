@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
-	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/widget"
+	"github.com/uidbz/fynerisor/gui/guithread"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -15,8 +15,8 @@ const TextStyleType object.Type = "widget.TextStyle"
 
 // TextStyle wraps fyne.TextStyle and provides access to Bold, Italic, Monospace, etc.
 type TextStyle struct {
-	style    *fyne.TextStyle
-	widget   *widget.Label // Reference to parent widget for refresh
+	style  *fyne.TextStyle
+	widget *widget.Label // Reference to parent widget for refresh
 }
 
 func NewTextStyle(style *fyne.TextStyle, widget *widget.Label) *TextStyle {

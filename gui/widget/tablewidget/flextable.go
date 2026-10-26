@@ -129,7 +129,7 @@ func NewFlexTable(data *TableData, onClick func(cell *TableCell)) *FlexTable {
 					}
 					widgetCell.background.Refresh()
 				}
-			} else{
+			} else {
 				// String mode: update Label (current behavior)
 				// Handle both TableCell and WidgetCell (for when filtering in widget mode)
 				if widgetCell, ok := o.(*WidgetCell); ok {
@@ -316,7 +316,6 @@ func (t *FlexTable) Refresh() {
 	t.dataGen++
 	t.table.Refresh()
 }
-
 
 func (t *FlexTable) SetCreateCell(fn func(col, row int) fyne.CanvasObject) {
 	t.createCellFunc = fn

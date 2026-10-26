@@ -9,10 +9,10 @@ import (
 	"fyne.io/fyne/v2"
 	fynewidget "fyne.io/fyne/v2/widget"
 
-	risorwidget "github.com/uidbz/fynerisor/gui/widget"
-	timemodule "github.com/uidbz/fynerisor/modules/time"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
+	risorwidget "github.com/uidbz/fynerisor/gui/widget"
+	timemodule "github.com/uidbz/fynerisor/modules/time"
 )
 
 const WidgetType object.Type = "widget"
@@ -774,13 +774,13 @@ const callbackQueueSize = 100
 // never blocks the sender: before Execute, after Stop, or when the queue is
 // full, the callback is dropped with a message on stderr (issue #10).
 func (w *Window) queueCallback(what string, fn func()) {
-	ch := w.functionCalls
+	ch := w.functionCalls.Load()
 	if ch == nil {
 		fmt.Fprintf(os.Stderr, "fynerisor: %s called before Execute; callback dropped\n", what)
 		return
 	}
 	select {
-	case ch <- fn:
+	case *ch <- fn:
 	default:
 		fmt.Fprintf(os.Stderr, "fynerisor: %s: callback queue full (%d); event dropped\n", what, callbackQueueSize)
 	}

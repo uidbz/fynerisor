@@ -204,11 +204,11 @@ func main() {
 		// Wait up to 30 seconds for script to complete
 		for i := 0; i < 300; i++ {
 			time.Sleep(100 * time.Millisecond)
-			if fyneWindow.Status == "Ready!" {
+			if fyneWindow.Status() == "Ready!" {
 				os.Exit(0)
 			}
-			if strings.HasPrefix(fyneWindow.Status, "ERROR:") {
-				log.Fatalf("Script execution failed: %s", fyneWindow.Status)
+			if strings.HasPrefix(fyneWindow.Status(), "ERROR:") {
+				log.Fatalf("Script execution failed: %s", fyneWindow.Status())
 			}
 		}
 		log.Fatalf("Script execution timed out after 30 seconds")

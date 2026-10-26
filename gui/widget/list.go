@@ -6,9 +6,9 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
 	"github.com/uidbz/fynerisor/gui/vmguard"
-	"fyne.io/fyne/v2/widget"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -27,9 +27,9 @@ type List struct {
 
 func NewList(w WindowInterface) *List {
 	instance := widget.NewList(
-		func() int { return 0 },              // length - will be set via Length()
+		func() int { return 0 }, // length - will be set via Length()
 		func() fyne.CanvasObject { return widget.NewLabel("template") }, // createItem - will be set via CreateItem()
-		func(widget.ListItemID, fyne.CanvasObject) {}, // updateItem - will be set via UpdateItem()
+		func(widget.ListItemID, fyne.CanvasObject) {},                   // updateItem - will be set via UpdateItem()
 	)
 
 	return &List{
@@ -356,14 +356,20 @@ type GenericCanvasObject struct {
 	obj fyne.CanvasObject
 }
 
-func (g *GenericCanvasObject) Type() object.Type                                     { return "canvas_object" }
-func (g *GenericCanvasObject) Inspect() string                                       { return "canvas_object" }
-func (g *GenericCanvasObject) Interface() interface{}                                { return g.obj }
-func (g *GenericCanvasObject) IsTruthy() bool                                        { return true }
-func (g *GenericCanvasObject) Cost() int                                             { return 0 }
-func (g *GenericCanvasObject) MarshalJSON() ([]byte, error)                          { return nil, fmt.Errorf("cannot marshal canvas_object") }
-func (g *GenericCanvasObject) RunOperation(op.BinaryOpType, object.Object) (object.Object, error) { return object.Nil, fmt.Errorf("no operations") }
-func (g *GenericCanvasObject) Equals(other object.Object) bool                      { return g == other }
-func (g *GenericCanvasObject) GetAttr(name string) (object.Object, bool)            { return nil, false }
-func (g *GenericCanvasObject) SetAttr(name string, value object.Object) error       { return fmt.Errorf("no attributes") }
-func (g *GenericCanvasObject) Attrs() []object.AttrSpec                             { return nil }
+func (g *GenericCanvasObject) Type() object.Type      { return "canvas_object" }
+func (g *GenericCanvasObject) Inspect() string        { return "canvas_object" }
+func (g *GenericCanvasObject) Interface() interface{} { return g.obj }
+func (g *GenericCanvasObject) IsTruthy() bool         { return true }
+func (g *GenericCanvasObject) Cost() int              { return 0 }
+func (g *GenericCanvasObject) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("cannot marshal canvas_object")
+}
+func (g *GenericCanvasObject) RunOperation(op.BinaryOpType, object.Object) (object.Object, error) {
+	return object.Nil, fmt.Errorf("no operations")
+}
+func (g *GenericCanvasObject) Equals(other object.Object) bool           { return g == other }
+func (g *GenericCanvasObject) GetAttr(name string) (object.Object, bool) { return nil, false }
+func (g *GenericCanvasObject) SetAttr(name string, value object.Object) error {
+	return fmt.Errorf("no attributes")
+}
+func (g *GenericCanvasObject) Attrs() []object.AttrSpec { return nil }

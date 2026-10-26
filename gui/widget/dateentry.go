@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"fyne.io/fyne/v2"
-	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/widget"
+	"github.com/uidbz/fynerisor/gui/guithread"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"

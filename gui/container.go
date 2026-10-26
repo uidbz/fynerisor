@@ -7,9 +7,9 @@ import (
 
 	"fyne.io/fyne/v2"
 
-	risorcontainer "github.com/uidbz/fynerisor/gui/container"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
+	risorcontainer "github.com/uidbz/fynerisor/gui/container"
 )
 
 var _ object.Object = &Container{}

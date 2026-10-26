@@ -42,7 +42,9 @@ e.OnChanged((text) => { window.SetStatus(text) })
 window.SetContent(e)
 `)
 	fw.Execute()
-	time.Sleep(200 * time.Millisecond)
+	// The status write gives this goroutine its happens-before edge with
+	// everything the script goroutine touched (SetContent) before it.
+	waitFor(t, 2*time.Second, func() bool { return fw.Status() == "Ready!" })
 
 	entry := findEntryInContent(w.Content())
 	if entry == nil {
@@ -61,13 +63,13 @@ window.SetContent(e)
 	deadline := time.Now().Add(3 * time.Second)
 	want := fmt.Sprintf("v%d", n-1)
 	for time.Now().Before(deadline) {
-		if fw.Status != want {
+		if fw.Status() != want {
 			time.Sleep(25 * time.Millisecond)
 			continue
 		}
 		return
 	}
-	t.Fatalf("last OnChanged call did not observe the final value, status=%q", fw.Status)
+	t.Fatalf("last OnChanged call did not observe the final value, status=%q", fw.Status())
 }
 
 // TestBindingListenerSerialized covers issue #11: many binding updates with
@@ -88,7 +90,7 @@ func TestBindingListenerSerialized(t *testing.T) {
 d.AddListener(() => { window.SetStatus(d.Get()) })
 `)
 	fw.Execute()
-	time.Sleep(200 * time.Millisecond)
+	waitFor(t, 2*time.Second, func() bool { return fw.Status() == "Ready!" })
 
 	fb, ok := d.Interface().(fynebinding.String)
 	if !ok {
@@ -104,10 +106,10 @@ d.AddListener(() => { window.SetStatus(d.Get()) })
 	deadline := time.Now().Add(3 * time.Second)
 	want := fmt.Sprintf("v%d", n-1)
 	for time.Now().Before(deadline) {
-		if fw.Status == want {
+		if fw.Status() == want {
 			return
 		}
 		time.Sleep(25 * time.Millisecond)
 	}
-	t.Fatalf("last listener call did not observe the final value, status=%q", fw.Status)
+	t.Fatalf("last listener call did not observe the final value, status=%q", fw.Status())
 }

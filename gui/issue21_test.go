@@ -31,8 +31,8 @@ window.SetContent(form)
 	fw.Execute()
 	time.Sleep(200 * time.Millisecond)
 
-	if fw.Status != "Ready!" {
-		t.Fatalf("Expected Ready!, got %s", fw.Status)
+	if fw.Status() != "Ready!" {
+		t.Fatalf("Expected Ready!, got %s", fw.Status())
 	}
 
 	forms := 0

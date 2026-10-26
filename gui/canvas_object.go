@@ -117,5 +117,5 @@ func (c *CanvasObject) Clear() {
 // Status returns the current execution status ("Ready!", "ERROR: ...", or ""
 // before the first execution).
 func (c *CanvasObject) Status() string {
-	return c.window.Status
+	return c.window.Status()
 }

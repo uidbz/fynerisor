@@ -64,8 +64,8 @@ window.SetContent(u.areaLabel(2))
 	fw.Execute()
 	time.Sleep(150 * time.Millisecond)
 
-	if fw.Status != "Ready!" {
-		t.Fatalf("expected Ready!, got: %s", fw.Status)
+	if fw.Status() != "Ready!" {
+		t.Fatalf("expected Ready!, got: %s", fw.Status())
 	}
 }
 
@@ -93,11 +93,11 @@ window.SetContent(widget.NewLabel("area=" + string(area)))
 	fw.Execute()
 	time.Sleep(150 * time.Millisecond)
 
-	if strings.Contains(fw.Status, "ERROR") {
-		t.Fatalf("module variable reference failed: %s", fw.Status)
+	if strings.Contains(fw.Status(), "ERROR") {
+		t.Fatalf("module variable reference failed: %s", fw.Status())
 	}
-	if fw.Status != "Ready!" {
-		t.Fatalf("expected Ready!, got: %s", fw.Status)
+	if fw.Status() != "Ready!" {
+		t.Fatalf("expected Ready!, got: %s", fw.Status())
 	}
 }
 
@@ -120,13 +120,13 @@ let tag = (s) => PREFIX + emphasize(s)
 	fw.LoadScript(`
 let u = import("` + mod + `")
 let out = widget.NewLabel("init")
-let b = widget.NewButton("go", () => { out.SetText(u.tag("hi")) })
+let b = widget.NewButton("go", () => { out.SetText(u.tag("hi")); window.SetStatus("tagged") })
 window.SetContent(container.NewVBox([b, out]))
 `)
 	fw.Execute()
 
 	// Wait for the script to finish executing.
-	waitFor(t, 2*time.Second, func() bool { return fw.Status == "Ready!" })
+	waitFor(t, 2*time.Second, func() bool { return fw.Status() == "Ready!" })
 
 	var btn *fynewidget.Button
 	var lbl *fynewidget.Label
@@ -135,13 +135,14 @@ window.SetContent(container.NewVBox([b, out]))
 		t.Fatalf("could not find button (%v) and label (%v) in content", btn, lbl)
 	}
 
-	// Tap the button; the callback runs on the Execute goroutine and calls the
-	// module function. Poll until the label reflects the transformed text.
+	// Tap the button; the callback runs on the callback loop. Wait for the
+	// status the callback sets before reading label state: the status
+	// write is the happens-before edge for the widget read.
 	test.Tap(btn)
-	waitFor(t, 2*time.Second, func() bool { return lbl.Text == ">> HI" })
+	waitFor(t, 2*time.Second, func() bool { return fw.Status() == "tagged" })
 
 	if lbl.Text != ">> HI" {
-		t.Fatalf("label text = %q, want %q (status: %s)", lbl.Text, ">> HI", fw.Status)
+		t.Fatalf("label text = %q, want %q (status: %s)", lbl.Text, ">> HI", fw.Status())
 	}
 }
 
@@ -176,10 +177,10 @@ print(m.anything)`)
 	fw.Execute()
 	time.Sleep(300 * time.Millisecond)
 
-	if !strings.HasPrefix(fw.Status, "ERROR:") {
-		t.Fatalf("expected ERROR status for a 404 import, got: %s", fw.Status)
+	if !strings.HasPrefix(fw.Status(), "ERROR:") {
+		t.Fatalf("expected ERROR status for a 404 import, got: %s", fw.Status())
 	}
-	if !strings.Contains(fw.Status, "404") {
-		t.Fatalf("expected the error to mention HTTP 404, got: %s", fw.Status)
+	if !strings.Contains(fw.Status(), "404") {
+		t.Fatalf("expected the error to mention HTTP 404, got: %s", fw.Status())
 	}
 }

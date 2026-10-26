@@ -7,8 +7,8 @@ import (
 	"net/url"
 
 	"fyne.io/fyne/v2"
-	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/widget"
+	"github.com/uidbz/fynerisor/gui/guithread"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -21,7 +21,7 @@ const HyperlinkType object.Type = "widget.Hyperlink"
 // Hyperlink wraps widget.Hyperlink for Risor scripting
 type Hyperlink struct {
 	instance *widget.Hyperlink
-	w WindowInterface
+	w        WindowInterface
 }
 
 // NewHyperlink creates a new hyperlink widget

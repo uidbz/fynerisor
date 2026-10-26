@@ -39,8 +39,8 @@ window.SetStatus("finished: " + r)
 	fw.Execute()
 	time.Sleep(100 * time.Millisecond)
 
-	if fw.Status != "" {
-		t.Fatalf("script finished before Stop(): %q", fw.Status)
+	if fw.Status() != "" {
+		t.Fatalf("script finished before Stop(): %q", fw.Status())
 	}
 
 	fw.Stop()
@@ -50,8 +50,8 @@ window.SetStatus("finished: " + r)
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		time.Sleep(25 * time.Millisecond)
-		if fw.Status != "" {
-			t.Fatalf("script kept running after Stop: status=%q", fw.Status)
+		if fw.Status() != "" {
+			t.Fatalf("script kept running after Stop: status=%q", fw.Status())
 		}
 	}
 }

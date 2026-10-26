@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
-	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/widget"
+	"github.com/uidbz/fynerisor/gui/guithread"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -43,9 +43,9 @@ type GridWrap struct {
 
 func NewGridWrap(w WindowInterface) *GridWrap {
 	instance := widget.NewGridWrap(
-		func() int { return 0 },                              // length - will be set via Length()
+		func() int { return 0 }, // length - will be set via Length()
 		func() fyne.CanvasObject { return widget.NewLabel("template") }, // createItem - will be set via CreateItem()
-		func(widget.GridWrapItemID, fyne.CanvasObject) {}, // updateItem - will be set via UpdateItem()
+		func(widget.GridWrapItemID, fyne.CanvasObject) {},               // updateItem - will be set via UpdateItem()
 	)
 
 	return &GridWrap{
@@ -334,4 +334,3 @@ func (obj *GridWrap) GetAttr(name string) (object.Object, bool) {
 
 	return nil, false
 }
-

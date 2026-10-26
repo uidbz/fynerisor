@@ -2,12 +2,14 @@ package core
 
 import (
 	"context"
+	"sync"
 
 	"github.com/deepnoodle-ai/risor/v2"
 )
 
 // ScriptRunner manages script execution for headless contexts.
 type ScriptRunner struct {
+	mu      sync.Mutex // guards script; runs may read it while a host loads the next one (issue #15)
 	script  string
 	globals []risor.Option
 }
@@ -21,7 +23,16 @@ func NewScriptRunner(globals []risor.Option) *ScriptRunner {
 
 // LoadScript sets the script to be executed.
 func (sr *ScriptRunner) LoadScript(script string) {
+	sr.mu.Lock()
 	sr.script = script
+	sr.mu.Unlock()
+}
+
+// currentScript returns the loaded script snapshot.
+func (sr *ScriptRunner) currentScript() string {
+	sr.mu.Lock()
+	defer sr.mu.Unlock()
+	return sr.script
 }
 
 // Compile parses and compiles the loaded script without executing it.
@@ -33,7 +44,7 @@ func (sr *ScriptRunner) Compile() error {
 
 // CompileContext compiles the loaded script with the given context.
 func (sr *ScriptRunner) CompileContext(ctx context.Context) error {
-	_, err := risor.Compile(ctx, sr.script, sr.globals...)
+	_, err := risor.Compile(ctx, sr.currentScript(), sr.globals...)
 	return err
 }
 
@@ -54,8 +65,11 @@ func (sr *ScriptRunner) Eval() (any, error) {
 //   - any: The result of script execution
 //   - error: Any execution error
 func (sr *ScriptRunner) EvalContext(ctx context.Context) (any, error) {
+	// Snapshot the script so a later LoadScript cannot race this run.
+	script := sr.currentScript()
+
 	// Execute
-	result, err := risor.Eval(ctx, sr.script, sr.globals...)
+	result, err := risor.Eval(ctx, script, sr.globals...)
 	if err != nil {
 		return nil, err
 	}
@@ -65,5 +79,7 @@ func (sr *ScriptRunner) EvalContext(ctx context.Context) (any, error) {
 
 // Clear clears the loaded script.
 func (sr *ScriptRunner) Clear() {
+	sr.mu.Lock()
 	sr.script = ""
+	sr.mu.Unlock()
 }

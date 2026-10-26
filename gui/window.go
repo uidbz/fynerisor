@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	_ "embed"
 	"errors"
@@ -84,9 +86,10 @@ type Window struct {
 	// FyneApp is the owning Fyne app (set by NewApp; nil when a host
 	// supplies its own fyne.Window via NewWindow). Enables app.Quit().
 	FyneApp fyne.App
-	Status  string
 
 	content        *fyne.Container
+	status         string // guarded by statusMutex; see Status()/SetStatus (issue #15)
+	statusMutex    sync.Mutex
 	globals        []risor.Option
 	env            map[string]any  // Merged built-in globals (shared with imported module VMs)
 	userGlobals    []risor.Option  // Opaque user-supplied globals (via WithGlobals)
@@ -95,9 +98,10 @@ type Window struct {
 	droppedPaths   []string
 	onDropped      func(droppedPaths []string)
 	onNewStdout    func(text string)
-	stdoutSink     func(text string) // Go sink for captured stdout; bypasses the Risor VM
-	functionCalls  chan func()
-	cancelExec     context.CancelFunc // Cancel function for current execution
+	stdoutSink     func(text string)           // Go sink for captured stdout; bypasses the Risor VM
+	functionCalls  atomic.Pointer[chan func()] // callback queue of the current run; atomic so senders and Execute cannot race (issue #15)
+	cancelExec     context.CancelFunc          // Cancel function for current execution
+	execDone       chan struct{}               // closed when the previous run's goroutines have exited (issue #15)
 	statusCallback func(string)
 	resultCallback func(string)
 	runner         *ScriptRunner
@@ -196,7 +200,7 @@ func newWindow(opts ...Option) *Window {
 		"print":     newPrintBuiltin(),
 		"require":   newRequireBuiltin(w),
 		"import":    w.newImportBuiltin(),
-		"go":        newGoBuiltin(),
+		"go":        newGoBuiltin(w),
 	}
 
 	// Build a single merged environment containing the standard library and all
@@ -257,7 +261,7 @@ func newPrintBuiltin() *object.Builtin {
 	})
 }
 
-func newGoBuiltin() *object.Builtin {
+func newGoBuiltin(w *Window) *object.Builtin {
 	return object.NewBuiltin("go", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 		if len(args) != 1 {
 			return nil, fmt.Errorf("go: expected 1 argument (function), got %d", len(args))
@@ -273,13 +277,19 @@ func newGoBuiltin() *object.Builtin {
 			return nil, fmt.Errorf("go: unable to get call function")
 		}
 
-		// Spawn goroutine to execute the closure
-		go func() {
+		// Issue #15 (interim for #17): the closure is queued on the run's
+		// callback queue instead of spawned as a raw goroutine. Entering
+		// the single-threaded VM from a fresh goroutine raced the main body
+		// and every other callback; serialized execution removes that class
+		// of corruption. go() no longer runs concurrently with the main
+		// body — scripts needing background work get it via the Go-side
+		// async primitives tracked in #17.
+		w.queueCallback("go()", func() {
 			_, err := safeCall(callFunc, ctx, fn, []object.Object{})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "go routine error: %v\n", err)
 			}
-		}()
+		})
 
 		return object.Nil, nil
 	})
@@ -287,10 +297,21 @@ func newGoBuiltin() *object.Builtin {
 
 // SetStatus updates the window status and calls the status callback if provided.
 func (w *Window) SetStatus(status string) {
-	w.Status = status
+	w.statusMutex.Lock()
+	w.status = status
+	w.statusMutex.Unlock()
 	if w.statusCallback != nil {
 		w.statusCallback(status)
 	}
+}
+
+// Status returns the most recent status string. The status is written by
+// the Execute goroutine (SetStatus) and read from host goroutines, so both
+// sides go through statusMutex (issue #15).
+func (w *Window) Status() string {
+	w.statusMutex.Lock()
+	defer w.statusMutex.Unlock()
+	return w.status
 }
 
 // LoadScript loads a Risor script that will be executed when Execute() is called.
@@ -345,6 +366,18 @@ func (w *Window) Execute() {
 	if w.cancelExec != nil {
 		w.cancelExec()
 	}
+	// Wait for the previous run's goroutines to actually exit before
+	// starting the new one: a cancelled body may still be finishing a
+	// Fyne mutation (SetContent) while the new body begins its own
+	// (issue #15). The wait normally completes instantly; the timeout
+	// keeps a wedged builtin from blocking the host.
+	if prev := w.execDone; prev != nil {
+		select {
+		case <-prev:
+		case <-time.After(2 * time.Second):
+			fmt.Fprintln(os.Stderr, "fynerisor: previous script run did not stop within 2s")
+		}
+	}
 
 	// Create new context for this execution
 	ctx, cancel := context.WithCancel(context.Background())
@@ -354,17 +387,28 @@ func (w *Window) Execute() {
 	// Don't close old channel - let it be garbage collected
 	// Old goroutine will exit via context cancellation
 	callChan := make(chan func(), callbackQueueSize)
-	w.functionCalls = callChan
+	w.functionCalls.Store(&callChan)
 	// bodyDone closes when the main script body has finished, with or
 	// without an error. Callbacks are gated on it so exactly one
 	// goroutine is inside the VM at a time (issue #10).
 	bodyDone := make(chan struct{})
+	// runDone closes when both run goroutines (body and callback loop)
+	// have exited; the next Execute waits on it (issue #15).
+	runDone := make(chan struct{})
+	var runGoroutines int32 = 2
+	finishRun := func() {
+		if atomic.AddInt32(&runGoroutines, -1) == 0 {
+			close(runDone)
+		}
+	}
+	w.execDone = runDone
 
 	// Drain the callback queue. Starting the loop *before* the main body
 	// (and never blocking the send in Do) is what prevents the UI freeze:
 	// widget events keep being accepted while the body runs, errored or
 	// was stopped.
 	go func() {
+		defer finishRun()
 		<-bodyDone
 
 		// Process callbacks until cancelled
@@ -379,6 +423,7 @@ func (w *Window) Execute() {
 	}()
 
 	go func() {
+		defer finishRun()
 		defer close(bodyDone)
 
 		result, err := w.runner.EvalContext(ctx)

@@ -25,14 +25,15 @@ window.SetContent(btn)
 
 go(() => {
 	btn.Enable()
+	window.SetStatus("enabled")
 })
 `
 	fw.LoadScript(script)
 	fw.Execute()
-	time.Sleep(300 * time.Millisecond)
 
-	// Pump any queued GUI functions the way the real main loop would.
-	drainFuncCalls(fw, 200*time.Millisecond)
+	// The go() closure runs on the callback loop; the status write gives
+	// this test its happens-before edge before reading widget state.
+	waitFor(t, 2*time.Second, func() bool { return fw.Status() == "enabled" })
 
 	btn := findButton(w.Content())
 	if btn == nil {
@@ -40,20 +41,6 @@ go(() => {
 	}
 	if btn.Disabled() {
 		t.Fatal("button still disabled - goroutine Enable() did not take effect")
-	}
-}
-
-func drainFuncCalls(fw *Window, d time.Duration) {
-	deadline := time.After(d)
-	for {
-		select {
-		case f := <-fw.functionCalls:
-			f()
-		case <-deadline:
-			return
-		default:
-			return
-		}
 	}
 }
 

@@ -26,7 +26,7 @@ func TestClipboard(t *testing.T) {
 	fw.Execute()
 	time.Sleep(200 * time.Millisecond)
 
-	if fw.Status != "Ready!" {
-		t.Fatalf("expected Ready!, got: %s", fw.Status)
+	if fw.Status() != "Ready!" {
+		t.Fatalf("expected Ready!, got: %s", fw.Status())
 	}
 }

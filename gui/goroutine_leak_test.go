@@ -23,7 +23,7 @@ window.SetContent(label)
 	fw.LoadScript(script)
 	fw.Execute()
 	time.Sleep(100 * time.Millisecond)
-	
+
 	runtime.GC()
 	time.Sleep(50 * time.Millisecond)
 	baseline := runtime.NumGoroutine()
@@ -48,7 +48,7 @@ window.SetContent(label)
 	// Calculate leak rate
 	diff := final - baseline
 	leakRate := float64(diff) / float64(iterations)
-	
+
 	t.Logf("Difference: %d goroutines after %d reloads", diff, iterations)
 	t.Logf("Leak rate: %.3f goroutines per reload", leakRate)
 
@@ -81,7 +81,7 @@ window.SetContent(btn)
 		fw.LoadScript(script)
 		fw.Execute()
 		time.Sleep(10 * time.Millisecond)
-		
+
 		// Old goroutines should exit via context cancellation
 		// Old channels should be eligible for GC
 	}
@@ -95,7 +95,7 @@ window.SetContent(btn)
 	// This is more of a sanity check - true memory profiling would be better
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	
+
 	t.Logf("Alloc: %v MB", m.Alloc/1024/1024)
 	t.Logf("NumGoroutine: %d", runtime.NumGoroutine())
 	t.Logf("✓ Channel cleanup test passed (goroutines stable after 50 reloads)")

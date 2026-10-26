@@ -80,8 +80,8 @@ func TestWithGlobal(t *testing.T) {
 	fw.Execute()
 	time.Sleep(100 * time.Millisecond)
 
-	if fw.Status != "Ready!" {
-		t.Errorf("Expected Ready!, got: %s", fw.Status)
+	if fw.Status() != "Ready!" {
+		t.Errorf("Expected Ready!, got: %s", fw.Status())
 	}
 }
 
@@ -104,13 +104,13 @@ func TestWithGlobalRequireFails(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Should have error status
-	if !strings.Contains(fw.Status, "ERROR") {
-		t.Errorf("Expected ERROR status, got: %s", fw.Status)
+	if !strings.Contains(fw.Status(), "ERROR") {
+		t.Errorf("Expected ERROR status, got: %s", fw.Status())
 	}
 
 	// Error should mention the module name and suggest the option
-	if !strings.Contains(fw.Status, "@custom") {
-		t.Errorf("Error should mention @custom, got: %s", fw.Status)
+	if !strings.Contains(fw.Status(), "@custom") {
+		t.Errorf("Error should mention @custom, got: %s", fw.Status())
 	}
 }
 
@@ -139,7 +139,7 @@ func TestWithGlobalMultiple(t *testing.T) {
 	fw.Execute()
 	time.Sleep(100 * time.Millisecond)
 
-	if fw.Status != "Ready!" {
-		t.Errorf("Expected Ready! with multiple modules, got: %s", fw.Status)
+	if fw.Status() != "Ready!" {
+		t.Errorf("Expected Ready! with multiple modules, got: %s", fw.Status())
 	}
 }

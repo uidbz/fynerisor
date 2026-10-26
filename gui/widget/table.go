@@ -6,11 +6,11 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
-	"github.com/uidbz/fynerisor/gui/guithread"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
+	"github.com/uidbz/fynerisor/gui/guithread"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -25,7 +25,7 @@ const TableType object.Type = "widget.Table"
 type Table struct {
 	instance *tablewidget.TableWidget
 	Columns  func() []string
-	w WindowInterface
+	w        WindowInterface
 
 	// last-known getter results, reused during transient VM/render contention
 	// (vmguard.ErrConcurrentAccess) so the grid never collapses to empty for a
@@ -55,7 +55,6 @@ func (obj *Table) Interface() interface{} {
 func (obj *Table) IsTruthy() bool {
 	return true
 }
-
 
 func (obj *Table) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("type error: unable to marshal 'widget.Table'")

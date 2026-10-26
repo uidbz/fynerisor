@@ -124,6 +124,16 @@ For any widget with callbacks:
 
 ## The Second Bug We Fixed: go() + stdout capture (commit 9fa2634)
 
+> **Update (issue #10/#11/#15 fixes, v0.9.x):** the two-entry-point model below
+> is historical. `go()` no longer spawns a raw goroutine — its closure is queued
+> on the `functionCalls` channel and runs after the main body, like other
+> callbacks. `Entry.OnChanged` and binding listeners likewise stopped spawning
+> raw goroutines and now queue through the channel. The channel loop starts
+> *before* the main body and drains from the start (sends are never allowed to
+> block Fyne's UI thread); callbacks wait on a "body finished" gate so the VM
+> still sees exactly one goroutine at a time. A per-runtime VM executor will
+> replace the channel entirely (issue #37).
+
 The widget-callback rules above assume VM calls happen on the GUI thread. But
 there are actually **two independent entry points into the VM**, and only one is
 serialized:
@@ -131,9 +141,10 @@ serialized:
 1. **The `functionCalls` channel** — consumed serially by the `Execute()` loop in
    `window.go`. Button taps, `window.Do`, `OnDropped`, and shortcut handlers all
    funnel through here. This path is single-threaded. Safe.
-2. **The `go(() => {...})` builtin** (`newGoBuiltin` in `window.go`) — spawns a
-   **raw goroutine** that calls the closure via `safeCall` directly, bypassing
-   `functionCalls`. This path is NOT serialized against anything.
+2. **The `go(() => {...})` builtin** (`newGoBuiltin` in `window.go`) — spawned a
+   **raw goroutine** that called the closure via `safeCall` directly, bypassing
+   `functionCalls`. This path was NOT serialized against anything (since the
+   issue #15 fix it is queued on the channel instead).
 
 ### Root Cause
 
