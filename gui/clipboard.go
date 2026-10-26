@@ -73,7 +73,7 @@ func (obj *Clipboard) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return nil, err
 			}
-			guithread.Do(func() {
+			guithread.DoAndWait(func() {
 				fyne.CurrentApp().Clipboard().SetContent(s)
 			})
 			return object.Nil, nil
@@ -84,7 +84,9 @@ func (obj *Clipboard) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
 			var content string
-			guithread.Do(func() {
+			// DoAndWait: the script body runs off the GUI thread and needs
+			// the value back (issue #18).
+			guithread.DoAndWait(func() {
 				content = fyne.CurrentApp().Clipboard().Content()
 			})
 			return object.NewString(content), nil

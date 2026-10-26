@@ -44,6 +44,18 @@ func Do(fn func()) {
 	fyne.Do(fn)
 }
 
+// DoAndWait runs fn on the GUI thread and blocks until it has completed.
+// Inline when already on the GUI thread, fyne.DoAndWait otherwise. Use this
+// for reads that must return a value from Fyne state; Do is asynchronous
+// when called off-main and the read would observe a stale value (issue #18).
+func DoAndWait(fn func()) {
+	if IsMain() {
+		fn()
+		return
+	}
+	fyne.DoAndWait(fn)
+}
+
 // goroutineID parses the current goroutine's ID from its stack header. This is
 // the same technique Fyne uses internally (its async package is internal and
 // cannot be imported here).

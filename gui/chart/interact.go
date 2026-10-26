@@ -190,7 +190,7 @@ func (c *chartCore) getAttr(name string) (object.Object, bool) {
 				return nil, err
 			}
 			var svg string
-			guithread.Do(func() { svg = c.writeSVG(w, h) })
+			guithread.DoAndWait(func() { svg = c.writeSVG(w, h) })
 			return object.NewString(svg), nil
 		}), true
 	case "SaveImage":
@@ -210,7 +210,7 @@ func (c *chartCore) getAttr(name string) (object.Object, bool) {
 				return nil, err
 			}
 			var svg string
-			guithread.Do(func() { svg = c.writeSVG(w, h) })
+			guithread.DoAndWait(func() { svg = c.writeSVG(w, h) })
 			if err := os.WriteFile(path, []byte(svg), 0o644); err != nil {
 				return nil, fmt.Errorf("SaveImage: %w", err)
 			}

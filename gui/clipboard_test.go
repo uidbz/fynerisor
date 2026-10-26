@@ -7,8 +7,9 @@ import (
 	"fyne.io/fyne/v2/test"
 )
 
-// TestClipboard verifies the clipboard global's Copy/Read builtins run without
-// error under the test app.
+// TestClipboard verifies the clipboard global's Copy/Read builtins and the
+// issue #18 round-trip: Read must return the copied content even though the
+// main script body runs off the GUI thread.
 func TestClipboard(t *testing.T) {
 	a := test.NewApp()
 	defer a.Quit()
@@ -19,8 +20,13 @@ func TestClipboard(t *testing.T) {
 		if (clipboard.Copy == nil) { throw("clipboard.Copy missing") }
 		if (clipboard.Read == nil) { throw("clipboard.Read missing") }
 		clipboard.Copy("askbot answer text")
-		clipboard.Read()
+		let got = clipboard.Read()
+		if (got != "askbot answer text") { throw("clipboard round-trip failed, got: " + got) }
 	`)
 	fw.Execute()
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
+
+	if fw.Status != "Ready!" {
+		t.Fatalf("expected Ready!, got: %s", fw.Status)
+	}
 }
