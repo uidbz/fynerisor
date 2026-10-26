@@ -117,6 +117,34 @@ table in `FyneApp.toml`; a `--release` build uses the `[Release]` table.
 > `gui/widget/tablewidget/clipboard_mobile.go`), so table clipboard copy is a
 > no-op on Android/iOS; all other functionality works.
 
+## Security model
+
+fynerisor-browser executes Risor scripts fetched from arbitrary URLs. Scripts
+are therefore treated as **untrusted code**, and the module set enabled for
+pages is a security boundary:
+
+| Module | Enabled | Reason |
+|---|---|---|
+| `http` | yes | Pages are network applications; the script needs HTTP requests |
+| `strings`, `filepath`, `time` | yes | Pure computation, no side effects on the host |
+| `os` | **no** | Would expose `read_file`, `write_file`, `remove_all`, `exec` — any page could read, delete or exfiltrate local files and run commands |
+| `io` | **no** | File-system write access |
+| `exec` | **no** | Process spawning |
+| `sql`, `tie` | no | Not applicable to pages |
+
+A page that calls a function from a disabled module fails with a clear
+"module not enabled" error; nothing is executed.
+
+Relative `import()` paths in a fetched page resolve against the page's URL
+(same-origin only); a remote page cannot import local files. Local scripts
+started with a `file://` URL or path resolve imports relative to their own
+directory.
+
+This is a capability *policy* baked into the reference browser, not a sandbox:
+a page can still make arbitrary network requests via `http`. Finer-grained,
+per-origin capability presets are tracked in the option-model issue
+([#40](https://github.com/uidbz/fynerisor/issues/40)).
+
 ## Architecture
 
 The reference browser demonstrates the three plugin interfaces:

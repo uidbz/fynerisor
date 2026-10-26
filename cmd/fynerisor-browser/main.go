@@ -113,14 +113,18 @@ func NewBrowserApp(title string) *BrowserApp {
 				fmt.Println(result)
 			}
 		}),
-		// Add modules your scripts need
+		// Add modules your scripts need.
+		//
+		// Security policy: pages are fetched from arbitrary remote URLs and
+		// are treated as untrusted. The OS module is intentionally NOT
+		// enabled: it provides read_file/write_file/remove_all/exec and
+		// would let any page read, delete or exfiltrate local files and run
+		// commands. The IO module (file-system write access) is likewise not
+		// enabled. See the security model in cmd/fynerisor-browser/README.md.
 		gui.WithHTTP(),
-		gui.WithOS(),
 		gui.WithStrings(),
 		gui.WithFilepath(),
 		gui.WithTime(),
-		// Note: IO module intentionally not enabled for security
-		// (provides file system write access)
 	)
 
 	// Create browser with plugins
