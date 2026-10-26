@@ -2,8 +2,6 @@ package gui
 
 import (
 	"context"
-	"io"
-	"net/http"
 
 	"github.com/deepnoodle-ai/risor/v2"
 )
@@ -56,25 +54,4 @@ func (sr *ScriptRunner) Eval() (any, error) {
 // Clear clears the loaded script.
 func (sr *ScriptRunner) Clear() {
 	sr.script = ""
-}
-
-// fetchHTTPScript fetches a script from an HTTP(S) URL.
-// Used by import() builtin for loading remote modules.
-func fetchHTTPScript(url string) (string, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", err
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	return string(body), nil
 }

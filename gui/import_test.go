@@ -1,6 +1,8 @@
 package gui
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -152,5 +154,32 @@ func waitFor(t *testing.T, timeout time.Duration, cond func() bool) {
 			return
 		}
 		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// TestImportHTTPNon200Fails covers issue #19: importing a URL that answers
+// with a non-200 status must fail loudly instead of importing an empty
+// module.
+func TestImportHTTPNon200Fails(t *testing.T) {
+	a := test.NewApp()
+	defer a.Quit()
+	w := a.NewWindow("Test")
+
+	srv := httptest.NewServer(http.HandlerFunc(func(wr http.ResponseWriter, r *http.Request) {
+		http.Error(wr, "missing", http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	fw := NewWindow(w, WithHTTPImport())
+	fw.LoadScript(`let m = import("` + srv.URL + `/missing.risor")
+print(m.anything)`)
+	fw.Execute()
+	time.Sleep(300 * time.Millisecond)
+
+	if !strings.HasPrefix(fw.Status, "ERROR:") {
+		t.Fatalf("expected ERROR status for a 404 import, got: %s", fw.Status)
+	}
+	if !strings.Contains(fw.Status, "404") {
+		t.Fatalf("expected the error to mention HTTP 404, got: %s", fw.Status)
 	}
 }

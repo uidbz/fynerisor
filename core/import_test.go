@@ -1,8 +1,11 @@
 package core
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -152,5 +155,24 @@ a.get() + b.get()
 	}
 	if got, ok := res.(int64); !ok || got != 84 {
 		t.Fatalf("got %v (%T), want 84", res, res)
+	}
+}
+
+// TestImportHTTPNon200Fails covers issue #19: importing a URL that answers
+// with a non-200 status must fail loudly instead of importing an empty
+// module.
+func TestImportHTTPNon200Fails(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "missing", http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	ctx := NewContext(WithHTTPImport())
+	_, err := ctx.Eval(`import("` + srv.URL + `/missing.risor")`)
+	if err == nil {
+		t.Fatal("expected import of a 404 URL to fail")
+	}
+	if !strings.Contains(err.Error(), "404") {
+		t.Fatalf("expected the error to mention HTTP 404, got: %v", err)
 	}
 }

@@ -86,7 +86,7 @@ func (w *Window) newImportBuiltin() *object.Builtin {
 		}
 
 		// Load script source
-		source, err := loadImportSource(modulePath)
+		source, err := loadImportSource(ctx, modulePath)
 		if err != nil {
 			return nil, object.Errorf("import error: %w", err)
 		}
@@ -179,11 +179,13 @@ func bindModuleFunction(moduleVM *vm.VirtualMachine, mu *sync.Mutex, name string
 	})
 }
 
-// loadImportSource loads source code from a file path or URL.
-func loadImportSource(path string) (string, error) {
+// loadImportSource loads source code from a file path or URL. HTTP(S)
+// fetching is shared with core (issue #19): non-200 responses are errors,
+// and requests get a timeout and a body-size limit.
+func loadImportSource(ctx context.Context, path string) (string, error) {
 	// Check if it's an HTTP(S) URL
 	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
-		return fetchHTTPScript(path)
+		return core.FetchScript(ctx, path)
 	}
 
 	// Load from file
@@ -193,5 +195,3 @@ func loadImportSource(path string) (string, error) {
 	}
 	return string(data), nil
 }
-
-// fetchHTTPScript is defined in scriptrunner.go

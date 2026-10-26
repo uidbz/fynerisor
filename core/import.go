@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/deepnoodle-ai/risor/v2"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -87,7 +88,7 @@ func (cb *Context) newImportBuiltin() *object.Builtin {
 		}
 
 		// Load script source
-		source, err := loadImportSource(modulePath)
+		source, err := loadImportSource(ctx, modulePath)
 		if err != nil {
 			return nil, object.Errorf("import error: %w", err)
 		}
@@ -170,10 +171,10 @@ func bindModuleFunction(moduleVM *vm.VirtualMachine, mu *sync.Mutex, name string
 }
 
 // loadImportSource loads source code from a file path or URL.
-func loadImportSource(path string) (string, error) {
+func loadImportSource(ctx context.Context, path string) (string, error) {
 	// Check if it's an HTTP(S) URL
 	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
-		return fetchHTTPScript(path)
+		return FetchScript(ctx, path)
 	}
 
 	// Load from file
@@ -184,9 +185,31 @@ func loadImportSource(path string) (string, error) {
 	return string(data), nil
 }
 
-// fetchHTTPScript downloads a script from an HTTP(S) URL.
-func fetchHTTPScript(url string) (string, error) {
-	resp, err := http.Get(url)
+const (
+	// scriptFetchTimeout bounds script downloads started without a deadline.
+	scriptFetchTimeout = 30 * time.Second
+	// scriptFetchLimit caps the size of a downloaded script (issue #19).
+	scriptFetchLimit = 10 << 20 // 10 MiB
+)
+
+// FetchScript downloads a script from an HTTP(S) URL. It is the single
+// loader shared by core and gui (issue #19): non-200 responses are errors,
+// the request honours ctx plus a fixed timeout, and the body size is
+// limited.
+func FetchScript(ctx context.Context, url string) (string, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(ctx, scriptFetchTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch %q: %w", url, err)
+	}
+
+	client := &http.Client{Timeout: scriptFetchTimeout}
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch %q: %w", url, err)
 	}
@@ -196,9 +219,12 @@ func fetchHTTPScript(url string) (string, error) {
 		return "", fmt.Errorf("failed to fetch %q: HTTP %d", url, resp.StatusCode)
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, scriptFetchLimit+1))
 	if err != nil {
 		return "", fmt.Errorf("failed to read response from %q: %w", url, err)
+	}
+	if int64(len(body)) > scriptFetchLimit {
+		return "", fmt.Errorf("failed to fetch %q: response exceeds %d bytes", url, scriptFetchLimit)
 	}
 
 	return string(body), nil
