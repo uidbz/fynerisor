@@ -3,6 +3,7 @@ package gui
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -764,8 +765,32 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 	return nil, false
 }
 
+// callbackQueueSize bounds the queue of pending event callbacks. When it is
+// full, events are dropped with a diagnostic instead of blocking Fyne's UI
+// thread (issue #10).
+const callbackQueueSize = 100
+
+// queueCallback enqueues fn on the callback queue of the current run. It
+// never blocks the sender: before Execute, after Stop, or when the queue is
+// full, the callback is dropped with a message on stderr (issue #10).
+func (w *Window) queueCallback(what string, fn func()) {
+	ch := w.functionCalls
+	if ch == nil {
+		fmt.Fprintf(os.Stderr, "fynerisor: %s called before Execute; callback dropped\n", what)
+		return
+	}
+	select {
+	case ch <- fn:
+	default:
+		fmt.Fprintf(os.Stderr, "fynerisor: %s: callback queue full (%d); event dropped\n", what, callbackQueueSize)
+	}
+}
+
+// Do queues fn on the current execution's callback queue so it runs on the
+// callback goroutine with access to the Risor VM. It never blocks the caller
+// (issue #10); see queueCallback.
 func (w *Window) Do(fn func()) {
-	w.functionCalls <- fn
+	w.queueCallback("window.Do", fn)
 }
 
 func NewWidget(w *Window) *Widget {

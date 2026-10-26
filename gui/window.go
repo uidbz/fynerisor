@@ -240,8 +240,8 @@ func (w *Window) installDropHandler() {
 			paths[i] = uri.Path()
 		}
 		w.droppedPaths = paths
-		if w.onDropped != nil && w.functionCalls != nil {
-			w.functionCalls <- func() { guithread.Do(func() { w.onDropped(paths) }) }
+		if w.onDropped != nil {
+			w.queueCallback("window.OnDropped", func() { guithread.Do(func() { w.onDropped(paths) }) })
 		}
 	})
 }
@@ -353,10 +353,34 @@ func (w *Window) Execute() {
 	// Create new channel for this execution
 	// Don't close old channel - let it be garbage collected
 	// Old goroutine will exit via context cancellation
-	callChan := make(chan func(), 10)
+	callChan := make(chan func(), callbackQueueSize)
 	w.functionCalls = callChan
+	// bodyDone closes when the main script body has finished, with or
+	// without an error. Callbacks are gated on it so exactly one
+	// goroutine is inside the VM at a time (issue #10).
+	bodyDone := make(chan struct{})
+
+	// Drain the callback queue. Starting the loop *before* the main body
+	// (and never blocking the send in Do) is what prevents the UI freeze:
+	// widget events keep being accepted while the body runs, errored or
+	// was stopped.
+	go func() {
+		<-bodyDone
+
+		// Process callbacks until cancelled
+		for {
+			select {
+			case <-ctx.Done():
+				return // Exit if cancelled
+			case x := <-callChan:
+				x()
+			}
+		}
+	}()
 
 	go func() {
+		defer close(bodyDone)
+
 		result, err := w.runner.EvalContext(ctx)
 		if err != nil {
 			// Check if it was cancelled
@@ -375,17 +399,6 @@ func (w *Window) Execute() {
 		}
 
 		w.SetStatus("Ready!")
-
-		// Process callbacks until cancelled
-		// Don't close the channel - callbacks might still arrive
-		for {
-			select {
-			case <-ctx.Done():
-				return // Exit if cancelled
-			case x := <-callChan:
-				x()
-			}
-		}
 	}()
 }
 
@@ -602,14 +615,14 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			}
 
 			// Queue the function to run on the GUI thread
-			w.functionCalls <- func() {
+			w.queueCallback("window.Do", func() {
 				guithread.Do(func() {
 					_, err := safeCall(callFunc, ctx, fn, []object.Object{})
 					if err != nil {
 						w.SetStatus("ERROR: " + err.Error())
 					}
 				})
-			}
+			})
 
 			return object.Nil, nil
 		}), true
@@ -694,14 +707,14 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			// Register shortcut on canvas
 			w.FyneWindow.Canvas().AddShortcut(shortcut, func(s fyne.Shortcut) {
 				// Queue callback on function channel (for thread safety)
-				w.functionCalls <- func() {
+				w.queueCallback("window.AddShortcut", func() {
 					guithread.Do(func() {
 						_, err := safeCall(callFunc, ctx, callback, []object.Object{})
 						if err != nil {
 							w.SetStatus("ERROR: " + err.Error())
 						}
 					})
-				}
+				})
 			})
 
 			// Track shortcut for removal
@@ -851,7 +864,7 @@ func (w *Window) captureStdout() {
 					sink := w.stdoutSink
 					guithread.Do(func() { sink(msg) })
 				} else {
-					w.functionCalls <- func() { guithread.Do(func() { w.onNewStdout(msg) }) }
+					w.queueCallback("window.CaptureStdout", func() { guithread.Do(func() { w.onNewStdout(msg) }) })
 				}
 			}
 		}
