@@ -39,11 +39,48 @@ func newRequireBuiltinForContext(cb *Context) *object.Builtin {
 	})
 }
 
+// ModuleOptionName maps a built-in module name to the WithX option that
+// enables it, for require() error hints. It returns "" when the name is
+// not a built-in module (issue #20).
+func ModuleOptionName(moduleName string) string {
+	switch moduleName {
+	case "csv":
+		return "WithCSV"
+	case "exec":
+		return "WithExec"
+	case "filepath":
+		return "WithFilepath"
+	case "http":
+		return "WithHTTP"
+	case "httpimport":
+		return "WithHTTPImport"
+	case "io":
+		return "WithIO"
+	case "json":
+		return "WithJSON"
+	case "os":
+		return "WithOS"
+	case "sql":
+		return "WithSQL"
+	case "strings":
+		return "WithStrings"
+	case "time":
+		return "WithTime"
+	case "tie":
+		return "WithTie"
+	}
+	return ""
+}
+
 // processRequirementForContext handles a single requirement string for Context
 func processRequirementForContext(cb *Context, req string) (object.Object, error) {
 	// Module requirement (@module)
 	if strings.HasPrefix(req, "@") {
 		moduleName := strings.TrimPrefix(req, "@")
+
+		if moduleName == "" {
+			return nil, fmt.Errorf("require: empty module name in %q (use '@sql' style for modules)", req)
+		}
 
 		// Special case: @gui is not available in headless Context
 		if moduleName == "gui" {
@@ -51,9 +88,13 @@ func processRequirementForContext(cb *Context, req string) (object.Object, error
 		}
 
 		if !cb.enabledModules[moduleName] {
-			// Capitalize first letter for option name
-			optionName := strings.ToUpper(moduleName[:1]) + moduleName[1:]
-			return nil, fmt.Errorf("require: module @%s is not enabled (use core.With%s() option)", moduleName, optionName)
+			if moduleName == "sql" {
+				return nil, fmt.Errorf("require: module @sql is not enabled (import github.com/uidbz/fynerisor/core/db and pass db.WithSQL())")
+			}
+			if optionName := ModuleOptionName(moduleName); optionName != "" {
+				return nil, fmt.Errorf("require: module @%s is not enabled (use core.%s() option)", moduleName, optionName)
+			}
+			return nil, fmt.Errorf("require: module @%s is not enabled and is not a built-in module (host-provided modules are registered via core.WithGlobal())", moduleName)
 		}
 		return object.Nil, nil
 	}

@@ -46,15 +46,20 @@ func processRequirement(w *Window, req string) (object.Object, error) {
 	if strings.HasPrefix(req, "@") {
 		moduleName := strings.TrimPrefix(req, "@")
 
+		if moduleName == "" {
+			return nil, fmt.Errorf("require: empty module name in %q (use '@sql' style for modules)", req)
+		}
+
 		// Special case: @gui is always available in Window
 		if moduleName == "gui" {
 			return object.Nil, nil
 		}
 
 		if !w.enabledModules[moduleName] {
-			// Capitalize first letter for option name
-			optionName := strings.ToUpper(moduleName[:1]) + moduleName[1:]
-			return nil, fmt.Errorf("require: module @%s is not enabled (use fynerisor.With%s() option)", moduleName, optionName)
+			if optionName := core.ModuleOptionName(moduleName); optionName != "" {
+				return nil, fmt.Errorf("require: module @%s is not enabled (use gui.%s() option)", moduleName, optionName)
+			}
+			return nil, fmt.Errorf("require: module @%s is not enabled and is not a built-in module (host-provided modules are registered via gui.WithGlobal())", moduleName)
 		}
 		return object.Nil, nil
 	}
