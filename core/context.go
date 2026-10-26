@@ -3,6 +3,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -132,12 +133,19 @@ func (cb *Context) LoadScript(script string) {
 //	    utils.myUtil(42)
 //	`)
 func (cb *Context) Eval(script string) (any, error) {
+	return cb.EvalContext(context.Background(), script)
+}
+
+// EvalContext evaluates a Risor script with the given context. Cancelling
+// the context stops the Risor VM, which lets callers bound or interrupt
+// headless runs (issue #9).
+func (cb *Context) EvalContext(ctx context.Context, script string) (any, error) {
 	// Load the script if provided
 	if script != "" {
 		cb.runner.LoadScript(script)
 	}
 
-	return cb.runner.Eval()
+	return cb.runner.EvalContext(ctx)
 }
 
 // EvalWithImports is deprecated. Use runtime import() function instead:

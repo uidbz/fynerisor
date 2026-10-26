@@ -357,7 +357,7 @@ func (w *Window) Execute() {
 	w.functionCalls = callChan
 
 	go func() {
-		result, err := w.runner.Eval()
+		result, err := w.runner.EvalContext(ctx)
 		if err != nil {
 			// Check if it was cancelled
 			if ctx.Err() == context.Canceled {
