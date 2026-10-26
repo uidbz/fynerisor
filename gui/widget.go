@@ -11,6 +11,7 @@ import (
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
+	"github.com/uidbz/fynerisor/gui/vmexec"
 	risorwidget "github.com/uidbz/fynerisor/gui/widget"
 	timemodule "github.com/uidbz/fynerisor/modules/time"
 )
@@ -768,27 +769,24 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 // callbackQueueSize bounds the queue of pending event callbacks. When it is
 // full, events are dropped with a diagnostic instead of blocking Fyne's UI
 // thread (issue #10).
-const callbackQueueSize = 100
+const callbackQueueSize = vmexec.DefaultQueueSize
 
-// queueCallback enqueues fn on the callback queue of the current run. It
-// never blocks the sender: before Execute, after Stop, or when the queue is
-// full, the callback is dropped with a message on stderr (issue #10).
+// queueCallback runs fn on the current run's VM goroutine, after the main
+// body and earlier events. It never blocks the sender: before Execute,
+// after Stop, or when the queue is full, the callback is dropped (the
+// latter two with a message on stderr).
 func (w *Window) queueCallback(what string, fn func()) {
-	ch := w.functionCalls.Load()
-	if ch == nil {
+	r := w.run.Load()
+	if r == nil {
 		fmt.Fprintf(os.Stderr, "fynerisor: %s called before Execute; callback dropped\n", what)
 		return
 	}
-	select {
-	case *ch <- fn:
-	default:
-		fmt.Fprintf(os.Stderr, "fynerisor: %s: callback queue full (%d); event dropped\n", what, callbackQueueSize)
-	}
+	_ = r.Enqueue(what, fn)
 }
 
 // Do queues fn on the current execution's callback queue so it runs on the
-// callback goroutine with access to the Risor VM. It never blocks the caller
-// (issue #10); see queueCallback.
+// run's VM goroutine with exclusive access to the Risor VM. It never blocks
+// the caller (issue #10); see queueCallback.
 func (w *Window) Do(fn func()) {
 	w.queueCallback("window.Do", fn)
 }

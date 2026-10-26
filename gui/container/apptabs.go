@@ -4,13 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"runtime/debug"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"github.com/uidbz/fynerisor/gui/guithread"
-	"github.com/uidbz/fynerisor/gui/vmguard"
+	"github.com/uidbz/fynerisor/gui/vmexec"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -148,28 +146,15 @@ func (obj *AppTabs) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("type error: expected function, got %s", args[0].Type()), nil
+			cb, err := vmexec.NewCallback(ctx, "container.AppTabs.OnSelected", args[0])
+			if err != nil {
+				return nil, err
 			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("container.AppTabs.OnSelected: unable to get call function"), nil
-			}
-			// Fyne invokes OnSelected on the GUI thread when the active tab
-			// changes. Run the script callback through the VM guard (with panic
-			// recovery, mirroring safeCall) so a faulty callback can't crash the
-			// process or corrupt the single-threaded VM. guithread.Do keeps the
-			// call on the GUI thread whether Fyne dispatches inline or queued.
+			// Event: Fyne invokes OnSelected on the GUI thread; the script
+			// callback is queued on the script's VM goroutine (recovered,
+			// serialized with every other VM entry).
 			obj.instance.OnSelected = func(item *container.TabItem) {
-				guithread.Do(func() {
-					defer func() {
-						if r := recover(); r != nil {
-							fmt.Fprintf(os.Stderr, "recovered panic in OnSelected callback: %v\n%s\n", r, debug.Stack())
-						}
-					}()
-					vmguard.Call(callFunc, ctx, fn, []object.Object{&TabItem{instance: item}})
-				})
+				cb.Fire(&TabItem{instance: item})
 			}
 			return object.Nil, nil
 		}), true

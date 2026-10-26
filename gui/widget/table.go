@@ -2,7 +2,6 @@ package widget
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"fyne.io/fyne/v2"
@@ -11,12 +10,12 @@ import (
 	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/vmexec"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 
 	risorcanvas "github.com/uidbz/fynerisor/gui/canvas"
-	"github.com/uidbz/fynerisor/gui/vmguard"
 	"github.com/uidbz/fynerisor/gui/widget/tablewidget"
 )
 
@@ -28,12 +27,18 @@ type Table struct {
 	w        WindowInterface
 
 	// last-known getter results, reused during transient VM/render contention
-	// (vmguard.ErrConcurrentAccess) so the grid never collapses to empty for a
-	// frame — mirrors the resilience already built into widget.List.Length.
+	// (vmexec.ErrBusy) so the grid never collapses to empty for a frame; the
+	// table is refreshed once the VM is idle (Callback.RefreshWhenBusy).
 	lastColumns      []string
 	lastRowCount     int
 	lastData         *tablewidget.TableData
 	lastHeaderLevels [][]string
+}
+
+// refresh re-renders the table with fresh getter results; scheduled by the
+// getters' callbacks when they hit VM contention.
+func (obj *Table) refresh() {
+	guithread.Do(obj.instance.Refresh)
 }
 
 func (obj *Table) CanvasObject() fyne.CanvasObject {
@@ -83,26 +88,21 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args)), nil
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.Table.Columns", args[0])
+			if err != nil {
+				return nil, err
 			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("table (%s): unable to get call function", name), nil
-			}
+			cb.RefreshWhenBusy(obj.refresh)
 
 			obj.Columns = func() []string {
-				o, err := vmguard.Call(callFunc, ctx, fn, []object.Object{})
+				o, err := cb.Call()
 				if err != nil {
-					if !errors.Is(err, vmguard.ErrConcurrentAccess) {
-						fmt.Println("Table.Columns error:", err)
-					}
+					cb.Report(err)
 					return obj.lastColumns
 				}
 				s, err2 := object.AsStringSlice(o)
 				if err2 != nil {
-					fmt.Println("Table.Columns: expected []string:", err2)
+					cb.Report(fmt.Errorf("expected []string: %w", err2))
 					return obj.lastColumns
 				}
 				obj.lastColumns = s
@@ -116,26 +116,21 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args)), nil
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.Table.HeaderLevels", args[0])
+			if err != nil {
+				return nil, err
 			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("table (%s): unable to get call function", name), nil
-			}
+			cb.RefreshWhenBusy(obj.refresh)
 
 			obj.instance.HeaderLevels = func() [][]string {
-				o, err := vmguard.Call(callFunc, ctx, fn, []object.Object{})
+				o, err := cb.Call()
 				if err != nil {
-					if !errors.Is(err, vmguard.ErrConcurrentAccess) {
-						fmt.Println("Table.HeaderLevels error:", err)
-					}
+					cb.Report(err)
 					return obj.lastHeaderLevels
 				}
 				rows, err2 := stringRowsFromObject(o)
 				if err2 != nil {
-					fmt.Println("Table.HeaderLevels: expected list of lists of strings:", err2)
+					cb.Report(fmt.Errorf("expected list of lists of strings: %w", err2))
 					return obj.lastHeaderLevels
 				}
 				obj.lastHeaderLevels = rows
@@ -149,26 +144,21 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args)), nil
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.Table.RowCount", args[0])
+			if err != nil {
+				return nil, err
 			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("table (%s): unable to get call function", name), nil
-			}
+			cb.RefreshWhenBusy(obj.refresh)
 
 			obj.instance.RowCount = func() int {
-				o, err := vmguard.Call(callFunc, ctx, fn, []object.Object{})
+				o, err := cb.Call()
 				if err != nil {
-					if !errors.Is(err, vmguard.ErrConcurrentAccess) {
-						fmt.Println("Table.RowCount error:", err)
-					}
+					cb.Report(err)
 					return obj.lastRowCount
 				}
 				s, err2 := object.AsInt(o)
 				if err2 != nil {
-					fmt.Println("Table.RowCount: expected int:", err2)
+					cb.Report(fmt.Errorf("expected int: %w", err2))
 					return obj.lastRowCount
 				}
 				obj.lastRowCount = int(s)
@@ -208,21 +198,14 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args)), nil
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
-			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("table (%s): unable to get call function", name), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.Table.SetOnClick", args[0])
+			if err != nil {
+				return nil, err
 			}
 
+			// Event: queued on the script's VM goroutine.
 			obj.instance.SetOnClick(func(row, col int) {
-				_, err := callFunc(ctx, fn, []object.Object{object.NewInt(int64(row)), object.NewInt(int64(col))})
-				if err != nil {
-					fmt.Println("widget.Table.SetOnClick: ERROR:", err)
-					return
-				}
+				cb.Fire(object.NewInt(int64(row)), object.NewInt(int64(col)))
 			})
 			return object.Nil, nil
 		}), true
@@ -232,14 +215,11 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args)), nil
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.Table.Data", args[0])
+			if err != nil {
+				return nil, err
 			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("table (%s): unable to get call function", name), nil
-			}
+			cb.RefreshWhenBusy(obj.refresh)
 
 			obj.instance.Data = func(offset, limit int) *tablewidget.TableData {
 				lastOrEmpty := func() *tablewidget.TableData {
@@ -248,16 +228,14 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 					}
 					return tablewidget.NewTableData(obj.instance.Title)
 				}
-				o, err := vmguard.Call(callFunc, ctx, fn, []object.Object{object.NewInt(int64(offset)), object.NewInt(int64(limit))})
+				o, err := cb.Call(object.NewInt(int64(offset)), object.NewInt(int64(limit)))
 				if err != nil {
-					if !errors.Is(err, vmguard.ErrConcurrentAccess) {
-						fmt.Println("Table.Data error:", err)
-					}
+					cb.Report(err)
 					return lastOrEmpty()
 				}
 				outer, err2 := object.AsList(o)
 				if err2 != nil {
-					fmt.Println("Table.Data: expected list:", err2)
+					cb.Report(fmt.Errorf("expected list: %w", err2))
 					return lastOrEmpty()
 				}
 				td := tablewidget.NewTableData(obj.instance.Title)
@@ -266,7 +244,7 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 					case *object.List:
 						td.AddStringRow(obj.Columns(), stringsFromList(inner))
 					default:
-						fmt.Printf("type error: expected list (got %s)\n", inner.Type())
+						cb.Report(fmt.Errorf("expected list of rows, got row of type %s", inner.Type()))
 						return lastOrEmpty()
 					}
 				}
@@ -281,32 +259,26 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.Table.CreateCell", args[0])
+			if err != nil {
+				return nil, err
 			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("table: unable to get call function"), nil
-			}
+			cb.RefreshWhenBusy(obj.refresh)
 
 			createFunc := func(col, row int) fyne.CanvasObject {
-				// Call the Risor callback directly - we're already in the GUI thread
-				result, err := vmguard.Call(callFunc, ctx, fn, []object.Object{
-					object.NewInt(int64(col)),
-					object.NewInt(int64(row)),
-				})
+				// Getter: Fyne calls it synchronously on the UI thread.
+				result, err := cb.Call(object.NewInt(int64(col)), object.NewInt(int64(row)))
 				if err != nil {
-					fmt.Println("CreateCell ERROR:", err)
+					cb.Report(err)
 					return widget.NewLabel("")
 				}
 				if widgetObj, ok := result.(interface{ CanvasObject() fyne.CanvasObject }); ok {
 					return widgetObj.CanvasObject()
 				}
 				if errObj, ok := result.(*object.Error); ok {
-					fmt.Printf("CreateCell ERROR: %v\n", errObj.Value())
+					cb.Report(errObj.Value())
 				} else {
-					fmt.Printf("CreateCell: result does not implement CanvasObject() - got type: %T\n", result)
+					cb.Report(fmt.Errorf("result does not implement CanvasObject() - got type: %T", result))
 				}
 				return widget.NewLabel("")
 			}
@@ -322,26 +294,16 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.Table.UpdateCell", args[0])
+			if err != nil {
+				return nil, err
 			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("table: unable to get call function"), nil
-			}
+			cb.RefreshWhenBusy(obj.refresh)
 
 			updateFunc := func(col, row int, canvasObj fyne.CanvasObject) {
-				// Call the Risor callback directly - we're already in the GUI thread
-				wrappedObj := wrapCanvasObjectTable(canvasObj)
-				_, err := vmguard.Call(callFunc, ctx, fn, []object.Object{
-					object.NewInt(int64(col)),
-					object.NewInt(int64(row)),
-					wrappedObj,
-				})
-				if err != nil {
-					fmt.Println("UpdateCell ERROR:", err)
-				}
+				// Getter-like: Fyne calls it synchronously on the UI thread.
+				_, err := cb.Call(object.NewInt(int64(col)), object.NewInt(int64(row)), wrapCanvasObjectTable(canvasObj))
+				cb.Report(err)
 			}
 
 			guithread.Do(func() {

@@ -8,7 +8,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
-	"github.com/uidbz/fynerisor/gui/vmguard"
+	"github.com/uidbz/fynerisor/gui/vmexec"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -36,6 +36,12 @@ func NewList(w WindowInterface) *List {
 		instance: instance,
 		w:        w,
 	}
+}
+
+// refresh re-renders the list with fresh getter results; scheduled by the
+// getters' callbacks when they hit VM contention.
+func (obj *List) refresh() {
+	guithread.Do(obj.instance.Refresh)
 }
 
 func (obj *List) CanvasObject() fyne.CanvasObject {
@@ -104,30 +110,25 @@ func (obj *List) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
 
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.List.Length", args[0])
+			if err != nil {
+				return nil, err
 			}
+			cb.RefreshWhenBusy(obj.refresh)
 
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("list.Length: unable to get call function"), nil
-			}
-
+			// Getter: Fyne calls it synchronously during layout on the UI
+			// thread. While the VM is busy (ErrBusy) keep the last-known
+			// length so the list doesn't collapse; the list is refreshed
+			// once the VM is idle again.
 			obj.instance.Length = func() int {
-				result, err := vmguard.Call(callFunc, ctx, fn, []object.Object{})
+				result, err := cb.Call()
 				if err != nil {
-					// Transient render/VM contention: keep the last-known length
-					// so the list doesn't collapse to empty for a frame. Only a
-					// genuine script error is worth logging.
-					if !errors.Is(err, vmguard.ErrConcurrentAccess) {
-						fmt.Printf("List.Length error: %v\n", err)
-					}
+					cb.Report(err)
 					return obj.lastLen
 				}
 				count, err := object.AsInt(result)
 				if err != nil {
-					fmt.Printf("List.Length: expected int, got %s\n", result.Type())
+					cb.Report(fmt.Errorf("expected int, got %s", result.Type()))
 					return obj.lastLen
 				}
 				obj.lastLen = int(count)
@@ -143,28 +144,22 @@ func (obj *List) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
 
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.List.CreateItem", args[0])
+			if err != nil {
+				return nil, err
 			}
-
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("list.CreateItem: unable to get call function"), nil
-			}
+			cb.RefreshWhenBusy(obj.refresh)
 
 			obj.instance.CreateItem = func() fyne.CanvasObject {
-				result, err := vmguard.Call(callFunc, ctx, fn, []object.Object{})
+				result, err := cb.Call()
 				if err != nil {
-					if !errors.Is(err, vmguard.ErrConcurrentAccess) {
-						fmt.Printf("List.CreateItem error: %v\n", err)
-					}
+					cb.Report(err)
 					return widget.NewLabel("")
 				}
 
 				canvasObj, ok := result.(interface{ CanvasObject() fyne.CanvasObject })
 				if !ok {
-					fmt.Printf("List.CreateItem: expected widget, got %s\n", result.Type())
+					cb.Report(fmt.Errorf("expected widget, got %s", result.Type()))
 					return widget.NewLabel("error")
 				}
 
@@ -180,27 +175,17 @@ func (obj *List) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
 
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.List.UpdateItem", args[0])
+			if err != nil {
+				return nil, err
 			}
-
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("list.UpdateItem: unable to get call function"), nil
-			}
+			cb.RefreshWhenBusy(obj.refresh)
 
 			obj.instance.UpdateItem = func(id widget.ListItemID, item fyne.CanvasObject) {
-				// Call synchronously to avoid race condition with Length/CreateItem
-				// Wrap the canvas object so Risor can access it
-				wrappedItem := wrapCanvasObject(item)
-				_, err := vmguard.Call(callFunc, ctx, fn, []object.Object{
-					object.NewInt(int64(id)),
-					wrappedItem,
-				})
-				if err != nil && !errors.Is(err, vmguard.ErrConcurrentAccess) {
-					fmt.Printf("List.UpdateItem error: %v\n", err)
-				}
+				// Getter-like: runs synchronously during render. Wrap the
+				// canvas object so Risor can access it.
+				_, err := cb.Call(object.NewInt(int64(id)), wrapCanvasObject(item))
+				cb.Report(err)
 			}
 
 			return object.Nil, nil
@@ -212,19 +197,15 @@ func (obj *List) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
 
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.List.OnSelected", args[0])
+			if err != nil {
+				return nil, err
 			}
 
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("list.OnSelected: unable to get call function"), nil
-			}
-
+			// Event: queued on the script's VM goroutine, never run on (or
+			// blocking) the UI thread.
 			obj.instance.OnSelected = func(id widget.ListItemID) {
-				// Call synchronously to avoid race condition
-				vmguard.Call(callFunc, ctx, fn, []object.Object{object.NewInt(int64(id))})
+				cb.Fire(object.NewInt(int64(id)))
 			}
 
 			return object.Nil, nil

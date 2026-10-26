@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	_ "embed"
 	"errors"
@@ -24,6 +23,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/vmexec"
 	risorwidget "github.com/uidbz/fynerisor/gui/widget"
 )
 
@@ -98,10 +98,9 @@ type Window struct {
 	droppedPaths   []string
 	onDropped      func(droppedPaths []string)
 	onNewStdout    func(text string)
-	stdoutSink     func(text string)           // Go sink for captured stdout; bypasses the Risor VM
-	functionCalls  atomic.Pointer[chan func()] // callback queue of the current run; atomic so senders and Execute cannot race (issue #15)
-	cancelExec     context.CancelFunc          // Cancel function for current execution
-	execDone       chan struct{}               // closed when the previous run's goroutines have exited (issue #15)
+	stdoutSink     func(text string)          // Go sink for captured stdout; bypasses the Risor VM
+	run            atomic.Pointer[vmexec.Run] // current script run: VM goroutine, guard, event queue, context (issue #37)
+	contentMu      sync.Mutex                 // serializes SetContent swaps between overlapping runs
 	statusCallback func(string)
 	resultCallback func(string)
 	runner         *ScriptRunner
@@ -249,7 +248,7 @@ func (w *Window) installDropHandler() {
 		}
 		w.droppedPaths = paths
 		if w.onDropped != nil {
-			w.queueCallback("window.OnDropped", func() { guithread.Do(func() { w.onDropped(paths) }) })
+			w.queueCallback("window.OnDropped", func() { w.onDropped(paths) })
 		}
 	})
 }
@@ -367,87 +366,31 @@ func (w *Window) ImportScript(source string) error {
 	return fmt.Errorf("ImportScript() is deprecated: use import() function in scripts instead")
 }
 
-// Execute executes the loaded Risor script in a goroutine.
-// It evaluates the script with all configured globals and processes any
-// queued function calls from callbacks. Sets status to "ERROR: ..." on failure
-// or "Ready!" on success.
+// Execute executes the loaded Risor script asynchronously and returns
+// immediately. The script runs on its own VM goroutine (a vmexec.Run): the
+// main body first, then every widget event, one at a time. Sets status to
+// "ERROR: ..." on failure or "Ready!" on success.
 //
-// This method returns immediately; script execution happens asynchronously.
-// Call LoadScript() before calling this method.
-//
-// Multiple calls to Execute() are safe. Previous execution will be cancelled
-// to prevent resource leaks from abandoned goroutines.
+// Calling Execute again stops the previous run first: its VM halts, and
+// events still arriving for its widgets are dropped. Execute never waits
+// for the previous run, so it is safe to call from inside a running script
+// (e.g. browser.Open navigating to a new page).
 func (w *Window) Execute() {
-	// Cancel any previous execution
-	if w.cancelExec != nil {
-		w.cancelExec()
-	}
-	// Wait for the previous run's goroutines to actually exit before
-	// starting the new one: a cancelled body may still be finishing a
-	// Fyne mutation (SetContent) while the new body begins its own
-	// (issue #15). The wait normally completes instantly; the timeout
-	// keeps a wedged builtin from blocking the host.
-	if prev := w.execDone; prev != nil {
-		select {
-		case <-prev:
-		case <-time.After(2 * time.Second):
-			fmt.Fprintln(os.Stderr, "fynerisor: previous script run did not stop within 2s")
-		}
+	if prev := w.run.Load(); prev != nil {
+		prev.Stop()
 	}
 
-	// Create new context for this execution
-	ctx, cancel := context.WithCancel(context.Background())
-	w.cancelExec = cancel
+	r := vmexec.New(context.Background(), vmexec.Config{QueueSize: callbackQueueSize})
+	w.run.Store(r)
 
-	// Create new channel for this execution
-	// Don't close old channel - let it be garbage collected
-	// Old goroutine will exit via context cancellation
-	callChan := make(chan func(), callbackQueueSize)
-	w.functionCalls.Store(&callChan)
-	// bodyDone closes when the main script body has finished, with or
-	// without an error. Callbacks are gated on it so exactly one
-	// goroutine is inside the VM at a time (issue #10).
-	bodyDone := make(chan struct{})
-	// runDone closes when both run goroutines (body and callback loop)
-	// have exited; the next Execute waits on it (issue #15).
-	runDone := make(chan struct{})
-	var runGoroutines int32 = 2
-	finishRun := func() {
-		if atomic.AddInt32(&runGoroutines, -1) == 0 {
-			close(runDone)
-		}
-	}
-	w.execDone = runDone
-
-	// Drain the callback queue. Starting the loop *before* the main body
-	// (and never blocking the send in Do) is what prevents the UI freeze:
-	// widget events keep being accepted while the body runs, errored or
-	// was stopped.
-	go func() {
-		defer finishRun()
-		<-bodyDone
-
-		// Process callbacks until cancelled
-		for {
-			select {
-			case <-ctx.Done():
-				return // Exit if cancelled
-			case x := <-callChan:
-				x()
-			}
-		}
-	}()
-
-	go func() {
-		defer finishRun()
-		defer close(bodyDone)
-
+	r.Start(func(ctx context.Context) {
 		result, err := w.runner.EvalContext(ctx)
+		// A run that was stopped or replaced reports nothing: its status
+		// would overwrite the status of the run that replaced it.
+		if ctx.Err() != nil || w.run.Load() != r {
+			return
+		}
 		if err != nil {
-			// Check if it was cancelled
-			if ctx.Err() == context.Canceled {
-				return // Silently exit if cancelled
-			}
 			// Log error to stderr so it's visible in terminal
 			fmt.Fprintf(os.Stderr, "Script execution error: %v\n", err)
 			w.SetStatus("ERROR: " + err.Error())
@@ -460,15 +403,15 @@ func (w *Window) Execute() {
 		}
 
 		w.SetStatus("Ready!")
-	}()
+	})
 }
 
 // Stop cancels the currently executing script and stops processing queued
 // callbacks. It is safe to call when no script is running and is used by
 // CanvasObject to release a script when the embedded object is discarded.
 func (w *Window) Stop() {
-	if w.cancelExec != nil {
-		w.cancelExec()
+	if r := w.run.Load(); r != nil {
+		r.Stop()
 	}
 }
 
@@ -581,6 +524,13 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			}
 
 			guithread.Do(func() {
+				// A run that has been stopped or replaced must not swap the
+				// content of the run that replaced it.
+				if ctx.Err() != nil {
+					return
+				}
+				w.contentMu.Lock()
+				defer w.contentMu.Unlock()
 				w.content.Objects = []fyne.CanvasObject{obj.CanvasObject()}
 				w.content.Refresh()
 			})
@@ -676,13 +626,13 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			}
 
 			// Queue the function to run on the GUI thread
+			// Runs on the run's VM goroutine after the current body/event;
+			// widget methods marshal their own UI work (guithread.Do).
 			w.queueCallback("window.Do", func() {
-				guithread.Do(func() {
-					_, err := safeCall(callFunc, ctx, fn, []object.Object{})
-					if err != nil {
-						w.SetStatus("ERROR: " + err.Error())
-					}
-				})
+				_, err := safeCall(callFunc, ctx, fn, []object.Object{})
+				if err != nil && ctx.Err() == nil {
+					w.SetStatus("ERROR: " + err.Error())
+				}
 			})
 
 			return object.Nil, nil
@@ -769,12 +719,10 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			w.FyneWindow.Canvas().AddShortcut(shortcut, func(s fyne.Shortcut) {
 				// Queue callback on function channel (for thread safety)
 				w.queueCallback("window.AddShortcut", func() {
-					guithread.Do(func() {
-						_, err := safeCall(callFunc, ctx, callback, []object.Object{})
-						if err != nil {
-							w.SetStatus("ERROR: " + err.Error())
-						}
-					})
+					_, err := safeCall(callFunc, ctx, callback, []object.Object{})
+					if err != nil && ctx.Err() == nil {
+						w.SetStatus("ERROR: " + err.Error())
+					}
 				})
 			})
 
@@ -925,7 +873,7 @@ func (w *Window) captureStdout() {
 					sink := w.stdoutSink
 					guithread.Do(func() { sink(msg) })
 				} else {
-					w.queueCallback("window.CaptureStdout", func() { guithread.Do(func() { w.onNewStdout(msg) }) })
+					w.queueCallback("window.CaptureStdout", func() { w.onNewStdout(msg) })
 				}
 			}
 		}

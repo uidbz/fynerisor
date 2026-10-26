@@ -46,9 +46,22 @@
   canonicalised (absolute path / absolute URL), so `./a.risor` and
   `a.risor` are the same module. Scripts loaded via the old `LoadScript`
   keep the CWD behaviour. (issue #8)
+- **`gui/vmguard` is removed; `gui/vmexec` replaces it.** The old guard
+  was one process-wide variable; a `vmexec.Run` owns one VM goroutine,
+  one reentrant guard and one event queue *per script run*. Widget code
+  registers script functions with `vmexec.NewCallback` and calls `Fire`
+  (events, async) or `Call` (render getters, sync, may return
+  `vmexec.ErrBusy`). `window.Do(fn)` and shortcut handlers now run on the
+  script's VM goroutine instead of being re-dispatched onto the UI thread
+  (widget methods already marshal their own UI work). (issue #13)
 
 ### Fixed
 
+- Two windows or embedded views no longer block each other: while view A
+  runs a handler, view B's render getters (List/Table) answer instead of
+  being rejected as "concurrent VM access" and showing stale data. Risor's
+  lazily-created type registry is now initialized once, so two VMs
+  starting at the same moment no longer race inside Risor (issue #13).
 - fynerisor-browser no longer enables the `os` module for pages; remote
   scripts can no longer read, delete or exfiltrate local files or run
   commands (issue #7, security).
