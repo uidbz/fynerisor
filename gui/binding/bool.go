@@ -18,6 +18,7 @@ const BoolType object.Type = "binding.Bool"
 // Bool wraps a Fyne data binding for bool values.
 type Bool struct {
 	instance binding.Bool
+	w        CallbackQueuer
 }
 
 func (obj *Bool) Type() object.Type {
@@ -109,12 +110,14 @@ func (obj *Bool) GetAttr(name string) (object.Object, bool) {
 			}
 
 			listener := binding.NewDataListener(func() {
-				go func() {
+				// Serialize into the VM via the window callback queue
+				// instead of spawning a goroutine per change (issue #11).
+				queueCallback(obj.w, func() {
 					_, err := callFunc(ctx, fn, []object.Object{})
 					if err != nil {
 						fmt.Printf("ERROR: binding listener error: %v\n", err)
 					}
-				}()
+				})
 			})
 
 			obj.instance.AddListener(listener)
@@ -124,16 +127,18 @@ func (obj *Bool) GetAttr(name string) (object.Object, bool) {
 	return nil, false
 }
 
-func NewBool() *Bool {
+func NewBool(w CallbackQueuer) *Bool {
 	return &Bool{
 		instance: binding.NewBool(),
+		w:        w,
 	}
 }
 
-func BindBool(value bool) *Bool {
+func BindBool(value bool, w CallbackQueuer) *Bool {
 	b := binding.NewBool()
 	b.Set(value)
 	return &Bool{
 		instance: b,
+		w:        w,
 	}
 }

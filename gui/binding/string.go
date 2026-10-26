@@ -19,6 +19,7 @@ const StringType object.Type = "binding.String"
 // It allows widgets to automatically sync with data sources.
 type String struct {
 	instance binding.String
+	w        CallbackQueuer
 }
 
 func (obj *String) CanvasObject() interface{} {
@@ -114,12 +115,14 @@ func (obj *String) GetAttr(name string) (object.Object, bool) {
 			}
 
 			listener := binding.NewDataListener(func() {
-				go func() {
+				// Serialize into the VM via the window callback queue
+				// instead of spawning a goroutine per change (issue #11).
+				queueCallback(obj.w, func() {
 					_, err := callFunc(ctx, fn, []object.Object{})
 					if err != nil {
 						fmt.Printf("ERROR: binding listener error: %v\n", err)
 					}
-				}()
+				})
 			})
 
 			obj.instance.AddListener(listener)
@@ -129,16 +132,18 @@ func (obj *String) GetAttr(name string) (object.Object, bool) {
 	return nil, false
 }
 
-func NewString() *String {
+func NewString(w CallbackQueuer) *String {
 	return &String{
 		instance: binding.NewString(),
+		w:        w,
 	}
 }
 
-func BindString(value string) *String {
+func BindString(value string, w CallbackQueuer) *String {
 	str := binding.NewString()
 	str.Set(value)
 	return &String{
 		instance: str,
+		w:        w,
 	}
 }

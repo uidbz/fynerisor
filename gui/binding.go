@@ -25,7 +25,9 @@ const BindingType object.Type = "binding"
 //	data.Set("Hello")
 //	let label = widget.NewLabelWithData(data)
 //	data.Set("Updated!")  // Label automatically updates
-type Binding struct{}
+type Binding struct {
+	w risorbinding.CallbackQueuer
+}
 
 func (obj *Binding) Type() object.Type {
 	return BindingType
@@ -77,14 +79,14 @@ func (obj *Binding) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("wrong number of arguments. got=%d, want=0 or 1", len(args)), nil
 			}
 			if len(args) == 0 {
-				return risorbinding.NewString(), nil
+				return risorbinding.NewString(obj.w), nil
 			}
 			// Optional initial value
 			val, err := object.AsString(args[0])
 			if err != nil {
 				return object.Errorf("type error: %v", err), nil
 			}
-			return risorbinding.BindString(val), nil
+			return risorbinding.BindString(val, obj.w), nil
 		}), true
 
 	case "NewBool":
@@ -93,14 +95,14 @@ func (obj *Binding) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("wrong number of arguments. got=%d, want=0 or 1", len(args)), nil
 			}
 			if len(args) == 0 {
-				return risorbinding.NewBool(), nil
+				return risorbinding.NewBool(obj.w), nil
 			}
 			// Optional initial value
 			val, err := object.AsBool(args[0])
 			if err != nil {
 				return object.Errorf("type error: %v", err), nil
 			}
-			return risorbinding.BindBool(val), nil
+			return risorbinding.BindBool(val, obj.w), nil
 		}), true
 
 	case "NewInt":
@@ -109,14 +111,14 @@ func (obj *Binding) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("wrong number of arguments. got=%d, want=0 or 1", len(args)), nil
 			}
 			if len(args) == 0 {
-				return risorbinding.NewInt(), nil
+				return risorbinding.NewInt(obj.w), nil
 			}
 			// Optional initial value
 			val, err := object.AsInt(args[0])
 			if err != nil {
 				return object.Errorf("type error: %v", err), nil
 			}
-			return risorbinding.BindInt(int(val)), nil
+			return risorbinding.BindInt(int(val), obj.w), nil
 		}), true
 
 	case "NewFloat":
@@ -125,19 +127,19 @@ func (obj *Binding) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("wrong number of arguments. got=%d, want=0 or 1", len(args)), nil
 			}
 			if len(args) == 0 {
-				return risorbinding.NewFloat(), nil
+				return risorbinding.NewFloat(obj.w), nil
 			}
 			// Optional initial value
 			val, err := object.AsFloat(args[0])
 			if err != nil {
 				return object.Errorf("type error: %v", err), nil
 			}
-			return risorbinding.BindFloat(val), nil
+			return risorbinding.BindFloat(val, obj.w), nil
 		}), true
 	}
 	return nil, false
 }
 
-func NewBinding() *Binding {
-	return &Binding{}
+func NewBinding(w risorbinding.CallbackQueuer) *Binding {
+	return &Binding{w: w}
 }

@@ -18,6 +18,7 @@ const FloatType object.Type = "binding.Float"
 // Float wraps a Fyne data binding for float64 values.
 type Float struct {
 	instance binding.Float
+	w        CallbackQueuer
 }
 
 func (obj *Float) Type() object.Type {
@@ -109,12 +110,14 @@ func (obj *Float) GetAttr(name string) (object.Object, bool) {
 			}
 
 			listener := binding.NewDataListener(func() {
-				go func() {
+				// Serialize into the VM via the window callback queue
+				// instead of spawning a goroutine per change (issue #11).
+				queueCallback(obj.w, func() {
 					_, err := callFunc(ctx, fn, []object.Object{})
 					if err != nil {
 						fmt.Printf("ERROR: binding listener error: %v\n", err)
 					}
-				}()
+				})
 			})
 
 			obj.instance.AddListener(listener)
@@ -124,16 +127,18 @@ func (obj *Float) GetAttr(name string) (object.Object, bool) {
 	return nil, false
 }
 
-func NewFloat() *Float {
+func NewFloat(w CallbackQueuer) *Float {
 	return &Float{
 		instance: binding.NewFloat(),
+		w:        w,
 	}
 }
 
-func BindFloat(value float64) *Float {
+func BindFloat(value float64, w CallbackQueuer) *Float {
 	f := binding.NewFloat()
 	f.Set(value)
 	return &Float{
 		instance: f,
+		w:        w,
 	}
 }

@@ -18,6 +18,7 @@ const IntType object.Type = "binding.Int"
 // Int wraps a Fyne data binding for int values.
 type Int struct {
 	instance binding.Int
+	w        CallbackQueuer
 }
 
 func (obj *Int) Type() object.Type {
@@ -109,12 +110,14 @@ func (obj *Int) GetAttr(name string) (object.Object, bool) {
 			}
 
 			listener := binding.NewDataListener(func() {
-				go func() {
+				// Serialize into the VM via the window callback queue
+				// instead of spawning a goroutine per change (issue #11).
+				queueCallback(obj.w, func() {
 					_, err := callFunc(ctx, fn, []object.Object{})
 					if err != nil {
 						fmt.Printf("ERROR: binding listener error: %v\n", err)
 					}
-				}()
+				})
 			})
 
 			obj.instance.AddListener(listener)
@@ -124,16 +127,18 @@ func (obj *Int) GetAttr(name string) (object.Object, bool) {
 	return nil, false
 }
 
-func NewInt() *Int {
+func NewInt(w CallbackQueuer) *Int {
 	return &Int{
 		instance: binding.NewInt(),
+		w:        w,
 	}
 }
 
-func BindInt(value int) *Int {
+func BindInt(value int, w CallbackQueuer) *Int {
 	i := binding.NewInt()
 	i.Set(value)
 	return &Int{
 		instance: i,
+		w:        w,
 	}
 }

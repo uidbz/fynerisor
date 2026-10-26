@@ -178,7 +178,7 @@ func newWindow(opts ...Option) *Window {
 	app := newAppObject(w)
 	constants := newConstantsObject()
 	fyneobj := &Fyne{w: w}
-	bindingobj := NewBinding()
+	bindingobj := NewBinding(w)
 	dialogobj := NewDialog(w)
 
 	globals := map[string]any{

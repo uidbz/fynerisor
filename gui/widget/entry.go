@@ -204,10 +204,14 @@ func (obj *Entry) GetAttr(name string) (object.Object, bool) {
 			}
 
 			obj.instance.OnChanged = func(text string) {
-				go func() {
+				// Serialize into the VM through the window callback queue
+				// instead of spawning a goroutine per keystroke (issue #11).
+				obj.w.Do(func() {
 					s := object.NewString(text)
-					callFunc(ctx, fn, []object.Object{s})
-				}()
+					if _, err := callFunc(ctx, fn, []object.Object{s}); err != nil {
+						fmt.Printf("ERROR: entry.OnChanged error: %v\n", err)
+					}
+				})
 			}
 
 			return object.Nil, nil
