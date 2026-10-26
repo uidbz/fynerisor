@@ -96,6 +96,7 @@ type Window struct {
 	enabledModules map[string]bool // Track which modules are enabled
 	appName        string          // Name of the embedding application
 	droppedPaths   []string
+	cbMu           sync.Mutex // guards onDropped, onNewStdout, stdoutSink: set by the VM goroutine, read by the UI thread / capture goroutine
 	onDropped      func(droppedPaths []string)
 	onNewStdout    func(text string)
 	stdoutSink     func(text string)          // Go sink for captured stdout; bypasses the Risor VM
@@ -185,7 +186,7 @@ func newWindow(opts ...Option) *Window {
 	app := newAppObject(w)
 	constants := newConstantsObject()
 	fyneobj := &Fyne{w: w}
-	bindingobj := NewBinding(w)
+	bindingobj := NewBinding()
 	dialogobj := NewDialog(w)
 
 	globals := map[string]any{
@@ -247,8 +248,11 @@ func (w *Window) installDropHandler() {
 			paths[i] = uri.Path()
 		}
 		w.droppedPaths = paths
-		if w.onDropped != nil {
-			w.queueCallback("window.OnDropped", func() { w.onDropped(paths) })
+		w.cbMu.Lock()
+		onDropped := w.onDropped
+		w.cbMu.Unlock()
+		if onDropped != nil {
+			onDropped(paths) // queues the script callback on its run
 		}
 	})
 }
@@ -549,7 +553,9 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			// so stdout capture is safe while a go() goroutine holds the single
 			// non-threadsafe VM.
 			if logWidget, ok := args[0].(*risorwidget.Log); ok {
+				w.cbMu.Lock()
 				w.stdoutSink = logWidget.AppendGo
+				w.cbMu.Unlock()
 				w.captureStdout()
 				return object.Nil, nil
 			}
@@ -557,18 +563,19 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			// Legacy form: a closure. This re-enters the VM on each line and is
 			// NOT safe together with go() that produces output — prefer passing
 			// the Log widget instead.
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
+			if _, ok := args[0].(*object.Closure); !ok {
 				return object.Errorf("argument error: expected widget.Log or function, got %s", args[0].Type()), nil
 			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("window.CaptureStdout: unable to get call function"), nil
+			cb, err := vmexec.NewCallback(ctx, "window.CaptureStdout", args[0])
+			if err != nil {
+				return nil, err
 			}
 
+			w.cbMu.Lock()
 			w.onNewStdout = func(text string) {
-				safeCall(callFunc, ctx, fn, []object.Object{object.NewString(text)})
+				cb.Fire(object.NewString(text))
 			}
+			w.cbMu.Unlock()
 
 			w.captureStdout()
 
@@ -580,18 +587,16 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
-			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("window.OnDropped: unable to get call function"), nil
+			cb, err := vmexec.NewCallback(ctx, "window.OnDropped", args[0])
+			if err != nil {
+				return nil, err
 			}
 
+			w.cbMu.Lock()
 			w.onDropped = func(droppedPaths []string) {
-				safeCall(callFunc, ctx, fn, []object.Object{object.NewStringList(droppedPaths)})
+				cb.Fire(object.NewStringList(droppedPaths))
 			}
+			w.cbMu.Unlock()
 
 			return object.Nil, nil
 		}), true
@@ -616,24 +621,14 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
-			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("Do: unable to get call function"), nil
+			cb, err := vmexec.NewCallback(ctx, "window.Do", args[0])
+			if err != nil {
+				return nil, err
 			}
 
-			// Queue the function to run on the GUI thread
 			// Runs on the run's VM goroutine after the current body/event;
 			// widget methods marshal their own UI work (guithread.Do).
-			w.queueCallback("window.Do", func() {
-				_, err := safeCall(callFunc, ctx, fn, []object.Object{})
-				if err != nil && ctx.Err() == nil {
-					w.SetStatus("ERROR: " + err.Error())
-				}
-			})
+			cb.OnError(func(err error) { w.SetStatus("ERROR: " + err.Error()) }).Fire()
 
 			return object.Nil, nil
 		}), true
@@ -697,11 +692,11 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 				return nil, fmt.Errorf("first argument must be string (e.g., 'Ctrl+S')")
 			}
 
-			// Get callback function
-			callback, ok := args[1].(*object.Closure)
-			if !ok {
-				return nil, fmt.Errorf("second argument must be function")
+			cb, err := vmexec.NewCallback(ctx, "window.AddShortcut", args[1])
+			if err != nil {
+				return nil, err
 			}
+			cb.OnError(func(err error) { w.SetStatus("ERROR: " + err.Error()) })
 
 			// Parse the shortcut string
 			shortcut, err := ParseShortcutString(shortcutStr.Value())
@@ -709,21 +704,10 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 				return nil, fmt.Errorf("invalid shortcut: %w", err)
 			}
 
-			// Get call function from context
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return nil, fmt.Errorf("unable to get call function")
-			}
-
-			// Register shortcut on canvas
+			// Register shortcut on canvas. Event: the handler is queued on
+			// the script's VM goroutine.
 			w.FyneWindow.Canvas().AddShortcut(shortcut, func(s fyne.Shortcut) {
-				// Queue callback on function channel (for thread safety)
-				w.queueCallback("window.AddShortcut", func() {
-					_, err := safeCall(callFunc, ctx, callback, []object.Object{})
-					if err != nil && ctx.Err() == nil {
-						w.SetStatus("ERROR: " + err.Error())
-					}
-				})
+				cb.Fire()
 			})
 
 			// Track shortcut for removal
@@ -865,15 +849,16 @@ func (w *Window) captureStdout() {
 				pending = pending[1:]
 				mu.Unlock()
 				// Prefer the Go sink: it appends to the log widget without
-				// entering the non-threadsafe Risor VM, so capture can run
-				// concurrently with a go() script goroutine that holds the VM.
-				// Only fall back to the script closure (which re-enters the VM)
-				// when no Go sink is registered.
-				if w.stdoutSink != nil {
-					sink := w.stdoutSink
+				// entering the Risor VM at all. Otherwise the script closure
+				// is queued on its run like any other event.
+				w.cbMu.Lock()
+				sink, onLine := w.stdoutSink, w.onNewStdout
+				w.cbMu.Unlock()
+				switch {
+				case sink != nil:
 					guithread.Do(func() { sink(msg) })
-				} else {
-					w.queueCallback("window.CaptureStdout", func() { w.onNewStdout(msg) })
+				case onLine != nil:
+					onLine(msg)
 				}
 			}
 		}

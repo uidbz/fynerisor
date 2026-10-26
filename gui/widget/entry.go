@@ -9,6 +9,7 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/vmexec"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -20,7 +21,22 @@ const EntryType object.Type = "widget.Entry"
 
 type Entry struct {
 	instance *widget.Entry
-	w        WindowInterface // needed for accepting functions as argument (OnSubmitted)
+	w        WindowInterface
+}
+
+// validatorVerdict maps a validator script result to a Fyne validation
+// error: nil or "" passes, any other string is the error message.
+func validatorVerdict(result object.Object) error {
+	if result == nil || result == object.Nil {
+		return nil
+	}
+	if str, ok := result.(*object.String); ok {
+		if str.Value() == "" {
+			return nil
+		}
+		return errors.New(str.Value())
+	}
+	return nil
 }
 
 func (obj *Entry) CanvasObject() fyne.CanvasObject {
@@ -170,20 +186,14 @@ func (obj *Entry) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
-			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("entry.OnSubmitted: unable to get call function"), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.Entry.OnSubmitted", args[0])
+			if err != nil {
+				return nil, err
 			}
 
+			// Event: queued on the script's VM goroutine.
 			obj.instance.OnSubmitted = func(text string) {
-				obj.w.Do(func() {
-					s := object.NewString(text)
-					callFunc(ctx, fn, []object.Object{s})
-				})
+				cb.Fire(object.NewString(text))
 			}
 
 			return object.Nil, nil
@@ -194,24 +204,15 @@ func (obj *Entry) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
-			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("entry.OnChanged: unable to get call function"), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.Entry.OnChanged", args[0])
+			if err != nil {
+				return nil, err
 			}
 
+			// Event: queued on the script's VM goroutine, in keystroke order
+			// (never a goroutine per keystroke, issue #11).
 			obj.instance.OnChanged = func(text string) {
-				// Serialize into the VM through the window callback queue
-				// instead of spawning a goroutine per keystroke (issue #11).
-				obj.w.Do(func() {
-					s := object.NewString(text)
-					if _, err := callFunc(ctx, fn, []object.Object{s}); err != nil {
-						fmt.Printf("ERROR: entry.OnChanged error: %v\n", err)
-					}
-				})
+				cb.Fire(object.NewString(text))
 			}
 
 			return object.Nil, nil
@@ -222,33 +223,26 @@ func (obj *Entry) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
-			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("entry.SetValidator: unable to get call function"), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.Entry.SetValidator", args[0])
+			if err != nil {
+				return nil, err
 			}
 
-			// Validator returns error or nil
+			// Getter: Fyne calls the validator synchronously on the UI
+			// thread. While the VM is busy keep the previous verdict.
+			var last error
 			obj.instance.Validator = func(text string) error {
 				s := object.NewString(text)
-				result, err := callFunc(ctx, fn, []object.Object{s})
+				result, err := cb.Call(s)
 				if err != nil {
+					if vmexec.Quiet(err) {
+						return last
+					}
+					last = err
 					return err
 				}
-				// If result is nil or empty string, validation passes
-				if result == object.Nil {
-					return nil
-				}
-				if str, ok := result.(*object.String); ok {
-					if str.Value() == "" {
-						return nil
-					}
-					return fmt.Errorf("%s", str.Value())
-				}
-				return nil
+				last = validatorVerdict(result)
+				return last
 			}
 
 			return object.Nil, nil

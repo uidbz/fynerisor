@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/vmexec"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -129,17 +130,14 @@ func (obj *Markdown) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
-			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("markdown.SetOnTapped: unable to get call function"), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.Markdown.SetOnTapped", args[0])
+			if err != nil {
+				return nil, err
 			}
 
+			// Event: link taps are queued on the script's VM goroutine.
 			obj.callback = func(text, url string) {
-				callFunc(ctx, fn, []object.Object{object.NewString(text), object.NewString(url)})
+				cb.Fire(object.NewString(text), object.NewString(url))
 			}
 
 			return object.Nil, nil

@@ -9,6 +9,8 @@ import (
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
+
+	"github.com/uidbz/fynerisor/gui/vmexec"
 )
 
 var _ object.Object = &Float{}
@@ -18,7 +20,6 @@ const FloatType object.Type = "binding.Float"
 // Float wraps a Fyne data binding for float64 values.
 type Float struct {
 	instance binding.Float
-	w        CallbackQueuer
 }
 
 func (obj *Float) Type() object.Type {
@@ -99,46 +100,30 @@ func (obj *Float) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			cb, err := vmexec.NewCallback(ctx, "binding.Float.AddListener", args[0])
+			if err != nil {
+				return nil, err
 			}
 
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("binding.Float.AddListener: unable to get call function"), nil
-			}
-
-			listener := binding.NewDataListener(func() {
-				// Serialize into the VM via the window callback queue
-				// instead of spawning a goroutine per change (issue #11).
-				queueCallback(obj.w, func() {
-					_, err := callFunc(ctx, fn, []object.Object{})
-					if err != nil {
-						fmt.Printf("ERROR: binding listener error: %v\n", err)
-					}
-				})
-			})
-
-			obj.instance.AddListener(listener)
+			// Event: each change is queued on the script's VM goroutine
+			// (never a goroutine per change, issue #11).
+			obj.instance.AddListener(binding.NewDataListener(func() { cb.Fire() }))
 			return object.Nil, nil
 		}), true
 	}
 	return nil, false
 }
 
-func NewFloat(w CallbackQueuer) *Float {
+func NewFloat() *Float {
 	return &Float{
 		instance: binding.NewFloat(),
-		w:        w,
 	}
 }
 
-func BindFloat(value float64, w CallbackQueuer) *Float {
+func BindFloat(value float64) *Float {
 	f := binding.NewFloat()
 	f.Set(value)
 	return &Float{
 		instance: f,
-		w:        w,
 	}
 }

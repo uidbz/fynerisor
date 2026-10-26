@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/vmexec"
 )
 
 const TreeType object.Type = "widget.Tree"
@@ -17,10 +19,21 @@ const TreeType object.Type = "widget.Tree"
 type Tree struct {
 	instance *widget.Tree
 	w        WindowInterface
+
+	// Last-known getter results per node, reused while the script's VM is
+	// busy (vmexec.ErrBusy) so the tree does not collapse; the tree is
+	// refreshed once the VM is idle (Callback.RefreshWhenBusy).
+	cacheMu      sync.Mutex
+	lastChildren map[widget.TreeNodeID][]widget.TreeNodeID
+	lastBranch   map[widget.TreeNodeID]bool
 }
 
 func NewTree(w WindowInterface) *Tree {
-	tree := &Tree{w: w}
+	tree := &Tree{
+		w:            w,
+		lastChildren: map[widget.TreeNodeID][]widget.TreeNodeID{},
+		lastBranch:   map[widget.TreeNodeID]bool{},
+	}
 	tree.instance = widget.NewTree(
 		func(uid widget.TreeNodeID) []widget.TreeNodeID {
 			return []widget.TreeNodeID{}
@@ -35,6 +48,12 @@ func NewTree(w WindowInterface) *Tree {
 		},
 	)
 	return tree
+}
+
+// refresh re-renders the tree with fresh getter results; scheduled by the
+// getters' callbacks when they hit VM contention.
+func (t *Tree) refresh() {
+	guithread.Do(t.instance.Refresh)
 }
 
 func (t *Tree) CanvasObject() fyne.CanvasObject {
@@ -80,34 +99,36 @@ func (t *Tree) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return nil, fmt.Errorf("tree.ChildUIDs: expected 1 argument (callback), got %d", len(args))
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return nil, fmt.Errorf("tree.ChildUIDs: expected function, got %s", args[0].Type())
+			cb, err := vmexec.NewCallback(ctx, "tree.ChildUIDs", args[0])
+			if err != nil {
+				return nil, err
 			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return nil, fmt.Errorf("tree.ChildUIDs: unable to get call function")
-			}
+			cb.RefreshWhenBusy(t.refresh)
 
+			// Getter: called synchronously by Fyne during layout.
 			t.instance.ChildUIDs = func(uid widget.TreeNodeID) []widget.TreeNodeID {
-				result, err := callFunc(ctx, fn, []object.Object{object.NewString(string(uid))})
+				result, err := cb.Call(object.NewString(string(uid)))
 				if err != nil {
-					return []widget.TreeNodeID{}
+					cb.Report(err)
+					t.cacheMu.Lock()
+					defer t.cacheMu.Unlock()
+					return t.lastChildren[uid]
 				}
 				list, ok := result.(*object.List)
 				if !ok {
+					cb.Report(fmt.Errorf("expected list of node IDs, got %s", result.Type()))
 					return []widget.TreeNodeID{}
 				}
 				items := list.Value()
-				if len(items) == 0 {
-					return []widget.TreeNodeID{}
-				}
 				uids := make([]widget.TreeNodeID, 0, len(items))
 				for _, item := range items {
 					if strObj, ok := item.(*object.String); ok {
 						uids = append(uids, widget.TreeNodeID(strObj.Value()))
 					}
 				}
+				t.cacheMu.Lock()
+				t.lastChildren[uid] = uids
+				t.cacheMu.Unlock()
 				return uids
 			}
 			return object.Nil, nil
@@ -118,21 +139,23 @@ func (t *Tree) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return nil, fmt.Errorf("tree.IsBranch: expected 1 argument (callback), got %d", len(args))
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return nil, fmt.Errorf("tree.IsBranch: expected function, got %s", args[0].Type())
+			cb, err := vmexec.NewCallback(ctx, "tree.IsBranch", args[0])
+			if err != nil {
+				return nil, err
 			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return nil, fmt.Errorf("tree.IsBranch: unable to get call function")
-			}
+			cb.RefreshWhenBusy(t.refresh)
 
+			// Getter: called synchronously by Fyne during layout.
 			t.instance.IsBranch = func(uid widget.TreeNodeID) bool {
-				result, err := callFunc(ctx, fn, []object.Object{object.NewString(string(uid))})
+				result, err := cb.Call(object.NewString(string(uid)))
+				t.cacheMu.Lock()
+				defer t.cacheMu.Unlock()
 				if err != nil {
-					return false
+					cb.Report(err)
+					return t.lastBranch[uid]
 				}
-				return result.IsTruthy()
+				t.lastBranch[uid] = result.IsTruthy()
+				return t.lastBranch[uid]
 			}
 			return object.Nil, nil
 		}), true
@@ -142,18 +165,17 @@ func (t *Tree) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return nil, fmt.Errorf("tree.CreateNode: expected 1 argument (callback), got %d", len(args))
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return nil, fmt.Errorf("tree.CreateNode: expected function, got %s", args[0].Type())
+			cb, err := vmexec.NewCallback(ctx, "tree.CreateNode", args[0])
+			if err != nil {
+				return nil, err
 			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return nil, fmt.Errorf("tree.CreateNode: unable to get call function")
-			}
+			cb.RefreshWhenBusy(t.refresh)
 
+			// Getter: called synchronously by Fyne during layout.
 			t.instance.CreateNode = func(branch bool) fyne.CanvasObject {
-				result, err := callFunc(ctx, fn, []object.Object{object.NewBool(branch)})
+				result, err := cb.Call(object.NewBool(branch))
 				if err != nil {
+					cb.Report(err)
 					return widget.NewLabel("")
 				}
 				if obj, ok := result.(IsCanvasObject); ok {
@@ -169,15 +191,13 @@ func (t *Tree) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return nil, fmt.Errorf("tree.UpdateNode: expected 1 argument (callback), got %d", len(args))
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return nil, fmt.Errorf("tree.UpdateNode: expected function, got %s", args[0].Type())
+			cb, err := vmexec.NewCallback(ctx, "tree.UpdateNode", args[0])
+			if err != nil {
+				return nil, err
 			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return nil, fmt.Errorf("tree.UpdateNode: unable to get call function")
-			}
+			cb.RefreshWhenBusy(t.refresh)
 
+			// Getter-like: called synchronously by Fyne during render.
 			t.instance.UpdateNode = func(uid widget.TreeNodeID, branch bool, obj fyne.CanvasObject) {
 				// Wrap the CanvasObject
 				var wrappedObj object.Object
@@ -187,12 +207,8 @@ func (t *Tree) GetAttr(name string) (object.Object, bool) {
 					wrappedObj = object.Nil
 				}
 
-				// Call synchronously to avoid race condition with IsBranch/ChildUIDs
-				callFunc(ctx, fn, []object.Object{
-					object.NewString(string(uid)),
-					object.NewBool(branch),
-					wrappedObj,
-				})
+				_, err := cb.Call(object.NewString(string(uid)), object.NewBool(branch), wrappedObj)
+				cb.Report(err)
 			}
 			return object.Nil, nil
 		}), true
@@ -202,18 +218,14 @@ func (t *Tree) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return nil, fmt.Errorf("tree.OnSelected: expected 1 argument (callback), got %d", len(args))
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return nil, fmt.Errorf("tree.OnSelected: expected function, got %s", args[0].Type())
-			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return nil, fmt.Errorf("tree.OnSelected: unable to get call function")
+			cb, err := vmexec.NewCallback(ctx, "tree.OnSelected", args[0])
+			if err != nil {
+				return nil, err
 			}
 
+			// Event: queued on the script's VM goroutine.
 			t.instance.OnSelected = func(uid widget.TreeNodeID) {
-				// Call synchronously to avoid race condition
-				callFunc(ctx, fn, []object.Object{object.NewString(string(uid))})
+				cb.Fire(object.NewString(string(uid)))
 			}
 			return object.Nil, nil
 		}), true
@@ -223,18 +235,14 @@ func (t *Tree) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return nil, fmt.Errorf("tree.OnUnselected: expected 1 argument (callback), got %d", len(args))
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return nil, fmt.Errorf("tree.OnUnselected: expected function, got %s", args[0].Type())
-			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return nil, fmt.Errorf("tree.OnUnselected: unable to get call function")
+			cb, err := vmexec.NewCallback(ctx, "tree.OnUnselected", args[0])
+			if err != nil {
+				return nil, err
 			}
 
+			// Event: queued on the script's VM goroutine.
 			t.instance.OnUnselected = func(uid widget.TreeNodeID) {
-				// Call synchronously to avoid race condition
-				callFunc(ctx, fn, []object.Object{object.NewString(string(uid))})
+				cb.Fire(object.NewString(string(uid)))
 			}
 			return object.Nil, nil
 		}), true

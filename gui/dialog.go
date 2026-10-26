@@ -13,6 +13,7 @@ import (
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 	risorDialog "github.com/uidbz/fynerisor/gui/dialog"
+	"github.com/uidbz/fynerisor/gui/vmexec"
 )
 
 const DialogType object.Type = "dialog"
@@ -34,6 +35,37 @@ const DialogType object.Type = "dialog"
 //	})
 type Dialog struct {
 	w *Window
+}
+
+// fileDialogResult converts a file open/save dialog result into the
+// (path, error) arguments passed to the script callback. The file handle is
+// closed here: scripts only receive the path.
+func fileDialogResult(f interface {
+	URI() fyne.URI
+	Close() error
+}, err error) (object.Object, object.Object) {
+	var path, errObj object.Object = object.Nil, object.Nil
+	if f != nil {
+		path = object.NewString(f.URI().Path())
+		f.Close()
+	}
+	if err != nil {
+		errObj = object.NewString(err.Error())
+	}
+	return path, errObj
+}
+
+// folderDialogResult converts a folder dialog result into the (path, error)
+// arguments passed to the script callback.
+func folderDialogResult(uri fyne.ListableURI, err error) (object.Object, object.Object) {
+	var path, errObj object.Object = object.Nil, object.Nil
+	if uri != nil {
+		path = object.NewString(uri.Path())
+	}
+	if err != nil {
+		errObj = object.NewString(err.Error())
+	}
+	return path, errObj
 }
 
 func NewDialog(w *Window) *Dialog {
@@ -142,20 +174,13 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return object.Errorf("type error: message must be string, got %s", args[1].Type()), nil
 			}
-			fn, ok := args[2].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[2].Type()), nil
-			}
-
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("internal error: no call function in context"), nil
+			cb, err := vmexec.NewCallback(ctx, "dialog.ShowConfirm", args[2])
+			if err != nil {
+				return nil, err
 			}
 
 			callback := func(confirmed bool) {
-				d.w.Do(func() {
-					safeCall(callFunc, ctx, fn, []object.Object{object.NewBool(confirmed)})
-				})
+				cb.Fire(object.NewBool(confirmed))
 			}
 
 			guithread.Do(func() {
@@ -169,31 +194,13 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
-			}
-
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("internal error: no call function in context"), nil
+			cb, err := vmexec.NewCallback(ctx, "dialog.ShowFileOpen", args[0])
+			if err != nil {
+				return nil, err
 			}
 
 			callback := func(reader fyne.URIReadCloser, err error) {
-				d.w.Do(func() {
-					var path object.Object = object.Nil
-					var errObj object.Object = object.Nil
-
-					if reader != nil {
-						path = object.NewString(reader.URI().Path())
-						defer reader.Close()
-					}
-					if err != nil {
-						errObj = object.NewString(err.Error())
-					}
-
-					safeCall(callFunc, ctx, fn, []object.Object{path, errObj})
-				})
+				cb.Fire(fileDialogResult(reader, err))
 			}
 
 			guithread.Do(func() {
@@ -207,31 +214,13 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
-			}
-
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("internal error: no call function in context"), nil
+			cb, err := vmexec.NewCallback(ctx, "dialog.ShowFileSave", args[0])
+			if err != nil {
+				return nil, err
 			}
 
 			callback := func(writer fyne.URIWriteCloser, err error) {
-				d.w.Do(func() {
-					var path object.Object = object.Nil
-					var errObj object.Object = object.Nil
-
-					if writer != nil {
-						path = object.NewString(writer.URI().Path())
-						defer writer.Close()
-					}
-					if err != nil {
-						errObj = object.NewString(err.Error())
-					}
-
-					safeCall(callFunc, ctx, fn, []object.Object{path, errObj})
-				})
+				cb.Fire(fileDialogResult(writer, err))
 			}
 
 			guithread.Do(func() {
@@ -245,30 +234,13 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
-			}
-
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("internal error: no call function in context"), nil
+			cb, err := vmexec.NewCallback(ctx, "dialog.ShowFolderOpen", args[0])
+			if err != nil {
+				return nil, err
 			}
 
 			callback := func(uri fyne.ListableURI, err error) {
-				d.w.Do(func() {
-					var path object.Object = object.Nil
-					var errObj object.Object = object.Nil
-
-					if uri != nil {
-						path = object.NewString(uri.Path())
-					}
-					if err != nil {
-						errObj = object.NewString(err.Error())
-					}
-
-					safeCall(callFunc, ctx, fn, []object.Object{path, errObj})
-				})
+				cb.Fire(folderDialogResult(uri, err))
 			}
 
 			guithread.Do(func() {
@@ -327,20 +299,13 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("type error: content must be a widget or canvas object"), nil
 			}
 
-			fn, ok := args[4].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[4].Type()), nil
-			}
-
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("internal error: no call function in context"), nil
+			cb, err := vmexec.NewCallback(ctx, "dialog.ShowCustomConfirm", args[4])
+			if err != nil {
+				return nil, err
 			}
 
 			callback := func(confirmed bool) {
-				d.w.Do(func() {
-					safeCall(callFunc, ctx, fn, []object.Object{object.NewBool(confirmed)})
-				})
+				cb.Fire(object.NewBool(confirmed))
 			}
 
 			guithread.Do(func() {
@@ -362,29 +327,22 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return object.Errorf("type error: message must be string, got %s", args[1].Type()), nil
 			}
-			fn, ok := args[2].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[2].Type()), nil
-			}
-
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("internal error: no call function in context"), nil
+			cb, err := vmexec.NewCallback(ctx, "dialog.ShowColorPicker", args[2])
+			if err != nil {
+				return nil, err
 			}
 
 			callback := func(c color.Color) {
-				d.w.Do(func() {
-					// Convert color to hex string for easier use in scripts
-					r, g, b, a := c.RGBA()
-					// RGBA returns values in range 0-65535, convert to 0-255
-					colorMap := object.NewMap(map[string]object.Object{
-						"R": object.NewInt(int64(r >> 8)),
-						"G": object.NewInt(int64(g >> 8)),
-						"B": object.NewInt(int64(b >> 8)),
-						"A": object.NewInt(int64(a >> 8)),
-					})
-					safeCall(callFunc, ctx, fn, []object.Object{colorMap})
+				// Convert color to hex string for easier use in scripts
+				r, g, b, a := c.RGBA()
+				// RGBA returns values in range 0-65535, convert to 0-255
+				colorMap := object.NewMap(map[string]object.Object{
+					"R": object.NewInt(int64(r >> 8)),
+					"G": object.NewInt(int64(g >> 8)),
+					"B": object.NewInt(int64(b >> 8)),
+					"A": object.NewInt(int64(a >> 8)),
 				})
+				cb.Fire(colorMap)
 			}
 
 			guithread.Do(func() {
@@ -430,20 +388,13 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 				formItems = append(formItems, formItem)
 			}
 
-			fn, ok := args[4].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[4].Type()), nil
-			}
-
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("internal error: no call function in context"), nil
+			cb, err := vmexec.NewCallback(ctx, "dialog.ShowForm", args[4])
+			if err != nil {
+				return nil, err
 			}
 
 			callback := func(confirmed bool) {
-				d.w.Do(func() {
-					safeCall(callFunc, ctx, fn, []object.Object{object.NewBool(confirmed)})
-				})
+				cb.Fire(object.NewBool(confirmed))
 			}
 
 			guithread.Do(func() {
@@ -457,31 +408,13 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
-			}
-
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("internal error: no call function in context"), nil
+			cb, err := vmexec.NewCallback(ctx, "dialog.NewFileOpen", args[0])
+			if err != nil {
+				return nil, err
 			}
 
 			callback := func(reader fyne.URIReadCloser, err error) {
-				d.w.Do(func() {
-					var path object.Object = object.Nil
-					var errObj object.Object = object.Nil
-
-					if reader != nil {
-						path = object.NewString(reader.URI().Path())
-						defer reader.Close()
-					}
-					if err != nil {
-						errObj = object.NewString(err.Error())
-					}
-
-					safeCall(callFunc, ctx, fn, []object.Object{path, errObj})
-				})
+				cb.Fire(fileDialogResult(reader, err))
 			}
 
 			fileDialog := risorDialog.NewFileOpen(callback, d.w.FyneWindow)
@@ -493,31 +426,13 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
-			}
-
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("internal error: no call function in context"), nil
+			cb, err := vmexec.NewCallback(ctx, "dialog.NewFileSave", args[0])
+			if err != nil {
+				return nil, err
 			}
 
 			callback := func(writer fyne.URIWriteCloser, err error) {
-				d.w.Do(func() {
-					var path object.Object = object.Nil
-					var errObj object.Object = object.Nil
-
-					if writer != nil {
-						path = object.NewString(writer.URI().Path())
-						defer writer.Close()
-					}
-					if err != nil {
-						errObj = object.NewString(err.Error())
-					}
-
-					safeCall(callFunc, ctx, fn, []object.Object{path, errObj})
-				})
+				cb.Fire(fileDialogResult(writer, err))
 			}
 
 			fileDialog := risorDialog.NewFileSave(callback, d.w.FyneWindow)
@@ -529,30 +444,13 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
-			}
-
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("internal error: no call function in context"), nil
+			cb, err := vmexec.NewCallback(ctx, "dialog.NewFolderOpen", args[0])
+			if err != nil {
+				return nil, err
 			}
 
 			callback := func(uri fyne.ListableURI, err error) {
-				d.w.Do(func() {
-					var path object.Object = object.Nil
-					var errObj object.Object = object.Nil
-
-					if uri != nil {
-						path = object.NewString(uri.Path())
-					}
-					if err != nil {
-						errObj = object.NewString(err.Error())
-					}
-
-					safeCall(callFunc, ctx, fn, []object.Object{path, errObj})
-				})
+				cb.Fire(folderDialogResult(uri, err))
 			}
 
 			fileDialog := risorDialog.NewFolderOpen(callback, d.w.FyneWindow)
@@ -572,20 +470,13 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return object.Errorf("type error: message must be string, got %s", args[1].Type()), nil
 			}
-			fn, ok := args[2].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[2].Type()), nil
-			}
-
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("internal error: no call function in context"), nil
+			cb, err := vmexec.NewCallback(ctx, "dialog.NewConfirm", args[2])
+			if err != nil {
+				return nil, err
 			}
 
 			callback := func(confirmed bool) {
-				d.w.Do(func() {
-					safeCall(callFunc, ctx, fn, []object.Object{object.NewBool(confirmed)})
-				})
+				cb.Fire(object.NewBool(confirmed))
 			}
 
 			confirmDialog := risorDialog.NewConfirm(title, message, callback, d.w.FyneWindow)
@@ -615,20 +506,13 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("type error: content must be a widget or canvas object"), nil
 			}
 
-			fn, ok := args[4].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[4].Type()), nil
-			}
-
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("internal error: no call function in context"), nil
+			cb, err := vmexec.NewCallback(ctx, "dialog.NewCustomConfirm", args[4])
+			if err != nil {
+				return nil, err
 			}
 
 			callback := func(confirmed bool) {
-				d.w.Do(func() {
-					safeCall(callFunc, ctx, fn, []object.Object{object.NewBool(confirmed)})
-				})
+				cb.Fire(object.NewBool(confirmed))
 			}
 
 			confirmDialog := risorDialog.NewCustomConfirm(title, confirm, dismiss, content.CanvasObject(), callback, d.w.FyneWindow)
@@ -671,27 +555,20 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return object.Errorf("type error: message must be string, got %s", args[1].Type()), nil
 			}
-			fn, ok := args[2].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[2].Type()), nil
-			}
-
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("internal error: no call function in context"), nil
+			cb, err := vmexec.NewCallback(ctx, "dialog.NewColorPicker", args[2])
+			if err != nil {
+				return nil, err
 			}
 
 			callback := func(c color.Color) {
-				d.w.Do(func() {
-					r, g, b, a := c.RGBA()
-					colorMap := object.NewMap(map[string]object.Object{
-						"R": object.NewInt(int64(r >> 8)),
-						"G": object.NewInt(int64(g >> 8)),
-						"B": object.NewInt(int64(b >> 8)),
-						"A": object.NewInt(int64(a >> 8)),
-					})
-					safeCall(callFunc, ctx, fn, []object.Object{colorMap})
+				r, g, b, a := c.RGBA()
+				colorMap := object.NewMap(map[string]object.Object{
+					"R": object.NewInt(int64(r >> 8)),
+					"G": object.NewInt(int64(g >> 8)),
+					"B": object.NewInt(int64(b >> 8)),
+					"A": object.NewInt(int64(a >> 8)),
 				})
+				cb.Fire(colorMap)
 			}
 
 			colorDialog := risorDialog.NewColorPicker(title, message, callback, d.w.FyneWindow)
@@ -734,20 +611,13 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 				formItems = append(formItems, formItem)
 			}
 
-			fn, ok := args[4].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[4].Type()), nil
-			}
-
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("internal error: no call function in context"), nil
+			cb, err := vmexec.NewCallback(ctx, "dialog.NewForm", args[4])
+			if err != nil {
+				return nil, err
 			}
 
 			callback := func(confirmed bool) {
-				d.w.Do(func() {
-					safeCall(callFunc, ctx, fn, []object.Object{object.NewBool(confirmed)})
-				})
+				cb.Fire(object.NewBool(confirmed))
 			}
 
 			formDialog := risorDialog.NewForm(title, confirm, dismiss, formItems, callback, d.w.FyneWindow)

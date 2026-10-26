@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/vmexec"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -162,20 +163,14 @@ func (obj *SelectEntry) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
 
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.SelectEntry.OnChanged", args[0])
+			if err != nil {
+				return nil, err
 			}
 
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("selectentry.OnChanged: unable to get call function"), nil
-			}
-
+			// Event: queued on the script's VM goroutine.
 			obj.instance.OnChanged = func(text string) {
-				obj.w.Do(func() {
-					callFunc(ctx, fn, []object.Object{object.NewString(text)})
-				})
+				cb.Fire(object.NewString(text))
 			}
 
 			return object.Nil, nil

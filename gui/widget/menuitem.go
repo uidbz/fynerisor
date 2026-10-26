@@ -11,6 +11,8 @@ import (
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
+
+	"github.com/uidbz/fynerisor/gui/vmexec"
 )
 
 var _ object.Object = &MenuItem{}
@@ -47,23 +49,14 @@ func NewMenuItem(w WindowInterface) func(ctx context.Context, args ...object.Obj
 			return nil, err
 		}
 
-		fn, ok := args[1].(*object.Closure)
-		if !ok {
-			return object.Errorf("argument error: expected function, got %s", args[1].Type()), nil
+		cb, err := vmexec.NewCallback(ctx, "fyne.MenuItem", args[1])
+		if err != nil {
+			return nil, err
 		}
 
-		callFunc, ok := object.GetCallFunc(ctx)
-		if !ok {
-			return object.Errorf("menuitem: unable to get call function"), nil
-		}
-
+		// Event: queued on the script's VM goroutine.
 		instance := fyne.NewMenuItem(label, func() {
-			w.Do(func() {
-				_, err := callFunc(ctx, fn, []object.Object{})
-				if err != nil {
-					fmt.Println("MenuItem action error:", err)
-				}
-			})
+			cb.Fire()
 		})
 
 		return &MenuItem{

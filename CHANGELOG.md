@@ -28,10 +28,6 @@
   raced the single-threaded VM (the corruption class documented in
   `docs/CONCURRENCY.md`). Concurrency for scripts returns as Go-side async
   primitives (issue #17). (issue #15)
-- **`gui/binding` constructors take the owning window** (`NewString(w)`,
-  `BindString(v, w)`, likewise for Bool/Int/Float) so listener callbacks
-  serialize into the VM through the window's callback queue instead of
-  spawning a goroutine per change. (issue #11)
 - **`risorwidget.NewMultiLineEntry` takes the window** like the other entry
   constructors; multi-line entries previously panicked in `OnSubmitted`.
   (issue #36)
@@ -54,8 +50,23 @@
   `vmexec.ErrBusy`). `window.Do(fn)` and shortcut handlers now run on the
   script's VM goroutine instead of being re-dispatched onto the UI thread
   (widget methods already marshal their own UI work). (issue #13)
+- **Every widget callback goes through `vmexec.Callback`.** Event handlers
+  that used to run synchronously on the UI thread (`Button.OnTapped`,
+  `Tree`/`List`/`GridWrap` `OnSelected`/`OnUnselected`, `Table.SetOnClick`,
+  `AppTabs.OnSelected`, `Markdown.SetOnTapped`, chart hover/click) are now
+  queued on the script's VM goroutine like all other events. Passing a
+  non-function where a callback is expected now *raises* an error instead
+  of returning an error value. (issue #12)
 
 ### Fixed
+
+- About 30 callback sites (Tree and GridWrap getters, `Button.OnTapped`,
+  `MenuItem`, `Markdown`, `Hyperlink`, `Slider`, `SelectEntry`, `DateEntry`,
+  `Calendar`, `Entry`, chart callbacks, bindings) called the VM directly:
+  without panic recovery (a faulty handler crashed the process) and
+  without the VM guard (getters ran concurrently with handlers). Tree and
+  GridWrap getters now keep last-known values while the VM is busy and
+  refresh once it is idle (issue #12).
 
 - Two windows or embedded views no longer block each other: while view A
   runs a handler, view B's render getters (List/Table) answer instead of

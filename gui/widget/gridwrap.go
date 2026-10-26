@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/vmexec"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -39,6 +40,13 @@ const GridWrapType object.Type = "widget.GridWrap"
 type GridWrap struct {
 	instance *widget.GridWrap
 	w        WindowInterface
+	lastLen  int // last length returned by the Length callback, reused during VM contention
+}
+
+// refresh re-renders the grid with fresh getter results; scheduled by the
+// getters' callbacks when they hit VM contention.
+func (obj *GridWrap) refresh() {
+	guithread.Do(obj.instance.Refresh)
 }
 
 func NewGridWrap(w WindowInterface) *GridWrap {
@@ -108,28 +116,26 @@ func (obj *GridWrap) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
 
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.GridWrap.Length", args[0])
+			if err != nil {
+				return nil, err
 			}
+			cb.RefreshWhenBusy(obj.refresh)
 
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("gridwrap.Length: unable to get call function"), nil
-			}
-
+			// Getter: called synchronously by Fyne during layout.
 			obj.instance.Length = func() int {
-				result, err := callFunc(ctx, fn, []object.Object{})
+				result, err := cb.Call()
 				if err != nil {
-					fmt.Printf("GridWrap.Length error: %v\n", err)
-					return 0
+					cb.Report(err)
+					return obj.lastLen
 				}
 				count, err := object.AsInt(result)
 				if err != nil {
-					fmt.Printf("GridWrap.Length: expected int, got %s\n", result.Type())
-					return 0
+					cb.Report(fmt.Errorf("expected int, got %s", result.Type()))
+					return obj.lastLen
 				}
-				return int(count)
+				obj.lastLen = int(count)
+				return obj.lastLen
 			}
 
 			return object.Nil, nil
@@ -141,26 +147,23 @@ func (obj *GridWrap) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
 
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.GridWrap.CreateItem", args[0])
+			if err != nil {
+				return nil, err
 			}
+			cb.RefreshWhenBusy(obj.refresh)
 
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("gridwrap.CreateItem: unable to get call function"), nil
-			}
-
+			// Getter: called synchronously by Fyne during layout.
 			obj.instance.CreateItem = func() fyne.CanvasObject {
-				result, err := callFunc(ctx, fn, []object.Object{})
+				result, err := cb.Call()
 				if err != nil {
-					fmt.Printf("GridWrap.CreateItem error: %v\n", err)
-					return widget.NewLabel("error")
+					cb.Report(err)
+					return widget.NewLabel("")
 				}
 
 				canvasObj, ok := result.(interface{ CanvasObject() fyne.CanvasObject })
 				if !ok {
-					fmt.Printf("GridWrap.CreateItem: expected widget, got %s\n", result.Type())
+					cb.Report(fmt.Errorf("expected widget, got %s", result.Type()))
 					return widget.NewLabel("error")
 				}
 
@@ -176,26 +179,16 @@ func (obj *GridWrap) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
 
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.GridWrap.UpdateItem", args[0])
+			if err != nil {
+				return nil, err
 			}
+			cb.RefreshWhenBusy(obj.refresh)
 
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("gridwrap.UpdateItem: unable to get call function"), nil
-			}
-
-			// UpdateItem must be synchronous to avoid VM concurrency issues
+			// Getter-like: called synchronously by Fyne during render.
 			obj.instance.UpdateItem = func(id widget.GridWrapItemID, item fyne.CanvasObject) {
-				wrappedItem := wrapCanvasObject(item)
-				_, err := callFunc(ctx, fn, []object.Object{
-					object.NewInt(int64(id)),
-					wrappedItem,
-				})
-				if err != nil {
-					fmt.Printf("GridWrap.UpdateItem error: %v\n", err)
-				}
+				_, err := cb.Call(object.NewInt(int64(id)), wrapCanvasObject(item))
+				cb.Report(err)
 			}
 
 			return object.Nil, nil
@@ -207,19 +200,14 @@ func (obj *GridWrap) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
 
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.GridWrap.OnSelected", args[0])
+			if err != nil {
+				return nil, err
 			}
 
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("gridwrap.OnSelected: unable to get call function"), nil
-			}
-
+			// Event: queued on the script's VM goroutine.
 			obj.instance.OnSelected = func(id widget.GridWrapItemID) {
-				// Call synchronously to avoid race condition
-				callFunc(ctx, fn, []object.Object{object.NewInt(int64(id))})
+				cb.Fire(object.NewInt(int64(id)))
 			}
 
 			return object.Nil, nil
@@ -231,19 +219,14 @@ func (obj *GridWrap) GetAttr(name string) (object.Object, bool) {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
 
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.GridWrap.OnUnselected", args[0])
+			if err != nil {
+				return nil, err
 			}
 
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("gridwrap.OnUnselected: unable to get call function"), nil
-			}
-
+			// Event: queued on the script's VM goroutine.
 			obj.instance.OnUnselected = func(id widget.GridWrapItemID) {
-				// Call synchronously to avoid race condition
-				callFunc(ctx, fn, []object.Object{object.NewInt(int64(id))})
+				cb.Fire(object.NewInt(int64(id)))
 			}
 
 			return object.Nil, nil

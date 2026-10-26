@@ -9,6 +9,8 @@ import (
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
+
+	"github.com/uidbz/fynerisor/gui/vmexec"
 )
 
 var _ object.Object = &String{}
@@ -19,7 +21,6 @@ const StringType object.Type = "binding.String"
 // It allows widgets to automatically sync with data sources.
 type String struct {
 	instance binding.String
-	w        CallbackQueuer
 }
 
 func (obj *String) CanvasObject() interface{} {
@@ -104,46 +105,30 @@ func (obj *String) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			cb, err := vmexec.NewCallback(ctx, "binding.String.AddListener", args[0])
+			if err != nil {
+				return nil, err
 			}
 
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("binding.String.AddListener: unable to get call function"), nil
-			}
-
-			listener := binding.NewDataListener(func() {
-				// Serialize into the VM via the window callback queue
-				// instead of spawning a goroutine per change (issue #11).
-				queueCallback(obj.w, func() {
-					_, err := callFunc(ctx, fn, []object.Object{})
-					if err != nil {
-						fmt.Printf("ERROR: binding listener error: %v\n", err)
-					}
-				})
-			})
-
-			obj.instance.AddListener(listener)
+			// Event: each change is queued on the script's VM goroutine
+			// (never a goroutine per change, issue #11).
+			obj.instance.AddListener(binding.NewDataListener(func() { cb.Fire() }))
 			return object.Nil, nil
 		}), true
 	}
 	return nil, false
 }
 
-func NewString(w CallbackQueuer) *String {
+func NewString() *String {
 	return &String{
 		instance: binding.NewString(),
-		w:        w,
 	}
 }
 
-func BindString(value string, w CallbackQueuer) *String {
+func BindString(value string) *String {
 	str := binding.NewString()
 	str.Set(value)
 	return &String{
 		instance: str,
-		w:        w,
 	}
 }

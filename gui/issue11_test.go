@@ -83,7 +83,7 @@ func TestBindingListenerSerialized(t *testing.T) {
 
 	// The binding is created on the Go side so the test can drive it; the
 	// script only attaches the listener.
-	d := risorbinding.NewString(fw)
+	d := risorbinding.NewString()
 	fw.RegisterGlobal("d", d)
 
 	fw.LoadScript(`

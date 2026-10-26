@@ -9,6 +9,8 @@ import (
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
+
+	"github.com/uidbz/fynerisor/gui/vmexec"
 )
 
 var _ object.Object = &Int{}
@@ -18,7 +20,6 @@ const IntType object.Type = "binding.Int"
 // Int wraps a Fyne data binding for int values.
 type Int struct {
 	instance binding.Int
-	w        CallbackQueuer
 }
 
 func (obj *Int) Type() object.Type {
@@ -99,46 +100,30 @@ func (obj *Int) GetAttr(name string) (object.Object, bool) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
-			fn, ok := args[0].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[0].Type()), nil
+			cb, err := vmexec.NewCallback(ctx, "binding.Int.AddListener", args[0])
+			if err != nil {
+				return nil, err
 			}
 
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("binding.Int.AddListener: unable to get call function"), nil
-			}
-
-			listener := binding.NewDataListener(func() {
-				// Serialize into the VM via the window callback queue
-				// instead of spawning a goroutine per change (issue #11).
-				queueCallback(obj.w, func() {
-					_, err := callFunc(ctx, fn, []object.Object{})
-					if err != nil {
-						fmt.Printf("ERROR: binding listener error: %v\n", err)
-					}
-				})
-			})
-
-			obj.instance.AddListener(listener)
+			// Event: each change is queued on the script's VM goroutine
+			// (never a goroutine per change, issue #11).
+			obj.instance.AddListener(binding.NewDataListener(func() { cb.Fire() }))
 			return object.Nil, nil
 		}), true
 	}
 	return nil, false
 }
 
-func NewInt(w CallbackQueuer) *Int {
+func NewInt() *Int {
 	return &Int{
 		instance: binding.NewInt(),
-		w:        w,
 	}
 }
 
-func BindInt(value int, w CallbackQueuer) *Int {
+func BindInt(value int) *Int {
 	i := binding.NewInt()
 	i.Set(value)
 	return &Int{
 		instance: i,
-		w:        w,
 	}
 }

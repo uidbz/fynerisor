@@ -12,6 +12,7 @@ import (
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/vmexec"
 )
 
 // --- hover (desktop.Hoverable) ----------------------------------------------
@@ -243,24 +244,19 @@ func (c *chartCore) callbackAttr(name string, slot *func(hitResult)) *object.Bui
 		if len(args) != 1 {
 			return nil, fmt.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 		}
-		fn, ok := args[0].(*object.Closure)
-		if !ok {
-			return nil, fmt.Errorf("argument error: expected function, got %s", args[0].Type())
-		}
-		callFunc, ok := object.GetCallFunc(ctx)
-		if !ok {
-			return nil, fmt.Errorf("%s: unable to get call function", name)
+		cb, err := vmexec.NewCallback(ctx, c.typeName+"."+name, args[0])
+		if err != nil {
+			return nil, err
 		}
 		guithread.Do(func() {
+			// Event: hover/click callbacks are queued on the script's VM
+			// goroutine, never run on the UI thread.
 			*slot = func(h hitResult) {
-				_, err := callFunc(ctx, fn, []object.Object{
+				cb.Fire(
 					object.NewInt(int64(h.Index)),
 					object.NewString(h.Label),
 					object.NewFloat(h.Value),
-				})
-				if err != nil {
-					fmt.Printf("%s.%s ERROR: %v\n", c.typeName, name, err)
-				}
+				)
 			}
 		})
 		return object.Nil, nil

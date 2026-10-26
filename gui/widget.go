@@ -84,28 +84,13 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return nil, err
 			}
-			fn, ok := args[1].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[1].Type()), nil
-			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("button (%s): unable to get call function", name), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.NewButton", args[1])
+			if err != nil {
+				return nil, err
 			}
 
-			// Create button with closure that captures fn by value
-			button := func(f *object.Closure) object.Object {
-				return risorwidget.NewButton(name, func() {
-					obj.w.Do(func() {
-						_, err := safeCall(callFunc, ctx, f, []object.Object{})
-						if err != nil {
-							fmt.Println(err)
-						}
-					})
-				})
-			}(fn)
-
-			return button, nil
+			// Event: the tap handler is queued on the script's VM goroutine.
+			return risorwidget.NewButton(name, func() { cb.Fire() }), nil
 		}), true
 
 	case "NewCheck":
@@ -117,26 +102,14 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return nil, err
 			}
-			fn, ok := args[1].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[1].Type()), nil
-			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("check: unable to get call function"), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.NewCheck", args[1])
+			if err != nil {
+				return nil, err
 			}
 
-			// Create check with closure that captures fn by value
-			chk := func(f *object.Closure) object.Object {
-				return risorwidget.NewCheck(label, func(changed bool) {
-					obj.w.Do(func() {
-						val := object.NewBool(changed)
-						safeCall(callFunc, ctx, f, []object.Object{val})
-					})
-				})
-			}(fn)
-
-			return chk, nil
+			return risorwidget.NewCheck(label, func(changed bool) {
+				cb.Fire(object.NewBool(changed))
+			}), nil
 		}), true
 
 	case "NewCheckWithData":
@@ -167,26 +140,14 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return nil, err
 			}
-			fn, ok := args[1].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[1].Type()), nil
-			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("check group: unable to get call function"), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.NewCheckGroup", args[1])
+			if err != nil {
+				return nil, err
 			}
 
-			// Create check group with closure that captures fn by value
-			chkGroup := func(f *object.Closure) object.Object {
-				return risorwidget.NewCheckGroup(options, func(checked []string) {
-					obj.w.Do(func() {
-						list := object.NewStringList(checked)
-						safeCall(callFunc, ctx, f, []object.Object{list})
-					})
-				})
-			}(fn)
-
-			return chkGroup, nil
+			return risorwidget.NewCheckGroup(options, func(checked []string) {
+				cb.Fire(object.NewStringList(checked))
+			}), nil
 		}), true
 
 	case "NewSelect":
@@ -198,26 +159,14 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return nil, err
 			}
-			fn, ok := args[1].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[1].Type()), nil
-			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("select: unable to get call function"), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.NewSelect", args[1])
+			if err != nil {
+				return nil, err
 			}
 
-			// Create select with closure that captures fn by value
-			chkGroup := func(f *object.Closure) object.Object {
-				return risorwidget.NewSelect(options, func(selected string) {
-					obj.w.Do(func() {
-						selectedObj := object.NewString(selected)
-						safeCall(callFunc, ctx, f, []object.Object{selectedObj})
-					})
-				})
-			}(fn)
-
-			return chkGroup, nil
+			return risorwidget.NewSelect(options, func(selected string) {
+				cb.Fire(object.NewString(selected))
+			}), nil
 		}), true
 
 	case "NewSelectEntry":
@@ -267,24 +216,13 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 
 			// Second argument: callback function (optional)
 			if len(args) == 2 {
-				fn, ok := args[1].(*object.Closure)
-				if !ok {
-					return object.Errorf("argument error: expected function, got %s", args[1].Type()), nil
+				cb, err := vmexec.NewCallback(ctx, "widget.NewCalendar", args[1])
+				if err != nil {
+					return nil, err
 				}
-				callFunc, ok := object.GetCallFunc(ctx)
-				if !ok {
-					return object.Errorf("calendar: unable to get call function"), nil
+				onChanged = func(selected time.Time) {
+					cb.Fire(timemodule.NewTimeObject(selected))
 				}
-
-				// Create callback with closure that captures fn by value
-				onChanged = func(f *object.Closure) func(time.Time) {
-					return func(selected time.Time) {
-						obj.w.Do(func() {
-							timeObj := timemodule.NewTimeObject(selected)
-							safeCall(callFunc, ctx, f, []object.Object{timeObj})
-						})
-					}
-				}(fn)
 			}
 
 			calendar := risorwidget.NewCalendar(obj.w, startDate, onChanged)
@@ -599,26 +537,14 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return nil, err
 			}
-			fn, ok := args[1].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[1].Type()), nil
-			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("radiogroup: unable to get call function"), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.NewRadioGroup", args[1])
+			if err != nil {
+				return nil, err
 			}
 
-			// Create radio group with closure that captures fn by value
-			radioGroup := func(f *object.Closure) object.Object {
-				return risorwidget.NewRadioGroup(options, func(selected string) {
-					obj.w.Do(func() {
-						selectedObj := object.NewString(selected)
-						safeCall(callFunc, ctx, f, []object.Object{selectedObj})
-					})
-				})
-			}(fn)
-
-			return radioGroup, nil
+			return risorwidget.NewRadioGroup(options, func(selected string) {
+				cb.Fire(object.NewString(selected))
+			}), nil
 		}), true
 
 	case "NewAccordion":
@@ -684,25 +610,12 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 			if icon == nil {
 				return object.Errorf("unknown icon resource: %s", iconName), nil
 			}
-			fn, ok := args[1].(*object.Closure)
-			if !ok {
-				return object.Errorf("argument error: expected function, got %s", args[1].Type()), nil
-			}
-			callFunc, ok := object.GetCallFunc(ctx)
-			if !ok {
-				return object.Errorf("toolbar action: unable to get call function"), nil
+			cb, err := vmexec.NewCallback(ctx, "widget.NewToolbarAction", args[1])
+			if err != nil {
+				return nil, err
 			}
 
-			action := risorwidget.NewToolbarAction(icon, func() {
-				obj.w.Do(func() {
-					_, err := safeCall(callFunc, ctx, fn, []object.Object{})
-					if err != nil {
-						fmt.Println(err)
-					}
-				})
-			})
-
-			return action, nil
+			return risorwidget.NewToolbarAction(icon, func() { cb.Fire() }), nil
 		}), true
 
 	case "NewToolbarSeparator":
