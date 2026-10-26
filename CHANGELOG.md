@@ -80,6 +80,11 @@
   "button" error messages, wrong `want=` counts, `NewAccordionItem`
   detail argument now renders, `NewCalendar` rejects non-time arguments
   instead of silently defaulting (issue #36).
+- Creating a window or embedded view from a background goroutine no
+  longer re-records that goroutine as the GUI thread. fynerisor now uses
+  `guithread.Init` (first caller wins, then a one-time `fyne.Do` probe
+  records Fyne's real event-loop goroutine); `guithread.SetMain` remains
+  as an explicit override for hosts and tests (issue #14).
 
 ### Added
 

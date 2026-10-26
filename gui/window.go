@@ -66,7 +66,7 @@ const WindowType object.Type = "window"
 //	w := a.NewWindow("My App")
 //	fw := fynerisor.NewWindow(w, fynerisor.WithHTTP())
 func NewApp(title string, opts ...Option) *Window {
-	guithread.SetMain()
+	guithread.Init(false) // NewApp is normally called from main
 	a := app.New()
 	w := a.NewWindow(title)
 	fw := NewWindow(w, opts...)
@@ -143,6 +143,7 @@ type Window struct {
 //	fyneWindow.Execute()
 //	fyneWindow.ShowAndRun()
 func NewWindow(window fyne.Window, opts ...Option) *Window {
+	guithread.Init(window != nil)
 	w := newWindow(opts...)
 	w.FyneWindow = window
 	if window != nil {
@@ -156,7 +157,9 @@ func NewWindow(window fyne.Window, opts ...Option) *Window {
 // window. NewWindow uses it for standalone windows; NewCanvasObject uses it to
 // host a script inside a single canvas object in a host application.
 func newWindow(opts ...Option) *Window {
-	guithread.SetMain()
+	// Record the GUI goroutine without overwriting it: a host may create an
+	// embedded view on a background goroutine (issue #14).
+	guithread.Init(false)
 	w := &Window{
 		enabledModules: make(map[string]bool),
 		appName:        "fynerisor", // default

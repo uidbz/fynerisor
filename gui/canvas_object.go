@@ -3,6 +3,8 @@ package gui
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
+
+	"github.com/uidbz/fynerisor/gui/guithread"
 )
 
 // CanvasObject hosts a fynerisor script inside a normal Fyne application.
@@ -65,6 +67,7 @@ var (
 func NewCanvasObject(script string, opts ...Option) *CanvasObject {
 	w := newWindow(opts...)
 	if w.FyneWindow != nil {
+		guithread.Init(true) // a host window implies a running Fyne app
 		w.installDropHandler()
 	}
 	c := &CanvasObject{window: w}

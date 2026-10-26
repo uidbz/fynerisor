@@ -13,29 +13,55 @@
 package guithread
 
 import (
-	"runtime"
+	"context"
+	"sync"
 	"sync/atomic"
 
 	"fyne.io/fyne/v2"
+
+	"github.com/uidbz/fynerisor/gui/internal/goid"
 )
 
-var mainGoroutineID atomic.Uint64
+var (
+	mainGoroutineID atomic.Uint64
+	probeOnce       sync.Once
+)
 
-// SetMain records the current goroutine as the GUI/main goroutine. Call this
-// once during app setup, from the main goroutine, before any Do calls.
+// SetMain records the current goroutine as the GUI/main goroutine,
+// overwriting any earlier value. Hosts may call it once from main during
+// setup; tests use it to make Do run inline. fynerisor itself never calls
+// SetMain — it uses Init, which cannot be fooled by a window created on a
+// background goroutine (issue #14).
 func SetMain() {
-	mainGoroutineID.Store(goroutineID())
+	mainGoroutineID.Store(goid.ID())
+}
+
+// Init records the GUI goroutine without overwriting it.
+//
+// The first caller wins (normally main, via NewApp/NewWindow). When an app
+// is running (appRunning), Init also schedules a one-time probe through
+// fyne.Do: the probe runs on Fyne's real event-loop goroutine and records
+// that goroutine, correcting the guess if the first caller was a background
+// goroutine. Init is safe to call any number of times.
+func Init(appRunning bool) {
+	mainGoroutineID.CompareAndSwap(0, goid.ID())
+	if !appRunning {
+		return
+	}
+	probeOnce.Do(func() {
+		fyne.Do(func() { mainGoroutineID.Store(goid.ID()) })
+	})
 }
 
 // IsMain reports whether the caller is running on the GUI/main goroutine.
 func IsMain() bool {
-	return goroutineID() == mainGoroutineID.Load()
+	return goid.ID() == mainGoroutineID.Load()
 }
 
 // Do runs fn on the GUI thread. If already on the GUI thread it runs inline
 // (avoiding a re-queue that fyne.Do would cause); otherwise it dispatches via
-// fyne.Do. If SetMain was never called, mainGoroutineID is 0 and IsMain is
-// false, so Do falls back to fyne.Do — matching the previous behavior.
+// fyne.Do. If no GUI goroutine is known, IsMain is false and Do falls back
+// to fyne.Do.
 func Do(fn func()) {
 	if IsMain() {
 		fn()
@@ -48,6 +74,9 @@ func Do(fn func()) {
 // Inline when already on the GUI thread, fyne.DoAndWait otherwise. Use this
 // for reads that must return a value from Fyne state; Do is asynchronous
 // when called off-main and the read would observe a stale value (issue #18).
+//
+// Script builtins should prefer DoAndWaitContext so a stopped script cannot
+// stay blocked on a busy GUI thread.
 func DoAndWait(fn func()) {
 	if IsMain() {
 		fn()
@@ -56,14 +85,27 @@ func DoAndWait(fn func()) {
 	fyne.DoAndWait(fn)
 }
 
-// goroutineID parses the current goroutine's ID from its stack header. This is
-// the same technique Fyne uses internally (its async package is internal and
-// cannot be imported here).
-func goroutineID() (id uint64) {
-	var buf [30]byte
-	runtime.Stack(buf[:], false)
-	for i := 10; buf[i] != ' '; i++ {
-		id = id*10 + uint64(buf[i]&15)
+// DoAndWaitContext is DoAndWait that gives up when ctx is cancelled. It
+// returns ctx.Err() in that case; fn may still run later on the GUI thread,
+// so callers must not read values fn writes unless DoAndWaitContext
+// returned nil.
+func DoAndWaitContext(ctx context.Context, fn func()) error {
+	if IsMain() {
+		fn()
+		return nil
 	}
-	return id
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	done := make(chan struct{})
+	fyne.Do(func() {
+		fn()
+		close(done)
+	})
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }

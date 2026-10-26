@@ -1,6 +1,9 @@
 package guithread
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
 
 func TestDoRunsInlineOnMain(t *testing.T) {
 	SetMain()
@@ -23,5 +26,38 @@ func TestIsMain(t *testing.T) {
 	go func() { done <- IsMain() }()
 	if <-done {
 		t.Fatal("expected IsMain to be false on a different goroutine")
+	}
+}
+
+// TestInitDoesNotOverwrite covers issue #14: creating a window from a
+// background goroutine must not steal the "GUI goroutine" from main.
+func TestInitDoesNotOverwrite(t *testing.T) {
+	SetMain()
+
+	done := make(chan struct{})
+	go func() {
+		Init(false) // what newWindow does on whatever goroutine calls it
+		close(done)
+	}()
+	<-done
+
+	if !IsMain() {
+		t.Fatal("Init on a background goroutine overwrote the recorded GUI goroutine")
+	}
+}
+
+func TestDoAndWaitContextCancelled(t *testing.T) {
+	SetMain()
+	ran := false
+	if err := DoAndWaitContext(context.Background(), func() { ran = true }); err != nil || !ran {
+		t.Fatalf("inline DoAndWaitContext on main: err=%v ran=%v", err, ran)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	errc := make(chan error, 1)
+	go func() { errc <- DoAndWaitContext(ctx, func() {}) }()
+	if err := <-errc; err == nil {
+		t.Fatal("DoAndWaitContext with a cancelled context should fail off-main")
 	}
 }
