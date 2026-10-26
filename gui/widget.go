@@ -344,7 +344,7 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 
 			for i, x := range args {
 				if x.Type() == object.LIST {
-					items, err := object.AsList(args[0])
+					items, err := object.AsList(x)
 					if err != nil {
 						return object.Errorf("NewForm: Error: %s", err.Error()), nil
 					}
