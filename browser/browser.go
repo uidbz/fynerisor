@@ -200,9 +200,10 @@ func (b *Browser) navigate(url string, recordVisit bool) {
 		return
 	}
 
-	// Clear and load the script
+	// Clear and load the script, recording the page URL as its base so
+	// relative imports resolve against the page, same-origin only (issue #8).
 	b.window.Clear()
-	b.window.LoadScript(content)
+	b.window.LoadScriptFrom(content, url)
 	b.window.Execute()
 
 	// If source view is active, refresh it with new content
@@ -244,9 +245,9 @@ func (b *Browser) showAuthDialog(url string) {
 		return
 	}
 
-	// Load the authenticated content
+	// Load the authenticated content (page URL is the import base, issue #8)
 	b.window.Clear()
-	b.window.LoadScript(content)
+	b.window.LoadScriptFrom(content, url)
 	b.window.Execute()
 
 	// If source view is active, refresh it with new content

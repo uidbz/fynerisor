@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -174,5 +175,117 @@ func TestImportHTTPNon200Fails(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "404") {
 		t.Fatalf("expected the error to mention HTTP 404, got: %v", err)
+	}
+}
+
+// TestImportRelativeResolvesAgainstScriptDir covers issue #8: a relative
+// import in a script loaded via LoadScriptFrom resolves against the
+// script's own directory, not the process CWD.
+func TestImportRelativeResolvesAgainstScriptDir(t *testing.T) {
+	dir := t.TempDir()
+	sub := filepath.Join(dir, "apps")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeModule(t, dir, "lib.risor", "let VAL = 2\n") // CWD copy — must NOT be picked
+	writeModule(t, sub, "lib.risor", "let VAL = 1\n") // next to the script — must be picked
+	top := filepath.Join(sub, "main.risor")
+
+	cb := NewContext()
+	cb.LoadScriptFrom(`import("lib.risor").VAL`, top)
+	res, err := cb.Eval("")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got, ok := res.(int64); !ok || got != 1 {
+		t.Fatalf("VAL = %v (%T), want 1 (import resolved against wrong base?)", res, res)
+	}
+}
+
+// TestImportCacheKeyCanonicalised covers issue #8: "./a.risor" and
+// "a.risor" are the same module instance.
+func TestImportCacheKeyCanonicalised(t *testing.T) {
+	dir := t.TempDir()
+	writeModule(t, dir, "lib.risor", "let VAL = 5\n")
+
+	cb := NewContext()
+	cb.LoadScriptFrom(`let x = import("lib.risor")
+let y = import("./lib.risor")
+let z = import("`+filepath.ToSlash(dir)+`/lib.risor")
+[x.VAL, y.VAL, z.VAL]`, filepath.Join(dir, "main.risor"))
+	if _, err := cb.Eval(""); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cb.moduleCache) != 1 {
+		t.Fatalf("expected 1 cached module, got %d (%v)", len(cb.moduleCache), keysOf(cb.moduleCache))
+	}
+}
+
+func keysOf(m map[string]*ImportedModule) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	return out
+}
+
+// TestRemoteRelativeImportUsesRemoteBase covers issue #8: a script whose
+// base is a URL resolves relative imports against that URL (same origin)
+// and fetches them over HTTP — without needing the httpimport module.
+func TestRemoteRelativeImportUsesRemoteBase(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/app/lib.risor" {
+			fmt.Fprint(w, "let VAL = 42\n")
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	cb := NewContext()
+	cb.LoadScriptFrom(`import("lib.risor").VAL`, srv.URL+"/app/index.risor")
+	res, err := cb.Eval("")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got, ok := res.(int64); !ok || got != 42 {
+		t.Fatalf("VAL = %v (%T), want 42", res, res)
+	}
+}
+
+// TestRemoteImportCrossOriginBlocked covers issue #8: a remote script may
+// not import from another origin.
+func TestRemoteImportCrossOriginBlocked(t *testing.T) {
+	srv := httptest.NewServer(http.NotFoundHandler())
+	defer srv.Close()
+
+	cb := NewContext(WithHTTPImport())
+	cb.LoadScriptFrom(`import("http://cross-origin.invalid/x.risor")`, srv.URL+"/app/index.risor")
+	_, err := cb.Eval("")
+	if err == nil {
+		t.Fatal("expected cross-origin import to fail")
+	}
+	if !strings.Contains(err.Error(), "cross-origin") {
+		t.Fatalf("expected a cross-origin error, got: %v", err)
+	}
+}
+
+// TestRemoteImportCannotReadLocalFiles covers issue #8: an absolute local
+// path in a remote script never touches the local disk.
+func TestRemoteImportCannotReadLocalFiles(t *testing.T) {
+	dir := t.TempDir()
+	secret := writeModule(t, dir, "secret.risor", "let SECRET = 999\n")
+
+	srv := httptest.NewServer(http.NotFoundHandler())
+	defer srv.Close()
+
+	cb := NewContext()
+	cb.LoadScriptFrom(`import("`+filepath.ToSlash(secret)+`").SECRET`, srv.URL+"/app/index.risor")
+	res, err := cb.Eval("")
+	if err == nil {
+		t.Fatalf("remote script read a local file: %v", res)
+	}
+	if !strings.Contains(err.Error(), "HTTP 404") {
+		t.Fatalf("expected the import to fail as a remote 404, got: %v", err)
 	}
 }

@@ -92,6 +92,13 @@ func (c *CanvasObject) LoadScript(script string) {
 	c.window.LoadScript(script)
 }
 
+// LoadScriptFrom loads a script together with its source (file path or
+// URL) so relative import() calls resolve against it; see
+// gui.Window.LoadScriptFrom (issue #8).
+func (c *CanvasObject) LoadScriptFrom(script, source string) {
+	c.window.LoadScriptFrom(script, source)
+}
+
 // CompileScript parses and compiles the loaded script without executing it.
 func (c *CanvasObject) CompileScript() error {
 	return c.window.CompileScript()

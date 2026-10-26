@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
+	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -14,6 +17,113 @@ import (
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/vm"
 )
+
+// ImportFrame records one in-progress import. Key is the canonical cache
+// key of the module being imported; Base is the base its own relative
+// imports must resolve against (directory for local modules, the module URL
+// for remote ones). See issue #8.
+type ImportFrame struct {
+	Key  string
+	Base string
+}
+
+// ImportBaseFor maps a script's source (file path or URL) to the base used
+// to resolve its relative imports: the containing directory for local
+// files, or the script URL itself for http(s) sources. An empty source
+// means "unknown", which keeps the legacy process-CWD behaviour.
+func ImportBaseFor(source string) string {
+	if source == "" {
+		return ""
+	}
+	switch {
+	case strings.HasPrefix(source, "http://"), strings.HasPrefix(source, "https://"):
+		return source
+	case strings.HasPrefix(source, "file://"):
+		if u, err := url.Parse(source); err == nil {
+			return filepath.Dir(u.Path)
+		}
+		return ""
+	default:
+		return filepath.Dir(source)
+	}
+}
+
+// isHTTPURL reports whether s is an http(s) URL.
+func isHTTPURL(s string) bool {
+	return strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://")
+}
+
+// importBaseForKey returns the base for resolving the imports *made by* the
+// module identified by a canonical key.
+func importBaseForKey(key string) string {
+	if isHTTPURL(key) {
+		return key
+	}
+	return filepath.Dir(key)
+}
+
+// ResolveImportPath resolves an import() argument against the importing
+// script's base: a directory for local scripts, the importing script's URL
+// for remote (http/https) ones, or "" for the legacy process-CWD behaviour
+// (issue #8). The returned string is the canonical cache key: an absolute
+// file path or an absolute URL, so "./a.risor" and "a.risor" identify the
+// same module.
+//
+// Policy: a script loaded over HTTP(S) may only import from its own origin.
+// Its relative paths resolve against the remote URL and are never consulted
+// on the local disk; absolute or cross-origin URLs are rejected.
+func ResolveImportPath(modulePath, base string) (string, error) {
+	argIsURL := isHTTPURL(modulePath)
+	baseIsRemote := isHTTPURL(base)
+
+	if baseIsRemote {
+		baseURL, err := url.Parse(base)
+		if err != nil {
+			return "", fmt.Errorf("invalid script base URL %q: %w", base, err)
+		}
+		var target *url.URL
+		if argIsURL {
+			target, err = url.Parse(modulePath)
+			if err != nil {
+				return "", fmt.Errorf("invalid import URL %q: %w", modulePath, err)
+			}
+		} else {
+			// Relative (or root-relative) reference resolved against the
+			// importing script's URL directory. A local absolute path
+			// parses as a plain path reference and stays on the remote
+			// origin, so remote scripts cannot reach the local disk.
+			ref, err := url.Parse(strings.ReplaceAll(modulePath, "\\", "/"))
+			if err != nil {
+				return "", fmt.Errorf("invalid import path %q: %w", modulePath, err)
+			}
+			dir := *baseURL
+			dir.Path = path.Dir(baseURL.Path) + "/"
+			target = dir.ResolveReference(ref)
+		}
+		if target.Scheme != baseURL.Scheme || target.Host != baseURL.Host {
+			return "", fmt.Errorf("cross-origin import blocked: %q is not on the script origin %s://%s",
+				modulePath, baseURL.Scheme, baseURL.Host)
+		}
+		return target.String(), nil
+	}
+
+	// Local script (or unknown base): URL imports are allowed as-is; the
+	// caller enforces the httpimport gate.
+	if argIsURL {
+		return modulePath, nil
+	}
+	if base == "" {
+		abs, err := filepath.Abs(modulePath)
+		if err != nil {
+			return "", fmt.Errorf("resolve %q: %w", modulePath, err)
+		}
+		return filepath.Clean(abs), nil
+	}
+	if filepath.IsAbs(modulePath) || filepath.VolumeName(modulePath) != "" {
+		return filepath.Clean(modulePath), nil
+	}
+	return filepath.Clean(filepath.Join(base, modulePath)), nil
+}
 
 // newImportBuiltin creates the import() function that loads Risor modules
 // and returns them as ImportedModule objects with namespace access.
@@ -54,24 +164,44 @@ func (cb *Context) newImportBuiltin() *object.Builtin {
 
 		modulePath := path.Value()
 
-		// Thread-safe cache check
+		// Resolve against the importing script's base (the entry script's
+		// base, or the base of the module at the top of the import stack)
+		// and enforce the remote same-origin policy (issue #8).
 		cb.moduleMutex.Lock()
-		if module, found := cb.moduleCache[modulePath]; found {
+		base := cb.scriptBase
+		if n := len(cb.importStack); n > 0 {
+			base = cb.importStack[n-1].Base
+		}
+		cb.moduleMutex.Unlock()
+		baseIsRemote := isHTTPURL(base)
+
+		key, err := ResolveImportPath(modulePath, base)
+		if err != nil {
+			return nil, object.Errorf("import error: %w", err)
+		}
+
+		// Thread-safe cache check (keyed by the canonical path/URL)
+		cb.moduleMutex.Lock()
+		if module, found := cb.moduleCache[key]; found {
 			cb.moduleMutex.Unlock()
 			return module, nil
 		}
 
 		// Check for circular imports
-		for _, importing := range cb.importStack {
-			if importing == modulePath {
+		keys := make([]string, len(cb.importStack))
+		for i, f := range cb.importStack {
+			keys[i] = f.Key
+		}
+		for _, importing := range keys {
+			if importing == key {
 				cb.moduleMutex.Unlock()
-				cycle := strings.Join(append(cb.importStack, modulePath), " -> ")
+				cycle := strings.Join(append(keys, key), " -> ")
 				return nil, object.Errorf("import error: circular import detected: %s", cycle)
 			}
 		}
 
 		// Add to import stack
-		cb.importStack = append(cb.importStack, modulePath)
+		cb.importStack = append(cb.importStack, ImportFrame{Key: key, Base: importBaseForKey(key)})
 		cb.moduleMutex.Unlock()
 
 		defer func() {
@@ -80,15 +210,17 @@ func (cb *Context) newImportBuiltin() *object.Builtin {
 			cb.moduleMutex.Unlock()
 		}()
 
-		// Check if HTTP(S) import is allowed
-		if strings.HasPrefix(modulePath, "http://") || strings.HasPrefix(modulePath, "https://") {
+		// Check if HTTP(S) import is allowed. A remote script importing
+		// from its own origin is implicit (same-origin policy already
+		// applied); loading a URL from a local script needs httpimport.
+		if isHTTPURL(key) && !baseIsRemote {
 			if !cb.enabledModules["httpimport"] {
 				return nil, object.Errorf("import error: HTTP(S) imports are disabled. Use core.WithHTTPImport() to enable importing from URLs")
 			}
 		}
 
 		// Load script source
-		source, err := loadImportSource(ctx, modulePath)
+		source, err := loadImportSource(ctx, key)
 		if err != nil {
 			return nil, object.Errorf("import error: %w", err)
 		}
@@ -118,11 +250,11 @@ func (cb *Context) newImportBuiltin() *object.Builtin {
 		globals := wrapModuleExports(moduleVM)
 
 		// Create module object
-		module := NewImportedModule(modulePath, globals)
+		module := NewImportedModule(key, globals)
 
 		// Cache it
 		cb.moduleMutex.Lock()
-		cb.moduleCache[modulePath] = module
+		cb.moduleCache[key] = module
 		cb.moduleMutex.Unlock()
 
 		return module, nil

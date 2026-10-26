@@ -184,3 +184,41 @@ print(m.anything)`)
 		t.Fatalf("expected the error to mention HTTP 404, got: %s", fw.Status())
 	}
 }
+
+// TestLoadScriptFromResolvesRelativeImports covers issue #8: a window
+// loading a script via LoadScriptFrom resolves relative import() calls
+// against the script's own directory instead of the process CWD.
+func TestLoadScriptFromResolvesRelativeImports(t *testing.T) {
+	app := test.NewApp()
+	defer app.Quit()
+
+	dir := t.TempDir()
+	sub := filepath.Join(dir, "apps")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeModuleFile(t, dir, "lib.risor", "let VAL = 2\n") // CWD copy — must NOT be picked
+	writeModuleFile(t, sub, "lib.risor", "let VAL = 7\n") // next to the script
+	top := filepath.Join(sub, "main.risor")
+
+	w := app.NewWindow("Test")
+	fw := NewWindow(w)
+
+	fw.LoadScriptFrom(`let m = import("lib.risor")
+window.SetContent(widget.NewLabel("VAL=" + string(m.VAL)))`, top)
+	fw.Execute()
+
+	// The Execute goroutine writes the status when the body finishes; that
+	// write is the happens-before edge for reading the content widgets.
+	waitFor(t, 5*time.Second, func() bool { return fw.Status() == "Ready!" })
+
+	var btn *fynewidget.Button
+	var lbl *fynewidget.Label
+	findWidgets(fw.GetContentContainer(), &btn, &lbl)
+	if lbl == nil {
+		t.Fatalf("no label in content (status: %s)", fw.Status())
+	}
+	if lbl.Text != "VAL=7" {
+		t.Fatalf("label text = %q, want \"VAL=7\" (relative import resolved against the wrong base?)", lbl.Text)
+	}
+}

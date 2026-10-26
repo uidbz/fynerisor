@@ -52,24 +52,45 @@ func (w *Window) newImportBuiltin() *object.Builtin {
 
 		modulePath := path.Value()
 
-		// Thread-safe cache check
+		// Resolve against the importing script's base (the entry script's
+		// base, or the base of the module at the top of the import stack)
+		// and enforce the remote same-origin policy (issue #8). Same
+		// resolver and policy as core.
 		w.moduleMutex.Lock()
-		if module, found := w.moduleCache[modulePath]; found {
+		base := w.scriptBase
+		if n := len(w.importStack); n > 0 {
+			base = w.importStack[n-1].Base
+		}
+		w.moduleMutex.Unlock()
+		baseIsRemote := isHTTPURL(base)
+
+		key, err := core.ResolveImportPath(modulePath, base)
+		if err != nil {
+			return nil, object.Errorf("import error: %w", err)
+		}
+
+		// Thread-safe cache check (keyed by the canonical path/URL)
+		w.moduleMutex.Lock()
+		if module, found := w.moduleCache[key]; found {
 			w.moduleMutex.Unlock()
 			return module, nil
 		}
 
 		// Check for circular imports
-		for _, importing := range w.importStack {
-			if importing == modulePath {
+		keys := make([]string, len(w.importStack))
+		for i, f := range w.importStack {
+			keys[i] = f.Key
+		}
+		for _, importing := range keys {
+			if importing == key {
 				w.moduleMutex.Unlock()
-				cycle := strings.Join(append(w.importStack, modulePath), " -> ")
+				cycle := strings.Join(append(keys, key), " -> ")
 				return nil, object.Errorf("import error: circular import detected: %s", cycle)
 			}
 		}
 
 		// Add to import stack
-		w.importStack = append(w.importStack, modulePath)
+		w.importStack = append(w.importStack, core.ImportFrame{Key: key, Base: core.ImportBaseFor(key)})
 		w.moduleMutex.Unlock()
 
 		defer func() {
@@ -78,15 +99,17 @@ func (w *Window) newImportBuiltin() *object.Builtin {
 			w.moduleMutex.Unlock()
 		}()
 
-		// Check if HTTP(S) import is allowed
-		if strings.HasPrefix(modulePath, "http://") || strings.HasPrefix(modulePath, "https://") {
+		// Check if HTTP(S) import is allowed. A remote script importing
+		// from its own origin is implicit (same-origin policy already
+		// applied); loading a URL from a local script needs httpimport.
+		if isHTTPURL(key) && !baseIsRemote {
 			if !w.enabledModules["httpimport"] {
 				return nil, object.Errorf("import error: HTTP(S) imports are disabled. Use gui.WithHTTPImport() to enable importing from URLs")
 			}
 		}
 
 		// Load script source
-		source, err := loadImportSource(ctx, modulePath)
+		source, err := loadImportSource(ctx, key)
 		if err != nil {
 			return nil, object.Errorf("import error: %w", err)
 		}
@@ -120,11 +143,11 @@ func (w *Window) newImportBuiltin() *object.Builtin {
 		globals := wrapModuleExports(moduleVM)
 
 		// Create module object
-		module := core.NewImportedModule(modulePath, globals)
+		module := core.NewImportedModule(key, globals)
 
 		// Cache it
 		w.moduleMutex.Lock()
-		w.moduleCache[modulePath] = module
+		w.moduleCache[key] = module
 		w.moduleMutex.Unlock()
 
 		return module, nil
@@ -179,12 +202,16 @@ func bindModuleFunction(moduleVM *vm.VirtualMachine, mu *sync.Mutex, name string
 	})
 }
 
-// loadImportSource loads source code from a file path or URL. HTTP(S)
-// fetching is shared with core (issue #19): non-200 responses are errors,
-// and requests get a timeout and a body-size limit.
+// isHTTPURL reports whether s is an http(s) URL.
+func isHTTPURL(s string) bool {
+	return strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://")
+}
+
+// loadImportSource loads source code from a canonical import key: an
+// http(s) URL is fetched through core.FetchScript (timeout + size limit,
+// issue #19), anything else is read from the local filesystem.
 func loadImportSource(ctx context.Context, path string) (string, error) {
-	// Check if it's an HTTP(S) URL
-	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
+	if isHTTPURL(path) {
 		return core.FetchScript(ctx, path)
 	}
 

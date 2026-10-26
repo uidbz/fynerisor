@@ -25,8 +25,9 @@ type Context struct {
 	runner         *ScriptRunner
 
 	// Module import system
-	moduleCache map[string]*ImportedModule // Cache of imported modules
-	importStack []string                   // Track currently importing modules for circular detection
+	moduleCache map[string]*ImportedModule // Cache of imported modules, keyed by canonical path/URL
+	importStack []ImportFrame              // In-progress imports: cycle detection + base resolution
+	scriptBase  string                     // Base of the entry script (dir or URL); "" = process CWD
 	moduleMutex sync.Mutex                 // Protect cache from concurrent access
 }
 
@@ -59,7 +60,7 @@ func NewContext(opts ...Option) *Context {
 		enabledModules: make(map[string]bool),
 		appName:        "fynerisor", // default
 		moduleCache:    make(map[string]*ImportedModule),
-		importStack:    []string{},
+		importStack:    []ImportFrame{},
 	}
 
 	// Set base globals first
@@ -106,9 +107,20 @@ func (cb *Context) ImportScript(source string) error {
 	return fmt.Errorf("ImportScript() is deprecated: use import() function in scripts instead")
 }
 
-// LoadScript sets the main script to be executed.
-// Call this after all ImportScript() calls.
+// LoadScript sets the main script to be executed. Relative import() paths
+// in the script resolve against the process working directory; use
+// LoadScriptFrom when the script's own location is known (issue #8).
 func (cb *Context) LoadScript(script string) {
+	cb.scriptBase = ""
+	cb.runner.LoadScript(script)
+}
+
+// LoadScriptFrom sets the main script together with its source (file path
+// or URL). Relative import() calls in the script resolve against that
+// source: the containing directory for local files, the source URL (same
+// origin only) for http(s) sources. See issue #8.
+func (cb *Context) LoadScriptFrom(script, source string) {
+	cb.scriptBase = ImportBaseFor(source)
 	cb.runner.LoadScript(script)
 }
 

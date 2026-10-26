@@ -107,8 +107,9 @@ type Window struct {
 	runner         *ScriptRunner
 
 	// Module import system
-	moduleCache map[string]*core.ImportedModule // Cache of imported modules
-	importStack []string                        // Track currently importing modules for circular detection
+	moduleCache map[string]*core.ImportedModule // Cache of imported modules, keyed by canonical path/URL
+	importStack []core.ImportFrame              // In-progress imports: cycle detection + base resolution
+	scriptBase  string                          // Base of the entry script (dir or URL); "" = process CWD
 	moduleMutex sync.Mutex                      // Protect cache from concurrent access
 
 	// Keyboard shortcut system
@@ -160,7 +161,7 @@ func newWindow(opts ...Option) *Window {
 		enabledModules: make(map[string]bool),
 		appName:        "fynerisor", // default
 		moduleCache:    make(map[string]*core.ImportedModule),
-		importStack:    []string{},
+		importStack:    []core.ImportFrame{},
 		shortcuts:      make(map[string]fyne.Shortcut),
 	}
 
@@ -314,9 +315,21 @@ func (w *Window) Status() string {
 	return w.status
 }
 
-// LoadScript loads a Risor script that will be executed when Execute() is called.
-// If ImportScript() was called before LoadScript(), the imports will be prepended.
+// LoadScript loads a Risor script that will be executed when Execute() is
+// called. Relative import() paths in the script resolve against the process
+// working directory; use LoadScriptFrom when the script's own location is
+// known (issue #8).
 func (w *Window) LoadScript(script string) {
+	w.scriptBase = ""
+	w.runner.LoadScript(script)
+}
+
+// LoadScriptFrom loads a script together with its source (file path or
+// URL). Relative import() calls in the script resolve against that source:
+// the containing directory for local files, the source URL (same origin
+// only) for http(s) sources. See issue #8.
+func (w *Window) LoadScriptFrom(script, source string) {
+	w.scriptBase = core.ImportBaseFor(source)
 	w.runner.LoadScript(script)
 }
 

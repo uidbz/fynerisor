@@ -192,7 +192,7 @@ func main() {
 	}
 
 	// Execute script
-	executeScript(fyneWindow, script)
+	executeScript(fyneWindow, script, scriptPath)
 
 	// Watch mode
 	if *watch && scriptPath != "-" {
@@ -226,8 +226,14 @@ func readScript(path string) (string, error) {
 	return string(data), nil
 }
 
-func executeScript(fw *gui.Window, script string) {
-	fw.LoadScript(script)
+func executeScript(fw *gui.Window, script, scriptPath string) {
+	if scriptPath != "" && scriptPath != "-" {
+		// Relative imports resolve against the script's own directory
+		// (issue #8). For stdin ("-") keep the process CWD.
+		fw.LoadScriptFrom(script, scriptPath)
+	} else {
+		fw.LoadScript(script)
+	}
 	fw.Execute()
 }
 
@@ -274,7 +280,7 @@ func watchScript(path string, fw *gui.Window) {
 
 					// Execute in main thread
 					fyne.Do(func() {
-						executeScript(fw, script)
+						executeScript(fw, script, path)
 					})
 				})
 			}

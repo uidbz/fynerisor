@@ -35,6 +35,17 @@
 - **`risorwidget.NewMultiLineEntry` takes the window** like the other entry
   constructors; multi-line entries previously panicked in `OnSubmitted`.
   (issue #36)
+- **Relative `import()` paths resolve against the importing script, not the
+  process working directory.** A host that tells fynerisor where a script
+  came from (`LoadScriptFrom(script, source)` — now used by both CLI and
+  browser) gets imports resolved against the script's own directory, or,
+  for scripts loaded over HTTP(S), against the script's URL with a
+  same-origin policy: relative imports fetch from the script's own server,
+  cross-origin URLs are rejected, and local filesystem paths are never
+  consulted for remote scripts. Cache and cycle-detection keys are
+  canonicalised (absolute path / absolute URL), so `./a.risor` and
+  `a.risor` are the same module. Scripts loaded via the old `LoadScript`
+  keep the CWD behaviour. (issue #8)
 
 ### Fixed
 
