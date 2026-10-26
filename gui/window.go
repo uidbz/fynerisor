@@ -106,15 +106,15 @@ type Window struct {
 	resultCallback func(string)
 	runner         *ScriptRunner
 
-	// Module import system
-	moduleCache map[string]*core.ImportedModule // Cache of imported modules, keyed by canonical path/URL
-	importStack []core.ImportFrame              // In-progress imports: cycle detection + base resolution
-	scriptBase  string                          // Base of the entry script (dir or URL); "" = process CWD
-	moduleMutex sync.Mutex                      // Protect cache from concurrent access
+	// Module import system: the module cache and import stack live in the
+	// per-run importState (see import.go); only the entry script's base is
+	// kept here, captured by the next Execute.
+	scriptBase string // Base of the entry script (dir or URL); "" = process CWD
 
 	// Keyboard shortcut system
 	shortcuts     map[string]fyne.Shortcut // Map shortcut string to Shortcut object
 	shortcutMutex sync.Mutex               // Protect concurrent access
+	scriptMenu    atomic.Bool              // the running script installed the main menu
 }
 
 // NewWindow creates a new fynerisor Window that wraps a Fyne window.
@@ -163,8 +163,6 @@ func newWindow(opts ...Option) *Window {
 	w := &Window{
 		enabledModules: make(map[string]bool),
 		appName:        "fynerisor", // default
-		moduleCache:    make(map[string]*core.ImportedModule),
-		importStack:    []core.ImportFrame{},
 		shortcuts:      make(map[string]fyne.Shortcut),
 	}
 
@@ -375,16 +373,21 @@ func (w *Window) ImportScript(source string) error {
 // main body first, then every widget event, one at a time. Sets status to
 // "ERROR: ..." on failure or "Ready!" on success.
 //
-// Calling Execute again stops the previous run first: its VM halts, and
-// events still arriving for its widgets are dropped. Execute never waits
-// for the previous run, so it is safe to call from inside a running script
-// (e.g. browser.Open navigating to a new page).
+// Calling Execute again stops the previous run first: its VM halts, events
+// still arriving for its widgets are dropped, its keyboard shortcuts, main
+// menu and drop/stdout handlers are removed, and its imported modules are
+// discarded (issue #16). Execute never waits for the previous run, so it is
+// safe to call from inside a running script (e.g. browser.Open navigating
+// to a new page).
 func (w *Window) Execute() {
 	if prev := w.run.Load(); prev != nil {
 		prev.Stop()
 	}
+	w.resetRunState()
 
-	r := vmexec.New(context.Background(), vmexec.Config{QueueSize: callbackQueueSize})
+	// Each run gets its own module system state, carried in its context.
+	parent := context.WithValue(context.Background(), importStateKey{}, newImportState(w.scriptBase))
+	r := vmexec.New(parent, vmexec.Config{QueueSize: callbackQueueSize})
 	w.run.Store(r)
 
 	r.Start(func(ctx context.Context) {
@@ -407,6 +410,38 @@ func (w *Window) Execute() {
 		}
 
 		w.SetStatus("Ready!")
+	})
+}
+
+// resetRunState removes what the previous run installed on the window:
+// its keyboard shortcuts, the main menu (only if a script set it), and its
+// drop and stdout-capture handlers. Their callbacks belong to a stopped run
+// and would only be dropped; removing them frees the keys and menu for the
+// next run.
+func (w *Window) resetRunState() {
+	w.cbMu.Lock()
+	w.onDropped = nil
+	w.onNewStdout = nil
+	w.stdoutSink = nil
+	w.cbMu.Unlock()
+
+	w.shortcutMutex.Lock()
+	old := w.shortcuts
+	w.shortcuts = make(map[string]fyne.Shortcut)
+	w.shortcutMutex.Unlock()
+
+	resetMenu := w.scriptMenu.Swap(false)
+	if w.FyneWindow == nil || (len(old) == 0 && !resetMenu) {
+		return
+	}
+	host := w.FyneWindow
+	guithread.Do(func() {
+		for _, sc := range old {
+			host.Canvas().RemoveShortcut(sc)
+		}
+		if resetMenu {
+			host.SetMainMenu(nil)
+		}
 	})
 }
 
@@ -610,6 +645,11 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return nil, err
 			}
+			// A stopped or replaced run must not overwrite the status of
+			// the run that replaced it (issue #16).
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
 
 			w.SetStatus(status)
 
@@ -760,8 +800,18 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 			if !ok {
 				return nil, fmt.Errorf("argument must be MainMenu object")
 			}
+			if err := ctx.Err(); err != nil {
+				return nil, err // stopped run (issue #16)
+			}
 
-			w.FyneWindow.SetMainMenu(mainMenuObj.instance)
+			// Remember that the script owns the menu, so the next run can
+			// remove it together with its (dead) item callbacks.
+			w.scriptMenu.Store(true)
+			guithread.Do(func() {
+				if ctx.Err() == nil {
+					w.FyneWindow.SetMainMenu(mainMenuObj.instance)
+				}
+			})
 
 			return object.Nil, nil
 		}), true

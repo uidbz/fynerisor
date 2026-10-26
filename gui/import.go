@@ -13,6 +13,37 @@ import (
 	"github.com/uidbz/fynerisor/core"
 )
 
+// importState is the module system state of one script run: the entry
+// script's base, the module cache and the in-progress import stack.
+//
+// It is per run, not per window (issue #16): a stopped run whose VM is still
+// unwinding cannot push onto the import stack of the run that replaced it,
+// and each Execute re-imports modules, so a reload (--watch, browser
+// refresh) picks up edited modules and never shares module state — or
+// callbacks registered by module code — with a stopped run.
+type importState struct {
+	mu    sync.Mutex
+	base  string // entry script base (dir or URL); "" = process CWD
+	cache map[string]*core.ImportedModule
+	stack []core.ImportFrame
+}
+
+type importStateKey struct{}
+
+func newImportState(base string) *importState {
+	return &importState{base: base, cache: map[string]*core.ImportedModule{}}
+}
+
+// importStateFor returns the import state of the run that owns ctx. A
+// builtin called outside any run (not reachable from Execute) gets a
+// throwaway state with the window's current script base.
+func (w *Window) importStateFor(ctx context.Context) *importState {
+	if st, ok := ctx.Value(importStateKey{}).(*importState); ok {
+		return st
+	}
+	return newImportState(w.scriptBase)
+}
+
 // newImportBuiltin creates the import() function that loads Risor modules
 // and returns them as ImportedModule objects with namespace access.
 //
@@ -51,17 +82,18 @@ func (w *Window) newImportBuiltin() *object.Builtin {
 		}
 
 		modulePath := path.Value()
+		st := w.importStateFor(ctx)
 
 		// Resolve against the importing script's base (the entry script's
 		// base, or the base of the module at the top of the import stack)
 		// and enforce the remote same-origin policy (issue #8). Same
 		// resolver and policy as core.
-		w.moduleMutex.Lock()
-		base := w.scriptBase
-		if n := len(w.importStack); n > 0 {
-			base = w.importStack[n-1].Base
+		st.mu.Lock()
+		base := st.base
+		if n := len(st.stack); n > 0 {
+			base = st.stack[n-1].Base
 		}
-		w.moduleMutex.Unlock()
+		st.mu.Unlock()
 		baseIsRemote := isHTTPURL(base)
 
 		key, err := core.ResolveImportPath(modulePath, base)
@@ -70,33 +102,33 @@ func (w *Window) newImportBuiltin() *object.Builtin {
 		}
 
 		// Thread-safe cache check (keyed by the canonical path/URL)
-		w.moduleMutex.Lock()
-		if module, found := w.moduleCache[key]; found {
-			w.moduleMutex.Unlock()
+		st.mu.Lock()
+		if module, found := st.cache[key]; found {
+			st.mu.Unlock()
 			return module, nil
 		}
 
 		// Check for circular imports
-		keys := make([]string, len(w.importStack))
-		for i, f := range w.importStack {
+		keys := make([]string, len(st.stack))
+		for i, f := range st.stack {
 			keys[i] = f.Key
 		}
 		for _, importing := range keys {
 			if importing == key {
-				w.moduleMutex.Unlock()
+				st.mu.Unlock()
 				cycle := strings.Join(append(keys, key), " -> ")
 				return nil, object.Errorf("import error: circular import detected: %s", cycle)
 			}
 		}
 
 		// Add to import stack
-		w.importStack = append(w.importStack, core.ImportFrame{Key: key, Base: core.ImportBaseFor(key)})
-		w.moduleMutex.Unlock()
+		st.stack = append(st.stack, core.ImportFrame{Key: key, Base: core.ImportBaseFor(key)})
+		st.mu.Unlock()
 
 		defer func() {
-			w.moduleMutex.Lock()
-			w.importStack = w.importStack[:len(w.importStack)-1]
-			w.moduleMutex.Unlock()
+			st.mu.Lock()
+			st.stack = st.stack[:len(st.stack)-1]
+			st.mu.Unlock()
 		}()
 
 		// Check if HTTP(S) import is allowed. A remote script importing
@@ -146,9 +178,9 @@ func (w *Window) newImportBuiltin() *object.Builtin {
 		module := core.NewImportedModule(key, globals)
 
 		// Cache it
-		w.moduleMutex.Lock()
-		w.moduleCache[key] = module
-		w.moduleMutex.Unlock()
+		st.mu.Lock()
+		st.cache[key] = module
+		st.mu.Unlock()
 
 		return module, nil
 	})

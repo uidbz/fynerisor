@@ -57,8 +57,23 @@
   queued on the script's VM goroutine like all other events. Passing a
   non-function where a callback is expected now *raises* an error instead
   of returning an error value. (issue #12)
+- **Imported modules belong to a run.** Every `Execute` starts with an
+  empty module cache, so a reload (`--watch`, browser refresh) imports
+  modules again instead of reusing the previous run's instances — edited
+  modules are picked up, and no module state or module-registered
+  callback is shared with a stopped run. On re-`Execute` the previous
+  run's keyboard shortcuts, script-installed main menu and
+  drop/stdout-capture handlers are removed. (issue #16)
 
 ### Fixed
+
+- A stopped or replaced run can no longer write window state: its
+  `window.SetStatus`, `window.SetContent`, `window.SetMainMenu` and final
+  "Ready!"/"ERROR" status are ignored, and its widgets' callbacks are
+  dropped. `Execute()` called from inside a running script (as
+  `browser.Open` does) returns immediately instead of waiting up to 2 s
+  for its own goroutine. `window.SetMainMenu` now runs on the UI thread
+  (issue #16).
 
 - About 30 callback sites (Tree and GridWrap getters, `Button.OnTapped`,
   `MenuItem`, `Markdown`, `Hyperlink`, `Slider`, `SelectEntry`, `DateEntry`,

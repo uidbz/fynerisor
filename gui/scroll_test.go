@@ -24,7 +24,14 @@ func TestScrollToBottom(t *testing.T) {
 		s.ScrollToTop()
 	`)
 	fw.Execute()
-	time.Sleep(50 * time.Millisecond)
+	defer fw.Stop()
+	// Wait for the body to finish: Fyne's test driver runs UI work inline on
+	// the VM goroutine, so the second window must not start while the first
+	// body is still laying out.
+	waitFor(t, 2*time.Second, func() bool { return fw.Status() == "Ready!" })
+	if fw.Status() != "Ready!" {
+		t.Fatalf("first script failed: %q", fw.Status())
+	}
 
 	// A missing attribute would resolve to nil and the call would fail the
 	// script; assert both methods exist and are callable.
@@ -38,5 +45,9 @@ func TestScrollToBottom(t *testing.T) {
 		s.ScrollToTop()
 	`)
 	fw2.Execute()
-	time.Sleep(50 * time.Millisecond)
+	defer fw2.Stop()
+	waitFor(t, 2*time.Second, func() bool { return fw2.Status() == "Ready!" })
+	if fw2.Status() != "Ready!" {
+		t.Fatalf("second script failed: %q", fw2.Status())
+	}
 }
