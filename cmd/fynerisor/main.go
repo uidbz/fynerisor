@@ -178,20 +178,16 @@ func main() {
 		)
 	}
 
-	// Analyze script requirements and handle imports
+	// Analyze script requirements (informational). Imports are resolved by
+	// the runtime's import() builtin during execution; the removed
+	// ImportScript API must not be called here (issue #22).
 	reqs, err := core.AnalyzeRequirements(script)
 	if err != nil {
 		log.Fatalf("Error analyzing script: %v", err)
 	}
-
-	// Import dependencies in order
-	for _, importPath := range reqs.Imports {
-		if *verbose {
-			log.Printf("Importing: %s", importPath)
-		}
-		err := fyneWindow.ImportScript(importPath)
-		if err != nil {
-			log.Fatalf("Error importing %s: %v", importPath, err)
+	if *verbose {
+		for _, importPath := range reqs.Imports {
+			log.Printf("Analysed import (resolved at runtime): %s", importPath)
 		}
 	}
 
