@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -170,9 +172,9 @@ func main() {
 			gui.WithJSON(),
 			gui.WithCSV(),
 			gui.WithRisorOptions(customGlobals...),
-			gui.WithStatusCallback(func(status string) {
-				if strings.HasPrefix(status, "ERROR:") {
-					log.Printf("[ERROR] %s", status)
+			gui.WithOnStateChange(func(state gui.RunState, err error) {
+				if state == gui.StateFailed {
+					log.Printf("[ERROR] %v", err)
 				}
 			}),
 		)
@@ -191,27 +193,30 @@ func main() {
 		}
 	}
 
+	// In headless mode, run the script body to completion and exit with its
+	// result: the typed lifecycle replaces polling the status string, which
+	// a script could also set itself (issue #39).
+	if *headless {
+		loadScript(fyneWindow, script, scriptPath)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		err := fyneWindow.Run(ctx)
+		cancel()
+		switch {
+		case err == nil:
+			os.Exit(0)
+		case errors.Is(err, context.DeadlineExceeded):
+			log.Fatalf("Script execution timed out after 30 seconds")
+		default:
+			log.Fatalf("Script execution failed: %v", err)
+		}
+	}
+
 	// Execute script
 	executeScript(fyneWindow, script, scriptPath)
 
 	// Watch mode
 	if *watch && scriptPath != "-" {
 		go watchScript(scriptPath, fyneWindow)
-	}
-
-	// In headless mode, wait for script to complete
-	if *headless {
-		// Wait up to 30 seconds for script to complete
-		for i := 0; i < 300; i++ {
-			time.Sleep(100 * time.Millisecond)
-			if fyneWindow.Status() == "Ready!" {
-				os.Exit(0)
-			}
-			if strings.HasPrefix(fyneWindow.Status(), "ERROR:") {
-				log.Fatalf("Script execution failed: %s", fyneWindow.Status())
-			}
-		}
-		log.Fatalf("Script execution timed out after 30 seconds")
 	}
 
 	// Show and run
@@ -227,6 +232,11 @@ func readScript(path string) (string, error) {
 }
 
 func executeScript(fw *gui.Window, script, scriptPath string) {
+	loadScript(fw, script, scriptPath)
+	fw.Execute()
+}
+
+func loadScript(fw *gui.Window, script, scriptPath string) {
 	if scriptPath != "" && scriptPath != "-" {
 		// Relative imports resolve against the script's own directory
 		// (issue #8). For stdin ("-") keep the process CWD.
@@ -234,7 +244,6 @@ func executeScript(fw *gui.Window, script, scriptPath string) {
 	} else {
 		fw.LoadScript(script)
 	}
-	fw.Execute()
 }
 
 func watchScript(path string, fw *gui.Window) {

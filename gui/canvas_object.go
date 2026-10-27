@@ -1,6 +1,8 @@
 package gui
 
 import (
+	"context"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 
@@ -111,6 +113,22 @@ func (c *CanvasObject) CompileScript() error {
 // cancelled, matching Window.Execute.
 func (c *CanvasObject) Execute() {
 	c.window.Execute()
+}
+
+// Start executes the loaded script under ctx; see Window.Start.
+func (c *CanvasObject) Start(ctx context.Context) <-chan error {
+	return c.window.Start(ctx)
+}
+
+// Run executes the loaded script and waits for its main body; see
+// Window.Run.
+func (c *CanvasObject) Run(ctx context.Context) error {
+	return c.window.Run(ctx)
+}
+
+// State returns the lifecycle state of the current run; see Window.State.
+func (c *CanvasObject) State() (RunState, error) {
+	return c.window.State()
 }
 
 // Stop cancels the running script and its callback loop.

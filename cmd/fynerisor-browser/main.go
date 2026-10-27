@@ -97,14 +97,20 @@ func NewBrowserApp(title string) *BrowserApp {
 	fyneWindow := b.app.NewWindow(title)
 	b.window = gui.NewWindow(fyneWindow,
 		gui.WithAppName("fynerisor-browser"),
-		gui.WithStatusCallback(func(status string) {
-			// Check for script execution errors
-			if strings.HasPrefix(status, "ERROR: ") && status != b.lastErrorShown {
-				b.lastErrorShown = status
-				errorMsg := strings.TrimPrefix(status, "ERROR: ")
-				b.showError("Script Execution Error", errorMsg)
+		// A page whose script fails gets the error page. The typed
+		// lifecycle is used instead of matching "ERROR: " in the status
+		// text, which pages could also set themselves (issue #39).
+		gui.WithOnStateChange(func(state gui.RunState, err error) {
+			if state != gui.StateFailed || err == nil {
+				return
 			}
-			// Pass status to browser
+			if msg := err.Error(); msg != b.lastErrorShown {
+				b.lastErrorShown = msg
+				b.showError("Script Execution Error", msg)
+			}
+		}),
+		gui.WithStatusCallback(func(status string) {
+			// Pass status text to the browser's status bar
 			b.browser.SetStatus(status)
 		}),
 		gui.WithResultCallback(func(result string) {

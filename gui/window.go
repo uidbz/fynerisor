@@ -90,6 +90,9 @@ type Window struct {
 	content        *fyne.Container
 	status         string // guarded by statusMutex; see Status()/SetStatus (issue #15)
 	statusMutex    sync.Mutex
+	state          RunState              // guarded by statusMutex; see State() (issue #39)
+	stateErr       error                 // guarded by statusMutex
+	stateCallback  func(RunState, error) // WithOnStateChange
 	globals        []risor.Option
 	env            map[string]any  // Merged built-in globals (shared with imported module VMs)
 	userGlobals    []risor.Option  // Opaque user-supplied globals (via WithGlobals)
@@ -369,28 +372,55 @@ func (w *Window) ImportScript(source string) error {
 // discarded (issue #16). Execute never waits for the previous run, so it is
 // safe to call from inside a running script (e.g. browser.Open navigating
 // to a new page).
+//
+// Execute is Start(context.Background()) without waiting for the result;
+// see Start, Run and State for the typed lifecycle.
 func (w *Window) Execute() {
+	w.start(context.Background())
+}
+
+func (w *Window) start(ctx context.Context) <-chan error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	if prev := w.run.Load(); prev != nil {
 		prev.Stop()
 	}
 	w.resetRunState()
 
 	// Each run gets its own module system state, carried in its context.
-	parent := context.WithValue(context.Background(), importStateKey{}, newImportState(w.scriptBase))
+	parent := context.WithValue(ctx, importStateKey{}, newImportState(w.scriptBase))
 	r := vmexec.New(parent, vmexec.Config{QueueSize: callbackQueueSize})
 	w.run.Store(r)
+	w.setState(r, StateRunning, nil)
+	// However the run ends — Stop, its context, a newer Execute — report it
+	// (setState ignores runs that are no longer current).
+	go func() {
+		<-r.Context().Done()
+		w.setState(r, StateStopped, nil)
+	}()
 
+	done := make(chan error, 1)
 	r.Start(func(ctx context.Context) {
-		result, err := w.runner.EvalContext(ctx)
+		result, err := w.evalBody(ctx)
 		// A run that was stopped or replaced reports nothing: its status
 		// would overwrite the status of the run that replaced it.
 		if ctx.Err() != nil || w.run.Load() != r {
+			if err == nil {
+				err = vmexec.ErrStopped
+			}
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				err = ctxErr
+			}
+			done <- err
 			return
 		}
 		if err != nil {
 			// Log error to stderr so it's visible in terminal
 			fmt.Fprintf(os.Stderr, "Script execution error: %v\n", err)
 			w.SetStatus("ERROR: " + err.Error())
+			w.setState(r, StateFailed, err)
+			done <- err
 			return
 		}
 		if result != nil {
@@ -400,7 +430,21 @@ func (w *Window) Execute() {
 		}
 
 		w.SetStatus("Ready!")
+		w.setState(r, StateReady, nil)
+		done <- nil
 	})
+	return done
+}
+
+// evalBody runs the main script body, converting a panic into an error so
+// the lifecycle still reports StateFailed.
+func (w *Window) evalBody(ctx context.Context) (result any, err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			result, err = nil, fmt.Errorf("panic in script: %v", p)
+		}
+	}()
+	return w.runner.EvalContext(ctx)
 }
 
 // resetRunState removes what the previous run installed on the window:
@@ -441,6 +485,7 @@ func (w *Window) resetRunState() {
 func (w *Window) Stop() {
 	if r := w.run.Load(); r != nil {
 		r.Stop()
+		w.setState(r, StateStopped, nil)
 	}
 }
 

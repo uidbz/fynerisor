@@ -131,6 +131,18 @@
 
 ### Added
 
+- **Typed script lifecycle.** `gui.RunState` (`StateIdle`, `StateRunning`,
+  `StateReady`, `StateFailed`, `StateStopped`), `Window.State()`,
+  `Window.Start(ctx) <-chan error`, `Window.Run(ctx) error` and
+  `gui.WithOnStateChange(func(RunState, error))`, mirrored on
+  `CanvasObject`. Hosts no longer need to parse the `"Ready!"` /
+  `"ERROR: ..."` status strings, which scripts can also write with
+  `window.SetStatus`; the status text remains for display. The CLI's
+  `--headless` mode uses `Run` with a 30 s timeout instead of polling the
+  status (exit code 0/1 as before), and fynerisor-browser shows its error
+  page on `StateFailed` instead of on any "ERROR: " status (issue #39).
+- **`gui/vmexec`**: the per-run script executor (`Run`, `Callback`) used
+  by all widgets; see `docs/CONCURRENCY.md` (issue #37).
 - **`gui.NewCanvasObject` for embedding in existing Fyne apps.** A script can
   now be hosted as a regular `fyne.CanvasObject` and placed anywhere a widget
   fits (containers, border slots, tabs, dialogs). `window.SetContent` renders
