@@ -2,6 +2,7 @@ package gui
 
 import (
 	"fmt"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"strings"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -159,7 +160,12 @@ func (sw *ShortcutWrapper) Type() object.Type {
 	return "shortcut"
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (sw *ShortcutWrapper) Inspect() string {
+	return guithread.Inspect(sw.inspectUI)
+}
+
+func (sw *ShortcutWrapper) inspectUI() string {
 	if cs, ok := sw.Shortcut.(*desktop.CustomShortcut); ok {
 		return fmt.Sprintf("shortcut<%s>", FormatShortcut(cs))
 	}
@@ -193,11 +199,21 @@ func (sw *ShortcutWrapper) Equals(other object.Object) bool {
 	return false
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (sw *ShortcutWrapper) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, sw.getAttrUI)
+}
+
+func (sw *ShortcutWrapper) getAttrUI(name string) (object.Object, bool) {
 	return nil, false
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (sw *ShortcutWrapper) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, sw.setAttrUI)
+}
+
+func (sw *ShortcutWrapper) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: shortcut object has no attribute %q", name)
 }
 

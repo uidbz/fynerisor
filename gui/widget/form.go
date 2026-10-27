@@ -29,7 +29,12 @@ func (obj *Form) Type() object.Type {
 	return FormType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Form) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Form) inspectUI() string {
 	return "widget.Form"
 }
 
@@ -59,11 +64,21 @@ func (obj *Form) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Form) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Form) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", FormType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Form) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Form) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Hide":
 		return object.NewBuiltin("widget.Form.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {

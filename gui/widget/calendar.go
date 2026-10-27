@@ -49,7 +49,12 @@ func (obj *Calendar) Type() object.Type {
 	return CalendarType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Calendar) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Calendar) inspectUI() string {
 	return "widget.Calendar"
 }
 
@@ -83,11 +88,21 @@ func (obj *Calendar) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Calendar) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Calendar) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", CalendarType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Calendar) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Calendar) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "OnSelected":
 		return object.NewBuiltin("widget.Calendar.OnSelected", func(ctx context.Context, args ...object.Object) (object.Object, error) {

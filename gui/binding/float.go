@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/uidbz/fynerisor/gui/guithread"
 
 	"fyne.io/fyne/v2/data/binding"
 
@@ -26,7 +27,12 @@ func (obj *Float) Type() object.Type {
 	return FloatType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Float) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Float) inspectUI() string {
 	val, _ := obj.instance.Get()
 	return fmt.Sprintf("binding.Float(%f)", val)
 }
@@ -61,11 +67,21 @@ func (obj *Float) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Float) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Float) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", FloatType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Float) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Float) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Get":
 		return object.NewBuiltin("binding.Float.Get", func(ctx context.Context, args ...object.Object) (object.Object, error) {

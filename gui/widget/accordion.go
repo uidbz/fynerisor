@@ -29,7 +29,12 @@ func (obj *Accordion) Type() object.Type {
 	return AccordionType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Accordion) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Accordion) inspectUI() string {
 	return fmt.Sprintf("Accordion(items=%d)", len(obj.instance.Items))
 }
 
@@ -64,7 +69,12 @@ func (obj *Accordion) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Accordion) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Accordion) setAttrUI(name string, value object.Object) error {
 	switch name {
 	case "MultiOpen":
 		multiOpen, err := object.AsBool(value)
@@ -81,7 +91,12 @@ func (obj *Accordion) SetAttr(name string, value object.Object) error {
 	}
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Accordion) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Accordion) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "MultiOpen":
 		return object.NewBool(obj.instance.MultiOpen), true
@@ -224,7 +239,12 @@ func (obj *AccordionItem) Type() object.Type {
 	return AccordionItemType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *AccordionItem) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *AccordionItem) inspectUI() string {
 	return fmt.Sprintf("AccordionItem(%q)", obj.instance.Title)
 }
 
@@ -255,7 +275,12 @@ func (obj *AccordionItem) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *AccordionItem) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *AccordionItem) setAttrUI(name string, value object.Object) error {
 	switch name {
 	case "Title":
 		title, err := object.AsString(value)
@@ -276,7 +301,12 @@ func (obj *AccordionItem) SetAttr(name string, value object.Object) error {
 	}
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *AccordionItem) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *AccordionItem) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Title":
 		return object.NewString(obj.instance.Title), true

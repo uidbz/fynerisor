@@ -527,7 +527,12 @@ func (w *Window) Type() object.Type {
 	return WindowType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (w *Window) Inspect() string {
+	return guithread.Inspect(w.inspectUI)
+}
+
+func (w *Window) inspectUI() string {
 	return "window"
 }
 
@@ -560,7 +565,12 @@ func (w *Window) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (w *Window) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, w.setAttrUI)
+}
+
+func (w *Window) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", WindowType, name)
 }
 
@@ -568,7 +578,12 @@ type IsCanvasObject interface {
 	CanvasObject() fyne.CanvasObject
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (w *Window) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, w.getAttrUI)
+}
+
+func (w *Window) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "DroppedPaths":
 		return object.NewStringList(w.droppedPaths), true

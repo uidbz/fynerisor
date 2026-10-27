@@ -44,7 +44,12 @@ func (obj *ProgressBar) Type() object.Type {
 	return ProgressBarType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *ProgressBar) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *ProgressBar) inspectUI() string {
 	return fmt.Sprintf("widget.ProgressBar(value=%f)", obj.instance.Value)
 }
 
@@ -82,7 +87,12 @@ func (obj *ProgressBar) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *ProgressBar) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *ProgressBar) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Value":
 		return object.NewFloat(obj.instance.Value), true
@@ -114,7 +124,12 @@ func (obj *ProgressBar) GetAttr(name string) (object.Object, bool) {
 	return nil, false
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *ProgressBar) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *ProgressBar) setAttrUI(name string, value object.Object) error {
 	switch name {
 	case "Value":
 		val, err := object.AsFloat(value)

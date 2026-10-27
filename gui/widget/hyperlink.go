@@ -41,7 +41,12 @@ func (obj *Hyperlink) Type() object.Type {
 	return HyperlinkType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Hyperlink) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Hyperlink) inspectUI() string {
 	return fmt.Sprintf("widget.Hyperlink(text=%q, url=%q)", obj.instance.Text, obj.instance.URL.String())
 }
 
@@ -79,7 +84,12 @@ func (obj *Hyperlink) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Hyperlink) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Hyperlink) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Text":
 		return object.NewString(obj.instance.Text), true
@@ -157,7 +167,12 @@ func (obj *Hyperlink) GetAttr(name string) (object.Object, bool) {
 	return nil, false
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Hyperlink) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Hyperlink) setAttrUI(name string, value object.Object) error {
 	switch name {
 	case "Text":
 		text, err := object.AsString(value)

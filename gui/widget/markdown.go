@@ -36,7 +36,12 @@ func (obj *Markdown) Type() object.Type {
 	return MarkdownType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Markdown) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Markdown) inspectUI() string {
 	return "widget.Markdown"
 }
 
@@ -66,7 +71,12 @@ func (obj *Markdown) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Markdown) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Markdown) setAttrUI(name string, value object.Object) error {
 	switch name {
 	case "Wrapping":
 		i, err := object.AsInt(value)
@@ -102,7 +112,12 @@ func (obj *Markdown) SetAttr(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", MarkdownType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Markdown) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Markdown) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Text":
 		return object.NewString(obj.src), true

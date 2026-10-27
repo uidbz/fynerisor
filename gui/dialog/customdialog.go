@@ -26,7 +26,12 @@ func (obj *CustomDialog) Type() object.Type {
 	return CustomDialogType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *CustomDialog) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *CustomDialog) inspectUI() string {
 	return "dialog.CustomDialog"
 }
 
@@ -54,11 +59,21 @@ func (obj *CustomDialog) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *CustomDialog) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *CustomDialog) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", CustomDialogType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *CustomDialog) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *CustomDialog) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Show":
 		return object.NewBuiltin("dialog.CustomDialog.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {

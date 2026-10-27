@@ -32,7 +32,12 @@ func (obj *GridWithColumns) Type() object.Type {
 	return GridWithColumnsType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *GridWithColumns) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *GridWithColumns) inspectUI() string {
 	return "container.gridwithcolumns"
 }
 
@@ -62,11 +67,21 @@ func (obj *GridWithColumns) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *GridWithColumns) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *GridWithColumns) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", GridWithColumnsType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *GridWithColumns) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *GridWithColumns) getAttrUI(name string) (object.Object, bool) {
 	if o, ok := containerOps("GridWithColumns", obj.instance, name); ok {
 		return o, true
 	}
@@ -113,7 +128,12 @@ func (obj *GridWithRows) Type() object.Type {
 	return GridWithRowsType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *GridWithRows) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *GridWithRows) inspectUI() string {
 	return "container.gridwithrows"
 }
 
@@ -143,11 +163,21 @@ func (obj *GridWithRows) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *GridWithRows) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *GridWithRows) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", GridWithRowsType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *GridWithRows) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *GridWithRows) getAttrUI(name string) (object.Object, bool) {
 	if o, ok := containerOps("GridWithRows", obj.instance, name); ok {
 		return o, true
 	}

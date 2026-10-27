@@ -63,7 +63,12 @@ func (obj *TextGrid) Type() object.Type {
 	return TextGridType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *TextGrid) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *TextGrid) inspectUI() string {
 	return "widget.TextGrid"
 }
 
@@ -97,7 +102,12 @@ func (obj *TextGrid) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *TextGrid) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *TextGrid) setAttrUI(name string, value object.Object) error {
 	switch name {
 	case "Text":
 		s, err := object.AsString(value)
@@ -142,7 +152,12 @@ func (obj *TextGrid) SetAttr(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", TextGridType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *TextGrid) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *TextGrid) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Text":
 		return object.NewString(obj.instance.Text()), true

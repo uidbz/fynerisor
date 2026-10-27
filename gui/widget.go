@@ -3,6 +3,7 @@ package gui
 import (
 	"context"
 	"fmt"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"os"
 	"time"
 
@@ -41,7 +42,12 @@ func (obj *Widget) Type() object.Type {
 	return WidgetType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Widget) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Widget) inspectUI() string {
 	return "widget"
 }
 
@@ -69,11 +75,21 @@ func (obj *Widget) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Widget) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Widget) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", WidgetType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Widget) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Widget) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "NewButton":
 		return object.NewBuiltin("widget.NewButton", func(ctx context.Context, args ...object.Object) (object.Object, error) {

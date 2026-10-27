@@ -71,6 +71,16 @@
 
 ### Fixed
 
+- Script access to Fyne objects no longer races with the UI thread. Every
+  attribute read/write, `Inspect` and method call on a gui object (widgets,
+  containers, canvas objects, dialogs, menus, bindings, the window and the
+  factories) now runs on Fyne's UI thread — previously e.g. reading
+  `entry.Text` while the user typed was an unsynchronized read on the
+  script's goroutine. Builtins that do I/O (`canvas.NewImageFromURI`,
+  chart `SaveImage`) are marked `guithread.OffUI` and only marshal their
+  Fyne work; image downloads honour the run's context and a 30 s timeout.
+  Tests can reproduce the real UI-thread split (`startUILoop`) instead of
+  relying on Fyne's inline test driver (issue #49).
 - A stopped or replaced run can no longer write window state: its
   `window.SetStatus`, `window.SetContent`, `window.SetMainMenu` and final
   "Ready!"/"ERROR" status are ignored, and its widgets' callbacks are

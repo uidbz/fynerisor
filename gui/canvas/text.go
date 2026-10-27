@@ -31,7 +31,12 @@ func (obj *Text) Type() object.Type {
 	return TextType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Text) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Text) inspectUI() string {
 	return "canvas.text"
 }
 
@@ -61,7 +66,12 @@ func (obj *Text) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Text) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Text) setAttrUI(name string, value object.Object) error {
 	switch name {
 	case "Text":
 		s, err := object.AsString(value)
@@ -101,7 +111,12 @@ func (obj *Text) SetAttr(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", TextType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Text) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Text) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Text":
 		return object.NewString(obj.instance.Text), true

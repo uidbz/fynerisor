@@ -69,7 +69,12 @@ func (r *Histogram) Type() object.Type {
 	return HistogramType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (r *Histogram) Inspect() string {
+	return guithread.Inspect(r.inspectUI)
+}
+
+func (r *Histogram) inspectUI() string {
 	return "chart.histogram"
 }
 
@@ -100,7 +105,12 @@ func (r *Histogram) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (r *Histogram) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, r.setAttrUI)
+}
+
+func (r *Histogram) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", HistogramType, name)
 }
 
@@ -220,7 +230,12 @@ func (h *Histogram) hitTest(px, py float32, xs, ys *linearScale) (hitResult, boo
 
 // --- Risor method surface ----------------------------------------------------
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (g *Histogram) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, g.getAttrUI)
+}
+
+func (g *Histogram) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "SetValues":
 		return object.NewBuiltin("chart.histogram.SetValues", func(ctx context.Context, args ...object.Object) (object.Object, error) {

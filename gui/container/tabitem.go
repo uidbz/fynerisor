@@ -24,7 +24,12 @@ func (obj *TabItem) Type() object.Type {
 	return TabItemType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *TabItem) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *TabItem) inspectUI() string {
 	return fmt.Sprintf("container.TabItem(%q)", obj.instance.Text)
 }
 
@@ -54,7 +59,12 @@ func (obj *TabItem) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *TabItem) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *TabItem) setAttrUI(name string, value object.Object) error {
 	switch name {
 	case "Text":
 		text, err := object.AsString(value)
@@ -69,7 +79,12 @@ func (obj *TabItem) SetAttr(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", TabItemType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *TabItem) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *TabItem) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Text":
 		return object.NewString(obj.instance.Text), true

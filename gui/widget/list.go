@@ -52,7 +52,12 @@ func (obj *List) Type() object.Type {
 	return ListType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *List) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *List) inspectUI() string {
 	return "widget.List"
 }
 
@@ -86,7 +91,12 @@ func (obj *List) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *List) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *List) setAttrUI(name string, value object.Object) error {
 	switch name {
 	case "HideSeparators":
 		b, err := object.AsBool(value)
@@ -102,7 +112,12 @@ func (obj *List) SetAttr(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", ListType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *List) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *List) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Length":
 		return object.NewBuiltin("widget.List.Length", func(ctx context.Context, args ...object.Object) (object.Object, error) {
@@ -350,7 +365,13 @@ func (g *GenericCanvasObject) RunOperation(op.BinaryOpType, object.Object) (obje
 }
 func (g *GenericCanvasObject) Equals(other object.Object) bool           { return g == other }
 func (g *GenericCanvasObject) GetAttr(name string) (object.Object, bool) { return nil, false }
+
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (g *GenericCanvasObject) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, g.setAttrUI)
+}
+
+func (g *GenericCanvasObject) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("no attributes")
 }
 func (g *GenericCanvasObject) Attrs() []object.AttrSpec { return nil }

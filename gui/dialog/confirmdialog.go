@@ -27,7 +27,12 @@ func (obj *ConfirmDialog) Type() object.Type {
 	return ConfirmDialogType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *ConfirmDialog) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *ConfirmDialog) inspectUI() string {
 	return "dialog.ConfirmDialog"
 }
 
@@ -55,11 +60,21 @@ func (obj *ConfirmDialog) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *ConfirmDialog) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *ConfirmDialog) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", ConfirmDialogType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *ConfirmDialog) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *ConfirmDialog) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Show":
 		return object.NewBuiltin("dialog.ConfirmDialog.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {

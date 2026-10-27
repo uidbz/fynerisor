@@ -49,7 +49,12 @@ func (obj *Table) Type() object.Type {
 	return TableType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Table) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Table) inspectUI() string {
 	return "widget.Table"
 }
 
@@ -77,11 +82,21 @@ func (obj *Table) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Table) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Table) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", TableType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Table) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Table) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Columns":
 		return object.NewBuiltin("widget.Table.Columns", func(ctx context.Context, args ...object.Object) (object.Object, error) {
@@ -446,7 +461,12 @@ func (g *ImageCellWrapper) Type() object.Type {
 	return "canvas.Image"
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (g *ImageCellWrapper) Inspect() string {
+	return guithread.Inspect(g.inspectUI)
+}
+
+func (g *ImageCellWrapper) inspectUI() string {
 	return "canvas.Image"
 }
 
@@ -478,11 +498,21 @@ func (g *ImageCellWrapper) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (g *ImageCellWrapper) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, g.setAttrUI)
+}
+
+func (g *ImageCellWrapper) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: canvas.Image has no settable attributes")
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (g *ImageCellWrapper) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, g.getAttrUI)
+}
+
+func (g *ImageCellWrapper) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "SetImageFromURI":
 		return object.NewBuiltin("canvas.Image.SetImageFromURI", func(ctx context.Context, args ...object.Object) (object.Object, error) {
@@ -524,7 +554,12 @@ func (g *GenericCanvasObjectTable) Type() object.Type {
 	return "canvas.Object"
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (g *GenericCanvasObjectTable) Inspect() string {
+	return guithread.Inspect(g.inspectUI)
+}
+
+func (g *GenericCanvasObjectTable) inspectUI() string {
 	return "canvas.Object"
 }
 
@@ -556,10 +591,20 @@ func (g *GenericCanvasObjectTable) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (g *GenericCanvasObjectTable) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, g.setAttrUI)
+}
+
+func (g *GenericCanvasObjectTable) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: canvas.Object has no settable attributes")
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (g *GenericCanvasObjectTable) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, g.getAttrUI)
+}
+
+func (g *GenericCanvasObjectTable) getAttrUI(name string) (object.Object, bool) {
 	return nil, false
 }

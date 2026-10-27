@@ -28,7 +28,12 @@ func (obj *Toolbar) Type() object.Type {
 	return ToolbarType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Toolbar) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Toolbar) inspectUI() string {
 	return fmt.Sprintf("Toolbar(items=%d)", len(obj.instance.Items))
 }
 
@@ -63,11 +68,21 @@ func (obj *Toolbar) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Toolbar) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Toolbar) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: Toolbar has no writable attributes")
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Toolbar) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Toolbar) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Append":
 		return object.NewBuiltin("Toolbar.Append", func(ctx context.Context, args ...object.Object) (object.Object, error) {
@@ -150,7 +165,12 @@ func (obj *ToolbarAction) Type() object.Type {
 	return ToolbarActionType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *ToolbarAction) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *ToolbarAction) inspectUI() string {
 	return "ToolbarAction"
 }
 
@@ -181,11 +201,21 @@ func (obj *ToolbarAction) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *ToolbarAction) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *ToolbarAction) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: ToolbarAction has no writable attributes")
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *ToolbarAction) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *ToolbarAction) getAttrUI(name string) (object.Object, bool) {
 	return nil, false
 }
 
@@ -206,7 +236,12 @@ func (obj *ToolbarSeparator) Type() object.Type {
 	return ToolbarSeparatorType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *ToolbarSeparator) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *ToolbarSeparator) inspectUI() string {
 	return "ToolbarSeparator"
 }
 
@@ -237,11 +272,21 @@ func (obj *ToolbarSeparator) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *ToolbarSeparator) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *ToolbarSeparator) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: ToolbarSeparator has no writable attributes")
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *ToolbarSeparator) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *ToolbarSeparator) getAttrUI(name string) (object.Object, bool) {
 	return nil, false
 }
 
@@ -262,7 +307,12 @@ func (obj *ToolbarSpacer) Type() object.Type {
 	return ToolbarSpacerType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *ToolbarSpacer) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *ToolbarSpacer) inspectUI() string {
 	return "ToolbarSpacer"
 }
 
@@ -293,10 +343,20 @@ func (obj *ToolbarSpacer) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *ToolbarSpacer) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *ToolbarSpacer) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: ToolbarSpacer has no writable attributes")
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *ToolbarSpacer) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *ToolbarSpacer) getAttrUI(name string) (object.Object, bool) {
 	return nil, false
 }

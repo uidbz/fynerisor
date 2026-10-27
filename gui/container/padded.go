@@ -30,7 +30,12 @@ func (obj *Padded) Type() object.Type {
 	return PaddedType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Padded) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Padded) inspectUI() string {
 	return "container.padded"
 }
 
@@ -60,11 +65,21 @@ func (obj *Padded) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Padded) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Padded) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", PaddedType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Padded) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Padded) getAttrUI(name string) (object.Object, bool) {
 	if o, ok := containerOps("Padded", obj.instance, name); ok {
 		return o, true
 	}

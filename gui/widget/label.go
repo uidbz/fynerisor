@@ -30,7 +30,12 @@ func (obj *Label) Type() object.Type {
 	return LabelType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Label) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Label) inspectUI() string {
 	return "widget.Label"
 }
 
@@ -60,7 +65,12 @@ func (obj *Label) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Label) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Label) setAttrUI(name string, value object.Object) error {
 	switch name {
 	case "Text":
 		text, err := object.AsString(value)
@@ -127,7 +137,12 @@ func (obj *Label) SetAttr(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", LabelType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Label) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Label) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Text":
 		return object.NewString(obj.instance.Text), true

@@ -103,7 +103,12 @@ func (obj *PopUp) Type() object.Type {
 	return PopUpType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *PopUp) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *PopUp) inspectUI() string {
 	return "widget.PopUp"
 }
 
@@ -137,11 +142,21 @@ func (obj *PopUp) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *PopUp) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *PopUp) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", PopUpType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *PopUp) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *PopUp) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Show":
 		return object.NewBuiltin("widget.PopUp.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {

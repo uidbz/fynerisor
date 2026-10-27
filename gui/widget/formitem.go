@@ -3,6 +3,7 @@ package widget
 import (
 	"errors"
 	"fmt"
+	"github.com/uidbz/fynerisor/gui/guithread"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
@@ -23,7 +24,12 @@ func (obj *FormItem) Type() object.Type {
 	return FormItemType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *FormItem) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *FormItem) inspectUI() string {
 	return "widget.FormItem"
 }
 
@@ -53,11 +59,21 @@ func (obj *FormItem) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *FormItem) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *FormItem) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", FormItemType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *FormItem) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *FormItem) getAttrUI(name string) (object.Object, bool) {
 	return nil, false
 }
 

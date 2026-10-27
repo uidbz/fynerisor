@@ -64,7 +64,12 @@ func (r *ScatterChart) Type() object.Type {
 	return ScatterChartType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (r *ScatterChart) Inspect() string {
+	return guithread.Inspect(r.inspectUI)
+}
+
+func (r *ScatterChart) inspectUI() string {
 	return "chart.scatterchart"
 }
 
@@ -95,7 +100,12 @@ func (r *ScatterChart) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (r *ScatterChart) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, r.setAttrUI)
+}
+
+func (r *ScatterChart) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", ScatterChartType, name)
 }
 
@@ -173,7 +183,12 @@ func (s *ScatterChart) hitTest(px, py float32, xs, ys *linearScale) (hitResult, 
 
 // --- Risor method surface ----------------------------------------------------
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (g *ScatterChart) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, g.getAttrUI)
+}
+
+func (g *ScatterChart) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "SetPoints":
 		return object.NewBuiltin("chart.scatterchart.SetPoints", func(ctx context.Context, args ...object.Object) (object.Object, error) {

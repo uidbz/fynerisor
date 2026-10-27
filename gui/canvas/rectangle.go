@@ -37,7 +37,12 @@ func (obj *Rectangle) Type() object.Type {
 	return RectangleType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Rectangle) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Rectangle) inspectUI() string {
 	return "canvas.rectangle"
 }
 
@@ -118,7 +123,12 @@ func colorToHex(c color.Color) string {
 	return fmt.Sprintf("#%02x%02x%02x%02x", uint8(r>>8), uint8(g>>8), uint8(b>>8), uint8(a>>8))
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Rectangle) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Rectangle) setAttrUI(name string, value object.Object) error {
 	switch name {
 	case "FillColor":
 		s, err := object.AsString(value)
@@ -172,7 +182,12 @@ func (obj *Rectangle) SetAttr(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", RectangleType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Rectangle) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Rectangle) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "FillColor":
 		return object.NewString(colorToHex(obj.instance.FillColor)), true

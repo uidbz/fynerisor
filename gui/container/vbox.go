@@ -30,7 +30,12 @@ func (obj *VBox) Type() object.Type {
 	return VBoxType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *VBox) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *VBox) inspectUI() string {
 	return "container.vbox"
 }
 
@@ -60,11 +65,21 @@ func (obj *VBox) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *VBox) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *VBox) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", VBoxType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *VBox) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *VBox) getAttrUI(name string) (object.Object, bool) {
 	if o, ok := containerOps("VBox", obj.instance, name); ok {
 		return o, true
 	}

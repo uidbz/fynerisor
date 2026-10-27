@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/uidbz/fynerisor/gui/guithread"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -31,7 +32,12 @@ func (obj *Binding) Type() object.Type {
 	return BindingType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Binding) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Binding) inspectUI() string {
 	return "binding"
 }
 
@@ -65,11 +71,21 @@ func (obj *Binding) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Binding) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Binding) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", BindingType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Binding) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Binding) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "NewString":
 		return object.NewBuiltin("binding.NewString", func(ctx context.Context, args ...object.Object) (object.Object, error) {

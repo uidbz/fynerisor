@@ -3,6 +3,7 @@ package gui
 import (
 	"context"
 	"fmt"
+	"github.com/uidbz/fynerisor/gui/guithread"
 
 	"fyne.io/fyne/v2"
 
@@ -23,7 +24,12 @@ func (obj *Fyne) Type() object.Type {
 	return FyneType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Fyne) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Fyne) inspectUI() string {
 	return "fyne"
 }
 
@@ -51,11 +57,21 @@ func (obj *Fyne) Equals(other object.Object) bool {
 	return obj == other
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Fyne) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Fyne) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", FyneType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Fyne) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Fyne) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "NewMenuItem":
 		return object.NewBuiltin("fyne.NewMenuItem", risorwidget.NewMenuItem(obj.w)), true
@@ -140,7 +156,12 @@ func (obj *Menu) Type() object.Type {
 	return "fyne.Menu"
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Menu) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Menu) inspectUI() string {
 	return fmt.Sprintf("fyne.Menu(%s)", obj.instance.Label)
 }
 
@@ -168,11 +189,21 @@ func (obj *Menu) Equals(other object.Object) bool {
 	return obj == other
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Menu) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Menu) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: Menu object has no writable attributes")
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Menu) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Menu) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Label":
 		return object.NewString(obj.instance.Label), true
@@ -209,7 +240,12 @@ func (obj *MainMenu) Type() object.Type {
 	return "fyne.MainMenu"
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *MainMenu) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *MainMenu) inspectUI() string {
 	return "fyne.MainMenu"
 }
 
@@ -237,11 +273,21 @@ func (obj *MainMenu) Equals(other object.Object) bool {
 	return obj == other
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *MainMenu) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *MainMenu) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: MainMenu object has no writable attributes")
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *MainMenu) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *MainMenu) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Refresh":
 		return object.NewBuiltin("fyne.MainMenu.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {

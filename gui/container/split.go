@@ -30,7 +30,12 @@ func (obj *Split) Type() object.Type {
 	return SplitType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Split) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Split) inspectUI() string {
 	return "container.Split"
 }
 
@@ -60,7 +65,12 @@ func (obj *Split) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Split) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Split) setAttrUI(name string, value object.Object) error {
 	switch name {
 	case "Offset":
 		split, ok := obj.instance.(*container.Split)
@@ -82,7 +92,12 @@ func (obj *Split) SetAttr(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", SplitType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Split) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Split) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Hide":
 		return object.NewBuiltin("container.Split.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {

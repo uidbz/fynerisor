@@ -27,7 +27,12 @@ func (obj *ColorPickerDialog) Type() object.Type {
 	return ColorPickerDialogType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *ColorPickerDialog) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *ColorPickerDialog) inspectUI() string {
 	return "dialog.ColorPickerDialog"
 }
 
@@ -55,7 +60,12 @@ func (obj *ColorPickerDialog) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *ColorPickerDialog) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *ColorPickerDialog) setAttrUI(name string, value object.Object) error {
 	switch name {
 	case "Advanced":
 		advanced, err := object.AsBool(value)
@@ -71,7 +81,12 @@ func (obj *ColorPickerDialog) SetAttr(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", ColorPickerDialogType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *ColorPickerDialog) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *ColorPickerDialog) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Advanced":
 		return object.NewBool(obj.instance.Advanced), true

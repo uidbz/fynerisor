@@ -67,7 +67,12 @@ func (r *BarChart) Type() object.Type {
 	return BarChartType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (r *BarChart) Inspect() string {
+	return guithread.Inspect(r.inspectUI)
+}
+
+func (r *BarChart) inspectUI() string {
 	return "chart.barchart"
 }
 
@@ -98,7 +103,12 @@ func (r *BarChart) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (r *BarChart) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, r.setAttrUI)
+}
+
+func (r *BarChart) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", BarChartType, name)
 }
 
@@ -226,7 +236,12 @@ func (b *BarChart) updateData(labels []string, values []float64) {
 
 // --- Risor method surface ----------------------------------------------------
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (g *BarChart) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, g.getAttrUI)
+}
+
+func (g *BarChart) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "SetValues":
 		return object.NewBuiltin("chart.barchart.SetValues", func(ctx context.Context, args ...object.Object) (object.Object, error) {

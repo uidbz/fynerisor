@@ -30,7 +30,12 @@ func (obj *Scroll) Type() object.Type {
 	return ScrollType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Scroll) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Scroll) inspectUI() string {
 	return "container.scroll"
 }
 
@@ -60,11 +65,21 @@ func (obj *Scroll) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Scroll) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Scroll) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", ScrollType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Scroll) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Scroll) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "SetContent":
 		return object.NewBuiltin("container.Scroll.SetContent", func(_ context.Context, args ...object.Object) (object.Object, error) {

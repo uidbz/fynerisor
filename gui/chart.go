@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/uidbz/fynerisor/gui/guithread"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -40,7 +41,12 @@ func (obj *Chart) Type() object.Type {
 	return ChartType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Chart) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Chart) inspectUI() string {
 	return "chart"
 }
 
@@ -70,11 +76,21 @@ func (obj *Chart) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Chart) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Chart) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", ChartType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Chart) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Chart) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "NewBarChart":
 		return object.NewBuiltin("chart.NewBarChart", func(ctx context.Context, args ...object.Object) (object.Object, error) {

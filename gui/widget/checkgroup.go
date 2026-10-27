@@ -29,7 +29,12 @@ func (obj *CheckGroup) Type() object.Type {
 	return CheckGroupType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *CheckGroup) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *CheckGroup) inspectUI() string {
 	return "widget.CheckGroup"
 }
 
@@ -59,11 +64,21 @@ func (obj *CheckGroup) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *CheckGroup) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *CheckGroup) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", CheckGroupType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *CheckGroup) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *CheckGroup) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "SetSelected":
 		return object.NewBuiltin("widget.CheckGroup.SetSelected", func(ctx context.Context, args ...object.Object) (object.Object, error) {

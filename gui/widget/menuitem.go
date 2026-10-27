@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -86,7 +87,12 @@ func (obj *MenuItem) Type() object.Type {
 	return MenuItemType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *MenuItem) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *MenuItem) inspectUI() string {
 	return fmt.Sprintf("fyne.MenuItem(%s)", obj.instance.Label)
 }
 
@@ -120,7 +126,12 @@ func (obj *MenuItem) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *MenuItem) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *MenuItem) setAttrUI(name string, value object.Object) error {
 	switch name {
 	case "Label":
 		s, err := object.AsString(value)
@@ -164,7 +175,12 @@ func (obj *MenuItem) SetAttr(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", MenuItemType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *MenuItem) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *MenuItem) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Label":
 		return object.NewString(obj.instance.Label), true

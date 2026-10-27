@@ -47,7 +47,12 @@ func (obj *Entry) Type() object.Type {
 	return EntryType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Entry) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Entry) inspectUI() string {
 	return "widget.Entry"
 }
 
@@ -77,7 +82,12 @@ func (obj *Entry) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Entry) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Entry) setAttrUI(name string, value object.Object) error {
 	switch name {
 	case "Text":
 		text, err := object.AsString(value)
@@ -117,7 +127,12 @@ func (obj *Entry) SetAttr(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", EntryType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Entry) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Entry) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Text":
 		return object.NewString(obj.instance.Text), true

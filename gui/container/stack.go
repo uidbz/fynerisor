@@ -30,7 +30,12 @@ func (obj *Stack) Type() object.Type {
 	return StackType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Stack) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Stack) inspectUI() string {
 	return "container.stack"
 }
 
@@ -60,11 +65,21 @@ func (obj *Stack) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Stack) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Stack) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", StackType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Stack) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Stack) getAttrUI(name string) (object.Object, bool) {
 	if o, ok := containerOps("Stack", obj.instance, name); ok {
 		return o, true
 	}

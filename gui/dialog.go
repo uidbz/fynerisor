@@ -76,7 +76,12 @@ func (d *Dialog) Type() object.Type {
 	return DialogType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (d *Dialog) Inspect() string {
+	return guithread.Inspect(d.inspectUI)
+}
+
+func (d *Dialog) inspectUI() string {
 	return "dialog"
 }
 
@@ -104,11 +109,21 @@ func (d *Dialog) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (d *Dialog) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, d.setAttrUI)
+}
+
+func (d *Dialog) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", DialogType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (d *Dialog) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, d.getAttrUI)
+}
+
+func (d *Dialog) getAttrUI(name string) (object.Object, bool) {
 	// Every dialog function needs a Fyne window to attach to. An embedded
 	// CanvasObject only has one when the host passes WithHostWindow. Return a
 	// clear script error instead of dereferencing a nil window.

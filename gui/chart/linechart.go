@@ -63,7 +63,12 @@ func (r *LineChart) Type() object.Type {
 	return LineChartType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (r *LineChart) Inspect() string {
+	return guithread.Inspect(r.inspectUI)
+}
+
+func (r *LineChart) inspectUI() string {
 	return "chart.linechart"
 }
 
@@ -94,7 +99,12 @@ func (r *LineChart) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (r *LineChart) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, r.setAttrUI)
+}
+
+func (r *LineChart) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", LineChartType, name)
 }
 
@@ -181,7 +191,12 @@ func (l *LineChart) hitTest(px, py float32, xs, ys *linearScale) (hitResult, boo
 
 // --- Risor method surface ----------------------------------------------------
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (g *LineChart) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, g.getAttrUI)
+}
+
+func (g *LineChart) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "SetPoints":
 		return object.NewBuiltin("chart.linechart.SetPoints", func(ctx context.Context, args ...object.Object) (object.Object, error) {

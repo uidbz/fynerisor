@@ -30,7 +30,12 @@ func (obj *TextStyle) Type() object.Type {
 	return TextStyleType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *TextStyle) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *TextStyle) inspectUI() string {
 	return fmt.Sprintf("TextStyle(bold=%v, italic=%v, monospace=%v)",
 		obj.style.Bold, obj.style.Italic, obj.style.Monospace)
 }
@@ -62,7 +67,12 @@ func (obj *TextStyle) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *TextStyle) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *TextStyle) setAttrUI(name string, value object.Object) error {
 	switch name {
 	case "Bold":
 		bold, err := object.AsBool(value)
@@ -117,7 +127,12 @@ func (obj *TextStyle) SetAttr(name string, value object.Object) error {
 	}
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *TextStyle) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *TextStyle) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Bold":
 		return object.NewBool(obj.style.Bold), true

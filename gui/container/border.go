@@ -50,7 +50,12 @@ func (obj *Border) Type() object.Type {
 	return BorderType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Border) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Border) inspectUI() string {
 	return "container.border"
 }
 
@@ -80,11 +85,21 @@ func (obj *Border) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Border) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Border) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", BorderType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Border) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Border) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "SetTop":
 		return borderSetter("SetTop", obj, func(b *Border, co fyne.CanvasObject) { b.top = co }), true

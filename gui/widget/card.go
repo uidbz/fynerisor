@@ -31,7 +31,12 @@ func (obj *Card) Type() object.Type {
 	return CardType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Card) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Card) inspectUI() string {
 	return fmt.Sprintf("widget.Card(title=%q, subtitle=%q)", obj.instance.Title, obj.instance.Subtitle)
 }
 
@@ -69,7 +74,12 @@ func (obj *Card) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Card) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Card) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Title":
 		return object.NewString(obj.instance.Title), true
@@ -141,7 +151,12 @@ func (obj *Card) GetAttr(name string) (object.Object, bool) {
 	return nil, false
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Card) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Card) setAttrUI(name string, value object.Object) error {
 	switch name {
 	case "Title":
 		title, err := object.AsString(value)

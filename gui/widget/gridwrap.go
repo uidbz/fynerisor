@@ -70,7 +70,12 @@ func (obj *GridWrap) Type() object.Type {
 	return GridWrapType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *GridWrap) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *GridWrap) inspectUI() string {
 	return "widget.GridWrap"
 }
 
@@ -104,11 +109,21 @@ func (obj *GridWrap) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *GridWrap) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *GridWrap) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", GridWrapType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *GridWrap) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *GridWrap) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Length":
 		return object.NewBuiltin("widget.GridWrap.Length", func(ctx context.Context, args ...object.Object) (object.Object, error) {

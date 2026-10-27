@@ -27,7 +27,12 @@ func (obj *FileDialog) Type() object.Type {
 	return FileDialogType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *FileDialog) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *FileDialog) inspectUI() string {
 	return "dialog.FileDialog"
 }
 
@@ -55,7 +60,12 @@ func (obj *FileDialog) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *FileDialog) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *FileDialog) setAttrUI(name string, value object.Object) error {
 	switch name {
 	case "FileName":
 		filename, err := object.AsString(value)
@@ -70,7 +80,12 @@ func (obj *FileDialog) SetAttr(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", FileDialogType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *FileDialog) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *FileDialog) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Show":
 		return object.NewBuiltin("dialog.FileDialog.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {

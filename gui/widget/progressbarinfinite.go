@@ -38,7 +38,12 @@ func (obj *ProgressBarInfinite) Type() object.Type {
 	return ProgressBarInfiniteType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *ProgressBarInfinite) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *ProgressBarInfinite) inspectUI() string {
 	return "widget.ProgressBarInfinite()"
 }
 
@@ -76,7 +81,12 @@ func (obj *ProgressBarInfinite) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *ProgressBarInfinite) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *ProgressBarInfinite) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Start":
 		return object.NewBuiltin("widget.ProgressBarInfinite.Start", func(ctx context.Context, args ...object.Object) (object.Object, error) {
@@ -126,6 +136,11 @@ func (obj *ProgressBarInfinite) GetAttr(name string) (object.Object, bool) {
 	return nil, false
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *ProgressBarInfinite) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *ProgressBarInfinite) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", ProgressBarInfiniteType, name)
 }

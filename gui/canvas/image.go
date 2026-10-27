@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"fyne.io/fyne/v2/container"
 
@@ -36,7 +37,12 @@ func (r *Image) Type() object.Type {
 	return ImageType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (r *Image) Inspect() string {
+	return guithread.Inspect(r.inspectUI)
+}
+
+func (r *Image) inspectUI() string {
 	return "canvas.image"
 }
 
@@ -66,11 +72,21 @@ func (r *Image) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (r *Image) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, r.setAttrUI)
+}
+
+func (r *Image) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", ImageType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (g *Image) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, g.getAttrUI)
+}
+
+func (g *Image) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "SetImageFromURI":
 		return object.NewBuiltin("canvas.Image.SetImageFromURI", func(ctx context.Context, args ...object.Object) (object.Object, error) {
@@ -108,6 +124,15 @@ func NewImage(instance *canvas.Image) *Image {
 // NewImageFromURI creates a new Image from a URI string.
 // For HTTP/HTTPS URLs, it downloads the image with proper User-Agent header.
 func NewImageFromURI(uri string) (*Image, error) {
+	return NewImageFromURIContext(context.Background(), uri)
+}
+
+// imageFetchTimeout bounds image downloads.
+const imageFetchTimeout = 30 * time.Second
+
+// NewImageFromURIContext is NewImageFromURI whose HTTP download is
+// cancelled with ctx (a stopped script run) or after imageFetchTimeout.
+func NewImageFromURIContext(ctx context.Context, uri string) (*Image, error) {
 	// Check for empty or invalid URI
 	if uri == "" {
 		return nil, fmt.Errorf("empty URI provided")
@@ -115,7 +140,7 @@ func NewImageFromURI(uri string) (*Image, error) {
 
 	// For HTTP/HTTPS URIs, download and create from resource
 	if strings.HasPrefix(uri, "http://") || strings.HasPrefix(uri, "https://") {
-		img, err := loadImageFromHTTP(uri)
+		img, err := loadImageFromHTTP(ctx, uri)
 		if err != nil {
 			return nil, err
 		}
@@ -153,8 +178,13 @@ func NewImageFromURI(uri string) (*Image, error) {
 // loadImageFromHTTP downloads an image from HTTP/HTTPS and creates a canvas.Image.
 // This workaround is needed because Fyne's HTTPRepository doesn't set a User-Agent header,
 // causing HTTP 403 errors on sites like Wikipedia that require it.
-func loadImageFromHTTP(url string) (*canvas.Image, error) {
-	req, err := http.NewRequest("GET", url, nil)
+func loadImageFromHTTP(ctx context.Context, url string) (*canvas.Image, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(ctx, imageFetchTimeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}

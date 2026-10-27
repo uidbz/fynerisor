@@ -66,7 +66,12 @@ func (obj *FileIcon) Type() object.Type {
 	return FileIconType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *FileIcon) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *FileIcon) inspectUI() string {
 	return "widget.FileIcon"
 }
 
@@ -100,7 +105,12 @@ func (obj *FileIcon) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *FileIcon) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *FileIcon) setAttrUI(name string, value object.Object) error {
 	switch name {
 	case "Selected":
 		b, err := object.AsBool(value)
@@ -115,7 +125,12 @@ func (obj *FileIcon) SetAttr(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", FileIconType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *FileIcon) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *FileIcon) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "URI":
 		if obj.instance.URI == nil {

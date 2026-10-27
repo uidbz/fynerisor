@@ -54,7 +54,12 @@ func (obj *Slider) Type() object.Type {
 	return SliderType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Slider) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Slider) inspectUI() string {
 	return fmt.Sprintf("widget.Slider(value=%f, min=%f, max=%f)", obj.instance.Value, obj.instance.Min, obj.instance.Max)
 }
 
@@ -92,7 +97,12 @@ func (obj *Slider) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Slider) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Slider) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Value":
 		return object.NewFloat(obj.instance.Value), true
@@ -142,7 +152,12 @@ func (obj *Slider) GetAttr(name string) (object.Object, bool) {
 	return nil, false
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Slider) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Slider) setAttrUI(name string, value object.Object) error {
 	switch name {
 	case "Value":
 		val, err := object.AsFloat(value)

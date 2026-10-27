@@ -142,7 +142,12 @@ func (obj *Icon) Type() object.Type {
 	return IconType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Icon) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Icon) inspectUI() string {
 	return "widget.Icon()"
 }
 
@@ -180,7 +185,12 @@ func (obj *Icon) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Icon) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Icon) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "SetResource":
 		return object.NewBuiltin("widget.Icon.SetResource", func(ctx context.Context, args ...object.Object) (object.Object, error) {
@@ -224,6 +234,11 @@ func (obj *Icon) GetAttr(name string) (object.Object, bool) {
 	return nil, false
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Icon) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Icon) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", IconType, name)
 }

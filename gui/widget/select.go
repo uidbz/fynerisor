@@ -29,7 +29,12 @@ func (obj *Select) Type() object.Type {
 	return SelectType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Select) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Select) inspectUI() string {
 	return "widget.Select"
 }
 
@@ -59,11 +64,21 @@ func (obj *Select) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Select) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Select) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", SelectType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Select) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Select) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "SetSelectedIndex":
 		return object.NewBuiltin("widget.Select.SetSelectedIndex", func(ctx context.Context, args ...object.Object) (object.Object, error) {

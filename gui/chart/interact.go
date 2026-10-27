@@ -195,7 +195,9 @@ func (c *chartCore) getAttr(name string) (object.Object, bool) {
 			return object.NewString(svg), nil
 		}), true
 	case "SaveImage":
-		return object.NewBuiltin(c.typeName+"."+name, func(ctx context.Context, args ...object.Object) (object.Object, error) {
+		// OffUI: the SVG is rendered on the UI thread, but the file write
+		// runs on the script's goroutine so it cannot stall the UI.
+		return guithread.OffUI(object.NewBuiltin(c.typeName+"."+name, func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) < 1 || len(args) > 3 {
 				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=1..3", len(args))
 			}
@@ -211,12 +213,14 @@ func (c *chartCore) getAttr(name string) (object.Object, bool) {
 				return nil, err
 			}
 			var svg string
-			guithread.DoAndWait(func() { svg = c.writeSVG(w, h) })
+			if err := guithread.DoAndWaitContext(ctx, func() { svg = c.writeSVG(w, h) }); err != nil {
+				return nil, err
+			}
 			if err := os.WriteFile(path, []byte(svg), 0o644); err != nil {
 				return nil, fmt.Errorf("SaveImage: %w", err)
 			}
 			return object.Nil, nil
-		}), true
+		})), true
 	}
 	return nil, false
 }

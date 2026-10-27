@@ -64,7 +64,12 @@ func (t *Tree) Type() object.Type {
 	return TreeType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (t *Tree) Inspect() string {
+	return guithread.Inspect(t.inspectUI)
+}
+
+func (t *Tree) inspectUI() string {
 	return fmt.Sprintf("Tree()")
 }
 
@@ -92,7 +97,12 @@ func (t *Tree) RunOperation(opType op.BinaryOpType, right object.Object) (object
 	return object.Errorf("eval error: unsupported operation for tree: %v", opType), nil
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (t *Tree) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, t.getAttrUI)
+}
+
+func (t *Tree) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "ChildUIDs":
 		return object.NewBuiltin("tree.ChildUIDs", func(ctx context.Context, args ...object.Object) (object.Object, error) {
@@ -344,7 +354,12 @@ func (t *Tree) GetAttr(name string) (object.Object, bool) {
 	return nil, false
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (t *Tree) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, t.setAttrUI)
+}
+
+func (t *Tree) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: tree object has no settable attribute %q", name)
 }
 

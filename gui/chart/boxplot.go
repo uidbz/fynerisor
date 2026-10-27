@@ -78,7 +78,12 @@ func (r *BoxPlot) Type() object.Type {
 	return BoxPlotType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (r *BoxPlot) Inspect() string {
+	return guithread.Inspect(r.inspectUI)
+}
+
+func (r *BoxPlot) inspectUI() string {
 	return "chart.boxplot"
 }
 
@@ -109,7 +114,12 @@ func (r *BoxPlot) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (r *BoxPlot) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, r.setAttrUI)
+}
+
+func (r *BoxPlot) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", BoxPlotType, name)
 }
 
@@ -277,7 +287,12 @@ func (b *BoxPlot) hitTest(px, py float32, xs, ys *linearScale) (hitResult, bool)
 
 // --- Risor method surface ----------------------------------------------------
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (g *BoxPlot) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, g.getAttrUI)
+}
+
+func (g *BoxPlot) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "SetData":
 		return object.NewBuiltin("chart.boxplot.SetData", func(ctx context.Context, args ...object.Object) (object.Object, error) {

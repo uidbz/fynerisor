@@ -28,7 +28,12 @@ func (a *App) Type() object.Type {
 	return AppType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (a *App) Inspect() string {
+	return guithread.Inspect(a.inspectUI)
+}
+
+func (a *App) inspectUI() string {
 	return "app"
 }
 
@@ -57,7 +62,12 @@ func (a *App) Cost() int {
 	return 0
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (a *App) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, a.getAttrUI)
+}
+
+func (a *App) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "name":
 		return object.NewString(a.appName), true
@@ -85,7 +95,12 @@ func (a *App) GetAttr(name string) (object.Object, bool) {
 	return nil, false
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (a *App) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, a.setAttrUI)
+}
+
+func (a *App) setAttrUI(name string, value object.Object) error {
 	return object.Errorf("type error: app object attributes are read-only")
 }
 

@@ -30,7 +30,12 @@ func (obj *HBox) Type() object.Type {
 	return HBoxType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *HBox) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *HBox) inspectUI() string {
 	return "container.hbox"
 }
 
@@ -60,11 +65,21 @@ func (obj *HBox) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *HBox) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *HBox) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", HBoxType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *HBox) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *HBox) getAttrUI(name string) (object.Object, bool) {
 	if o, ok := containerOps("HBox", obj.instance, name); ok {
 		return o, true
 	}

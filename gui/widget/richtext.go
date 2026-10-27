@@ -78,7 +78,12 @@ func (obj *RichText) Type() object.Type {
 	return RichTextType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *RichText) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *RichText) inspectUI() string {
 	return "widget.RichText"
 }
 
@@ -112,7 +117,12 @@ func (obj *RichText) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *RichText) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *RichText) setAttrUI(name string, value object.Object) error {
 	switch name {
 	case "Wrapping":
 		// fyne.TextWrap values: WrapOff, WrapBreak, WrapWord
@@ -151,7 +161,12 @@ func (obj *RichText) SetAttr(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", RichTextType, name)
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *RichText) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *RichText) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "Wrapping":
 		return object.NewInt(int64(obj.instance.Wrapping)), true

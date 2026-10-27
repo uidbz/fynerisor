@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"image/color"
 	"strings"
 
@@ -37,7 +38,12 @@ func (obj *Canvas) Type() object.Type {
 	return CanvasType
 }
 
+// Inspect runs on Fyne's UI thread; see guithread.Inspect (issue #49).
 func (obj *Canvas) Inspect() string {
+	return guithread.Inspect(obj.inspectUI)
+}
+
+func (obj *Canvas) inspectUI() string {
 	return "canvas"
 }
 
@@ -67,7 +73,12 @@ func (obj *Canvas) Attrs() []object.AttrSpec {
 	return nil
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Canvas) SetAttr(name string, value object.Object) error {
+	return guithread.SetAttr(name, value, obj.setAttrUI)
+}
+
+func (obj *Canvas) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", CanvasType, name)
 }
 
@@ -90,7 +101,12 @@ func getNamedColor(name string) color.Color {
 	return c
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Canvas) GetAttr(name string) (object.Object, bool) {
+	return guithread.GetAttr(name, obj.getAttrUI)
+}
+
+func (obj *Canvas) getAttrUI(name string) (object.Object, bool) {
 	switch name {
 	case "NewLine":
 		return object.NewBuiltin("canvas.NewLine", func(ctx context.Context, args ...object.Object) (object.Object, error) {
@@ -157,7 +173,9 @@ func (obj *Canvas) GetAttr(name string) (object.Object, bool) {
 		}), true
 
 	case "NewImageFromURI":
-		return object.NewBuiltin("canvas.NewImageFromURI", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+		// OffUI: loading may hit the network or disk; the image is not on
+		// screen yet, so it is built on the script's goroutine.
+		return guithread.OffUI(object.NewBuiltin("canvas.NewImageFromURI", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
 				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
 			}
@@ -166,13 +184,13 @@ func (obj *Canvas) GetAttr(name string) (object.Object, bool) {
 				return nil, err
 			}
 
-			img, err := risorcanvas.NewImageFromURI(path)
+			img, err := risorcanvas.NewImageFromURIContext(ctx, path)
 			if err != nil {
 				return object.NewError(err), nil
 			}
 
 			return img, nil
-		}), true
+		})), true
 	}
 	return nil, false
 }
