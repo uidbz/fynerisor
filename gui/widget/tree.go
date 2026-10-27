@@ -20,6 +20,11 @@ type Tree struct {
 	instance *widget.Tree
 	w        WindowInterface
 
+	// createCb is the registered node template callback; UI thread only
+	// (see List). UpdateNode uses it to materialize slots left by a
+	// busy-VM CreateNode call (issue #50).
+	createCb *vmexec.Callback
+
 	// Last-known getter results per node, reused while the script's VM is
 	// busy (vmexec.ErrBusy) so the tree does not collapse; the tree is
 	// refreshed once the VM is idle (Callback.RefreshWhenBusy).
@@ -180,18 +185,16 @@ func (t *Tree) getAttrUI(name string) (object.Object, bool) {
 				return nil, err
 			}
 			cb.RefreshWhenBusy(t.refresh)
+			t.createCb = cb
 
 			// Getter: called synchronously by Fyne during layout.
 			t.instance.CreateNode = func(branch bool) fyne.CanvasObject {
-				result, err := cb.Call(object.NewBool(branch))
-				if err != nil {
-					cb.Report(err)
-					return widget.NewLabel("")
+				inner, ok := callTemplate(cb, object.NewBool(branch))
+				if !ok {
+					// VM busy or run stopped: never pool a fake (issue #50).
+					return newTemplateSlot()
 				}
-				if obj, ok := result.(IsCanvasObject); ok {
-					return obj.CanvasObject()
-				}
-				return widget.NewLabel("")
+				return inner
 			}
 			return object.Nil, nil
 		}), true
@@ -208,16 +211,17 @@ func (t *Tree) getAttrUI(name string) (object.Object, bool) {
 			cb.RefreshWhenBusy(t.refresh)
 
 			// Getter-like: called synchronously by Fyne during render.
-			t.instance.UpdateNode = func(uid widget.TreeNodeID, branch bool, obj fyne.CanvasObject) {
-				// Wrap the CanvasObject
-				var wrappedObj object.Object
-				if label, ok := obj.(*widget.Label); ok {
-					wrappedObj = &Label{instance: label}
-				} else {
-					wrappedObj = object.Nil
+			t.instance.UpdateNode = func(uid widget.TreeNodeID, branch bool, node fyne.CanvasObject) {
+				// Materialize any slot left by a busy-VM CreateNode call so
+				// the script always receives its own node widget, then wrap
+				// it so Risor can access it (issue #50).
+				node, ok := resolveTemplateItem(node, func() (fyne.CanvasObject, bool) {
+					return callTemplate(t.createCb, object.NewBool(branch))
+				})
+				if !ok {
+					return // VM still busy; a later refresh retries
 				}
-
-				_, err := cb.Call(object.NewString(string(uid)), object.NewBool(branch), wrappedObj)
+				_, err := cb.Call(object.NewString(string(uid)), object.NewBool(branch), wrapCanvasObject(node))
 				cb.Report(err)
 			}
 			return object.Nil, nil

@@ -98,8 +98,15 @@ func NewFlexTable(data *TableData, onClick func(cell *TableCell)) *FlexTable {
 						widgetCell.currentID.Row != id.Row
 
 					if needsRecreation {
-						cellWidget := table.createCellFunc(id.Col, id.Row)
-						widgetCell.SetWidget(cellWidget, id)
+						// A nil cell widget means the script's CreateCell
+						// could not run (VM busy, or the run was stopped):
+						// leave the cell empty instead of pooling a fake.
+						// currentID stays stale, so needsRecreation is true
+						// again and the cell is recreated on a later pass
+						// (issue #50).
+						if cellWidget := table.createCellFunc(id.Col, id.Row); cellWidget != nil {
+							widgetCell.SetWidget(cellWidget, id)
+						}
 					}
 					// Skip the UpdateCell VM round-trip when this cell already
 					// reflects the current data at its current position. A

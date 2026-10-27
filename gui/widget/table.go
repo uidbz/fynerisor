@@ -300,6 +300,14 @@ func (obj *Table) getAttrUI(name string) (object.Object, bool) {
 				// Getter: Fyne calls it synchronously on the UI thread.
 				result, err := cb.Call(object.NewInt(int64(col)), object.NewInt(int64(row)))
 				if err != nil {
+					if vmexec.Quiet(err) {
+						// VM busy or run stopped: nil tells the flex table
+						// to leave the cell empty and ask again on a later
+						// refresh; a placeholder here would be pooled and
+						// then updated forever in place of the script's
+						// widget (issue #50).
+						return nil
+					}
 					cb.Report(err)
 					return widget.NewLabel("")
 				}

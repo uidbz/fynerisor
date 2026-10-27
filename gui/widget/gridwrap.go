@@ -42,6 +42,8 @@ type GridWrap struct {
 	instance *widget.GridWrap
 	w        WindowInterface
 	lastLen  atomic.Int64 // last length returned by the Length callback, reused during VM contention
+	// createCb is the registered template callback; UI thread only (see List).
+	createCb *vmexec.Callback
 }
 
 // refresh re-renders the grid with fresh getter results; scheduled by the
@@ -168,22 +170,16 @@ func (obj *GridWrap) getAttrUI(name string) (object.Object, bool) {
 				return nil, err
 			}
 			cb.RefreshWhenBusy(obj.refresh)
+			obj.createCb = cb
 
 			// Getter: called synchronously by Fyne during layout.
 			obj.instance.CreateItem = func() fyne.CanvasObject {
-				result, err := cb.Call()
-				if err != nil {
-					cb.Report(err)
-					return widget.NewLabel("")
-				}
-
-				canvasObj, ok := result.(interface{ CanvasObject() fyne.CanvasObject })
+				inner, ok := callTemplate(cb)
 				if !ok {
-					cb.Report(fmt.Errorf("expected widget, got %s", result.Type()))
-					return widget.NewLabel("error")
+					// VM busy or run stopped: never pool a fake (issue #50).
+					return newTemplateSlot()
 				}
-
-				return canvasObj.CanvasObject()
+				return inner
 			}
 
 			return object.Nil, nil
@@ -203,6 +199,12 @@ func (obj *GridWrap) getAttrUI(name string) (object.Object, bool) {
 
 			// Getter-like: called synchronously by Fyne during render.
 			obj.instance.UpdateItem = func(id widget.GridWrapItemID, item fyne.CanvasObject) {
+				item, ok := resolveTemplateItem(item, func() (fyne.CanvasObject, bool) {
+					return callTemplate(obj.createCb)
+				})
+				if !ok {
+					return // VM still busy; a later refresh retries
+				}
 				_, err := cb.Call(object.NewInt(int64(id)), wrapCanvasObject(item))
 				cb.Report(err)
 			}
