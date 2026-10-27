@@ -815,24 +815,20 @@ window.SetContent(layout)
 ```
 
 **Key concepts:**
-- `go(() => { ... })` spawns goroutine
-- Long operations won't freeze GUI
-- Use `window.Do()` for GUI updates from goroutines
-- `print()` is thread-safe and works in `go()`
-
-**Important:** Direct widget updates from `go()` are unsafe. Always use `window.Do()`:
+- `go(() => { ... })` defers the closure: it runs on the script's VM
+  goroutine after the current body or event, in call order — not in
+  parallel (see `docs/CONCURRENCY.md`)
+- Script code never runs on Fyne's UI thread, so long operations don't
+  freeze the window; other events wait their turn
+- Widget methods are safe to call from anywhere in a script, including
+  inside `go()` and `window.Do()` — they marshal their own UI work
+- For real parallel work, use Go: a host global or module that does the
+  work and calls back into the script
 
 ```js
-// ❌ UNSAFE - crashes or corrupts GUI
 go(() => {
-    label.SetText("Done")  // Direct update from goroutine
-})
-
-// ✅ SAFE - queued to GUI thread
-go(() => {
-    window.Do(() => {
-        label.SetText("Done")  // Wrapped in window.Do()
-    })
+    let data = http.get(url).json()   // window stays responsive
+    label.SetText("Done")             // safe: no window.Do() needed
 })
 ```
 

@@ -1,316 +1,156 @@
-# Risor VM Concurrency Guidelines
+# Risor VM Concurrency
 
-## Critical: Risor VM is NOT Thread-Safe
+**Read this before touching widget callbacks.**
 
-The Risor VM **does not support concurrent access** from multiple threads or goroutines. All VM operations (including `callFunc()` invocations) must be serialized.
+## The rule
 
-## The Bug We Fixed
+A Risor VM is single-threaded. Two goroutines running bytecode in the same VM
+corrupt its stack and frame pointer. This shows up as misleading errors
+(`function takes 1 argument (2 given)`, `unknown opcode: 0`,
+`index out of range [-1]` in `vm.pop()`) or as crashes.
 
-### Affected Widgets
-- ✅ **Tree widget** - Fixed in commit 652a650
-- ✅ **List widget** - Fixed in commit 5721fc4
-- ✅ **Accordion widget** - Safe (no callbacks)
-- ✅ **All other widgets** - Audited and safe
+A fynerisor script is entered from many places: its main body, widget events
+(taps, changes, selections, dialogs, menus, shortcuts, drops), Fyne's
+render-time getters (`List.Length`, `Table.Data`, `Tree.ChildUIDs`, ...) and
+`go()`. Every one of them goes through **`gui/vmexec`**, which guarantees
+that exactly one goroutine is inside a run's VM at a time.
 
-### Root Cause
+## The model: one run, one VM goroutine
 
-Widgets that use Risor callbacks had a **mixed threading pattern**:
+Each `Window.Execute` / `Start` / `Run` (and `CanvasObject` equivalents) creates
+a **`vmexec.Run`**:
 
-```go
-// ❌ DANGEROUS: Mixed sync/async pattern
-
-// Called synchronously from Fyne's GUI thread during layout/render
-widget.PropertyGetter = func() T {
-    result := callFunc(ctx, closure, args)  // VM access from thread 1
-    return convert(result)
-}
-
-// Called asynchronously via channel from VM goroutine
-widget.EventCallback = func() {
-    w.Do(func() {
-        callFunc(ctx, closure, args)  // VM access from thread 2
-    })
-}
+```
+                 ┌──────────── vmexec.Run (one per Execute) ────────────┐
+ Fyne UI thread  │  context (cancelled by Stop / newer Execute / ctx)    │
+ ──────────────  │  reentrant guard (one per VM — never per process)     │
+ tap, change,  ──┼─▶ event queue ──▶ VM goroutine: main body, then       │
+ dialog, menu    │   (Fire, never     events one at a time               │
+                 │    blocks)                                            │
+ List.Length,  ──┼─▶ TryCall: runs inline if the VM is free,             │
+ Table.Data ...  │   otherwise ErrBusy → last-known value + refresh later│
+                 └───────────────────────────────────────────────────────┘
 ```
 
-**Problem:** When Fyne refreshed the widget (e.g., during tree.walk()), both threads would access the VM concurrently:
-- **Thread 1 (GUI):** Calling IsBranch/ChildUIDs synchronously
-- **Thread 2 (VM goroutine):** Processing queued UpdateNode/OnSelected callbacks
+- **Events run on the VM goroutine, never on the UI thread.** A widget
+  handler is queued with `Callback.Fire`. The queue is bounded (100). The
+  UI thread never blocks on it: when it is full, the event is dropped with a
+  stderr diagnostic. Events queued while the main body runs execute after
+  it, in order.
+- **Render getters run synchronously** because Fyne needs an answer during
+  layout. They use `Callback.Call`. If the VM is free (or already owned by the
+  calling goroutine: a handler that calls `Table.Refresh()` re-enters its
+  own getters), the getter runs inline. Otherwise it gets `vmexec.ErrBusy`
+  at once and returns its last-known value.
+  `Callback.RefreshWhenBusy(widget.Refresh)` re-renders the widget once the
+  VM is idle again.
+- **No deadlock between the two sides.** The UI thread never waits for the
+  VM: it only enqueues or try-locks. The VM goroutine may wait for the UI
+  thread (`guithread.DoAndWaitContext`), and gives up when its run is stopped.
+- **Script code never runs on the UI thread**, so a slow handler or a long
+  main body never freezes the window. It keeps repainting and accepting
+  input; events wait their turn.
+- **One guard per VM.** Two windows or embedded `CanvasObject`s never block
+  each other.
+- **Stopped runs are inert.** `Stop()`, a cancelled `Run(ctx)` context, or a
+  newer `Execute` cancels the run's context. The VM halts; queued and later
+  events of that run are dropped; `window.SetStatus`/`SetContent`/
+  `SetMainMenu` from it are ignored. Its shortcuts, script-set main menu,
+  drop/stdout handlers and imported modules are discarded. Callbacks find the
+  run that registered them through the context Risor passes to builtins
+  (`vmexec.FromContext`), so an old widget can never enter a newer run's VM.
 
-**Result:** VM stack corruption → `panic: index out of range [-1]` at `vm.pop()`
+### `go(fn)`
 
-## The Fix
+`go(fn)` queues `fn` on the VM goroutine. It runs after the current body or
+event, like any other event (issue #17). It is **not** a goroutine: running a
+closure in parallel with the script is exactly the corruption described
+above. The window stays responsive while `fn` works, because script code
+never runs on the UI thread. Real parallelism belongs in Go: a host global or
+module does the work on its own goroutines and reports back with
+`Callback.Fire`.
 
-Changed all callbacks to use **consistent synchronous pattern**:
+## Writing a widget callback
 
-```go
-// ✅ SAFE: All synchronous
-
-widget.PropertyGetter = func() T {
-    result := callFunc(ctx, closure, args)
-    return convert(result)
-}
-
-widget.EventCallback = func() {
-    callFunc(ctx, closure, args)  // Direct call, no queue
-}
-```
-
-All VM calls now happen on the same thread (Fyne's GUI thread), eliminating concurrent access.
-
-## Guidelines for Widget Development
-
-### Rule 1: Identify All Callbacks
-
-When adding Risor callbacks to a widget, list them all:
-- Property getters (called by Fyne during layout/render)
-- Event handlers (called by user interaction)
-- Update callbacks (called during refresh)
-
-### Rule 2: Determine Threading Pattern
-
-**If widget has BOTH property getters AND event/update callbacks:**
-- ✅ Use all-synchronous pattern (direct `callFunc()` calls)
-- ❌ Never mix sync and async
-
-**If widget has ONLY event callbacks:**
-- ✅ Can use async pattern (`w.Do()`) consistently
-- Examples: Button, Entry, Slider, Calendar
-
-**If widget has NO callbacks:**
-- ✅ Safe by default
-- Examples: Label, Icon, Separator, Accordion
-
-### Rule 3: Use This Template
-
-For widgets with callbacks:
+Use `vmexec.NewCallback`. Never call the `object.CallFunc` from
+`object.GetCallFunc` yourself, and never start a goroutine that enters the VM.
 
 ```go
-case "CallbackName":
-    return object.NewBuiltin("widget.CallbackName", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-        // Validate args...
-        
-        fn, ok := args[0].(*object.Closure)
-        if !ok {
-            return nil, fmt.Errorf("expected closure")
+case "OnChanged":
+    return object.NewBuiltin("widget.Slider.OnChanged", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+        if len(args) != 1 {
+            return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
         }
-        
-        callFunc, ok := object.GetCallFunc(ctx)
-        if !ok {
-            return nil, fmt.Errorf("unable to get call function")
+        cb, err := vmexec.NewCallback(ctx, "widget.Slider.OnChanged", args[0])
+        if err != nil {
+            return nil, err
         }
-        
-        // For property getters or any callback that might be called during render:
-        widget.Callback = func(params) ReturnType {
-            // Call synchronously - no w.Do()!
-            result, err := callFunc(ctx, fn, []object.Object{...})
-            if err != nil {
-                // Handle error
-                return defaultValue
-            }
-            return convertResult(result)
-        }
-        
+        // Event: async, ordered, recovered, dropped once the run stops.
+        obj.instance.OnChanged = func(v float64) { cb.Fire(object.NewFloat(v)) }
         return object.Nil, nil
     }), true
 ```
 
-### Rule 4: Test Thoroughly
-
-For any widget with callbacks:
-- Test with 100+ rapid interactions
-- Monitor for stack underflow panics
-- If crashes occur → check for mixed threading pattern
-
-## The Second Bug We Fixed: go() + stdout capture (commit 9fa2634)
-
-> **Update (issue #10/#11/#15 fixes, v0.9.x):** the two-entry-point model below
-> is historical. `go()` no longer spawns a raw goroutine — its closure is queued
-> on the `functionCalls` channel and runs after the main body, like other
-> callbacks. `Entry.OnChanged` and binding listeners likewise stopped spawning
-> raw goroutines and now queue through the channel. The channel loop starts
-> *before* the main body and drains from the start (sends are never allowed to
-> block Fyne's UI thread); callbacks wait on a "body finished" gate so the VM
-> still sees exactly one goroutine at a time. A per-runtime VM executor will
-> replace the channel entirely (issue #37).
-
-The widget-callback rules above assume VM calls happen on the GUI thread. But
-there are actually **two independent entry points into the VM**, and only one is
-serialized:
-
-1. **The `functionCalls` channel** — consumed serially by the `Execute()` loop in
-   `window.go`. Button taps, `window.Do`, `OnDropped`, and shortcut handlers all
-   funnel through here. This path is single-threaded. Safe.
-2. **The `go(() => {...})` builtin** (`newGoBuiltin` in `window.go`) — spawned a
-   **raw goroutine** that called the closure via `safeCall` directly, bypassing
-   `functionCalls`. This path was NOT serialized against anything (since the
-   issue #15 fix it is queued on the channel instead).
-
-### Root Cause
-
-`window.CaptureStdout` originally took a Risor closure and invoked it once per
-captured output line, through the VM:
+Getter (Fyne calls it during layout and needs a value back):
 
 ```go
-// ❌ DANGEROUS: capture callback re-enters the VM
-w.onNewStdout = func(text string) {
-    safeCall(callFunc, ctx, fn, []object.Object{object.NewString(text)})
+cb, err := vmexec.NewCallback(ctx, "widget.List.Length", args[0])
+if err != nil {
+    return nil, err
+}
+cb.RefreshWhenBusy(obj.refresh) // func() { guithread.Do(obj.instance.Refresh) }
+
+obj.instance.Length = func() int {
+    result, err := cb.Call()
+    if err != nil {
+        cb.Report(err)   // silent for ErrBusy / ErrStopped
+        return obj.lastLen
+    }
+    n, err := object.AsInt(result)
+    if err != nil {
+        cb.Report(fmt.Errorf("expected int, got %s", result.Type()))
+        return obj.lastLen
+    }
+    obj.lastLen = int(n)
+    return obj.lastLen
 }
 ```
 
-When a script ran a worker via `go()` that produced output:
+Checklist:
 
-- **Goroutine 1 (go worker):** executing VM bytecode for the job closure.
-- **Goroutine 2 (Execute loop):** running the stdout-capture closure in the SAME
-  VM, triggered by a `print()` from goroutine 1.
+- [ ] Every script function goes through `vmexec.NewCallback`.
+- [ ] Fyne events → `Fire`. Fyne getters (called during layout or render) →
+      `Call` with a last-known fallback and `RefreshWhenBusy`.
+- [ ] UI mutations from builtins go through `guithread.Do`. Reads that must
+      return a value use `guithread.DoAndWaitContext(ctx, ...)`.
+- [ ] Builtins that change *window-level* state (content, status, menu)
+      check `ctx.Err()` so a stopped run cannot change it.
+- [ ] Add a `-race` test. Fyne's test driver runs `fyne.Do` inline on the
+      calling goroutine, so tests must get a happens-before edge with the VM
+      goroutine before reading widget state: wait for `Status() == "Ready!"`,
+      `State()`, `Run(ctx)`, or a recorder builtin called by the script.
 
-Two `callFunction` invocations, one VM, no lock → corrupted `vm.fp` / stack →
+## Lifecycle
 
-```
-go routine error: runtime error: unknown opcode: 0
-recovered panic in script callback: runtime error: index out of range [21] with length 1
-```
-
-This is the same class of bug as the widget one (concurrent VM access), but the
-second goroutine is the `go()` worker rather than Fyne's render thread, so the
-"all-synchronous callback" fix does not apply.
-
-### The Fix
-
-Captured stdout no longer enters the VM at all. `CaptureStdout` accepts a `Log`
-widget directly and appends lines via a **pure-Go sink** (`Log.AppendGo`):
-
-```go
-// ✅ SAFE: Go sink, never touches the VM
-if logWidget, ok := args[0].(*risorwidget.Log); ok {
-    w.stdoutSink = logWidget.AppendGo   // plain Go append + guithread.Do refresh
-    w.captureStdout()
-    return object.Nil, nil
-}
-// (legacy closure form retained but documented as unsafe with go()+output)
-```
-
-Risor script side:
-
-```risor
-let log = widget.NewLog(1000)
-window.CaptureStdout(log)   // pass the widget, NOT a closure
-```
-
-### Rule 5: Never re-enter the VM from a goroutine that can race a go() worker
-
-Any Go callback that may fire *while a `go()` closure is executing* (stdout
-capture, timers, network completion handlers, anything not gated by
-`functionCalls`) must NOT call back into Risor. Do the work in Go, or marshal it
-onto the `functionCalls` channel — but be aware that `go()` workers run
-concurrently with `functionCalls` consumption, so even the channel does not
-serialize against an in-flight `go()` closure. When in doubt, keep it in Go.
-
-## The Diagnostic Guard (vmguard)
-
-The rules above are *preventive* — they tell widget authors and script authors
-how to avoid concurrent VM access. But when a script violates them anyway (most
-commonly a `go()` worker that touches the VM while a table renders), the failure
-was historically a *mystery*: a corrupted VM stack surfaces as a misleading
-error like `widget.Table.Data: ERROR: function takes 1 argument (2 given)` —
-the arity is fine; the stack is corrupt — or an `unknown opcode` panic.
-
-`gui/vmguard` makes that failure *legible*. `vmguard.Call(...)` wraps the VM
-call path with a **non-blocking `TryLock`**:
-
-```go
-func Call(callFunc object.CallFunc, ctx, fn, args) (object.Object, error) {
-    if !mu.TryLock() {
-        return object.Nil, fmt.Errorf("concurrent VM access detected: ...")
-    }
-    defer mu.Unlock()
-    return callFunc(ctx, fn, args)
-}
-```
-
-**Why TryLock, not Lock?** A blocking `Lock()` would be *correct* (no
-corruption) but would **freeze the GUI**: a button tap runs on the GUI thread
-through `safeCall`, and if a `go()` worker held the lock during a slow HTTP
-call, the tap would block until the worker finished. TryLock never waits, so the
-GUI can never freeze behind a background worker.
-
-**What it does and does not do:**
-- ✅ Converts silent stack corruption into a clear, actionable error naming the
-  cause (`go()` worker racing the GUI thread) and pointing here.
-- ✅ Never blocks → never freezes the GUI.
-- ❌ Does **not** make concurrent VM access safe. It detects and rejects the
-  *second* entrant; the rejected callback does not run. The real fix is still to
-  keep background work in Go (see the rules above).
-
-**Where it's wired:** `safeCall` (covers the `go()` builtin, queued
-`functionCalls`, dialogs, and bindings) and the render-thread getters in
-`gui/widget/table.go` (`Columns`, `RowCount`, `Data`, `CreateCell`,
-`UpdateCell`). Both racing sides must take the same guard for TryLock to detect
-the overlap. Other widgets with render-thread getters (List, Tree, GridWrap) can
-be wired the same way as needed.
-
-## Safe Patterns Summary
-
-| Pattern | Use When | Example |
-|---------|----------|---------|
-| **All Sync** | Property getters + events | Tree, List |
-| **All Async** | Event callbacks only | Button, Slider, Entry |
-| **No Callbacks** | Display/control only | Label, Icon, Accordion |
-| **Go-only (no VM)** | Callback can fire during a `go()` worker | stdout capture (Log.AppendGo) |
-
-## What About Performance?
-
-**Q: Won't synchronous calls block the GUI?**
-
-**A: No, for these reasons:**
-
-1. **Callbacks are fast** - Typically just map lookups and simple logic (~microseconds)
-2. **GUI already blocks** - Tree/List refresh was already blocking while waiting for results
-3. **Matches Fyne design** - Built-in Fyne widgets use synchronous property getters
-4. **No observable latency** - Tested with 100+ rapid clicks, no performance issues
-
-## Testing Checklist
-
-When adding/modifying widgets with Risor callbacks:
-
-- [ ] Identify all callbacks (getters, events, updaters)
-- [ ] Determine which pattern to use (all-sync vs all-async)
-- [ ] Implement callbacks using consistent pattern
-- [ ] Test with 100+ rapid interactions
-- [ ] Verify no panics or stack corruption
-- [ ] Document threading pattern in code comments
-
-## Example: Correct Implementation
-
-```go
-// Tree widget - all synchronous (correct)
-case "IsBranch":
-    // ...
-    t.instance.IsBranch = func(uid TreeNodeID) bool {
-        result, _ := callFunc(ctx, fn, []object.Object{...})
-        return result.IsTruthy()
-    }
-
-case "UpdateNode":
-    // ...
-    t.instance.UpdateNode = func(uid TreeNodeID, branch bool, obj CanvasObject) {
-        // Synchronous - matches IsBranch pattern
-        callFunc(ctx, fn, []object.Object{...})
-    }
-```
+`Window.State()` returns `StateIdle`, `StateRunning`, `StateReady`,
+`StateFailed` (plus the body's error) or `StateStopped`.
+`Run(ctx)` blocks until the main body has ended. `Start(ctx)` returns a
+channel with that result. `WithOnStateChange` reports transitions of the
+current run. Hosts should use these, not the `"Ready!"` / `"ERROR: ..."`
+status text, which is for display and can be set by scripts.
 
 ## Headless Parallelism: `core.EvalBatch`
 
-Everything above concerns the GUI, where a single VM is shared across callbacks
-and must never be re-entered concurrently. The headless `core` package offers the
-opposite: **safe, real multi-core parallelism** via `core.EvalBatch`.
+Everything above concerns the GUI, where one VM per run serves all callbacks.
+The headless `core` package offers **safe, real multi-core parallelism** via
+`core.EvalBatch`.
 
 ### The model: compile once, run many
 
-`EvalBatch` compiles the script a single time into an immutable `*bytecode.Code`,
+`EvalBatch` compiles the script once into an immutable `*bytecode.Code`,
 then runs it over each input on its **own fresh VM**. Compiled bytecode is
-read-only and safe to share across goroutines; a running VM is not shared. This is
-the pattern from Risor's own `examples/go/concurrent_vms`.
+read-only and safe to share across goroutines; a running VM is never shared.
+This is the pattern from Risor's own `examples/go/concurrent_vms`.
 
 ```go
 results, err := core.EvalBatch(ctx, script, inputs,
@@ -320,48 +160,46 @@ results, err := core.EvalBatch(ctx, script, inputs,
 
 ### Why it is safe
 
-- **Fresh `Context` per worker.** Each goroutine calls `NewContext(opts...)`, giving
-  it its own `env`, module objects, module cache, and import stack. Concurrent
-  `import()` calls therefore cannot race on shared cache/stack state.
-- **Immutable shared code.** All workers execute the same compiled bytecode; the VM
-  keeps its mutable globals per-instance, never mutating the shared `Code`.
-- **Warm-up before fan-out.** The first input runs synchronously to initialize
-  Risor's lazily-created package globals (e.g. the default type registry), so the
-  concurrent workers only ever read that shared state.
+- **Fresh `Context` per worker.** Each goroutine calls `NewContext(opts...)`,
+  giving it its own `env`, module objects, module cache and import stack.
+- **Immutable shared code.** All workers execute the same compiled bytecode.
+  Each VM keeps its mutable globals per instance and never mutates the
+  shared `Code`.
+- **Warm-up before fan-out.** The first input runs synchronously to
+  initialize Risor's lazily-created package globals (the default type
+  registry). `vmexec.New` does the same for GUI runs, so two windows can
+  start at once.
 
 ### Caveats
 
-- **Stateful shared globals.** `WithGlobal(name, value)` passes one pointer to all
-  workers. Stateless modules (`csv`, `json`, `strings`) are safe; a stateful custom
-  global (DB handle, mutable map) must be made concurrency-safe by the caller.
-- **Headless only.** Do not use `EvalBatch` to drive Fyne widgets — its workers run
-  off any UI thread and create independent VMs.
+- **Stateful shared globals.** `WithGlobal(name, value)` passes one pointer to
+  all workers. Stateless modules (`csv`, `json`, `strings`) are safe. A
+  stateful custom global (DB handle, mutable map) must be made
+  concurrency-safe by the caller.
+- **Headless only.** Do not use `EvalBatch` to drive Fyne widgets.
 
 ### Why not a script-level `parallel(items, fn)` builtin?
 
-We deliberately did **not** add a `parallel()`/`pmap()` builtin callable from Risor.
-To run a closure on a fresh VM, that VM must first `Run()` its root program, which
-re-executes the main script's entire top-level once per worker — catastrophic for
-side-effectful scripts and infinitely recursive if `parallel()` sits at top level.
-Closures also capture free variables (`*Cell`) that alias the defining VM's frame,
-so invoking one from multiple goroutines is a data race. Fanning out the context's
-`CallFunc` is likewise unguarded (see the stack-underflow bug below). Parallelism
-belongs at the Go/embedder boundary (`EvalBatch`), where each unit of work is a
-whole script on an isolated VM, not a closure shared across VMs.
+To run a closure on a fresh VM, that VM must first `Run()` its root program,
+which re-executes the main script's entire top level once per worker. Closures
+also capture free variables (`*Cell`) that alias the defining VM's frame, so
+invoking one from several goroutines is a data race. Parallelism belongs at
+the Go/embedder boundary, where each unit of work is a whole script on an
+isolated VM.
 
-## References
+## History
 
-### Widget callback bug
-- **Issue:** Stack underflow after 30-100 widget interactions
-- **Error:** `panic: runtime error: index out of range [-1]` at `vm.(*VirtualMachine).pop()`
-- **Root cause:** Concurrent VM access from GUI thread and VM goroutine
-- **Solution:** All-synchronous callback pattern
-- **Commits:** 652a650 (Tree), 5721fc4 (List)
-- **Audit:** WIDGET_AUDIT.md in bug report directory
+These incidents shaped the model:
 
-### go() + stdout capture bug
-- **Issue:** GUI froze (spinner stuck) when a `go()` worker produced output via `print()`; only seen in the goto pdf-table-extract app, never in headless CLI runs
-- **Error:** `runtime error: unknown opcode: 0` / `index out of range [21] with length 1`, panicking from the stdout-capture callback while the go() worker stepped the VM
-- **Root cause:** `CaptureStdout` invoked a Risor closure per output line, re-entering the single non-threadsafe VM concurrently with the `go()` worker
-- **Solution:** Route captured stdout through a pure-Go sink (`Log.AppendGo`); `CaptureStdout(log)` takes the widget directly
-- **Commit:** 9fa2634
+- **Widget callback stack underflow** (commits 652a650, 5721fc4). After 30–100
+  interactions: `index out of range [-1]` in `vm.pop()`. Tree/List getters ran
+  on the UI thread while queued handlers ran on the callback goroutine.
+- **`go()` + stdout capture** (commit 9fa2634). `unknown opcode: 0` while a
+  `go()` worker printed. `CaptureStdout` re-entered the VM per output line,
+  concurrently with the worker. Captured output now goes through a pure-Go
+  sink (`Log.AppendGo`).
+- **Code review, October 2026** (issues #10–#17, #37, #39). The callback queue
+  could freeze the UI. `Entry.OnChanged` and bindings started a goroutine per
+  change. About 30 sites bypassed recovery and the guard. The guard was
+  process-wide. Stopped runs kept running. `go()` raced the VM. All of these
+  were replaced by the per-run `vmexec` model above.

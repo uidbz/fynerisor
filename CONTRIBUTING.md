@@ -117,16 +117,15 @@ fynerisor/
 When adding support for a new Fyne widget:
 
 1. Add the widget method to `widget/widget.go` or create a new file in `widget/`
-2. Use the IIFE pattern for callbacks to avoid closure capture bugs:
+2. Register script callbacks with `vmexec.NewCallback` (see
+   `docs/CONCURRENCY.md`): `Fire` for events, `Call` for getters Fyne
+   invokes during layout:
    ```go
-   button := func(f *object.Closure) object.Object {
-       return risorwidget.NewButton(name, func() {
-           obj.w.Do(func() {
-               _, err := callFunc(ctx, f, []object.Object{})
-               // handle error
-           })
-       })
-   }(fn)
+   cb, err := vmexec.NewCallback(ctx, "widget.NewButton", args[1])
+   if err != nil {
+       return nil, err
+   }
+   return risorwidget.NewButton(name, func() { cb.Fire() }), nil
    ```
 3. Add documentation in `llms.txt` with usage examples
 4. Create an example in `examples/`

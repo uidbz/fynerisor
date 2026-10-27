@@ -144,31 +144,38 @@ so they never need a manual bump. Only these files carry a hardcoded copy:
 ### Rules
 
 1. **All Fyne GUI operations must run on UI thread**
-   - Use `fyne.Do(func() { ... })` for UI updates from goroutines
-   - Widget callbacks are already on UI thread
+   - Use `guithread.Do(func() { ... })` for UI updates from builtins
+   - Use `guithread.DoAndWaitContext(ctx, ...)` for reads that return a value
 
-2. **Risor VM is single-threaded per instance**
-   - Never call Risor callbacks from multiple goroutines
-   - Use `w.functionCalls` channel to queue callbacks
+2. **Risor VM is single-threaded per run (`gui/vmexec`)**
+   - Script code runs only on the run's VM goroutine, never on the UI thread
+   - Never call the `object.CallFunc` yourself and never start a goroutine
+     that enters the VM — always go through `vmexec.NewCallback`
 
 3. **Callback pattern for widgets:**
    ```go
-   callFunc, ok := object.GetCallFunc(ctx)
-   if !ok {
-       return nil, fmt.Errorf("unable to get call function")
+   cb, err := vmexec.NewCallback(ctx, "widget.Thing.OnEvent", args[0])
+   if err != nil {
+       return nil, err
    }
-   
-   widget.OnEvent = func() {
-       w.functionCalls <- func() {
-           fyne.Do(func() {
-               _, err := callFunc(ctx, callback, []object.Object{})
-               if err != nil {
-                   w.SetStatus("ERROR: " + err.Error())
-               }
-           })
+
+   // Events (taps, changes, selections): async, ordered, recovered
+   widget.OnEvent = func() { cb.Fire() }
+
+   // Getters Fyne calls during layout: sync; ErrBusy -> last-known value
+   cb.RefreshWhenBusy(func() { guithread.Do(widget.Refresh) })
+   widget.Length = func() int {
+       v, err := cb.Call()
+       if err != nil {
+           cb.Report(err) // silent for ErrBusy/ErrStopped
+           return last
        }
+       ...
    }
    ```
+
+4. **Hosts use the typed lifecycle** (`State()`, `Run(ctx)`, `Start(ctx)`,
+   `WithOnStateChange`), not the `"Ready!"`/`"ERROR: ..."` status text.
 
 ## Module Import System
 
@@ -276,8 +283,8 @@ require(["v0.6", "@http", "@sql"])
 1. **Import cycles** - gui imports core (OK), core MUST NOT import gui
 2. **MenuItem doesn't have Refresh()** - Just set properties, don't call Refresh
 3. **Deprecated Fyne APIs** - Check Fyne deprecation warnings
-4. **Module cache** - Remember imports are cached, same path = same instance
-5. **Thread safety** - Always use functionCalls channel for Risor callbacks
+4. **Module cache** - Imports are cached per run: same canonical path = same instance within one Execute; every Execute re-imports
+5. **Thread safety** - Always go through `vmexec.NewCallback` (Fire/Call) for Risor callbacks
 6. **WithGlobals vs WithGlobal** - Now called WithRisorOptions vs WithGlobal
 
 ## Git Workflow
