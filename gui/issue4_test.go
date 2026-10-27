@@ -6,7 +6,6 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	fynetest "fyne.io/fyne/v2/test"
 
 	guic "github.com/uidbz/fynerisor/gui/container"
 	"github.com/uidbz/fynerisor/gui/guithread"
@@ -56,7 +55,7 @@ func unwrap(t *testing.T, o object.Object) fyne.CanvasObject {
 // Issue #4: VBox/HBox/Stack/... gain Append/Remove/Refresh.
 func TestContainerAppendRemoveRefresh(t *testing.T) {
 	guithread.SetMain() // run bound GUI ops inline (no running event loop)
-	_ = fynetest.NewApp()
+	_ = newTestApp(t)
 
 	vb := guic.NewVBox(unwrap(t, labelOf("a")))
 	if got := objectsOf(t, vb); len(got) != 1 {
@@ -90,7 +89,7 @@ func TestContainerAppendRemoveRefresh(t *testing.T) {
 // Issue #4: Border SetTop/SetCenter/... swap slots.
 func TestBorderSetters(t *testing.T) {
 	guithread.SetMain()
-	_ = fynetest.NewApp()
+	_ = newTestApp(t)
 
 	top := labelOf("top")
 	newTop := labelOf("newtop")
@@ -120,7 +119,7 @@ func TestBorderSetters(t *testing.T) {
 // Issue #4: Scroll gains SetContent.
 func TestScrollSetContent(t *testing.T) {
 	guithread.SetMain()
-	_ = fynetest.NewApp()
+	_ = newTestApp(t)
 
 	sc := guic.NewScroll(unwrap(t, labelOf("old")))
 	next := labelOf("new")

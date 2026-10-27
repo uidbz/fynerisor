@@ -7,7 +7,6 @@ import (
 
 	"fyne.io/fyne/v2"
 	fynebinding "fyne.io/fyne/v2/data/binding"
-	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
 	risorbinding "github.com/uidbz/fynerisor/gui/binding"
@@ -31,7 +30,7 @@ func findEntryInContent(obj fyne.CanvasObject) *widget.Entry {
 // an OnChanged handler must not spawn concurrent goroutines into the VM and
 // the last handler call must observe the final value. Run with -race in CI.
 func TestEntryOnChangedSerialized(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 	fw := NewWindow(w)
@@ -76,7 +75,7 @@ window.SetContent(e)
 // an AddListener handler must serialize into the VM and the last listener
 // call must observe the final value.
 func TestBindingListenerSerialized(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 	fw := NewWindow(w)

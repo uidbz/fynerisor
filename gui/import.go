@@ -26,12 +26,14 @@ type importState struct {
 	base  string // entry script base (dir or URL); "" = process CWD
 	cache map[string]*core.ImportedModule
 	stack []core.ImportFrame
+	env   map[string]any // the run's environment snapshot (module VM globals)
+	opts  []risor.Option // the run's risor options (module compilation)
 }
 
 type importStateKey struct{}
 
-func newImportState(base string) *importState {
-	return &importState{base: base, cache: map[string]*core.ImportedModule{}}
+func newImportState(base string, env map[string]any, opts []risor.Option) *importState {
+	return &importState{base: base, cache: map[string]*core.ImportedModule{}, env: env, opts: opts}
 }
 
 // importStateFor returns the import state of the run that owns ctx. A
@@ -41,7 +43,9 @@ func (w *Window) importStateFor(ctx context.Context) *importState {
 	if st, ok := ctx.Value(importStateKey{}).(*importState); ok {
 		return st
 	}
-	return newImportState(w.scriptBase)
+	_, base := w.runner.snapshot()
+	env, opts := w.runOptions()
+	return newImportState(base, env, opts)
 }
 
 // newImportBuiltin creates the import() function that loads Risor modules
@@ -135,7 +139,7 @@ func (w *Window) newImportBuiltin() *object.Builtin {
 		// from its own origin is implicit (same-origin policy already
 		// applied); loading a URL from a local script needs httpimport.
 		if isHTTPURL(key) && !baseIsRemote {
-			if !w.enabledModules["httpimport"] {
+			if !w.moduleEnabled("httpimport") {
 				return nil, object.Errorf("import error: HTTP(S) imports are disabled. Use gui.WithHTTPImport() to enable importing from URLs")
 			}
 		}
@@ -147,19 +151,14 @@ func (w *Window) newImportBuiltin() *object.Builtin {
 		}
 
 		// Compile the module
-		code, err := risor.Compile(ctx, source, w.globals...)
+		code, err := risor.Compile(ctx, source, st.opts...)
 		if err != nil {
 			return nil, object.Errorf("import %q: compilation failed: %w", modulePath, err)
 		}
 
-		// Create VM options from globals
-		vmOpts, err := w.createVMOptions()
-		if err != nil {
-			return nil, object.Errorf("import %q: failed to create VM options: %w", modulePath, err)
-		}
-
-		// Create VM and execute module
-		moduleVM, err := vm.New(code, vmOpts...)
+		// Create the module VM with the run's environment (widget, http,
+		// sql, ...), so module code and functions can use those globals.
+		moduleVM, err := vm.New(code, vm.WithGlobals(st.env))
 		if err != nil {
 			return nil, object.Errorf("import %q: VM creation failed: %w", modulePath, err)
 		}
@@ -184,13 +183,6 @@ func (w *Window) newImportBuiltin() *object.Builtin {
 
 		return module, nil
 	})
-}
-
-// createVMOptions builds the vm.Option list used to execute imported modules.
-// It passes the same merged environment (widget, http, sql, etc.) that the main
-// script receives, so module code and module functions can use those globals.
-func (w *Window) createVMOptions() ([]vm.Option, error) {
-	return []vm.Option{vm.WithGlobals(w.env)}, nil
 }
 
 // wrapModuleExports converts a module VM's global variables into the export map

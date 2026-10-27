@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	_ "embed"
 	"errors"
@@ -99,7 +100,9 @@ type Window struct {
 	enabledModules map[string]bool // Track which modules are enabled
 	appName        string          // Name of the embedding application
 	droppedPaths   []string
-	cbMu           sync.Mutex // guards onDropped, onNewStdout, stdoutSink: set by the VM goroutine, read by the UI thread / capture goroutine
+	cbMu           sync.Mutex // guards onDropped, onNewStdout, stdoutSink and their owners
+	dropOwner      *vmexec.Run
+	stdoutOwner    *vmexec.Run
 	onDropped      func(droppedPaths []string)
 	onNewStdout    func(text string)
 	stdoutSink     func(text string)          // Go sink for captured stdout; bypasses the Risor VM
@@ -112,12 +115,19 @@ type Window struct {
 	// Module import system: the module cache and import stack live in the
 	// per-run importState (see import.go); only the entry script's base is
 	// kept here, captured by the next Execute.
-	scriptBase string // Base of the entry script (dir or URL); "" = process CWD
+	// Keyboard shortcut system (entries tagged with the run that added them)
+	shortcuts     map[string]shortcutEntry
+	shortcutMutex sync.Mutex
+	menuOwner     atomic.Pointer[vmexec.Run] // run that installed the main menu, if a script did
 
-	// Keyboard shortcut system
-	shortcuts     map[string]fyne.Shortcut // Map shortcut string to Shortcut object
-	shortcutMutex sync.Mutex               // Protect concurrent access
-	scriptMenu    atomic.Bool              // the running script installed the main menu
+	startMu sync.Mutex   // serializes start (stop previous run + publish the new one)
+	envMu   sync.RWMutex // guards env and enabledModules after construction (RegisterGlobal)
+}
+
+// shortcutEntry is a keyboard shortcut installed by a script run.
+type shortcutEntry struct {
+	shortcut fyne.Shortcut
+	owner    *vmexec.Run
 }
 
 // NewWindow creates a new fynerisor Window that wraps a Fyne window.
@@ -159,6 +169,28 @@ func NewWindow(window fyne.Window, opts ...Option) *Window {
 // newWindow builds a Window runtime without attaching its content to a Fyne
 // window. NewWindow uses it for standalone windows; NewCanvasObject uses it to
 // host a script inside a single canvas object in a host application.
+// windowCreated, when set (tests only), is called for every new Window so a
+// test can stop and drain the script runs it created before the next test
+// starts.
+var windowCreated func(*Window)
+
+// Quiesce stops the current run and waits up to timeout for its VM
+// goroutine to exit, i.e. until no more script code or UI work of that run
+// can happen. It reports whether the run exited in time.
+func (w *Window) Quiesce(timeout time.Duration) bool {
+	r := w.run.Load()
+	if r == nil {
+		return true
+	}
+	w.Stop()
+	select {
+	case <-r.Done():
+		return true
+	case <-time.After(timeout):
+		return false
+	}
+}
+
 func newWindow(opts ...Option) *Window {
 	// Record the GUI goroutine without overwriting it: a host may create an
 	// embedded view on a background goroutine (issue #14).
@@ -166,7 +198,7 @@ func newWindow(opts ...Option) *Window {
 	w := &Window{
 		enabledModules: make(map[string]bool),
 		appName:        "fynerisor", // default
-		shortcuts:      make(map[string]fyne.Shortcut),
+		shortcuts:      make(map[string]shortcutEntry),
 	}
 
 	// Apply appName and callback options first (before globals)
@@ -234,6 +266,9 @@ func newWindow(opts ...Option) *Window {
 	// Fyne window; an embedded CanvasObject renders it as a widget.
 	w.content = container.NewStack()
 
+	if hook := windowCreated; hook != nil {
+		hook(w)
+	}
 	return w
 }
 
@@ -317,8 +352,7 @@ func (w *Window) Status() string {
 // working directory; use LoadScriptFrom when the script's own location is
 // known (issue #8).
 func (w *Window) LoadScript(script string) {
-	w.scriptBase = ""
-	w.runner.LoadScript(script)
+	w.runner.load(script, "")
 }
 
 // LoadScriptFrom loads a script together with its source (file path or
@@ -326,15 +360,17 @@ func (w *Window) LoadScript(script string) {
 // the containing directory for local files, the source URL (same origin
 // only) for http(s) sources. See issue #8.
 func (w *Window) LoadScriptFrom(script, source string) {
-	w.scriptBase = core.ImportBaseFor(source)
-	w.runner.LoadScript(script)
+	w.runner.load(script, core.ImportBaseFor(source))
 }
 
 // CompileScript parses and compiles the currently loaded script without
 // executing it, returning any compile error. Use it to validate scripts
 // before Execute (issue #6).
 func (w *Window) CompileScript() error {
-	return w.runner.Compile()
+	script, _ := w.runner.snapshot()
+	_, opts := w.runOptions()
+	_, err := risor.Compile(context.Background(), script, opts...)
+	return err
 }
 
 // Clear clears all loaded scripts (imports and main script).
@@ -383,16 +419,29 @@ func (w *Window) start(ctx context.Context) <-chan error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	script, base := w.runner.snapshot()
+	env, opts := w.runOptions()
+
+	// startMu serializes concurrent Execute calls (a host and a script's
+	// browser.Open, say): each stops the run it replaces, so there is never
+	// more than one live run. Nothing here waits on another goroutine.
+	w.startMu.Lock()
 	if prev := w.run.Load(); prev != nil {
 		prev.Stop()
 	}
-	w.resetRunState()
-
-	// Each run gets its own module system state, carried in its context.
-	parent := context.WithValue(ctx, importStateKey{}, newImportState(w.scriptBase))
+	// Each run gets its own module system state and environment snapshot,
+	// carried in its context.
+	parent := context.WithValue(ctx, importStateKey{}, newImportState(base, env, opts))
 	r := vmexec.New(parent, vmexec.Config{QueueSize: callbackQueueSize})
+	// Publishing the run and its first state under statusMutex makes
+	// "is this run current?" checks (setStatusFor, setState) exact.
+	w.statusMutex.Lock()
 	w.run.Store(r)
+	w.statusMutex.Unlock()
+	w.startMu.Unlock()
+
 	w.setState(r, StateRunning, nil)
+	w.resetRunState()
 	// However the run ends — Stop, its context, a newer Execute — report it
 	// (setState ignores runs that are no longer current).
 	go func() {
@@ -402,7 +451,7 @@ func (w *Window) start(ctx context.Context) <-chan error {
 
 	done := make(chan error, 1)
 	r.Start(func(ctx context.Context) {
-		result, err := w.evalBody(ctx)
+		result, err := w.evalBody(ctx, script, opts)
 		// A run that was stopped or replaced reports nothing: its status
 		// would overwrite the status of the run that replaced it.
 		if ctx.Err() != nil || w.run.Load() != r {
@@ -418,7 +467,7 @@ func (w *Window) start(ctx context.Context) <-chan error {
 		if err != nil {
 			// Log error to stderr so it's visible in terminal
 			fmt.Fprintf(os.Stderr, "Script execution error: %v\n", err)
-			w.SetStatus("ERROR: " + err.Error())
+			w.setStatusFor(r, "ERROR: "+err.Error())
 			w.setState(r, StateFailed, err)
 			done <- err
 			return
@@ -429,7 +478,7 @@ func (w *Window) start(ctx context.Context) <-chan error {
 			}
 		}
 
-		w.SetStatus("Ready!")
+		w.setStatusFor(r, "Ready!")
 		w.setState(r, StateReady, nil)
 		done <- nil
 	})
@@ -438,43 +487,109 @@ func (w *Window) start(ctx context.Context) <-chan error {
 
 // evalBody runs the main script body, converting a panic into an error so
 // the lifecycle still reports StateFailed.
-func (w *Window) evalBody(ctx context.Context) (result any, err error) {
+func (w *Window) evalBody(ctx context.Context, script string, opts []risor.Option) (result any, err error) {
 	defer func() {
 		if p := recover(); p != nil {
 			result, err = nil, fmt.Errorf("panic in script: %v", p)
 		}
 	}()
-	return w.runner.EvalContext(ctx)
+	return evalScript(ctx, script, opts)
 }
 
-// resetRunState removes what the previous run installed on the window:
-// its keyboard shortcuts, the main menu (only if a script set it), and its
-// drop and stdout-capture handlers. Their callbacks belong to a stopped run
-// and would only be dropped; removing them frees the keys and menu for the
-// next run.
+// runOptions snapshots the script environment for one run: a copy of the
+// env map (so RegisterGlobal never mutates a map a running VM reads) plus
+// the opaque user options.
+func (w *Window) runOptions() (map[string]any, []risor.Option) {
+	w.envMu.RLock()
+	defer w.envMu.RUnlock()
+	env := make(map[string]any, len(w.env))
+	for k, v := range w.env {
+		env[k] = v
+	}
+	opts := append([]risor.Option{risor.WithEnv(env)}, w.userGlobals...)
+	return env, opts
+}
+
+// moduleEnabled reports whether a module (or registered global) is enabled.
+func (w *Window) moduleEnabled(name string) bool {
+	w.envMu.RLock()
+	defer w.envMu.RUnlock()
+	return w.enabledModules[name]
+}
+
+// isCurrent reports whether ctx belongs to the window's current run.
+func (w *Window) isCurrent(ctx context.Context) bool {
+	r := vmexec.FromContext(ctx)
+	return r != nil && r == w.run.Load()
+}
+
+// stale reports whether ctx belongs to a run that is no longer the window's
+// current run (stopped or replaced). Builtins called outside any run (a host
+// invoking them directly) are never stale. Window builtins run on the UI
+// thread, like resetRunState's cleanup, so "check stale, then install" can
+// never interleave with the cleanup (issue #52).
+func (w *Window) stale(ctx context.Context) bool {
+	r := vmexec.FromContext(ctx)
+	return r != nil && (r != w.run.Load() || r.Stopped())
+}
+
+// setStatusFor sets the status on behalf of run r: ignored unless r is the
+// current run. The check and the write happen under statusMutex, the lock
+// under which start publishes a new run, so a replaced run can never
+// overwrite the status of the run that replaced it.
+func (w *Window) setStatusFor(r *vmexec.Run, status string) {
+	w.statusMutex.Lock()
+	if r == nil || w.run.Load() != r {
+		w.statusMutex.Unlock()
+		return
+	}
+	w.status = status
+	w.statusMutex.Unlock()
+	if w.statusCallback != nil {
+		w.statusCallback(status)
+	}
+}
+
+// resetRunState removes window state owned by runs that are no longer
+// current: keyboard shortcuts, the main menu (only if a script set it) and
+// the drop and stdout-capture hooks. State is tagged with its owning run,
+// so this never removes what the current run has already installed, and it
+// never needs to wait: the removal of Fyne state is scheduled on the UI
+// thread, where all script access to the window runs (issue #52).
 func (w *Window) resetRunState() {
+	current := w.run.Load()
+
 	w.cbMu.Lock()
-	w.onDropped = nil
-	w.onNewStdout = nil
-	w.stdoutSink = nil
+	if w.dropOwner != current {
+		w.onDropped, w.dropOwner = nil, nil
+	}
+	if w.stdoutOwner != current {
+		w.onNewStdout, w.stdoutSink, w.stdoutOwner = nil, nil, nil
+	}
 	w.cbMu.Unlock()
 
-	w.shortcutMutex.Lock()
-	old := w.shortcuts
-	w.shortcuts = make(map[string]fyne.Shortcut)
-	w.shortcutMutex.Unlock()
-
-	resetMenu := w.scriptMenu.Swap(false)
-	if w.FyneWindow == nil || (len(old) == 0 && !resetMenu) {
+	if w.FyneWindow == nil {
 		return
 	}
 	host := w.FyneWindow
 	guithread.Do(func() {
-		for _, sc := range old {
+		cur := w.run.Load()
+		w.shortcutMutex.Lock()
+		var stale []fyne.Shortcut
+		for key, e := range w.shortcuts {
+			if e.owner != cur {
+				stale = append(stale, e.shortcut)
+				delete(w.shortcuts, key)
+			}
+		}
+		w.shortcutMutex.Unlock()
+		for _, sc := range stale {
 			host.Canvas().RemoveShortcut(sc)
 		}
-		if resetMenu {
-			host.SetMainMenu(nil)
+		if owner := w.menuOwner.Load(); owner != nil && owner != cur {
+			if w.menuOwner.CompareAndSwap(owner, nil) {
+				host.SetMainMenu(nil)
+			}
 		}
 	})
 }
@@ -589,12 +704,15 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 		return object.NewStringList(w.droppedPaths), true
 
 	case "Close":
-		return object.NewBuiltin("w.Close", func(_ context.Context, args ...object.Object) (object.Object, error) {
+		return object.NewBuiltin("w.Close", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
 				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
 			}
 			if w.FyneWindow == nil {
 				return object.Errorf("window.Close: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)"), nil
+			}
+			if w.stale(ctx) {
+				return nil, vmexec.ErrStopped
 			}
 			guithread.Do(func() {
 				w.FyneWindow.Close()
@@ -615,7 +733,7 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 			guithread.Do(func() {
 				// A run that has been stopped or replaced must not swap the
 				// content of the run that replaced it.
-				if ctx.Err() != nil {
+				if w.stale(ctx) {
 					return
 				}
 				w.contentMu.Lock()
@@ -637,9 +755,12 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 			// appended via pure Go (AppendGo), never re-entering the Risor VM,
 			// so stdout capture is safe while a go() goroutine holds the single
 			// non-threadsafe VM.
+			if w.stale(ctx) {
+				return nil, vmexec.ErrStopped
+			}
 			if logWidget, ok := args[0].(*risorwidget.Log); ok {
 				w.cbMu.Lock()
-				w.stdoutSink = logWidget.AppendGo
+				w.stdoutSink, w.onNewStdout, w.stdoutOwner = logWidget.AppendGo, nil, vmexec.FromContext(ctx)
 				w.cbMu.Unlock()
 				w.captureStdout()
 				return object.Nil, nil
@@ -660,6 +781,7 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 			w.onNewStdout = func(text string) {
 				cb.Fire(object.NewString(text))
 			}
+			w.stdoutSink, w.stdoutOwner = nil, vmexec.FromContext(ctx)
 			w.cbMu.Unlock()
 
 			w.captureStdout()
@@ -676,11 +798,15 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 			if err != nil {
 				return nil, err
 			}
+			if w.stale(ctx) {
+				return nil, vmexec.ErrStopped
+			}
 
 			w.cbMu.Lock()
 			w.onDropped = func(droppedPaths []string) {
 				cb.Fire(object.NewStringList(droppedPaths))
 			}
+			w.dropOwner = vmexec.FromContext(ctx)
 			w.cbMu.Unlock()
 
 			return object.Nil, nil
@@ -696,12 +822,15 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 				return nil, err
 			}
 			// A stopped or replaced run must not overwrite the status of
-			// the run that replaced it (issue #16).
-			if err := ctx.Err(); err != nil {
-				return nil, err
+			// the run that replaced it (issues #16, #52).
+			if r := vmexec.FromContext(ctx); r != nil {
+				if w.stale(ctx) {
+					return nil, vmexec.ErrStopped
+				}
+				w.setStatusFor(r, status)
+			} else {
+				w.SetStatus(status)
 			}
-
-			w.SetStatus(status)
 
 			return object.Nil, nil
 		}), true
@@ -718,7 +847,8 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 
 			// Runs on the run's VM goroutine after the current body/event;
 			// widget methods marshal their own UI work (guithread.Do).
-			cb.OnError(func(err error) { w.SetStatus("ERROR: " + err.Error()) }).Fire()
+			r := vmexec.FromContext(ctx)
+			cb.OnError(func(err error) { w.setStatusFor(r, "ERROR: "+err.Error()) }).Fire()
 
 			return object.Nil, nil
 		}), true
@@ -759,6 +889,9 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 				return object.Errorf("argument error: height must be a number, got %s", args[1].Type()), nil
 			}
 
+			if w.stale(ctx) {
+				return nil, vmexec.ErrStopped
+			}
 			// Must call Resize on the UI thread
 			guithread.Do(func() {
 				w.Resize(float32(width), float32(height))
@@ -786,7 +919,11 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 			if err != nil {
 				return nil, err
 			}
-			cb.OnError(func(err error) { w.SetStatus("ERROR: " + err.Error()) })
+			run := vmexec.FromContext(ctx)
+			cb.OnError(func(err error) { w.setStatusFor(run, "ERROR: "+err.Error()) })
+			if w.stale(ctx) {
+				return nil, vmexec.ErrStopped
+			}
 
 			// Parse the shortcut string
 			shortcut, err := ParseShortcutString(shortcutStr.Value())
@@ -800,9 +937,9 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 				cb.Fire()
 			})
 
-			// Track shortcut for removal
+			// Track shortcut for removal (and for cleanup when the run ends)
 			w.shortcutMutex.Lock()
-			w.shortcuts[shortcutStr.Value()] = shortcut
+			w.shortcuts[shortcutStr.Value()] = shortcutEntry{shortcut: shortcut, owner: run}
 			w.shortcutMutex.Unlock()
 
 			return object.Nil, nil
@@ -822,16 +959,19 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 				return nil, fmt.Errorf("argument must be string")
 			}
 
+			if w.stale(ctx) {
+				return nil, vmexec.ErrStopped
+			}
 			// Find and remove shortcut
 			w.shortcutMutex.Lock()
-			shortcut, found := w.shortcuts[shortcutStr.Value()]
+			entry, found := w.shortcuts[shortcutStr.Value()]
 			if found {
 				delete(w.shortcuts, shortcutStr.Value())
 			}
 			w.shortcutMutex.Unlock()
 
 			if found {
-				w.FyneWindow.Canvas().RemoveShortcut(shortcut)
+				w.FyneWindow.Canvas().RemoveShortcut(entry.shortcut)
 			}
 
 			return object.Nil, nil
@@ -850,17 +990,15 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 			if !ok {
 				return nil, fmt.Errorf("argument must be MainMenu object")
 			}
-			if err := ctx.Err(); err != nil {
-				return nil, err // stopped run (issue #16)
+			if w.stale(ctx) {
+				return nil, vmexec.ErrStopped // stopped run (issues #16, #52)
 			}
 
-			// Remember that the script owns the menu, so the next run can
-			// remove it together with its (dead) item callbacks.
-			w.scriptMenu.Store(true)
+			// Remember which run owns the menu, so the next run can remove
+			// it together with its (dead) item callbacks.
+			w.menuOwner.Store(vmexec.FromContext(ctx))
 			guithread.Do(func() {
-				if ctx.Err() == nil {
-					w.FyneWindow.SetMainMenu(mainMenuObj.instance)
-				}
+				w.FyneWindow.SetMainMenu(mainMenuObj.instance)
 			})
 
 			return object.Nil, nil
@@ -873,7 +1011,13 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 // creation. This is useful for objects that need to reference the window or
 // other components that are created after the window initialization
 // (e.g., browser, custom plugins).
+//
+// It is safe to call while a script runs: each run uses a snapshot of the
+// environment taken when it starts, so the new global is visible from the
+// next Execute.
 func (w *Window) RegisterGlobal(name string, value any) {
+	w.envMu.Lock()
+	defer w.envMu.Unlock()
 	w.env[name] = value
 	w.enabledModules[name] = true // Register for require() validation
 }
@@ -953,6 +1097,9 @@ func (w *Window) captureStdout() {
 				// is queued on its run like any other event.
 				w.cbMu.Lock()
 				sink, onLine := w.stdoutSink, w.onNewStdout
+				if owner := w.stdoutOwner; owner != nil && owner != w.run.Load() {
+					sink, onLine = nil, nil // hook of a stopped run
+				}
 				w.cbMu.Unlock()
 				switch {
 				case sink != nil:

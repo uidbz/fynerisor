@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	fynetest "fyne.io/fyne/v2/test"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 )
@@ -12,7 +11,7 @@ import (
 // Issue #2: window.Close() and app.Quit() must be bound — the README and
 // docs/EXAMPLES.md already use them.
 func TestCloseAndQuitBound(t *testing.T) {
-	a := fynetest.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 
 	w := a.NewWindow("issue2")

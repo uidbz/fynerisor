@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"fyne.io/fyne/v2/test"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 )
 
@@ -14,7 +13,7 @@ import (
 // goroutine and runs after the current body, in call order — and a panic in
 // fn is recovered without stopping later work.
 func TestGoRunsAfterBodyInOrder(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 	rec := &recorder{}

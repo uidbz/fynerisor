@@ -4,13 +4,12 @@ import (
 	"testing"
 	"time"
 
-	"fyne.io/fyne/v2/test"
 )
 
 // TestCanvasText verifies canvas.NewText (colored text) and the Label
 // Selectable attribute.
 func TestCanvasText(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 
 	w := a.NewWindow("Test")

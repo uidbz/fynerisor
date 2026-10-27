@@ -71,9 +71,8 @@ func OnUI(o object.Object) object.Object {
 		return b.Builtin
 	case *object.Builtin:
 		return object.NewBuiltin(b.Name(), func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if IsMain() {
-				return b.Call(ctx, args...)
-			}
+			// DoAndWaitContext runs inline when already on the UI thread
+			// (one goroutine-ID lookup, ~2µs).
 			var (
 				res object.Object
 				err error

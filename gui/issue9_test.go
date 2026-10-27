@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"fyne.io/fyne/v2/test"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 )
 
@@ -13,7 +12,7 @@ import (
 // passed to the Risor VM so Stop() interrupts a running script instead of
 // leaving it spinning.
 func TestStopCancelsRunningScript(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 

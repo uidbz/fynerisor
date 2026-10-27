@@ -6,14 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"fyne.io/fyne/v2/test"
 )
 
 // TestInteractiveChartsScript verifies the new interactive chart method
 // surface end-to-end through the Risor VM: registration of event callbacks,
 // feature toggles, live data updates, zoom controls, and SVG export.
 func TestInteractiveChartsScript(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 
 	svgPath := os.TempDir() + "/fynerisor-chart-test.svg"

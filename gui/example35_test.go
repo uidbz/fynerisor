@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"fyne.io/fyne/v2/test"
 )
 
 // runScriptCapturingErrors loads a script into a test window, executes it,
@@ -15,7 +14,7 @@ import (
 // harness logs errors to stderr and sets the window status).
 func runScriptCapturingErrors(t *testing.T, src string) {
 	t.Helper()
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 
 	old := os.Stderr

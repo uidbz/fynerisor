@@ -45,7 +45,7 @@ func writeModuleFile(t *testing.T, dir, name, src string) string {
 // module function can reference module-level variables and functions, and also
 // use host globals such as widget.
 func TestImportModuleFunctionReferencesModuleVariable(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 
@@ -73,7 +73,7 @@ window.SetContent(u.areaLabel(2))
 // previous "index out of range" failure when calling a module function that
 // references a module-level variable.
 func TestImportModuleVariableReferenceNoCrash(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 
@@ -105,7 +105,7 @@ window.SetContent(widget.NewLabel("area=" + string(area)))
 // a button callback (invoked after the script finishes) calls a module function
 // that references a module-level variable and function.
 func TestImportModuleFunctionFromButtonCallback(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 
@@ -162,7 +162,7 @@ func waitFor(t *testing.T, timeout time.Duration, cond func() bool) {
 // with a non-200 status must fail loudly instead of importing an empty
 // module.
 func TestImportHTTPNon200Fails(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 
@@ -189,7 +189,7 @@ print(m.anything)`)
 // loading a script via LoadScriptFrom resolves relative import() calls
 // against the script's own directory instead of the process CWD.
 func TestLoadScriptFromResolvesRelativeImports(t *testing.T) {
-	app := test.NewApp()
+	app := newTestApp(t)
 	defer app.Quit()
 
 	dir := t.TempDir()

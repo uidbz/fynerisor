@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -15,7 +14,7 @@ import (
 // containing Scroll sizes to the viewport and the text autowraps instead of
 // producing a horizontal scrollbar.
 func TestMarkdownWrapping(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 
 	// Go-level check of the underlying fyne behavior the binding relies on.

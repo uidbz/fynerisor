@@ -44,7 +44,7 @@ func blockingBuiltin(entered chan<- struct{}, release <-chan struct{}) *object.B
 // one process-wide variable, so while view A ran a handler, view B's render
 // getters were rejected as "concurrent VM access" although B has its own VM.
 func TestTwoViewsDoNotBlockEachOther(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	host := a.NewWindow("host")
 

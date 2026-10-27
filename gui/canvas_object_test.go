@@ -48,7 +48,7 @@ func waitForStatus(t *testing.T, ch <-chan string, want string) {
 // TestCanvasObjectEmbedsScript verifies that a fynerisor script can be hosted
 // as a CanvasObject inside content owned by a normal Fyne application.
 func TestCanvasObjectEmbedsScript(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	host := a.NewWindow("Host")
 
@@ -100,7 +100,7 @@ func TestCanvasObjectEmbedsScript(t *testing.T) {
 // TestCanvasObjectHostWindow verifies that WithHostWindow enables window-level
 // features without taking over the host window's content.
 func TestCanvasObjectHostWindow(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	host := a.NewWindow("Host")
 
@@ -130,7 +130,7 @@ func TestCanvasObjectHostWindow(t *testing.T) {
 // TestCanvasObjectWithoutHostGuards checks that window features return script
 // errors instead of panicking when no host window was supplied.
 func TestCanvasObjectWithoutHostGuards(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 
 	view := NewCanvasObject("")
@@ -168,7 +168,7 @@ func TestCanvasObjectWithoutHostGuards(t *testing.T) {
 // TestCanvasObjectCompileAndStop covers the convenience API around the
 // embedded runtime.
 func TestCanvasObjectCompileAndStop(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 
 	view := NewCanvasObject("let x = ")

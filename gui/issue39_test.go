@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"fyne.io/fyne/v2/test"
 )
 
 // stateLog records lifecycle transitions reported by WithOnStateChange.
@@ -36,7 +35,7 @@ func (l *stateLog) snapshot() []RunState {
 // TestRunReportsSuccess covers issue #39: Run blocks until the main body
 // ends and reports success through the return value and State.
 func TestRunReportsSuccess(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	log := &stateLog{}
 	fw := NewWindow(a.NewWindow("Test"), log.option())
@@ -62,7 +61,7 @@ func TestRunReportsSuccess(t *testing.T) {
 // body is reported as StateFailed with its error, while a script that merely
 // writes an "ERROR: ..." status text stays StateReady.
 func TestRunReportsFailureAndIgnoresSpoofedStatus(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	log := &stateLog{}
 	fw := NewWindow(a.NewWindow("Test"), log.option())
@@ -94,7 +93,7 @@ func TestRunReportsFailureAndIgnoresSpoofedStatus(t *testing.T) {
 // TestRunContextTimeoutStops covers issue #39: a Run whose context ends
 // stops the script and returns the context error.
 func TestRunContextTimeoutStops(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	entered := make(chan struct{})
 	release := make(chan struct{})
@@ -120,7 +119,7 @@ func TestRunContextTimeoutStops(t *testing.T) {
 
 // TestStopReportsStopped covers issue #39.
 func TestStopReportsStopped(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	log := &stateLog{}
 	fw := NewWindow(a.NewWindow("Test"), log.option())

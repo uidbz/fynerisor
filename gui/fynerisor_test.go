@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"fyne.io/fyne/v2/test"
 )
 
 // TestWidgetCreation tests that all widget types can be created
@@ -29,7 +28,7 @@ func TestWidgetCreation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a := test.NewApp()
+			a := newTestApp(t)
 			defer a.Quit()
 			w := a.NewWindow("Test")
 			fw := NewWindow(w)
@@ -54,7 +53,7 @@ func TestContainerCreation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a := test.NewApp()
+			a := newTestApp(t)
 			defer a.Quit()
 			w := a.NewWindow("Test")
 			fw := NewWindow(w)
@@ -67,7 +66,7 @@ func TestContainerCreation(t *testing.T) {
 
 // TestWidgetProperties tests widget property access
 func TestWidgetProperties(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 	fw := NewWindow(w)
@@ -103,7 +102,7 @@ if (pb.Value != 0.75) {
 
 // TestComplexLayout tests nested containers and widgets
 func TestComplexLayout(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 	fw := NewWindow(w)
@@ -131,7 +130,7 @@ window.SetContent(layout)
 
 // TestCallbacks tests widget callbacks
 func TestCallbacks(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 	fw := NewWindow(w)
@@ -168,7 +167,7 @@ window.SetContent(container.NewVBox(btn, chk, rg))
 
 // TestTableWidget tests table functionality
 func TestTableWidget(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 	fw := NewWindow(w)
@@ -205,7 +204,7 @@ window.SetContent(table)
 
 // TestAccordionWidget tests accordion functionality
 func TestAccordionWidget(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 	fw := NewWindow(w)
@@ -232,7 +231,7 @@ window.SetContent(acc)
 
 // TestToolbarWidget tests toolbar functionality
 func TestToolbarWidget(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 	fw := NewWindow(w)
@@ -260,7 +259,7 @@ window.SetContent(toolbar)
 
 // TestFormWidget tests form functionality
 func TestFormWidget(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 	fw := NewWindow(w)

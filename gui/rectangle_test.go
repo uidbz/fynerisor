@@ -4,14 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"fyne.io/fyne/v2/test"
 )
 
 // TestRectangle verifies the canvas.NewRectangle binding: constructor with
 // fill color + corner radius, and the FillColor/StrokeColor/StrokeWidth/
 // CornerRadius attributes (hex and named colors).
 func TestRectangle(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 
 	w := a.NewWindow("Test")

@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"fyne.io/fyne/v2/test"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 )
@@ -62,7 +61,7 @@ func (m *mockModule) Equals(other object.Object) bool {
 
 // TestWithGlobal tests that WithGlobal registers a custom module
 func TestWithGlobal(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 
@@ -87,7 +86,7 @@ func TestWithGlobal(t *testing.T) {
 
 // TestWithGlobalRequireFails tests that require() fails when module is not registered
 func TestWithGlobalRequireFails(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 
@@ -116,7 +115,7 @@ func TestWithGlobalRequireFails(t *testing.T) {
 
 // TestWithGlobalMultiple tests that multiple custom globals can be registered
 func TestWithGlobalMultiple(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 

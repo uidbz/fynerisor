@@ -45,7 +45,7 @@ func (r *recorder) has(s string) bool {
 // browser.Open does — used to wait 2 s for its own goroutine, and the stale
 // run then overwrote the new run's status.
 func TestExecuteFromInsideRunningScript(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 
@@ -99,7 +99,7 @@ window.SetStatus("stale")
 // TestCallbacksOfReplacedRunAreDropped covers issue #16: widgets of a
 // replaced run that are still reachable must not execute their handlers.
 func TestCallbacksOfReplacedRunAreDropped(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 	rec := &recorder{}
@@ -140,7 +140,7 @@ rec("new page shown")
 // of a run. A re-Execute (--watch reload, browser refresh) must import the
 // module again instead of reusing the previous run's instance.
 func TestReexecuteReimportsModules(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 	rec := &recorder{}

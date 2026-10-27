@@ -246,6 +246,9 @@ func (r *Run) flushIdle() {
 	pending := r.idle
 	r.idle = map[any]func(){}
 	r.idleMu.Unlock()
+	if r.ctx.Err() != nil {
+		return // a stopped run's widgets need no refresh
+	}
 	for _, fn := range pending {
 		fn()
 	}

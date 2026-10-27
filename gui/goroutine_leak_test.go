@@ -5,11 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"fyne.io/fyne/v2/test"
 )
 
 func TestNoGoroutineLeaks(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Leak Test")
 	fw := NewWindow(w)
@@ -64,7 +63,7 @@ window.SetContent(label)
 
 // TestChannelCleanup verifies that old channels don't accumulate
 func TestChannelCleanup(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Channel Test")
 	fw := NewWindow(w)

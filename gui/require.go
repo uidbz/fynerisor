@@ -55,7 +55,7 @@ func processRequirement(w *Window, req string) (object.Object, error) {
 			return object.Nil, nil
 		}
 
-		if !w.enabledModules[moduleName] {
+		if !w.moduleEnabled(moduleName) {
 			if optionName := core.ModuleOptionName(moduleName); optionName != "" {
 				return nil, fmt.Errorf("require: module @%s is not enabled (use gui.%s() option)", moduleName, optionName)
 			}

@@ -4,14 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"fyne.io/fyne/v2/test"
 )
 
 // TestClipboard verifies the clipboard global's Copy/Read builtins and the
 // issue #18 round-trip: Read must return the copied content even though the
 // main script body runs off the GUI thread.
 func TestClipboard(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 
 	w := a.NewWindow("Test")

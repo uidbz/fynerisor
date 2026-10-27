@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/test"
 	fynewidget "fyne.io/fyne/v2/widget"
 )
 
@@ -13,7 +12,7 @@ import (
 // handler spawns go() which, after work, disables/enables widgets directly
 // (no window.Do). Verifies the updates actually land.
 func TestGoroutineWidgetUpdate(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 	fw := NewWindow(w)

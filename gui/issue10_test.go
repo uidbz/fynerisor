@@ -13,7 +13,7 @@ import (
 // after creating widgets used to leave the callback channel undrained, so
 // the 11th interaction anywhere froze the UI thread forever.
 func TestTapAfterScriptErrorNoFreeze(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 	fw := NewWindow(w)
@@ -54,7 +54,7 @@ throw("boom after building UI")
 // Stop() used to fill the un-drained channel and freeze after 10
 // interactions.
 func TestTapAfterStopNoFreeze(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 	fw := NewWindow(w)
@@ -96,12 +96,14 @@ window.SetContent(btn)
 // UI thread while the main body is still running; the queued callbacks run
 // once the body finishes.
 func TestTapsDuringSlowBodyNoFreeze(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 
 	release := make(chan struct{})
+	entered := make(chan struct{})
 	waitgo := object.NewBuiltin("waitgo", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+		close(entered) // happens after SetContent: safe to read the content now
 		select {
 		case <-release:
 		case <-ctx.Done():
@@ -116,7 +118,7 @@ window.SetContent(btn)
 waitgo()
 `)
 	fw.Execute()
-	time.Sleep(100 * time.Millisecond)
+	<-entered
 
 	btn := findButton(w.Content())
 	if btn == nil {

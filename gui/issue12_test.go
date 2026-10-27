@@ -30,7 +30,7 @@ func findTree(obj fyne.CanvasObject) *fynewidget.Tree {
 // VM directly on the UI thread without panic recovery, so a Go panic inside
 // a builtin used by the handler crashed the whole process.
 func TestOnTappedPanicIsRecovered(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 	boom := object.NewBuiltin("boom", func(ctx context.Context, args ...object.Object) (object.Object, error) {
@@ -80,7 +80,7 @@ window.SetContent(container.NewVBox(btn, ok))
 // VM goroutine. They must now be turned away (and fall back to last-known
 // values) while the VM is busy.
 func TestTreeGetterDoesNotEnterBusyVM(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 

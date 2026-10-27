@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
@@ -22,7 +23,7 @@ const ListType object.Type = "widget.List"
 type List struct {
 	instance *widget.List
 	w        WindowInterface
-	lastLen  int // last length returned by the Length callback, reused during VM contention
+	lastLen  atomic.Int64 // last length returned by the Length callback, reused during VM contention
 }
 
 func NewList(w WindowInterface) *List {
@@ -139,15 +140,15 @@ func (obj *List) getAttrUI(name string) (object.Object, bool) {
 				result, err := cb.Call()
 				if err != nil {
 					cb.Report(err)
-					return obj.lastLen
+					return int(obj.lastLen.Load())
 				}
 				count, err := object.AsInt(result)
 				if err != nil {
 					cb.Report(fmt.Errorf("expected int, got %s", result.Type()))
-					return obj.lastLen
+					return int(obj.lastLen.Load())
 				}
-				obj.lastLen = int(count)
-				return obj.lastLen
+				obj.lastLen.Store(count)
+				return int(obj.lastLen.Load())
 			}
 
 			return object.Nil, nil

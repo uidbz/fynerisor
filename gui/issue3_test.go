@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	fynetest "fyne.io/fyne/v2/test"
 	fyneewidget "fyne.io/fyne/v2/widget"
 
 	"github.com/uidbz/fynerisor/gui/guithread"
@@ -17,7 +16,7 @@ import (
 // Issue #3: Markdown gains SetText and a readable/writable .Text.
 func TestMarkdownSetText(t *testing.T) {
 	guithread.SetMain() // run bound GUI ops inline (no running event loop)
-	_ = fynetest.NewApp()
+	_ = newTestApp(t)
 
 	md := guiw.NewMarkdown("# hello")
 	attr, ok := md.GetAttr("Text")

@@ -3,6 +3,7 @@ package widget
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -29,10 +30,25 @@ type Table struct {
 	// last-known getter results, reused during transient VM/render contention
 	// (vmexec.ErrBusy) so the grid never collapses to empty for a frame; the
 	// table is refreshed once the VM is idle (Callback.RefreshWhenBusy).
+	cacheMu          sync.Mutex // guards the last* fields
 	lastColumns      []string
 	lastRowCount     int
 	lastData         *tablewidget.TableData
 	lastHeaderLevels [][]string
+}
+
+// cached reads a last-known getter result under cacheMu.
+func (obj *Table) cached(get func() any) any {
+	obj.cacheMu.Lock()
+	defer obj.cacheMu.Unlock()
+	return get()
+}
+
+// setCache updates last-known getter results under cacheMu.
+func (obj *Table) setCache(set func()) {
+	obj.cacheMu.Lock()
+	defer obj.cacheMu.Unlock()
+	set()
 }
 
 // refresh re-renders the table with fresh getter results; scheduled by the
@@ -113,14 +129,14 @@ func (obj *Table) getAttrUI(name string) (object.Object, bool) {
 				o, err := cb.Call()
 				if err != nil {
 					cb.Report(err)
-					return obj.lastColumns
+					return obj.cached(func() any { return obj.lastColumns }).([]string)
 				}
 				s, err2 := object.AsStringSlice(o)
 				if err2 != nil {
 					cb.Report(fmt.Errorf("expected []string: %w", err2))
-					return obj.lastColumns
+					return obj.cached(func() any { return obj.lastColumns }).([]string)
 				}
-				obj.lastColumns = s
+				obj.setCache(func() { obj.lastColumns = s })
 				return s
 			}
 			return object.Nil, nil
@@ -141,14 +157,14 @@ func (obj *Table) getAttrUI(name string) (object.Object, bool) {
 				o, err := cb.Call()
 				if err != nil {
 					cb.Report(err)
-					return obj.lastHeaderLevels
+					return obj.cached(func() any { return obj.lastHeaderLevels }).([][]string)
 				}
 				rows, err2 := stringRowsFromObject(o)
 				if err2 != nil {
 					cb.Report(fmt.Errorf("expected list of lists of strings: %w", err2))
-					return obj.lastHeaderLevels
+					return obj.cached(func() any { return obj.lastHeaderLevels }).([][]string)
 				}
-				obj.lastHeaderLevels = rows
+				obj.setCache(func() { obj.lastHeaderLevels = rows })
 				return rows
 			}
 			return object.Nil, nil
@@ -169,15 +185,15 @@ func (obj *Table) getAttrUI(name string) (object.Object, bool) {
 				o, err := cb.Call()
 				if err != nil {
 					cb.Report(err)
-					return obj.lastRowCount
+					return obj.cached(func() any { return obj.lastRowCount }).(int)
 				}
 				s, err2 := object.AsInt(o)
 				if err2 != nil {
 					cb.Report(fmt.Errorf("expected int: %w", err2))
-					return obj.lastRowCount
+					return obj.cached(func() any { return obj.lastRowCount }).(int)
 				}
-				obj.lastRowCount = int(s)
-				return obj.lastRowCount
+				obj.setCache(func() { obj.lastRowCount = int(s) })
+				return obj.cached(func() any { return obj.lastRowCount }).(int)
 			}
 			return object.Nil, nil
 		}), true
@@ -238,8 +254,8 @@ func (obj *Table) getAttrUI(name string) (object.Object, bool) {
 
 			obj.instance.Data = func(offset, limit int) *tablewidget.TableData {
 				lastOrEmpty := func() *tablewidget.TableData {
-					if obj.lastData != nil {
-						return obj.lastData
+					if last := obj.cached(func() any { return obj.lastData }).(*tablewidget.TableData); last != nil {
+						return last
 					}
 					return tablewidget.NewTableData(obj.instance.Title)
 				}
@@ -263,7 +279,7 @@ func (obj *Table) getAttrUI(name string) (object.Object, bool) {
 						return lastOrEmpty()
 					}
 				}
-				obj.lastData = td
+				obj.setCache(func() { obj.lastData = td })
 				return td
 			}
 			return object.Nil, nil

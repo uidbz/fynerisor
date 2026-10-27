@@ -4,14 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"fyne.io/fyne/v2/test"
 )
 
 // TestScrollToBottom verifies the ScrollToBottom/ScrollToTop bindings exposed
 // to Risor scripts on container.Scroll (wraps Fyne's Scroll.ScrollToBottom /
 // ScrollToTop via guithread.Do).
 func TestScrollToBottom(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 
 	w := a.NewWindow("Test")

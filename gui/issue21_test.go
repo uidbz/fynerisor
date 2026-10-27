@@ -5,14 +5,13 @@ import (
 	"time"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/test"
 	fyneiw "fyne.io/fyne/v2/widget"
 )
 
 // TestNewFormMixedListAndVariadic covers issue #21: list arguments must be
 // taken from the current loop argument, not args[0].
 func TestNewFormMixedListAndVariadic(t *testing.T) {
-	a := test.NewApp()
+	a := newTestApp(t)
 	defer a.Quit()
 	w := a.NewWindow("Test")
 	fw := NewWindow(w)
