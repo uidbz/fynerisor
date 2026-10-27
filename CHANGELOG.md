@@ -280,6 +280,29 @@
   `numeric` query option build on. The `@tie` module's public API is otherwise
   unchanged.
 
+- **Item templates are never faked while the VM is busy (issue #50).**
+  `List`/`GridWrap` `CreateItem`, `Tree` `CreateNode` and the `Table`'s
+  `CreateCell` are render getters: when the script's VM was busy they
+  answered with a placeholder `widget.Label`, which Fyne pools for the
+  row's whole life — every later `UpdateItem` then handed the script that
+  Label instead of its widget, permanently. They now hand Fyne an empty
+  slot (or, for the table, leave the cell empty) that takes the script's
+  real widget the first time an update getter runs with a free VM. As a
+  side effect `Tree.UpdateNode` now passes non-Label node widgets (Card,
+  Button, ...) as their proper wrapper type instead of `nil`.
+
+- **The script-event queue never drops events; change events coalesce
+  (issue #51).** The per-run queue was bounded at 100 with dropped events;
+  fast typing during a long body could lose the last `OnChanged` forever.
+  Discrete events (taps, submits, selections, dialogs) are now queued
+  without bound — a backlog deeper than `vmexec.Config.QueueSize` is
+  reported once instead of dropped. Change-style events (Entry,
+  SelectEntry, DateEntry and Slider `OnChanged`, binding listeners) are
+  coalesced per callback: at most one is pending, always carrying the
+  latest value, so a burst can neither fill the queue nor lose the final
+  state. `vmexec.ErrQueueFull` is gone; `Callback.FireCoalesced` /
+  `Run.EnqueueCoalesced` is the new registration API for change events.
+
 ## [0.8.2] - 2026-09-03
 
 ### Added

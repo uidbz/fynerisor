@@ -3,8 +3,10 @@ package vmexec
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -222,18 +224,200 @@ func TestPanicsAreRecovered(t *testing.T) {
 	}
 }
 
-func TestEnqueueNeverBlocksWhenFull(t *testing.T) {
-	r := New(context.Background(), Config{QueueSize: 2, Report: func(string, error) {}})
-	defer r.Stop()
-	// Not started: nothing drains the queue.
-	_ = r.Enqueue("a", func() {})
-	_ = r.Enqueue("b", func() {})
+// The queue is unbounded: a flood of events queued while the body runs is
+// neither dropped nor allowed to block its sender (issue #51).
+func TestEnqueueUnboundedWhileBodyBusy(t *testing.T) {
+	r, _ := silentRun(t)
+	const n = 5000
+	release := make(chan struct{})
+	inBody := make(chan struct{})
+	var ran atomic.Int64
+	done := make(chan struct{})
+
+	r.Start(func(ctx context.Context) {
+		close(inBody)
+		<-release
+	})
+	<-inBody
+
 	start := time.Now()
-	if err := r.Enqueue("c", func() {}); !errors.Is(err, ErrQueueFull) {
-		t.Fatalf("expected ErrQueueFull, got %v", err)
+	for i := 0; i < n; i++ {
+		if err := r.Enqueue("ev", func() {
+			if ran.Add(1) == n {
+				close(done)
+			}
+		}); err != nil {
+			t.Fatalf("Enqueue: %v", err)
+		}
 	}
-	if time.Since(start) > 100*time.Millisecond {
-		t.Fatal("Enqueue blocked on a full queue")
+	if d := time.Since(start); d > 2*time.Second {
+		t.Fatalf("Enqueue took %v; it must never block", d)
+	}
+	close(release)
+	waitClosed(t, done, "all queued events")
+}
+
+// A backlog deeper than the configured depth is reported once, but events
+// keep their place in the queue (issue #51).
+func TestQueueBacklogReportedOnceNotDropped(t *testing.T) {
+	var mu sync.Mutex
+	var reports []string
+	r := New(context.Background(), Config{QueueSize: 2, Report: func(what string, err error) {
+		mu.Lock()
+		reports = append(reports, what+": "+err.Error())
+		mu.Unlock()
+	}})
+	defer r.Stop()
+
+	// Not started: nothing drains the queue, so the depth builds up.
+	ran := make(chan int, 5)
+	for i := 0; i < 5; i++ {
+		i := i
+		if err := r.Enqueue("ev", func() { ran <- i }); err != nil {
+			t.Fatalf("Enqueue %d: %v", i, err)
+		}
+	}
+
+	mu.Lock()
+	seen := 0
+	for _, rp := range reports {
+		if strings.Contains(rp, "pending") {
+			seen++
+		}
+	}
+	mu.Unlock()
+	if seen != 1 {
+		t.Fatalf("backlog reported %d times, want exactly 1: %q", seen, reports)
+	}
+
+	// Nothing was dropped: all five jobs run, in order.
+	r.Start(func(ctx context.Context) {})
+	for want := 0; want < 5; want++ {
+		select {
+		case got := <-ran:
+			if got != want {
+				t.Fatalf("jobs ran out of order: got %d, want %d", got, want)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatalf("job %d never ran; events were dropped", want)
+		}
+	}
+}
+
+// Coalescing keeps at most one pending job per key: 10 000 changes queued
+// while the body is busy run as one delivery carrying the latest value,
+// and never fill the queue (issue #51).
+func TestCoalescedEventsKeepLatestValue(t *testing.T) {
+	r, _ := silentRun(t)
+	const n = 10000
+	release := make(chan struct{})
+	inBody := make(chan struct{})
+
+	var mu sync.Mutex
+	var calls int
+	latest := ""
+	var order []string
+
+	r.Start(func(ctx context.Context) {
+		close(inBody)
+		<-release
+	})
+	<-inBody
+
+	key := new(int)
+	for i := 0; i < n; i++ {
+		v := fmt.Sprint(i)
+		if err := r.EnqueueCoalesced(key, "change", func() {
+			mu.Lock()
+			calls++
+			latest = v
+			order = append(order, "change")
+			mu.Unlock()
+		}); err != nil {
+			t.Fatalf("EnqueueCoalesced: %v", err)
+		}
+	}
+	// A discrete event queued after the burst must run after the final
+	// delivery of the burst.
+	after := make(chan struct{})
+	if err := r.Enqueue("after", func() {
+		mu.Lock()
+		order = append(order, "after")
+		mu.Unlock()
+		close(after)
+	}); err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+	close(release)
+	waitClosed(t, after, "marker after coalesced burst")
+
+	mu.Lock()
+	defer mu.Unlock()
+	if latest != fmt.Sprint(n-1) {
+		t.Fatalf("last delivered value = %q, want %q", latest, fmt.Sprint(n-1))
+	}
+	if calls < 1 || calls > 2 {
+		t.Fatalf("10 000 coalesced changes ran %d times, want a single delivery", calls)
+	}
+	if len(order) < 2 || order[0] != "change" || order[len(order)-1] != "after" {
+		t.Fatalf("burst ran after the later discrete event: %v", order)
+	}
+}
+
+// Coalescing is per callback: two different keys each deliver their latest
+// value.
+func TestCoalescedKeysAreIndependent(t *testing.T) {
+	r, _ := silentRun(t)
+	release := make(chan struct{})
+	inBody := make(chan struct{})
+	r.Start(func(ctx context.Context) {
+		close(inBody)
+		<-release
+	})
+	<-inBody
+
+	var mu sync.Mutex
+	got := map[string]string{}
+	done := make(chan struct{}, 2)
+	k1, k2 := new(int), new(int)
+	for i := 0; i < 50; i++ {
+		_ = r.EnqueueCoalesced(k1, "a", func() {
+			mu.Lock()
+			got["a"] = "1"
+			mu.Unlock()
+			done <- struct{}{}
+		})
+		_ = r.EnqueueCoalesced(k2, "b", func() {
+			mu.Lock()
+			got["b"] = "2"
+			mu.Unlock()
+			done <- struct{}{}
+		})
+	}
+	close(release)
+	for i := 0; i < 2; i++ {
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Fatal("coalesced key never delivered")
+		}
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if got["a"] != "1" || got["b"] != "2" {
+		t.Fatalf("keys interfered: %v", got)
+	}
+}
+
+func TestEnqueueCoalescedStoppedRun(t *testing.T) {
+	r, _ := silentRun(t)
+	r.Start(func(ctx context.Context) {})
+	r.Stop()
+	waitClosed(t, r.Done(), "run exit after Stop")
+	if err := r.EnqueueCoalesced(new(int), "late", func() {
+		t.Error("event of a stopped run executed")
+	}); !errors.Is(err, ErrStopped) {
+		t.Fatalf("expected ErrStopped, got %v", err)
 	}
 }
 

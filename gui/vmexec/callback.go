@@ -16,8 +16,9 @@ import (
 //	if err != nil {
 //	    return nil, err
 //	}
-//	button.OnTapped = func() { cb.Fire() }            // event: async, ordered
-//	list.Length = func() int { v, err := cb.Call() }  // getter: sync, may be ErrBusy
+//	button.OnTapped = func() { cb.Fire() }                 // event: async, ordered
+//	entry.OnChanged = func(s string) { cb.FireCoalesced() } // change: latest value wins
+//	list.Length = func() int { v, err := cb.Call() }      // getter: sync, may be ErrBusy
 //
 // The callback remembers the run whose VM registered it (via the builtin's
 // context), so it always enters the right VM under that VM's guard, and it
@@ -80,8 +81,23 @@ func (c *Callback) Fire(args ...object.Object) {
 		}
 		return
 	}
-	// Enqueue reports ErrQueueFull itself; ErrStopped is silent.
 	_ = c.run.Enqueue(c.name, func() { c.invoke(args) })
+}
+
+// FireCoalesced is Fire for change-style events (Entry.OnChanged,
+// Slider.OnChanged, binding listeners). While one call for this callback
+// is still queued, a later call replaces it — carrying its arguments —
+// instead of piling up: a burst of changes cannot fill the queue and the
+// latest value is never dropped (issue #51). Discrete events (taps,
+// submits, dialogs) must keep using Fire.
+func (c *Callback) FireCoalesced(args ...object.Object) {
+	if c.run == nil {
+		if c.ctx.Err() == nil {
+			c.invoke(args)
+		}
+		return
+	}
+	_ = c.run.EnqueueCoalesced(c, c.name, func() { c.invoke(args) })
 }
 
 // Call invokes the script function synchronously and returns its result.

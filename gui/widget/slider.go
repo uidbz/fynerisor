@@ -122,9 +122,10 @@ func (obj *Slider) getAttrUI(name string) (object.Object, bool) {
 				return nil, err
 			}
 
-			// Event: queued on the script's VM goroutine.
+			// Change event: coalesced, latest value wins — a fast drag
+			// produces far more updates than the VM can run (issue #51).
 			obj.instance.OnChanged = func(value float64) {
-				cb.Fire(object.NewFloat(value))
+				cb.FireCoalesced(object.NewFloat(value))
 			}
 			return object.Nil, nil
 		}), true

@@ -27,6 +27,7 @@
 package vmexec
 
 import (
+	"container/list"
 	"context"
 	"errors"
 	"fmt"
@@ -47,20 +48,20 @@ var (
 	// stopped (Stop, or a new Execute replaced it). Callers drop the work
 	// silently.
 	ErrStopped = errors.New("script run stopped")
-
-	// ErrQueueFull is returned by Enqueue when the event queue is full.
-	ErrQueueFull = errors.New("callback queue full")
 )
 
-// DefaultQueueSize bounds the queue of pending event jobs. When it is full,
-// events are dropped with a diagnostic instead of blocking the UI thread.
+// DefaultQueueSize is the depth at which a run first reports a backlog of
+// pending events. The queue itself is unbounded: events are never dropped
+// (issue #51); the report exists so a host notices a script whose handlers
+// cannot keep up.
 const DefaultQueueSize = 100
 
 // Config configures a Run.
 type Config struct {
-	// QueueSize bounds pending event jobs; <= 0 means DefaultQueueSize.
+	// QueueSize is the pending-job depth that triggers a one-time report;
+	// <= 0 means DefaultQueueSize. It does not bound the queue.
 	QueueSize int
-	// Report receives callback errors and dropped events. nil writes a
+	// Report receives callback errors and queue reports. nil writes a
 	// one-line diagnostic to stderr.
 	Report func(what string, err error)
 }
@@ -68,6 +69,12 @@ type Config struct {
 type job struct {
 	what string
 	fn   func()
+	// key is nil for discrete events (taps, submits, dialogs, ...). A
+	// non-nil key marks a coalescing event (a change handler, a binding
+	// listener): the queue holds at most one pending job per key, always
+	// the most recently queued one, so a burst of changes can never fill
+	// the queue and the last value is never lost (issue #51).
+	key any
 }
 
 type runKey struct{}
@@ -77,10 +84,19 @@ type runKey struct{}
 type Run struct {
 	ctx    context.Context
 	cancel context.CancelFunc
-	queue  chan job
 	guard  *guard
 	done   chan struct{}
 	report func(what string, err error)
+
+	// The event queue is an unbounded list plus an index of pending
+	// coalescing keys; wake just signals the VM goroutine that work
+	// arrived. Enqueue never blocks and never drops (issue #51).
+	queueMu   sync.Mutex
+	queue     *list.List
+	coalesced map[any]*list.Element
+	warnDepth int
+	warned    bool
+	wake      chan struct{}
 
 	idleMu sync.Mutex
 	idle   map[any]func()
@@ -101,16 +117,19 @@ func New(parent context.Context, cfg Config) *Run {
 	if parent == nil {
 		parent = context.Background()
 	}
-	size := cfg.QueueSize
-	if size <= 0 {
-		size = DefaultQueueSize
+	warn := cfg.QueueSize
+	if warn <= 0 {
+		warn = DefaultQueueSize
 	}
 	r := &Run{
-		queue:  make(chan job, size),
-		guard:  newGuard(),
-		done:   make(chan struct{}),
-		report: cfg.Report,
-		idle:   map[any]func(){},
+		queue:     list.New(),
+		coalesced: map[any]*list.Element{},
+		guard:     newGuard(),
+		done:      make(chan struct{}),
+		report:    cfg.Report,
+		idle:      map[any]func(){},
+		warnDepth: warn,
+		wake:      make(chan struct{}, 1),
 	}
 	if r.report == nil {
 		r.report = defaultReport
@@ -153,10 +172,14 @@ func (r *Run) Start(body func(ctx context.Context)) {
 		r.flushIdle()
 
 		for {
-			select {
-			case <-r.ctx.Done():
-				return
-			case j := <-r.queue:
+			j, ok := r.pop()
+			if !ok {
+				select {
+				case <-r.ctx.Done():
+					return
+				case <-r.wake:
+				}
+			} else {
 				r.runJob(j)
 			}
 		}
@@ -196,22 +219,6 @@ func (r *Run) Done() <-chan struct{} { return r.done }
 // VM (the main body, an event job, or a getter it triggered).
 func (r *Run) InVM() bool { return r.guard.ownedByCaller() }
 
-// Enqueue schedules fn to run on the VM goroutine after the current body or
-// job. It never blocks: it returns ErrStopped for a stopped run and
-// ErrQueueFull (after reporting it) when the queue is full.
-func (r *Run) Enqueue(what string, fn func()) error {
-	if r.ctx.Err() != nil {
-		return ErrStopped
-	}
-	select {
-	case r.queue <- job{what: what, fn: fn}:
-		return nil
-	default:
-		r.report(what, fmt.Errorf("%w (%d); event dropped", ErrQueueFull, cap(r.queue)))
-		return ErrQueueFull
-	}
-}
-
 // TryCall runs fn synchronously inside the VM if the VM is free or already
 // owned by the caller (reentrant). Otherwise it returns ErrBusy without
 // waiting. Panics are recovered into errors.
@@ -230,6 +237,73 @@ func (r *Run) TryCall(fn func() (object.Object, error)) (result object.Object, e
 		}
 	}()
 	return fn()
+}
+
+// Enqueue schedules fn to run on the VM goroutine after the current body or
+// job. It never blocks and never drops: the queue of discrete events is
+// unbounded (issue #51). A backlog deeper than the configured QueueSize is
+// reported once. Enqueue returns ErrStopped for a stopped run.
+func (r *Run) Enqueue(what string, fn func()) error {
+	return r.push(nil, what, fn)
+}
+
+// EnqueueCoalesced schedules fn like Enqueue, but keeps at most one pending
+// job per key: a later job with the same key replaces the pending one and
+// moves to the back of the queue, so only the latest value is delivered.
+// Use it for change-style events (Entry.OnChanged, Slider.OnChanged,
+// binding listeners), where a burst of updates while the VM is busy must
+// still deliver the final state without filling the queue (issue #51).
+func (r *Run) EnqueueCoalesced(key any, what string, fn func()) error {
+	return r.push(key, what, fn)
+}
+
+func (r *Run) push(key any, what string, fn func()) error {
+	if r.ctx.Err() != nil {
+		return ErrStopped
+	}
+	r.queueMu.Lock()
+	e := &job{what: what, fn: fn, key: key}
+	if key != nil {
+		if old, ok := r.coalesced[key]; ok {
+			old.Value = e
+			r.queue.MoveToBack(old)
+		} else {
+			r.coalesced[key] = r.queue.PushBack(e)
+		}
+	} else {
+		r.queue.PushBack(e)
+	}
+	n := r.queue.Len()
+	warn := !r.warned && n > r.warnDepth
+	if warn {
+		r.warned = true
+	}
+	r.queueMu.Unlock()
+	if warn {
+		r.report("events", fmt.Errorf("%d events pending; handlers cannot keep up with the event rate", n))
+	}
+	select {
+	case r.wake <- struct{}{}:
+	default: // already woken
+	}
+	return nil
+}
+
+// pop removes and returns the oldest pending job, or nil if the queue is
+// empty.
+func (r *Run) pop() (job, bool) {
+	r.queueMu.Lock()
+	defer r.queueMu.Unlock()
+	el := r.queue.Front()
+	if el == nil {
+		return job{}, false
+	}
+	r.queue.Remove(el)
+	j := el.Value.(*job)
+	if j.key != nil {
+		delete(r.coalesced, j.key)
+	}
+	return *j, true
 }
 
 // WhenIdle runs fn on the VM goroutine once the current body or job has

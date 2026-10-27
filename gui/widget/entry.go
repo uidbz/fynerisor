@@ -224,10 +224,12 @@ func (obj *Entry) getAttrUI(name string) (object.Object, bool) {
 				return nil, err
 			}
 
-			// Event: queued on the script's VM goroutine, in keystroke order
-			// (never a goroutine per keystroke, issue #11).
+			// Change event: coalesced on the run's queue — a burst of
+			// keystrokes while the VM is busy delivers the latest text and
+			// never fills the queue (issue #51). Order between distinct
+			// changes is kept; only superseded values are skipped.
 			obj.instance.OnChanged = func(text string) {
-				cb.Fire(object.NewString(text))
+				cb.FireCoalesced(object.NewString(text))
 			}
 
 			return object.Nil, nil

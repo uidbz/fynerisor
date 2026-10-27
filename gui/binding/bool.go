@@ -121,9 +121,10 @@ func (obj *Bool) getAttrUI(name string) (object.Object, bool) {
 				return nil, err
 			}
 
-			// Event: each change is queued on the script's VM goroutine
-			// (never a goroutine per change, issue #11).
-			obj.instance.AddListener(binding.NewDataListener(func() { cb.Fire() }))
+			// Change event: coalesced on the run's queue — listeners
+			// re-read the binding, so the latest change is enough and a
+			// burst cannot fill the queue (issues #11, #51).
+			obj.instance.AddListener(binding.NewDataListener(func() { cb.FireCoalesced() }))
 			return object.Nil, nil
 		}), true
 	}

@@ -183,9 +183,9 @@ func (obj *SelectEntry) getAttrUI(name string) (object.Object, bool) {
 				return nil, err
 			}
 
-			// Event: queued on the script's VM goroutine.
+			// Change event: coalesced, latest text wins (issue #51).
 			obj.instance.OnChanged = func(text string) {
-				cb.Fire(object.NewString(text))
+				cb.FireCoalesced(object.NewString(text))
 			}
 
 			return object.Nil, nil

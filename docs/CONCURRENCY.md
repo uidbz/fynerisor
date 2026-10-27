@@ -33,10 +33,14 @@ a **`vmexec.Run`**:
 ```
 
 - **Events run on the VM goroutine, never on the UI thread.** A widget
-  handler is queued with `Callback.Fire`. The queue is bounded (100). The
-  UI thread never blocks on it: when it is full, the event is dropped with a
-  stderr diagnostic. Events queued while the main body runs execute after
-  it, in order.
+  handler is queued with `Callback.Fire`. The queue is unbounded: events
+  are never dropped (a backlog deeper than `vmexec.DefaultQueueSize` is
+  reported once so the host notices handlers that cannot keep up).
+  Change-style events (`Entry`/`SelectEntry`/`DateEntry`/`Slider.OnChanged`,
+  binding listeners) queue with `Callback.FireCoalesced`: at most one per
+  callback stays pending, always carrying the latest value, so a burst of
+  changes can neither fill the queue nor lose the final state (issue #51).
+  Events queued while the main body runs execute after it, in order.
 - **Render getters run synchronously** because Fyne needs an answer during
   layout. They use `Callback.Call`. If the VM is free (or already owned by the
   calling goroutine: a handler that calls `Table.Refresh()` re-enters its
