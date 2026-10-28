@@ -17,7 +17,9 @@ jobs:
           go-version-file: go.mod
 
       - name: Install Fyne build dependencies
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgl1-mesa-dev xorg-dev
+        # GLFW's Go bindings compile the X11 AND Wayland backends by
+        # default on Linux; the wayland-client headers are not preinstalled.
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgl1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev
 
       - name: gofmt
         run: |
