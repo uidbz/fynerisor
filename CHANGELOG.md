@@ -341,6 +341,39 @@
   multi-window model (one queue + guard per run, one UI thread per
   process).
 
+### Changed
+
+- **`@http` rewritten (issue #25).** Requests carry the builtin's
+  context: stopping a script aborts an in-flight HTTP request
+  (`http.NewRequestWithContext`). All requests share one client and
+  connection pool (30s timeout per request). The auth/header option
+  parsing that was copy-pasted five times is one helper, and `fetch` is
+  now the only method that honours an options `method` override. Response
+  bodies are capped at `MaxResponseBytes` (32 MiB), and `body_bytes`
+  gives the exact bytes (binary bodies are no longer mangled by the
+  string form). `response.json` is built into the map before wrapping —
+  the old post-hoc mutation is gone. Script args/type errors now *raise*
+  (issue #30 convention) instead of returning uncaught error values.
+  `gui`'s dead `loadScriptFromPath/File/URL` loaders (untimed
+  `http.Get`s, never called; imports already go through `core.FetchScript`)
+  are removed.
+- **`@json` and `@http` share one converter (issue #34).** New
+  `internal/convert`: integral JSON numbers decode to **ints**
+  (`{"id": 3}` → `3`, not `3.0` — decoding uses `json.Number`), unknown
+  types raise instead of being stringified with `%v`, and the two
+  drifted copy-pasted converters are gone. Runtime failures raise
+  (catchable with `try`) instead of handing the script an error value
+  (issue #30 convention).
+- **`@sql` queries are cancellable (issue #26).** `ExecContext` /
+  `QueryContext` bind statements to the script's context, so `Stop()`
+  aborts an in-flight query (regression test with a multi-minute
+  recursive CTE); the non-streaming path no longer swallows `rows.Err()`,
+  and the sqlite cgo requirement is documented.
+- **tablewidget copy uses Fyne's clipboard (issue #35).** The second cgo
+  clipboard stack (`golang.design/x/clipboard`, X11 headers, separate
+  init) and its mobile build-tag split are gone; the dependency was
+  dropped from go.mod.
+
 ## [0.8.2] - 2026-09-03
 
 ### Added

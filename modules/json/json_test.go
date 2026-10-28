@@ -67,13 +67,40 @@ func TestValid(t *testing.T) {
 	}
 }
 
-func TestParseInvalidReturnsError(t *testing.T) {
+func TestParseInvalidRaises(t *testing.T) {
+	// Issue #30 convention: runtime failures raise (catchable with try),
+	// they are not error values the script silently continues past.
 	ctx := context.Background()
-	res, err := parse(ctx, object.NewString(`{not json`))
-	if err != nil {
-		t.Fatalf("unexpected go error: %v", err)
+	_, err := parse(ctx, object.NewString(`{not json`))
+	if err == nil {
+		t.Fatal("expected a raised error for invalid JSON")
 	}
-	if _, ok := res.(*object.Error); !ok {
-		t.Errorf("expected error object, got %T", res)
+}
+
+func TestParseKeepsIntegralNumbersInts(t *testing.T) {
+	// Issue #34: JSON numbers used to decode as float64, so {"id": 3}
+	// became 3.0. Integral numbers must stay ints.
+	ctx := context.Background()
+	parsed, err := parse(ctx, object.NewString(`{"id": 3, "pi": 3.5}`))
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	m := parsed.(*object.Map)
+	if id, ok := m.Get("id").(*object.Int); !ok || id.Value() != 3 {
+		t.Errorf("id = %s (%v), want int 3", m.Get("id").Type(), m.Get("id"))
+	}
+	if pi, ok := m.Get("pi").(*object.Float); !ok || pi.Value() != 3.5 {
+		t.Errorf("pi = %v, want float 3.5", m.Get("pi"))
+	}
+}
+
+func TestMarshalUnconvertibleRaises(t *testing.T) {
+	// Issue #34: unknown types used to be stringified with %v.
+	ctx := context.Background()
+	_, err := marshal(ctx, object.NewBuiltin("x", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+		return object.Nil, nil
+	}))
+	if err == nil {
+		t.Fatal("expected a raised error marshaling a builtin")
 	}
 }

@@ -1,13 +1,17 @@
 // Package json provides JSON encoding and decoding functions for Risor scripts.
+// Conversion is shared with the http module through internal/convert (issue #34):
+// integral JSON numbers decode to ints, and types without a JSON representation
+// are an error instead of a %v rendering.
 package json
 
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
+
+	"github.com/uidbz/fynerisor/internal/convert"
 )
 
 // Module returns the json module for risor.
@@ -24,37 +28,33 @@ func Module() *object.Module {
 
 func parse(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 1 {
-		return object.Errorf("json.parse: expected 1 argument, got %d", len(args)), nil
+		return nil, object.Errorf("json.parse: expected 1 argument, got %d", len(args))
 	}
 	text, err := object.AsString(args[0])
 	if err != nil {
 		return nil, err
 	}
-	var data any
-	if err := json.Unmarshal([]byte(text), &data); err != nil {
-		return object.NewError(err), nil
+	result, err := convert.DecodeJSON([]byte(text))
+	if err != nil {
+		return nil, err
 	}
-	return interfaceToObject(data)
+	return result, nil
 }
 
 func marshal(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 1 {
-		return object.Errorf("json.marshal: expected 1 argument, got %d", len(args)), nil
+		return nil, object.Errorf("json.marshal: expected 1 argument, got %d", len(args))
 	}
-	data, err := objectToInterface(args[0])
+	out, err := convert.MarshalJSON(args[0], "")
 	if err != nil {
 		return nil, err
-	}
-	out, err := json.Marshal(data)
-	if err != nil {
-		return object.NewError(err), nil
 	}
 	return object.NewString(string(out)), nil
 }
 
 func marshalIndent(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) < 1 || len(args) > 2 {
-		return object.Errorf("json.marshal_indent: expected 1 or 2 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("json.marshal_indent: expected 1 or 2 arguments, got %d", len(args))
 	}
 	indent := "  "
 	if len(args) == 2 {
@@ -64,20 +64,16 @@ func marshalIndent(ctx context.Context, args ...object.Object) (object.Object, e
 		}
 		indent = s
 	}
-	data, err := objectToInterface(args[0])
+	out, err := convert.MarshalJSON(args[0], indent)
 	if err != nil {
 		return nil, err
-	}
-	out, err := json.MarshalIndent(data, "", indent)
-	if err != nil {
-		return object.NewError(err), nil
 	}
 	return object.NewString(string(out)), nil
 }
 
 func valid(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 1 {
-		return object.Errorf("json.valid: expected 1 argument, got %d", len(args)), nil
+		return nil, object.Errorf("json.valid: expected 1 argument, got %d", len(args))
 	}
 	text, err := object.AsString(args[0])
 	if err != nil {
@@ -88,7 +84,7 @@ func valid(ctx context.Context, args ...object.Object) (object.Object, error) {
 
 func read(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 1 {
-		return object.Errorf("json.read: expected 1 argument, got %d", len(args)), nil
+		return nil, object.Errorf("json.read: expected 1 argument, got %d", len(args))
 	}
 	path, err := object.AsString(args[0])
 	if err != nil {
@@ -96,123 +92,36 @@ func read(ctx context.Context, args ...object.Object) (object.Object, error) {
 	}
 	content, err := os.ReadFile(path)
 	if err != nil {
-		return object.NewError(err), nil
+		return nil, err
 	}
-	var data any
-	if err := json.Unmarshal(content, &data); err != nil {
-		return object.NewError(err), nil
+	result, err := convert.DecodeJSON(content)
+	if err != nil {
+		return nil, err
 	}
-	return interfaceToObject(data)
+	return result, nil
 }
 
 func write(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) < 2 || len(args) > 3 {
-		return object.Errorf("json.write: expected 2 or 3 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("json.write: expected 2 or 3 arguments, got %d", len(args))
 	}
 	path, err := object.AsString(args[0])
 	if err != nil {
 		return nil, err
 	}
-	data, err := objectToInterface(args[1])
-	if err != nil {
-		return nil, err
-	}
-	var out []byte
+	indent := ""
 	if len(args) == 3 {
-		indent, err := object.AsString(args[2])
+		indent, err = object.AsString(args[2])
 		if err != nil {
 			return nil, err
 		}
-		out, err = json.MarshalIndent(data, "", indent)
-		if err != nil {
-			return object.NewError(err), nil
-		}
-	} else {
-		out, err = json.Marshal(data)
-		if err != nil {
-			return object.NewError(err), nil
-		}
+	}
+	out, err := convert.MarshalJSON(args[1], indent)
+	if err != nil {
+		return nil, err
 	}
 	if err := os.WriteFile(path, out, 0644); err != nil {
-		return object.NewError(err), nil
+		return nil, err
 	}
 	return object.Nil, nil
-}
-
-// objectToInterface converts a Risor object to a Go interface for JSON marshaling.
-func objectToInterface(obj object.Object) (any, error) {
-	switch v := obj.(type) {
-	case *object.String:
-		return v.Value(), nil
-	case *object.Int:
-		return v.Value(), nil
-	case *object.Float:
-		return v.Value(), nil
-	case *object.Bool:
-		return v.Value(), nil
-	case *object.NilType:
-		return nil, nil
-	case *object.List:
-		result := make([]any, len(v.Value()))
-		for i, item := range v.Value() {
-			val, err := objectToInterface(item)
-			if err != nil {
-				return nil, err
-			}
-			result[i] = val
-		}
-		return result, nil
-	case *object.Map:
-		result := make(map[string]any)
-		for k, val := range v.Value() {
-			converted, err := objectToInterface(val)
-			if err != nil {
-				return nil, err
-			}
-			result[k] = converted
-		}
-		return result, nil
-	default:
-		return fmt.Sprintf("%v", obj), nil
-	}
-}
-
-// interfaceToObject converts a Go interface (from JSON) to a Risor object.
-func interfaceToObject(data any) (object.Object, error) {
-	switch v := data.(type) {
-	case string:
-		return object.NewString(v), nil
-	case float64:
-		return object.NewFloat(v), nil
-	case int64:
-		return object.NewInt(v), nil
-	case int:
-		return object.NewInt(int64(v)), nil
-	case bool:
-		return object.NewBool(v), nil
-	case nil:
-		return object.Nil, nil
-	case []any:
-		items := make([]object.Object, len(v))
-		for i, item := range v {
-			obj, err := interfaceToObject(item)
-			if err != nil {
-				return nil, err
-			}
-			items[i] = obj
-		}
-		return object.NewList(items), nil
-	case map[string]any:
-		objMap := make(map[string]object.Object)
-		for k, val := range v {
-			obj, err := interfaceToObject(val)
-			if err != nil {
-				return nil, err
-			}
-			objMap[k] = obj
-		}
-		return object.NewMap(objMap), nil
-	default:
-		return object.NewString(fmt.Sprintf("%v", v)), nil
-	}
 }
