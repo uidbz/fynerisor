@@ -3,8 +3,6 @@ package gui
 import (
 	"bufio"
 	"context"
-	"io"
-	"net/http"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -1113,44 +1111,4 @@ func (w *Window) captureStdout() {
 			}
 		}
 	}()
-}
-
-// loadScriptFromPath loads script code from a file path or HTTP(S) URL
-func loadScriptFromPath(path string) (string, error) {
-	// Check if it's a URL
-	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
-		return loadScriptFromURL(path)
-	}
-
-	// Otherwise treat as file path
-	return loadScriptFromFile(path)
-}
-
-// loadScriptFromFile loads script code from a local file
-func loadScriptFromFile(path string) (string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", fmt.Errorf("read file: %w", err)
-	}
-	return string(data), nil
-}
-
-// loadScriptFromURL loads script code from an HTTP(S) URL
-func loadScriptFromURL(url string) (string, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return "", fmt.Errorf("http get: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("http status: %d", resp.StatusCode)
-	}
-
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("read response: %w", err)
-	}
-
-	return string(data), nil
 }
