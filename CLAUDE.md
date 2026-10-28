@@ -207,6 +207,9 @@ go build ./...
 # Run tests
 go test ./...
 
+# Race detector (what CI runs; required for any concurrency change)
+go test -race ./...
+
 # Run specific package tests
 go test ./core
 go test ./gui
@@ -221,14 +224,15 @@ go run main.go
 ### In Go Code
 
 ```go
-// Get call function for invoking Risor closures
-callFunc, ok := object.GetCallFunc(ctx)
-if !ok {
-    return nil, fmt.Errorf("unable to get call function")
+// Invoke Risor closures: always go through vmexec (see docs/CONCURRENCY.md).
+// Never call the object.GetCallFunc function directly.
+cb, err := vmexec.NewCallback(ctx, "widget.Thing.OnEvent", args[0])
+if err != nil {
+    return nil, err
 }
-
-// Call Risor function
-result, err := callFunc(ctx, closure, []object.Object{arg1, arg2})
+cb.Fire(arg)          // event: async, queued on the run's VM goroutine
+cb.FireCoalesced(arg) // change-style event: latest value wins
+result, err := cb.Call() // render getter: sync; ErrBusy -> keep last-known value
 
 // Convert Go types to Risor objects
 object.NewString("text")

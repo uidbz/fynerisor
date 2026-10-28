@@ -303,6 +303,44 @@
   state. `vmexec.ErrQueueFull` is gone; `Callback.FireCoalesced` /
   `Run.EnqueueCoalesced` is the new registration API for change events.
 
+### Added
+
+- **CI now runs the race detector (issue #45).** `.github/workflows/ci.yml`
+  runs gofmt, `go vet`, `go build` and `go test -race -count=1 ./...` on
+  every push and pull request. This is the acceptance criterion from the
+  October 2026 review; the `-race` failures it guards against were already
+  fixed on main (issue #15), so the suite is green from the first run.
+- **Regression tests for run reclamation and binding thread safety
+  (issue #45).** `TestReplacedRunIsReclaimed` proves a replaced run's VM
+  environment and its window-side registrations (shortcuts, drop/stdout
+  hooks, the current-run pointer, queued events) become garbage-collectable
+  after a new `Execute` — no leak, and no finalizer or manual `Destroy`
+  needed anywhere. `TestBindingConcurrentWritesKeepLatestValue` and
+  `TestBindingBoundWidgetSyncFromHostGoroutines` hammer a script-visible
+  binding from many host goroutines while listeners and bound widgets are
+  live, pinning down the contract: hosts may read and write bindings from
+  any goroutine (Fyne's storage is internally locked), while script
+  handlers always run on the run's VM goroutine and always see the last
+  value written.
+
+### Changed
+
+- **The data-binding thread-safety contract is documented**
+  (`docs/CONCURRENCY.md`): the wrappers are stateless pass-throughs over
+  Fyne's locked bindings, script access is UI-thread-routed like every
+  other attribute access, and listener notifications coalesce through the
+  run queue. This closes the old roadmap item "per-object mutexes in the
+  binding layer" — the issue #49 routing made those mutexes unnecessary.
+- **Stale docs refreshed (issue #46).** `docs/README.md` no longer claims
+  callbacks "execute on the GUI thread via a function queue" (they run on
+  the run's VM goroutine; the UI thread never blocks), the `CLAUDE.md`
+  callback snippet now shows `vmexec.NewCallback` instead of raw
+  `object.GetCallFunc`, and `docs/IMPROVEMENTS.md` is marked as a
+  historical, superseded plan. `docs/CONCURRENCY.md` gained the "Multiple
+  runs, one UI thread" and "Data bindings" sections covering the
+  multi-window model (one queue + guard per run, one UI thread per
+  process).
+
 ## [0.8.2] - 2026-09-03
 
 ### Added

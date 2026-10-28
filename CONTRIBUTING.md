@@ -59,7 +59,18 @@ go build ./cmd/fynerisor
 
 # Run tests
 go test ./...
+
+# Run tests the way CI does (issue #45: -race is mandatory)
+go test -race -count=1 ./...
 ```
+
+### Concurrency rules
+
+Read `docs/CONCURRENCY.md` before touching callbacks, threading, or any
+widget that stores script functions. In short: every script function goes
+through `vmexec.NewCallback`; script access to Fyne objects runs on the
+UI thread via `guithread`; the UI thread never waits on the VM. CI runs
+`go test -race ./...` on every push and PR.
 
 ### Running Examples
 

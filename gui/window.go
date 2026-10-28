@@ -779,6 +779,9 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 
 			w.cbMu.Lock()
 			w.onNewStdout = func(text string) {
+				// Discrete, never dropped: each call carries one distinct
+				// output line, so coalescing would lose data; the queue is
+				// unbounded (issue #51).
 				cb.Fire(object.NewString(text))
 			}
 			w.stdoutSink, w.stdoutOwner = nil, vmexec.FromContext(ctx)

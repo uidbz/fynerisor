@@ -1153,7 +1153,7 @@ Each Fyne widget is wrapped in a Risor object that:
 
 ### Callback Execution
 
-Widget callbacks execute on the GUI thread via a function queue. This ensures thread-safe UI updates from Risor scripts.
+Widget callbacks run on the script's own VM goroutine, queued through `gui/vmexec` — never on Fyne's UI thread, which never blocks. Script access to Fyne objects is routed to the UI thread. See [CONCURRENCY.md](CONCURRENCY.md).
 
 ## Risor v2 Syntax
 

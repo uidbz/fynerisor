@@ -74,6 +74,44 @@ never runs on the UI thread. Real parallelism belongs in Go: a host global or
 module does the work on its own goroutines and reports back with
 `Callback.Fire`.
 
+## Multiple runs, one UI thread
+
+One process has one Fyne UI thread (`guithread.SetMain` at app start). Any
+number of runs can coexist — two Windows, an embedded `CanvasObject` next
+to a window, a browser reload racing a host `Execute` — and each owns its
+own `vmexec.Run`: its queue, its guard, its VM goroutine. Queues never
+interfere: a run stuck in a slow handler cannot stall another window's
+events, and `ErrBusy` contention is per-run, never process-wide.
+
+What serializes them is the UI thread: every script-visible Fyne access
+(widget, table, binding attributes) is routed there by `guithread`
+(issue #49), so the Fyne object graph needs no locks of its own — all
+mutation of it happens on that single thread, whether it came from a tap,
+a getter, or another run. Fyne's own callbacks arrive on the same thread.
+Because each run's UI-thread work is either queued (`guithread.Do`) or
+abandoned when its run stops, no run can wait on another: the
+no-deadlock property above holds across runs, not just per run.
+
+## Data bindings
+
+`binding.NewString/NewInt/NewFloat/NewBool` wrappers are stateless — they
+hold no caches and add no mutexes of their own, and none are needed
+(this replaces the older "per-object mutexes in the binding layer" plan;
+the issue #49 routing made it moot):
+
+- Every script-side `Get`/`Set`/`AddListener` runs on the UI thread, like
+  all script attribute access.
+- Fyne's binding storage is internally locked, so a **Go host** may read
+  and write the bindings it hands to scripts (`Interface()` returns the
+  `fyne.io/fyne/v2/data/binding` value) from any goroutine, concurrently.
+- Listeners fire on the goroutine that performed the `Set` — Fyne's UI
+  thread when a widget changed the value, the host's goroutine when the
+  host did. The **script's** handler never runs there: each notification
+  becomes a coalesced event (`Callback.FireCoalesced`, issue #51) on the
+  owning run's queue. The last value written is always delivered;
+  intermediate values may collapse.
+- A listener registered by a stopped run is inert.
+
 ## Writing a widget callback
 
 Use `vmexec.NewCallback`. Never call the `object.CallFunc` from

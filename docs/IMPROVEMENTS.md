@@ -1,5 +1,12 @@
 # fynerisor Improvements for Standalone Repository
 
+> **HISTORICAL DOCUMENT — superseded.** This was the plan for extracting
+> fynerisor into a standalone repository; every priority in it is done.
+> It is retained for context only and must not guide new work. Current
+> references: `docs/CODE_REVIEW.md` for the 2026-10 review and its open
+> backlog, `docs/CONCURRENCY.md` for the threading model, `CHANGELOG.md`
+> for what changed. (issue #46)
+
 This document outlines improvements needed before extracting fynerisor into a separate Git repository for use by multiple applications.
 
 ## Priority 1: Architectural Changes
