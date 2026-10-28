@@ -48,6 +48,14 @@ a **`vmexec.Run`**:
   at once and returns its last-known value.
   `Callback.RefreshWhenBusy(widget.Refresh)` re-renders the widget once the
   VM is idle again.
+- **Template getters never answer with a fake** (issue #50). Fyne holds
+  whatever `List`/`GridWrap` `CreateItem` or `Tree` `CreateNode` returns
+  for the row's whole life, so on a busy run they return an invisible
+  `templateSlot` — a real widget that measures through the script's
+  object and materializes the script's actual widget when a later getter
+  can enter the VM. `Table`'s `CreateCell` returns `nil` (Fyne leaves the
+  cell empty and flextable retries). A getter is never allowed to hand
+  Fyne a placeholder the script didn't create.
 - **No deadlock between the two sides.** The UI thread never waits for the
   VM: it only enqueues or try-locks. The VM goroutine may wait for the UI
   thread (`guithread.DoAndWaitContext`), and gives up when its run is stopped.
