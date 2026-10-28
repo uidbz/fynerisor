@@ -13,7 +13,6 @@ require (
 	github.com/uidbz/tie v0.7.3
 	github.com/xo/dburl v0.24.2
 	github.com/xuri/excelize/v2 v2.10.1
-	golang.design/x/clipboard v0.7.1
 )
 
 require (
@@ -78,9 +77,7 @@ require (
 	github.com/yuin/goldmark v1.8.2 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
-	golang.org/x/exp/shiny v0.0.0-20250606033433-dcc06ee1d476 // indirect
 	golang.org/x/image v0.34.0 // indirect
-	golang.org/x/mobile v0.0.0-20250606033058-a2a15c67f36f // indirect
 	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
