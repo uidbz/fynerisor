@@ -1,3 +1,8 @@
+// Package sql provides the @sql module: database/sql access for scripts.
+//
+// The sqlite3 driver (github.com/mattn/go-sqlite3) is built with cgo, so
+// binaries that enable @sql require CGO_ENABLED=1. Other drivers reached
+// through dburl (mysql, postgres, ...) are pure Go. (issue #26 note)
 package sql
 
 import (
@@ -108,7 +113,7 @@ func (db *DB) Exec(ctx context.Context, args ...object.Object) (object.Object, e
 	for _, queryArg := range args[1:] {
 		queryArgs = append(queryArgs, queryArg.Interface())
 	}
-	_, execErr := db.conn.Exec(query, queryArgs...)
+	_, execErr := db.conn.ExecContext(ctx, query, queryArgs...)
 	if execErr != nil {
 		return nil, execErr
 	}
@@ -133,8 +138,10 @@ func (db *DB) Query(ctx context.Context, args ...object.Object) (object.Object, 
 		queryArgs = append(queryArgs, queryArg.Interface())
 	}
 
-	// Start the query
-	rows, queryErr := db.conn.Query(query, queryArgs...)
+	// Start the query. QueryContext binds the rows to the script's
+	// context: a stopped script cancels the in-flight query instead of
+	// letting it run to completion (issue #26).
+	rows, queryErr := db.conn.QueryContext(ctx, query, queryArgs...)
 	if queryErr != nil || rows.Err() != nil {
 		return nil, fmt.Errorf("failed to query db: %w", queryErr)
 	}
@@ -175,6 +182,11 @@ func (db *DB) Query(ctx context.Context, args ...object.Object) (object.Object, 
 		}
 
 		rowList.Append(row)
+	}
+	// rows.Next() ends on errors too (cancellation included): surface it
+	// instead of returning a silently truncated list.
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return rowList, nil
