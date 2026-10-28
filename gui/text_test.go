@@ -3,7 +3,6 @@ package gui
 import (
 	"testing"
 	"time"
-
 )
 
 // TestCanvasText verifies canvas.NewText (colored text) and the Label

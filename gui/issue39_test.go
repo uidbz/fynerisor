@@ -7,7 +7,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
 )
 
 // stateLog records lifecycle transitions reported by WithOnStateChange.

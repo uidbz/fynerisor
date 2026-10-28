@@ -11,8 +11,8 @@ import (
 func main() {
 	// Create fynerisor window with os and strings modules enabled
 	fyneWindow := gui.NewApp("Image Gallery",
-		gui.WithOS(),       // Enable os module for file operations
-		gui.WithStrings(),  // Enable strings module for string operations
+		gui.WithOS(),      // Enable os module for file operations
+		gui.WithStrings(), // Enable strings module for string operations
 		gui.WithStatusCallback(func(status string) {
 			fmt.Println("Status:", status)
 		}),

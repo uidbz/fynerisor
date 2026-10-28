@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
 )
 
 // TestInteractiveChartsScript verifies the new interactive chart method

@@ -3,7 +3,6 @@ package gui
 import (
 	"testing"
 	"time"
-
 )
 
 // TestScrollToBottom verifies the ScrollToBottom/ScrollToTop bindings exposed

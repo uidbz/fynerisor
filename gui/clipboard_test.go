@@ -3,7 +3,6 @@ package gui
 import (
 	"testing"
 	"time"
-
 )
 
 // TestClipboard verifies the clipboard global's Copy/Read builtins and the

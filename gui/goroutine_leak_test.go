@@ -4,7 +4,6 @@ import (
 	"runtime"
 	"testing"
 	"time"
-
 )
 
 func TestNoGoroutineLeaks(t *testing.T) {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 )
 

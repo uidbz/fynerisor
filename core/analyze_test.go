@@ -6,12 +6,12 @@ import (
 
 func TestAnalyzeRequirements(t *testing.T) {
 	tests := []struct {
-		name            string
-		script          string
-		wantMinVersion  string
-		wantModules     []string
-		wantImports     []string
-		wantRawCount    int
+		name           string
+		script         string
+		wantMinVersion string
+		wantModules    []string
+		wantImports    []string
+		wantRawCount   int
 	}{
 		{
 			name: "single version requirement",

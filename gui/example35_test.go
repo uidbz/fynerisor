@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
 )
 
 // runScriptCapturingErrors loads a script into a test window, executes it,

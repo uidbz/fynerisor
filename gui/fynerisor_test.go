@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
 )
 
 // TestWidgetCreation tests that all widget types can be created

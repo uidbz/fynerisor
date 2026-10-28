@@ -11,17 +11,17 @@ import (
 // Module returns the strings module for risor
 func Module() *object.Module {
 	return object.NewBuiltinsModule("strings", map[string]object.Object{
-		"replace_all":  object.NewBuiltin("strings.replace_all", replaceAll),
-		"trim_prefix":  object.NewBuiltin("strings.trim_prefix", trimPrefix),
-		"trim_suffix":  object.NewBuiltin("strings.trim_suffix", trimSuffix),
-		"trim":         object.NewBuiltin("strings.trim", trim),
-		"to_lower":     object.NewBuiltin("strings.to_lower", toLower),
-		"to_upper":     object.NewBuiltin("strings.to_upper", toUpper),
-		"split":        object.NewBuiltin("strings.split", split),
-		"join":         object.NewBuiltin("strings.join", join),
-		"contains":     object.NewBuiltin("strings.contains", contains),
-		"has_prefix":   object.NewBuiltin("strings.has_prefix", hasPrefix),
-		"has_suffix":   object.NewBuiltin("strings.has_suffix", hasSuffix),
+		"replace_all": object.NewBuiltin("strings.replace_all", replaceAll),
+		"trim_prefix": object.NewBuiltin("strings.trim_prefix", trimPrefix),
+		"trim_suffix": object.NewBuiltin("strings.trim_suffix", trimSuffix),
+		"trim":        object.NewBuiltin("strings.trim", trim),
+		"to_lower":    object.NewBuiltin("strings.to_lower", toLower),
+		"to_upper":    object.NewBuiltin("strings.to_upper", toUpper),
+		"split":       object.NewBuiltin("strings.split", split),
+		"join":        object.NewBuiltin("strings.join", join),
+		"contains":    object.NewBuiltin("strings.contains", contains),
+		"has_prefix":  object.NewBuiltin("strings.has_prefix", hasPrefix),
+		"has_suffix":  object.NewBuiltin("strings.has_suffix", hasSuffix),
 	})
 }
 

@@ -3,7 +3,6 @@ package gui
 import (
 	"testing"
 	"time"
-
 )
 
 // TestRectangle verifies the canvas.NewRectangle binding: constructor with
