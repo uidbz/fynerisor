@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/deepnoodle-ai/risor/v2"
-	"github.com/deepnoodle-ai/risor/v2/pkg/object"
+	"github.com/deepnoodle-ai/risor/v2/pkg/ast"
+	"github.com/deepnoodle-ai/risor/v2/pkg/parser"
 )
 
 // Requirements represents parsed script requirements
@@ -16,131 +16,132 @@ type Requirements struct {
 	RequiredModules []string // List of required modules (e.g., ["sql", "http"])
 	Imports         []string // List of import paths/URLs (e.g., ["utils.risor", "http://..."])
 	Raw             []string // Raw requirement strings
+	Dynamic         []string // require()/import() call sites whose arguments are
+	// not string literals (they carry line numbers); the values
+	// are unknowable statically and were NOT evaluated (issue #23)
 }
 
-// AnalyzeRequirements parses a Risor script and extracts all require() calls.
-// This function is useful for external applications that need to understand
-// script dependencies before execution.
+// AnalyzeRequirements parses a Risor script and extracts require() and
+// import() call sites *without executing anything* (issue #23). The
+// script is parsed once with Risor's own parser and walked as an AST:
+// `let m = import("utils.risor")`, multi-line `require([...])` and
+// calls nested in blocks are all found; `require(` inside a comment is
+// not. Arguments that are not string/list literals are recorded in
+// Dynamic (with line numbers) rather than evaluated.
 //
-// It compiles the script and inspects require() calls without executing the
-// full script logic.
+// A syntax error in the script is returned as an error (the old
+// line-based version silently skipped lines it could not evaluate, and
+// its error return was always nil).
 //
 // Example:
 //
 //	script := `
 //	    require(["v0.2", "@sql", "@http"])
-//	    let btn = widget.NewButton("Hello", () => {})
+//	    let utils = import("utils.risor")
 //	`
-//	reqs, err := fynerisor.AnalyzeRequirements(script)
+//	reqs, err := core.AnalyzeRequirements(script)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
 //	fmt.Println("Requires version:", reqs.MinVersion)
 //	fmt.Println("Requires modules:", reqs.RequiredModules)
+//	fmt.Println("Imports:", reqs.Imports)
 func AnalyzeRequirements(script string) (*Requirements, error) {
 	reqs := &Requirements{
 		RequiredModules: []string{},
 		Imports:         []string{},
 		Raw:             []string{},
+		Dynamic:         []string{},
 	}
 
-	// Create a mock require function that captures requirements
-	capturedReqs := []string{}
-	mockRequire := object.NewBuiltin("require", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-		if len(args) != 1 {
-			return object.Nil, nil
-		}
-
-		// Handle string argument
-		if str, ok := args[0].(*object.String); ok {
-			capturedReqs = append(capturedReqs, str.Value())
-			return object.Nil, nil
-		}
-
-		// Handle list argument
-		if list, ok := args[0].(*object.List); ok {
-			for _, item := range list.Value() {
-				if str, ok := item.(*object.String); ok {
-					capturedReqs = append(capturedReqs, str.Value())
-				}
-			}
-			return object.Nil, nil
-		}
-
-		return object.Nil, nil
-	})
-
-	// Create a mock import function that captures imports
-	capturedImports := []string{}
-	mockImport := object.NewBuiltin("import", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-		if len(args) != 1 {
-			return object.Nil, nil
-		}
-
-		// Handle string argument
-		if str, ok := args[0].(*object.String); ok {
-			capturedImports = append(capturedImports, str.Value())
-			return object.Nil, nil
-		}
-
-		// Handle list argument
-		if list, ok := args[0].(*object.List); ok {
-			for _, item := range list.Value() {
-				if str, ok := item.(*object.String); ok {
-					capturedImports = append(capturedImports, str.Value())
-				}
-			}
-			return object.Nil, nil
-		}
-
-		return object.Nil, nil
-	})
-
-	// Create minimal environment with mock functions
-	env := map[string]any{
-		"require": mockRequire,
-		"import":  mockImport,
+	prog, err := parser.Parse(context.Background(), script, nil)
+	if err != nil {
+		return nil, fmt.Errorf("analyze: %w", err)
 	}
 
-	// Try to evaluate just the require/import calls
-	// We'll parse line by line looking for require() and import() calls
-	lines := strings.Split(script, "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "require(") || strings.HasPrefix(line, "import(") {
-			// Extract the requirement/import string
-			// Try to evaluate just this line
-			_, err := risor.Eval(context.Background(), line, risor.WithEnv(env))
-			if err != nil {
-				// Ignore errors - script might reference undefined variables
+	for node := range ast.Preorder(prog) {
+		call, ok := node.(*ast.Call)
+		if !ok {
+			continue
+		}
+		fn, ok := call.Fun.(*ast.Ident)
+		if !ok {
+			continue // method calls like utils.require() are not ours
+		}
+		if fn.Name != "require" && fn.Name != "import" {
+			continue
+		}
+
+		var literals []string
+		static := true
+		for _, arg := range call.Args {
+			names, ok := literalRequirementStrings(arg)
+			if !ok {
+				static = false
 				continue
 			}
+			literals = append(literals, names...)
 		}
-	}
+		if !static {
+			reqs.Dynamic = append(reqs.Dynamic,
+				fmt.Sprintf("%s() at line %d", fn.Name, call.Pos().Line))
+		}
 
-	// Parse captured requirements
-	for _, req := range capturedReqs {
-		reqs.Raw = append(reqs.Raw, req)
-
-		// Parse version requirement
-		if strings.HasPrefix(req, "==v") {
-			version := strings.TrimPrefix(req, "==v")
-			reqs.ExactVersion = version
-		} else if strings.HasPrefix(req, "v") {
-			version := strings.TrimPrefix(req, "v")
-			if reqs.MinVersion == "" || compareVersions(version, reqs.MinVersion) > 0 {
-				reqs.MinVersion = version
+		for _, lit := range literals {
+			if fn.Name == "import" {
+				reqs.Imports = append(reqs.Imports, lit)
+				continue
 			}
-		} else if strings.HasPrefix(req, "@") {
-			moduleName := strings.TrimPrefix(req, "@")
-			reqs.RequiredModules = append(reqs.RequiredModules, moduleName)
+			addRequirement(reqs, lit)
 		}
 	}
-
-	// Store captured imports (in order)
-	reqs.Imports = capturedImports
 
 	return reqs, nil
+}
+
+// literalRequirementStrings extracts the requirement strings an
+// argument denotes statically: a string literal, or a list literal of
+// string literals (the require([...]) form). Anything dynamic
+// (identifiers, concatenation, template strings, spreads) reports
+// ok=false so the caller records it instead of evaluating it.
+func literalRequirementStrings(arg ast.Node) ([]string, bool) {
+	switch a := arg.(type) {
+	case *ast.String:
+		if len(a.Exprs) > 0 {
+			return nil, false // template string: interpolated, dynamic
+		}
+		return []string{a.Value}, true
+	case *ast.List:
+		var out []string
+		for _, item := range a.Items {
+			names, ok := literalRequirementStrings(item)
+			if !ok || len(names) != 1 {
+				return nil, false
+			}
+			out = append(out, names[0])
+		}
+		return out, true
+	default:
+		return nil, false
+	}
+}
+
+// addRequirement records one raw requirement string, splitting it into
+// the version/module fields the struct exposes.
+func addRequirement(reqs *Requirements, req string) {
+	reqs.Raw = append(reqs.Raw, req)
+
+	switch {
+	case strings.HasPrefix(req, "==v"):
+		reqs.ExactVersion = strings.TrimPrefix(req, "==v")
+	case strings.HasPrefix(req, "v"):
+		version := strings.TrimPrefix(req, "v")
+		if reqs.MinVersion == "" || compareVersions(version, reqs.MinVersion) > 0 {
+			reqs.MinVersion = version
+		}
+	case strings.HasPrefix(req, "@"):
+		reqs.RequiredModules = append(reqs.RequiredModules, strings.TrimPrefix(req, "@"))
+	}
 }
 
 // compareVersions compares two version strings (without 'v' prefix)
@@ -186,6 +187,10 @@ func (r *Requirements) String() string {
 
 	if len(r.Imports) > 0 {
 		parts = append(parts, fmt.Sprintf("imports: %s", strings.Join(r.Imports, ", ")))
+	}
+
+	if len(r.Dynamic) > 0 {
+		parts = append(parts, fmt.Sprintf("dynamic: %s", strings.Join(r.Dynamic, ", ")))
 	}
 
 	if len(parts) == 0 {

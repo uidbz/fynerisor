@@ -420,6 +420,15 @@
   tuning only. The CLI passes its `args` global and `--globals` JSON
   per key through `WithGlobal`, making them genuinely visible to
   imported modules.
+- **`AnalyzeRequirements` is a real parser walk (issue #23).** It used
+  to Eval each line starting with `require(`/`import(`: it missed
+  `let m = import("m.risor")` and multi-line `require([...])`, could
+  *execute* arbitrary expressions during "analysis", never reported
+  errors, and matched `require(` inside comments. Now the script is
+  parsed once (Risor's own parser) and the AST walked: static string/
+  list arguments are collected, non-literal arguments are reported in
+  the new `Dynamic` field with line numbers instead of evaluated, and
+  syntax errors are returned.
 
 ## [0.8.2] - 2026-09-03
 
