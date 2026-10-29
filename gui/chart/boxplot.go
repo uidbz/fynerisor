@@ -11,6 +11,7 @@ import (
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 )
 
 var _ object.Object = &BoxPlot{}
@@ -102,8 +103,8 @@ func (r *BoxPlot) Equals(other object.Object) bool {
 	return r == other
 }
 
-func (r *BoxPlot) Attrs() []object.AttrSpec {
-	return nil
+func (*BoxPlot) Attrs() []object.AttrSpec {
+	return append(boxPlotAttrs.Specs(), saveImageSpec)
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -284,41 +285,60 @@ func (g *BoxPlot) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, g.getAttrUI)
 }
 
+var boxPlotAttrs = object.NewAttrRegistry[*BoxPlot](string(BoxPlotType))
+
 func (g *BoxPlot) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "SetData":
-		return object.NewBuiltin("chart.boxplot.SetData", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-			labels, err := stringSliceArg(args[0])
+	if o, ok := boxPlotAttrs.GetAttr(g, name); ok {
+		return o, true
+	}
+	return g.chartCore.getAttr(name)
+}
+func init() {
+	objattrs.Add(boxPlotAttrs)
+	addInteractive(boxPlotAttrs)
+	boxPlotAttrs.Define(
+		"SetData",
+	).Args("arg1",
+		"arg2",
+	).Returns("nil").Impl(func(g *BoxPlot, ctx context.Context, args ...object.Object) (object.
+		Object, error) {
+		labels, err := stringSliceArg(args[0])
+		if err != nil {
+			return nil,
+				err
+
+		}
+		list, ok := args[1].(*object.
+			List)
+		if !ok {
+			return nil, fmt.
+				Errorf("type error: expected a list of lists for datasets, got %s",
+
+					args[1].Type())
+		}
+
+		datasets := make([][]float64, 0, len(list.Value()))
+		for _, item := range list.
+			Value() {
+			ds, err := floatSliceArg(item)
 			if err != nil {
 				return nil, err
 			}
-			list, ok := args[1].(*object.List)
-			if !ok {
-				return nil, fmt.Errorf("type error: expected a list of lists for datasets, got %s", args[1].Type())
-			}
-			datasets := make([][]float64, 0, len(list.Value()))
-			for _, item := range list.Value() {
-				ds, err := floatSliceArg(item)
-				if err != nil {
-					return nil, err
-				}
-				datasets = append(datasets, ds)
-			}
-			if len(labels) != len(datasets) {
-				return nil, fmt.Errorf("chart error: labels and datasets must have same length (got %d labels, %d datasets)", len(labels), len(datasets))
-			}
-			guithread.Do(func() {
-				g.labels, g.datasets = labels, datasets
-				g.computeStats()
-				g.clearHover()
-				g.recomputeDomains()
-				g.refresh()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return g.chartCore.getAttr(name)
+			datasets = append(datasets, ds)
+		}
+		if len(labels) != len(datasets) {
+			return nil, fmt.Errorf("chart error: labels and datasets must have same length (got %d labels, %d datasets)",
+				len(labels), len(datasets))
+		}
+		guithread.Do(func() {
+			g.labels, g.datasets =
+				labels, datasets
+			g.computeStats()
+			g.clearHover()
+			g.recomputeDomains()
+			g.refresh()
+		})
+		return object.Nil, nil
+	},
+	)
 }

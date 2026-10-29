@@ -52,7 +52,7 @@ func (obj *CustomDialog) Equals(other object.Object) bool {
 }
 
 func (obj *CustomDialog) Attrs() []object.AttrSpec {
-	return nil
+	return customDialogAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -69,96 +69,11 @@ func (obj *CustomDialog) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var customDialogAttrs = object.NewAttrRegistry[*CustomDialog](string(CustomDialogType))
+
 func (obj *CustomDialog) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Show":
-		return object.NewBuiltin("dialog.CustomDialog.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("dialog.CustomDialog.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Refresh":
-		return object.NewBuiltin("dialog.CustomDialog.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Refresh()
-			})
-			return object.Nil, nil
-		}), true
-	case "Resize":
-		return object.NewBuiltin("dialog.CustomDialog.Resize", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-			width, err := object.AsFloat(args[0])
-			if err != nil {
-				return nil, object.Errorf("argument error: width must be a number, got %s", args[0].Type())
-			}
-			height, err := object.AsFloat(args[1])
-			if err != nil {
-				return nil, object.Errorf("argument error: height must be a number, got %s", args[1].Type())
-			}
-			guithread.Do(func() {
-				obj.instance.Resize(fyne.NewSize(float32(width), float32(height)))
-			})
-			return object.Nil, nil
-		}), true
-	case "SetDismissText":
-		return object.NewBuiltin("dialog.CustomDialog.SetDismissText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			text, err := object.AsString(args[0])
-			if err != nil {
-				return nil, object.Errorf("type error: %v", err)
-			}
-			guithread.Do(func() {
-				obj.instance.SetDismissText(text)
-			})
-			return object.Nil, nil
-		}), true
-	case "SetButtons":
-		return object.NewBuiltin("dialog.CustomDialog.SetButtons", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			buttonsList, ok := args[0].(*object.List)
-			if !ok {
-				return nil, object.Errorf("type error: buttons must be a list, got %s", args[0].Type())
-			}
+	return customDialogAttrs.GetAttr(obj, name)
 
-			var buttons []fyne.CanvasObject
-			for i, btn := range buttonsList.Value() {
-				canvasObj, ok := btn.(interface{ CanvasObject() fyne.CanvasObject })
-				if !ok {
-					return nil, object.Errorf("type error: button %d is not a canvas object", i)
-				}
-				buttons = append(buttons, canvasObj.CanvasObject())
-			}
-
-			guithread.Do(func() {
-				obj.instance.SetButtons(buttons)
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
 }
 
 func NewCustom(title, dismiss string, content fyne.CanvasObject, parent fyne.Window) *CustomDialog {
@@ -173,4 +88,124 @@ func NewCustomWithoutButtons(title string, content fyne.CanvasObject, parent fyn
 		instance: dialog.NewCustomWithoutButtons(title, content, parent),
 		window:   parent,
 	}
+}
+func init() {
+	customDialogAttrs.
+		Define(
+			"Show").Args().Returns("nil").Impl(func(obj *CustomDialog, ctx context.
+		Context, args ...object.Object) (object.
+		Object, error) {
+		guithread.Do(func() {
+			obj.instance.
+				Show()
+		})
+		return object.Nil, nil
+	})
+	customDialogAttrs.
+		Define(
+			"Hide").Args().Returns("nil").Impl(func(obj *CustomDialog, ctx context.
+		Context, args ...object.Object) (object.
+		Object, error) {
+		guithread.Do(func() {
+			obj.instance.
+				Hide()
+		})
+		return object.Nil, nil
+	})
+	customDialogAttrs.
+		Define(
+			"Refresh").
+		Args().
+		Returns("nil").Impl(
+		func(obj *CustomDialog, ctx context.Context, args ...object.Object) (object.
+			Object, error) {
+			guithread.Do(func() {
+				obj.
+					instance.Refresh()
+			})
+			return object.Nil, nil
+
+		})
+	customDialogAttrs.
+		Define(
+			"Resize").Args("arg1",
+
+		"arg2").Returns("nil").Impl(func(obj *CustomDialog, ctx context.Context, args ...object.
+		Object) (object.Object, error) {
+		width, err :=
+			object.AsFloat(args[0])
+		if err != nil {
+			return nil, object.Errorf("argument error: width must be a number, got %s",
+
+				args[0].Type())
+		}
+		height,
+
+			err := object.AsFloat(args[1])
+		if err != nil {
+			return nil, object.
+				Errorf("argument error: height must be a number, got %s",
+
+					args[1].Type())
+		}
+
+		guithread.Do(func() {
+			obj.instance.Resize(fyne.
+				NewSize(float32(width),
+					float32(height)))
+		})
+		return object.Nil, nil
+	})
+	customDialogAttrs.
+		Define(
+			"SetDismissText",
+		).
+		Args("arg1").Returns("nil").Impl(func(obj *CustomDialog, ctx context.Context, args ...object.
+		Object) (object.Object, error) {
+		text, err :=
+			object.AsString(args[0])
+		if err != nil {
+			return nil, object.Errorf("type error: %v",
+
+				err)
+		}
+		guithread.Do(func() {
+			obj.instance.SetDismissText(
+				text)
+		})
+		return object.Nil, nil
+	})
+	customDialogAttrs.
+		Define(
+			"SetButtons",
+		).Args(
+		"arg1").Returns("nil").Impl(func(obj *CustomDialog, ctx context.Context, args ...object.Object) (object.Object, error) {
+		buttonsList, ok :=
+			args[0].(*object.List)
+		if !ok {
+			return nil,
+
+				object.Errorf("type error: buttons must be a list, got %s",
+
+					args[0].Type())
+		}
+		var buttons []fyne.
+			CanvasObject
+		for i, btn := range buttonsList.Value() {
+			canvasObj,
+				ok := btn.(interface {
+				CanvasObject() fyne.CanvasObject
+			})
+			if !ok {
+				return nil, object.Errorf("type error: button %d is not a canvas object",
+					i)
+			}
+
+			buttons = append(buttons, canvasObj.CanvasObject())
+		}
+		guithread.Do(func() {
+			obj.instance.SetButtons(buttons)
+		})
+		return object.Nil, nil
+	})
 }

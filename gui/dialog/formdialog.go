@@ -53,7 +53,7 @@ func (obj *FormDialog) Equals(other object.Object) bool {
 }
 
 func (obj *FormDialog) Attrs() []object.AttrSpec {
-	return nil
+	return formDialogAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -70,82 +70,11 @@ func (obj *FormDialog) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var formDialogAttrs = object.NewAttrRegistry[*FormDialog](string(FormDialogType))
+
 func (obj *FormDialog) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Show":
-		return object.NewBuiltin("dialog.FormDialog.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("dialog.FormDialog.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Refresh":
-		return object.NewBuiltin("dialog.FormDialog.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Refresh()
-			})
-			return object.Nil, nil
-		}), true
-	case "Resize":
-		return object.NewBuiltin("dialog.FormDialog.Resize", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-			width, err := object.AsFloat(args[0])
-			if err != nil {
-				return nil, object.Errorf("argument error: width must be a number, got %s", args[0].Type())
-			}
-			height, err := object.AsFloat(args[1])
-			if err != nil {
-				return nil, object.Errorf("argument error: height must be a number, got %s", args[1].Type())
-			}
-			guithread.Do(func() {
-				obj.instance.Resize(fyne.NewSize(float32(width), float32(height)))
-			})
-			return object.Nil, nil
-		}), true
-	case "SetDismissText":
-		return object.NewBuiltin("dialog.FormDialog.SetDismissText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			text, err := object.AsString(args[0])
-			if err != nil {
-				return nil, object.Errorf("type error: %v", err)
-			}
-			guithread.Do(func() {
-				obj.instance.SetDismissText(text)
-			})
-			return object.Nil, nil
-		}), true
-	case "Submit":
-		return object.NewBuiltin("dialog.FormDialog.Submit", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Submit()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
+	return formDialogAttrs.GetAttr(obj, name)
+
 }
 
 func NewForm(title, confirm, dismiss string, items []*widget.FormItem, callback func(bool), parent fyne.Window) *FormDialog {
@@ -153,4 +82,81 @@ func NewForm(title, confirm, dismiss string, items []*widget.FormItem, callback 
 		instance: dialog.NewForm(title, confirm, dismiss, items, callback, parent),
 		window:   parent,
 	}
+}
+func init() {
+	formDialogAttrs.
+		Define("Show").Args().Returns("nil").Impl(func(
+		obj *FormDialog, ctx context.
+			Context, args ...object.
+			Object) (object.Object, error) {
+		guithread.
+			Do(func() { obj.instance.Show() })
+		return object.
+			Nil, nil
+	})
+	formDialogAttrs.
+		Define("Hide").Args().Returns("nil").Impl(func(
+		obj *FormDialog, ctx context.
+			Context, args ...object.
+			Object) (object.Object, error) {
+		guithread.
+			Do(func() { obj.instance.Hide() })
+		return object.
+			Nil, nil
+	})
+	formDialogAttrs.
+		Define("Refresh").Args().Returns("nil").Impl(func(obj *FormDialog, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		guithread.
+			Do(func() { obj.instance.Refresh() })
+		return object.Nil, nil
+	})
+	formDialogAttrs.
+		Define("Resize").Args("arg1",
+
+		"arg2").Returns("nil").Impl(func(obj *FormDialog, ctx context.Context, args ...object.Object) (object.Object, error) {
+		width, err := object.AsFloat(args[0])
+		if err !=
+			nil {
+			return nil, object.Errorf("argument error: width must be a number, got %s",
+
+				args[0].Type())
+		}
+		height, err := object.AsFloat(args[1])
+		if err != nil {
+			return nil, object.Errorf("argument error: height must be a number, got %s",
+
+				args[1].Type())
+		}
+		guithread.Do(
+			func() {
+				obj.instance.Resize(fyne.NewSize(float32(width), float32(height)))
+			})
+		return object.Nil, nil
+	})
+	formDialogAttrs.
+		Define("SetDismissText").Args("arg1").Returns("nil").Impl(func(obj *FormDialog, ctx context.Context, args ...object.Object) (object.Object, error) {
+		text, err := object.AsString(args[0])
+		if err !=
+			nil {
+			return nil, object.Errorf("type error: %v",
+
+				err)
+		}
+		guithread.Do(func() {
+			obj.instance.SetDismissText(text)
+		})
+		return object.
+			Nil, nil
+	})
+	formDialogAttrs.
+		Define("Submit").Args().Returns("nil").Impl(func(obj *FormDialog, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		guithread.
+			Do(func() { obj.instance.Submit() })
+		return object.
+			Nil, nil
+	})
 }

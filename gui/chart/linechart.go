@@ -11,6 +11,7 @@ import (
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 )
 
 var _ object.Object = &LineChart{}
@@ -87,8 +88,8 @@ func (r *LineChart) Equals(other object.Object) bool {
 	return r == other
 }
 
-func (r *LineChart) Attrs() []object.AttrSpec {
-	return nil
+func (*LineChart) Attrs() []object.AttrSpec {
+	return append(lineChartAttrs.Specs(), saveImageSpec)
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -188,65 +189,82 @@ func (g *LineChart) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, g.getAttrUI)
 }
 
+var lineChartAttrs = object.NewAttrRegistry[*LineChart](string(LineChartType))
+
 func (g *LineChart) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "SetPoints":
-		return object.NewBuiltin("chart.linechart.SetPoints", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
+	if o, ok := lineChartAttrs.GetAttr(g, name); ok {
+		return o, true
+	}
+	return g.chartCore.getAttr(name)
+}
+func init() {
+	objattrs.Add(lineChartAttrs)
+	addInteractive(lineChartAttrs)
+	lineChartAttrs.Define("SetPoints").Args(
+		"arg1",
+		"arg2").Returns("nil").
+		Impl(func(g *LineChart, ctx context.Context, args ...object.Object) (object.Object, error) {
 			xs, err := floatSliceArg(args[0])
 			if err != nil {
-				return nil, err
+				return nil,
+					err
+
 			}
 			ys, err := floatSliceArg(args[1])
 			if err != nil {
 				return nil, err
 			}
 			if len(xs) != len(ys) {
-				return nil, fmt.Errorf("chart error: x and y values must have same length (got %d x values, %d y values)", len(xs), len(ys))
+				return nil,
+
+					fmt.Errorf("chart error: x and y values must have same length (got %d x values, %d y values)",
+
+						len(xs), len(ys))
 			}
 			guithread.Do(func() {
 				g.xvals, g.yvals = xs, ys
 				g.clearHover()
 				g.recomputeDomains()
-				g.refresh()
+				g.
+					refresh()
 			})
 			return object.Nil, nil
-		}), true
-	case "SetColor":
-		return object.NewBuiltin("chart.linechart.SetColor", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
+		})
+	lineChartAttrs.Define("SetColor").Args("arg1").
+		Returns("nil").
+		Impl(func(g *LineChart, ctx context.
+			Context, args ...object.Object) (object.Object, error) {
 			col, err := colorArg(args[0])
 			if err != nil {
 				return nil, err
 			}
-			guithread.Do(func() {
-				g.color = col
-				g.refresh()
-			})
+			guithread.
+				Do(func() {
+					g.color = col
+					g.refresh()
+				})
 			return object.Nil, nil
-		}), true
-	case "SetLineWidth":
-		return object.NewBuiltin("chart.linechart.SetLineWidth", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
+		},
+		)
+	lineChartAttrs.Define("SetLineWidth").Args("arg1").Returns("nil").Impl(
+		func(g *LineChart,
+			ctx context.Context, args ...object.Object) (object.
+			Object, error) {
 			f, err := object.AsFloat(args[0])
 			if err != nil {
 				return nil, err
 			}
+
 			if f < 0.5 || f > 20 {
-				return nil, fmt.Errorf("chart error: line width must be in [0.5, 20] (got %v)", f)
+				return nil,
+					fmt.Errorf("chart error: line width must be in [0.5, 20] (got %v)",
+						f)
 			}
+
 			guithread.Do(func() {
 				g.width = float32(f)
 				g.refresh()
 			})
 			return object.Nil, nil
-		}), true
-	}
-	return g.chartCore.getAttr(name)
+		})
 }

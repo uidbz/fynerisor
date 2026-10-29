@@ -53,7 +53,7 @@ func (obj *FileDialog) Equals(other object.Object) bool {
 }
 
 func (obj *FileDialog) Attrs() []object.AttrSpec {
-	return nil
+	return fileDialogAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -81,115 +81,13 @@ func (obj *FileDialog) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var fileDialogAttrs = object.NewAttrRegistry[*FileDialog](string(FileDialogType))
+
 func (obj *FileDialog) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Show":
-		return object.NewBuiltin("dialog.FileDialog.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("dialog.FileDialog.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Refresh":
-		return object.NewBuiltin("dialog.FileDialog.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Refresh()
-			})
-			return object.Nil, nil
-		}), true
-	case "SetFileName":
-		return object.NewBuiltin("dialog.FileDialog.SetFileName", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			filename, err := object.AsString(args[0])
-			if err != nil {
-				return nil, object.Errorf("type error: %v", err)
-			}
-			guithread.Do(func() {
-				obj.instance.SetFileName(filename)
-			})
-			return object.Nil, nil
-		}), true
-	case "SetFilter":
-		return object.NewBuiltin("dialog.FileDialog.SetFilter", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			filter, err := object.AsString(args[0])
-			if err != nil {
-				return nil, object.Errorf("type error: %v", err)
-			}
-			// Create a simple extension filter
-			guithread.Do(func() {
-				obj.instance.SetFilter(storage.NewExtensionFileFilter([]string{filter}))
-			})
-			return object.Nil, nil
-		}), true
-	case "SetLocation":
-		return object.NewBuiltin("dialog.FileDialog.SetLocation", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			path, err := object.AsString(args[0])
-			if err != nil {
-				return nil, object.Errorf("type error: %v", err)
-			}
-			guithread.Do(func() {
-				uri := storage.NewFileURI(path)
-				listableURI, _ := storage.ListerForURI(uri)
-				if listableURI != nil {
-					obj.instance.SetLocation(listableURI)
-				}
-			})
-			return object.Nil, nil
-		}), true
-	case "SetConfirmText":
-		return object.NewBuiltin("dialog.FileDialog.SetConfirmText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			text, err := object.AsString(args[0])
-			if err != nil {
-				return nil, object.Errorf("type error: %v", err)
-			}
-			guithread.Do(func() {
-				obj.instance.SetConfirmText(text)
-			})
-			return object.Nil, nil
-		}), true
-	case "SetDismissText":
-		return object.NewBuiltin("dialog.FileDialog.SetDismissText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			text, err := object.AsString(args[0])
-			if err != nil {
-				return nil, object.Errorf("type error: %v", err)
-			}
-			guithread.Do(func() {
-				obj.instance.SetDismissText(text)
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
+	return fileDialogAttrs.GetAttr(obj, name)
+
+	// Create a simple extension filter
+
 }
 
 func NewFileOpen(callback func(fyne.URIReadCloser, error), parent fyne.Window) *FileDialog {
@@ -211,4 +109,121 @@ func NewFolderOpen(callback func(fyne.ListableURI, error), parent fyne.Window) *
 		instance: dialog.NewFolderOpen(callback, parent),
 		window:   parent,
 	}
+}
+func init() {
+	fileDialogAttrs.
+		Define("Show").Args().Returns("nil").Impl(func(
+		obj *FileDialog, ctx context.
+			Context, args ...object.
+			Object) (object.Object, error) {
+		guithread.Do(func() { obj.instance.Show() })
+		return object.
+			Nil, nil
+	})
+	fileDialogAttrs.
+		Define("Hide").Args().Returns("nil").Impl(func(
+		obj *FileDialog, ctx context.
+			Context, args ...object.
+			Object) (object.Object, error) {
+		guithread.Do(func() { obj.instance.Hide() })
+		return object.
+			Nil, nil
+	})
+	fileDialogAttrs.
+		Define("Refresh").Args().Returns("nil").Impl(func(obj *FileDialog, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		guithread.
+			Do(func() { obj.instance.Refresh() })
+		return object.Nil, nil
+	})
+	fileDialogAttrs.
+		Define("SetFileName").Args(
+		"arg1",
+	).Returns("nil").Impl(func(obj *FileDialog, ctx context.Context, args ...object.Object) (object.Object, error) {
+		filename, err := object.AsString(args[0])
+		if err !=
+			nil {
+			return nil, object.Errorf("type error: %v",
+
+				err)
+		}
+		guithread.Do(func() {
+			obj.instance.SetFileName(filename)
+		})
+		return object.
+			Nil, nil
+	})
+	fileDialogAttrs.
+		Define("SetFilter").
+		Args("arg1").Returns("nil").
+		Impl(func(obj *FileDialog, ctx context.Context, args ...object.Object) (object.Object, error) {
+			filter,
+				err := object.AsString(args[0])
+			if err !=
+				nil {
+				return nil, object.Errorf("type error: %v",
+
+					err)
+			}
+			guithread.Do(func() {
+
+				obj.instance.SetFilter(storage.NewExtensionFileFilter([]string{filter}))
+			})
+			return object.Nil, nil
+		})
+	fileDialogAttrs.
+		Define("SetLocation").Args(
+		"arg1",
+	).Returns("nil").Impl(func(obj *FileDialog, ctx context.Context, args ...object.Object) (object.Object, error) {
+		path, err := object.AsString(args[0])
+		if err !=
+			nil {
+			return nil, object.Errorf("type error: %v",
+
+				err)
+		}
+		guithread.Do(func() {
+
+			uri := storage.NewFileURI(path)
+			listableURI, _ := storage.
+				ListerForURI(uri)
+			if listableURI != nil {
+				obj.instance.
+					SetLocation(listableURI)
+			}
+		})
+		return object.Nil,
+			nil
+	})
+	fileDialogAttrs.
+		Define("SetConfirmText").Args("arg1").Returns("nil").Impl(func(obj *FileDialog, ctx context.Context,
+		args ...object.Object) (object.Object, error) {
+		text, err := object.AsString(args[0])
+		if err !=
+			nil {
+			return nil, object.Errorf("type error: %v",
+
+				err)
+		}
+		guithread.Do(func() { obj.instance.SetConfirmText(text) })
+		return object.
+				Nil,
+			nil
+	})
+	fileDialogAttrs.
+		Define("SetDismissText").Args("arg1").Returns("nil").Impl(func(obj *FileDialog, ctx context.Context,
+		args ...object.Object) (object.Object, error) {
+		text, err := object.AsString(args[0])
+		if err !=
+			nil {
+			return nil, object.Errorf("type error: %v",
+
+				err)
+		}
+		guithread.Do(func() { obj.instance.SetDismissText(text) })
+		return object.
+				Nil,
+			nil
+	})
 }

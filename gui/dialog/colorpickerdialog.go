@@ -53,7 +53,7 @@ func (obj *ColorPickerDialog) Equals(other object.Object) bool {
 }
 
 func (obj *ColorPickerDialog) Attrs() []object.AttrSpec {
-	return nil
+	return colorPickerDialogAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -82,81 +82,11 @@ func (obj *ColorPickerDialog) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var colorPickerDialogAttrs = object.NewAttrRegistry[*ColorPickerDialog](string(ColorPickerDialogType))
+
 func (obj *ColorPickerDialog) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Advanced":
-		return object.NewBool(obj.instance.Advanced), true
-	case "Show":
-		return object.NewBuiltin("dialog.ColorPickerDialog.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("dialog.ColorPickerDialog.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Refresh":
-		return object.NewBuiltin("dialog.ColorPickerDialog.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Refresh()
-			})
-			return object.Nil, nil
-		}), true
-	case "SetDismissText":
-		return object.NewBuiltin("dialog.ColorPickerDialog.SetDismissText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			text, err := object.AsString(args[0])
-			if err != nil {
-				return nil, object.Errorf("type error: %v", err)
-			}
-			guithread.Do(func() {
-				obj.instance.SetDismissText(text)
-			})
-			return object.Nil, nil
-		}), true
-	case "SetColor":
-		return object.NewBuiltin("dialog.ColorPickerDialog.SetColor", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			colorMap, ok := args[0].(*object.Map)
-			if !ok {
-				return nil, object.Errorf("type error: color must be a map with R, G, B, A keys")
-			}
+	return colorPickerDialogAttrs.GetAttr(obj, name)
 
-			r, _ := object.AsInt(colorMap.Value()["R"])
-			g, _ := object.AsInt(colorMap.Value()["G"])
-			b, _ := object.AsInt(colorMap.Value()["B"])
-			a := int64(255)
-			if aVal, ok := colorMap.Value()["A"]; ok {
-				a, _ = object.AsInt(aVal)
-			}
-
-			c := color.RGBA{R: uint8(r), G: uint8(g), B: uint8(b), A: uint8(a)}
-
-			guithread.Do(func() {
-				obj.instance.SetColor(c)
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
 }
 
 func NewColorPicker(title, message string, callback func(color.Color), parent fyne.Window) *ColorPickerDialog {
@@ -164,4 +94,79 @@ func NewColorPicker(title, message string, callback func(color.Color), parent fy
 		instance: dialog.NewColorPicker(title, message, callback, parent),
 		window:   parent,
 	}
+}
+func init() {
+	colorPickerDialogAttrs.
+		Define("Advanced").Getter(func(obj *ColorPickerDialog) object.Object {
+		return object.
+			NewBool(obj.instance.Advanced)
+	})
+	colorPickerDialogAttrs.
+		Define("Show").Args().Returns("nil").
+		Impl(func(obj *ColorPickerDialog, ctx context.
+			Context, args ...object.Object) (object.Object, error) {
+			guithread.Do(func() {
+				obj.instance.
+					Show()
+			})
+			return object.Nil, nil
+		})
+	colorPickerDialogAttrs.
+		Define("Hide").Args().Returns("nil").
+		Impl(func(obj *ColorPickerDialog, ctx context.
+			Context, args ...object.Object) (object.Object, error) {
+			guithread.Do(func() {
+				obj.instance.
+					Hide()
+			})
+			return object.Nil, nil
+		})
+	colorPickerDialogAttrs.
+		Define("Refresh").Args().Returns("nil").Impl(func(obj *ColorPickerDialog, ctx context.
+		Context, args ...object.Object) (object.
+		Object, error) {
+		guithread.Do(func() {
+			obj.instance.
+				Refresh()
+		})
+		return object.Nil, nil
+	})
+	colorPickerDialogAttrs.
+		Define("SetDismissText").Args("arg1").Returns("nil").Impl(func(obj *ColorPickerDialog, ctx context.Context, args ...object.Object) (object.Object, error) {
+		text, err := object.
+			AsString(args[0])
+		if err != nil {
+			return nil,
+
+				object.Errorf("type error: %v", err)
+		}
+		guithread.
+			Do(func() { obj.instance.SetDismissText(text) })
+		return object.
+			Nil, nil
+	})
+	colorPickerDialogAttrs.
+		Define("SetColor").Args("arg1").Returns("nil").Impl(func(obj *ColorPickerDialog,
+		ctx context.Context, args ...object.Object) (
+		object.Object, error) {
+		colorMap, ok := args[0].(*object.Map)
+		if !ok {
+			return nil, object.
+				Errorf("type error: color must be a map with R, G, B, A keys")
+		}
+		r, _ := object.AsInt(colorMap.Value()["R"])
+		g, _ :=
+			object.AsInt(colorMap.Value()["G"])
+		b, _ := object.AsInt(colorMap.Value()["B"])
+		a := int64(255)
+		if aVal, ok := colorMap.Value()["A"]; ok {
+			a, _ = object.AsInt(
+				aVal)
+		}
+		c := color.RGBA{R: uint8(r), G: uint8(g),
+			B: uint8(b), A: uint8(a)}
+		guithread.
+			Do(func() { obj.instance.SetColor(c) })
+		return object.Nil, nil
+	})
 }

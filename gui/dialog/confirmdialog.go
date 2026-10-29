@@ -53,7 +53,7 @@ func (obj *ConfirmDialog) Equals(other object.Object) bool {
 }
 
 func (obj *ConfirmDialog) Attrs() []object.AttrSpec {
-	return nil
+	return confirmDialogAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -70,100 +70,11 @@ func (obj *ConfirmDialog) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var confirmDialogAttrs = object.NewAttrRegistry[*ConfirmDialog](string(ConfirmDialogType))
+
 func (obj *ConfirmDialog) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Show":
-		return object.NewBuiltin("dialog.ConfirmDialog.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("dialog.ConfirmDialog.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Refresh":
-		return object.NewBuiltin("dialog.ConfirmDialog.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Refresh()
-			})
-			return object.Nil, nil
-		}), true
-	case "Resize":
-		return object.NewBuiltin("dialog.ConfirmDialog.Resize", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-			width, err := object.AsFloat(args[0])
-			if err != nil {
-				return nil, object.Errorf("argument error: width must be a number, got %s", args[0].Type())
-			}
-			height, err := object.AsFloat(args[1])
-			if err != nil {
-				return nil, object.Errorf("argument error: height must be a number, got %s", args[1].Type())
-			}
-			guithread.Do(func() {
-				obj.instance.Resize(fyne.NewSize(float32(width), float32(height)))
-			})
-			return object.Nil, nil
-		}), true
-	case "SetDismissText":
-		return object.NewBuiltin("dialog.ConfirmDialog.SetDismissText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			text, err := object.AsString(args[0])
-			if err != nil {
-				return nil, object.Errorf("type error: %v", err)
-			}
-			guithread.Do(func() {
-				obj.instance.SetDismissText(text)
-			})
-			return object.Nil, nil
-		}), true
-	case "SetConfirmText":
-		return object.NewBuiltin("dialog.ConfirmDialog.SetConfirmText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			text, err := object.AsString(args[0])
-			if err != nil {
-				return nil, object.Errorf("type error: %v", err)
-			}
-			guithread.Do(func() {
-				obj.instance.SetConfirmText(text)
-			})
-			return object.Nil, nil
-		}), true
-	case "SetConfirmImportance":
-		return object.NewBuiltin("dialog.ConfirmDialog.SetConfirmImportance", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			importance, err := object.AsInt(args[0])
-			if err != nil {
-				return nil, object.Errorf("type error: %v", err)
-			}
-			guithread.Do(func() {
-				obj.instance.SetConfirmImportance(widget.Importance(importance))
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
+	return confirmDialogAttrs.GetAttr(obj, name)
+
 }
 
 func NewConfirm(title, message string, callback func(bool), parent fyne.Window) *ConfirmDialog {
@@ -178,4 +89,100 @@ func NewCustomConfirm(title, confirm, dismiss string, content fyne.CanvasObject,
 		instance: dialog.NewCustomConfirm(title, confirm, dismiss, content, callback, parent),
 		window:   parent,
 	}
+}
+func init() {
+	confirmDialogAttrs.
+		Define("Show").Args().Returns("nil").Impl(func(obj *ConfirmDialog, ctx context.Context, args ...object.Object) (object.Object, error) {
+		guithread.
+			Do(func() { obj.instance.Show() })
+		return object.Nil, nil
+	})
+	confirmDialogAttrs.
+		Define("Hide").Args().Returns("nil").Impl(func(obj *ConfirmDialog, ctx context.Context, args ...object.Object) (object.Object, error) {
+		guithread.
+			Do(func() { obj.instance.Hide() })
+		return object.Nil, nil
+	})
+	confirmDialogAttrs.
+		Define("Refresh").
+		Args().
+		Returns("nil").Impl(func(obj *ConfirmDialog,
+		ctx context.Context, args ...object.Object) (object.Object, error) {
+		guithread.
+			Do(func() { obj.instance.Refresh() })
+		return object.Nil, nil
+	})
+	confirmDialogAttrs.
+		Define("Resize").
+		Args("arg1",
+
+			"arg2").Returns("nil").Impl(func(obj *ConfirmDialog, ctx context.Context, args ...object.Object) (object.Object, error) {
+		width, err := object.AsFloat(args[0])
+		if err != nil {
+			return nil, object.Errorf("argument error: width must be a number, got %s",
+
+				args[0].Type())
+		}
+		height, err := object.AsFloat(args[1])
+		if err != nil {
+			return nil, object.Errorf("argument error: height must be a number, got %s",
+
+				args[1].Type())
+		}
+		guithread.
+			Do(func() {
+				obj.instance.
+					Resize(fyne.NewSize(float32(width), float32(height)))
+			})
+		return object.
+			Nil, nil
+	})
+	confirmDialogAttrs.
+		Define("SetDismissText").
+		Args("arg1").Returns("nil").Impl(func(obj *ConfirmDialog, ctx context.Context, args ...object.Object) (object.Object, error) {
+		text, err := object.AsString(args[0])
+		if err != nil {
+			return nil, object.Errorf("type error: %v",
+
+				err)
+		}
+		guithread.Do(func() {
+			obj.instance.SetDismissText(text)
+		})
+		return object.Nil,
+
+			nil
+	})
+	confirmDialogAttrs.
+		Define("SetConfirmText").
+		Args("arg1").Returns("nil").Impl(func(obj *ConfirmDialog, ctx context.Context, args ...object.Object) (object.Object, error) {
+		text, err := object.AsString(args[0])
+		if err != nil {
+			return nil, object.Errorf("type error: %v",
+
+				err)
+		}
+		guithread.Do(func() {
+			obj.instance.SetConfirmText(text)
+		})
+		return object.Nil,
+
+			nil
+	})
+	confirmDialogAttrs.
+		Define("SetConfirmImportance").Args("arg1").
+		Returns("nil").Impl(func(obj *ConfirmDialog, ctx context.
+		Context, args ...object.Object) (object.
+		Object, error) {
+		importance, err := object.AsInt(args[0])
+		if err != nil {
+			return nil, object.
+				Errorf("type error: %v", err)
+		}
+		guithread.
+			Do(func() {
+				obj.instance.SetConfirmImportance(widget.Importance(importance))
+			})
+		return object.Nil, nil
+	})
 }

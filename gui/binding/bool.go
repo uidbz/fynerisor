@@ -53,7 +53,7 @@ func (obj *Bool) Equals(other object.Object) bool {
 }
 
 func (obj *Bool) Attrs() []object.AttrSpec {
-	return nil
+	return boolAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -70,54 +70,15 @@ func (obj *Bool) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var boolAttrs = object.NewAttrRegistry[*Bool](string(BoolType))
+
 func (obj *Bool) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Get":
-		return object.NewBuiltin("binding.Bool.Get", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			val, err := obj.instance.Get()
-			if err != nil {
-				return nil, object.Errorf("binding error: %v", err)
-			}
-			return object.NewBool(val), nil
-		}), true
+	return boolAttrs.GetAttr(obj, name)
 
-	case "Set":
-		return object.NewBuiltin("binding.Bool.Set", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			val, err := object.AsBool(args[0])
-			if err != nil {
-				return nil, object.Errorf("type error: %v", err)
-			}
-			err = obj.instance.Set(val)
-			if err != nil {
-				return nil, object.Errorf("binding error: %v", err)
-			}
-			return object.Nil, nil
-		}), true
+	// Change event: coalesced on the run's queue — listeners
+	// re-read the binding, so the latest change is enough and a
+	// burst cannot fill the queue (issues #11, #51).
 
-	case "AddListener":
-		return object.NewBuiltin("binding.Bool.AddListener", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			cb, err := vmexec.NewCallback(ctx, "binding.Bool.AddListener", args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			// Change event: coalesced on the run's queue — listeners
-			// re-read the binding, so the latest change is enough and a
-			// burst cannot fill the queue (issues #11, #51).
-			obj.instance.AddListener(binding.NewDataListener(func() { cb.FireCoalesced() }))
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
 }
 
 func NewBool() *Bool {
@@ -132,4 +93,53 @@ func BindBool(value bool) *Bool {
 	return &Bool{
 		instance: b,
 	}
+}
+func init() {
+	boolAttrs.Define(
+		"Get").Args().Returns("nil").Impl(func(obj *Bool, ctx context.Context,
+		args ...object.Object) (object.Object, error) {
+		val, err := obj.instance.Get()
+		if err != nil {
+			return nil, object.Errorf("binding error: %v",
+
+				err)
+		}
+		return object.NewBool(val), nil
+	})
+	boolAttrs.Define(
+		"Set").Args("arg1").
+		Returns("nil").Impl(func(obj *Bool, ctx context.Context, args ...object.Object) (object.
+		Object, error) {
+		val, err := object.AsBool(args[0])
+		if err != nil {
+			return nil, object.
+				Errorf("type error: %v", err)
+		}
+		err = obj.
+			instance.
+			Set(val)
+		if err != nil {
+			return nil, object.Errorf("binding error: %v",
+
+				err)
+		}
+		return object.Nil, nil
+	})
+	boolAttrs.Define(
+		"AddListener",
+	).Args(
+		"arg1").
+		Returns("nil").Impl(func(obj *Bool, ctx context.
+		Context, args ...object.Object) (object.Object, error) {
+		cb, err := vmexec.NewCallback(ctx, "binding.Bool.AddListener", args[0])
+		if err != nil {
+			return nil, err
+		}
+
+		obj.instance.AddListener(binding.
+			NewDataListener(func() {
+				cb.FireCoalesced()
+			}))
+		return object.Nil, nil
+	})
 }

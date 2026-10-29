@@ -143,57 +143,118 @@ func (c *chartCore) clearHover() {
 
 // --- shared Risor method surface ---------------------------------------------
 //
-// Chart types handle their own data methods in GetAttr and fall back to this
-// for the shared interactive verbs.
+// Chart types register their own data methods plus the shared interactive
+// verbs below in a per-type object.AttrRegistry (issue #38). SaveImage is
+// the one attr that stays outside the registry: it is an off-UI builtin
+// (guithread.OffUI) whose file write must not block the UI thread, and the
+// registry method path always marshals calls onto the UI thread.
 
-func (c *chartCore) getAttr(name string) (object.Object, bool) {
-	switch name {
-	case "OnTap":
-		return c.callbackAttr(name, &c.onTapFn), true
-	case "OnHover":
-		return c.callbackAttr(name, &c.onHoverFn), true
-	case "OnSecondaryTap":
-		return c.callbackAttr(name, &c.onSecondaryFn), true
-	case "ShowGrid":
-		return c.boolAttr(name, func(on bool) {
-			c.showGrid = on
-			c.refresh()
-		}), true
-	case "ShowValues":
-		return c.boolAttr(name, func(on bool) {
-			c.showValues = on
-			c.refresh()
-		}), true
-	case "SetZoomEnabled":
-		return c.boolAttr(name, func(on bool) {
-			c.zoomEnabled = on
-			if !on {
-				c.ResetZoom()
-			}
-		}), true
-	case "ResetZoom":
-		return object.NewBuiltin(c.typeName+"."+name, func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(c.ResetZoom)
+// core gives embedded *chartCore wrappers access to the shared state from
+// generic helpers; promoted from chartCore to every chart type.
+func (c *chartCore) core() *chartCore { return c }
+
+// addInteractive registers the shared interactive attr surface on a chart
+// type's registry. Each Impl delegates to the same builtin builders the
+// pre-registry switch used, so callback wiring and behaviour are unchanged.
+func addInteractive[T interface{ core() *chartCore }](r *object.AttrRegistry[T]) {
+	r.Define("OnTap").
+		Doc("Register a callback invoked with (index, label, value) when a datum is tapped.").
+		Arg("callback").Returns("nil").
+		Impl(func(o T, ctx context.Context, args ...object.Object) (object.Object, error) {
+			c := o.core()
+			return c.callbackAttr("OnTap", &c.onTapFn).Call(ctx, args...)
+		})
+	r.Define("OnHover").
+		Doc("Register a callback invoked with (index, label, value) on hover.").
+		Arg("callback").Returns("nil").
+		Impl(func(o T, ctx context.Context, args ...object.Object) (object.Object, error) {
+			c := o.core()
+			return c.callbackAttr("OnHover", &c.onHoverFn).Call(ctx, args...)
+		})
+	r.Define("OnSecondaryTap").
+		Doc("Register a callback invoked with (index, label, value) on right-click.").
+		Arg("callback").Returns("nil").
+		Impl(func(o T, ctx context.Context, args ...object.Object) (object.Object, error) {
+			c := o.core()
+			return c.callbackAttr("OnSecondaryTap", &c.onSecondaryFn).Call(ctx, args...)
+		})
+	r.Define("ShowGrid").
+		Doc("Show or hide the background grid.").
+		Arg("on").Returns("nil").
+		Impl(func(o T, ctx context.Context, args ...object.Object) (object.Object, error) {
+			c := o.core()
+			return c.boolAttr("ShowGrid", func(on bool) {
+				c.showGrid = on
+				c.refresh()
+			}).Call(ctx, args...)
+		})
+	r.Define("ShowValues").
+		Doc("Show or hide value labels on the data.").
+		Arg("on").Returns("nil").
+		Impl(func(o T, ctx context.Context, args ...object.Object) (object.Object, error) {
+			c := o.core()
+			return c.boolAttr("ShowValues", func(on bool) {
+				c.showValues = on
+				c.refresh()
+			}).Call(ctx, args...)
+		})
+	r.Define("SetZoomEnabled").
+		Doc("Enable or disable interactive zooming.").
+		Arg("on").Returns("nil").
+		Impl(func(o T, ctx context.Context, args ...object.Object) (object.Object, error) {
+			c := o.core()
+			return c.boolAttr("SetZoomEnabled", func(on bool) {
+				c.zoomEnabled = on
+				if !on {
+					c.ResetZoom()
+				}
+			}).Call(ctx, args...)
+		})
+	r.Define("ResetZoom").
+		Doc("Restore the full data domain on both axes.").
+		Returns("nil").
+		Impl(func(o T, _ context.Context, _ ...object.Object) (object.Object, error) {
+			guithread.Do(o.core().ResetZoom)
 			return object.Nil, nil
-		}), true
-	case "SetTitle":
-		return c.stringAttr(name, func(s string) {
-			c.title = s
-			c.refresh()
-		}), true
-	case "WriteSVG":
-		return object.NewBuiltin(c.typeName+"."+name, func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			w, h, err := c.sizeArgs(name, args)
+		})
+	r.Define("SetTitle").
+		Doc("Set the chart title.").
+		Arg("title").Returns("nil").
+		Impl(func(o T, ctx context.Context, args ...object.Object) (object.Object, error) {
+			c := o.core()
+			return c.stringAttr("SetTitle", func(s string) {
+				c.title = s
+				c.refresh()
+			}).Call(ctx, args...)
+		})
+	r.Define("WriteSVG").
+		Doc("Render the chart to an SVG string; optional width and height.").
+		Variadic("size").Returns("string").
+		Impl(func(o T, _ context.Context, args ...object.Object) (object.Object, error) {
+			c := o.core()
+			w, h, err := c.sizeArgs("WriteSVG", args)
 			if err != nil {
 				return nil, err
 			}
 			var svg string
 			guithread.DoAndWait(func() { svg = c.writeSVG(w, h) })
 			return object.NewString(svg), nil
-		}), true
+		})
+}
+
+// saveImageSpec documents the off-UI SaveImage attr for Attrs() (kept out
+// of the registries; see addInteractive).
+var saveImageSpec = object.AttrSpec{
+	Name:    "SaveImage",
+	Doc:     "Render the chart to a .svg file; optional width and height. Runs off the UI thread.",
+	Args:    []string{"path", "width", "height"},
+	Returns: "nil",
+}
+
+// getAttr provides the one shared attr that cannot live in a registry:
+// SaveImage. Chart types call it as the fallback after their registry lookup.
+func (c *chartCore) getAttr(name string) (object.Object, bool) {
+	switch name {
 	case "SaveImage":
 		// OffUI: the SVG is rendered on the UI thread, but the file write
 		// runs on the script's goroutine so it cannot stall the UI.

@@ -11,6 +11,7 @@ import (
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 	"github.com/uidbz/fynerisor/gui/canvas"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 )
 
 var _ object.Object = &BarChart{}
@@ -91,8 +92,8 @@ func (r *BarChart) Equals(other object.Object) bool {
 	return r == other
 }
 
-func (r *BarChart) Attrs() []object.AttrSpec {
-	return nil
+func (*BarChart) Attrs() []object.AttrSpec {
+	return append(barChartAttrs.Specs(), saveImageSpec)
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -233,129 +234,11 @@ func (g *BarChart) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, g.getAttrUI)
 }
 
+var barChartAttrs = object.NewAttrRegistry[*BarChart](string(BarChartType))
+
 func (g *BarChart) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "SetValues":
-		return object.NewBuiltin("chart.barchart.SetValues", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			values, err := floatSliceArg(args[0])
-			if err != nil {
-				return nil, err
-			}
-			if len(values) != len(g.labels) {
-				return nil, fmt.Errorf("chart error: values length %d does not match labels length %d", len(values), len(g.labels))
-			}
-			guithread.Do(func() { g.updateData(g.labels, values) })
-			return object.Nil, nil
-		}), true
-	case "SetData":
-		return object.NewBuiltin("chart.barchart.SetData", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-			labels, err := stringSliceArg(args[0])
-			if err != nil {
-				return nil, err
-			}
-			values, err := floatSliceArg(args[1])
-			if err != nil {
-				return nil, err
-			}
-			if len(labels) != len(values) {
-				return nil, fmt.Errorf("chart error: labels and values must have same length (got %d labels, %d values)", len(labels), len(values))
-			}
-			guithread.Do(func() { g.updateData(labels, values) })
-			return object.Nil, nil
-		}), true
-	case "SetValue":
-		return object.NewBuiltin("chart.barchart.SetValue", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-			idx, err := object.AsInt(args[0])
-			if err != nil {
-				return nil, err
-			}
-			v, err := object.AsFloat(args[1])
-			if err != nil {
-				return nil, err
-			}
-			if idx < 0 || idx >= int64(len(g.values)) {
-				return nil, fmt.Errorf("chart error: index %d out of range [0, %d)", idx, len(g.values))
-			}
-			guithread.Do(func() {
-				g.values[idx] = v
-				g.clearHover()
-				g.recomputeDomains()
-				g.refresh()
-			})
-			return object.Nil, nil
-		}), true
-	case "SetLabel":
-		return object.NewBuiltin("chart.barchart.SetLabel", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-			idx, err := object.AsInt(args[0])
-			if err != nil {
-				return nil, err
-			}
-			s, err := object.AsString(args[1])
-			if err != nil {
-				return nil, err
-			}
-			if idx < 0 || idx >= int64(len(g.labels)) {
-				return nil, fmt.Errorf("chart error: index %d out of range [0, %d)", idx, len(g.labels))
-			}
-			guithread.Do(func() {
-				g.labels[idx] = s
-				g.clearHover()
-				g.refresh()
-			})
-			return object.Nil, nil
-		}), true
-	case "SetColor":
-		return object.NewBuiltin("chart.barchart.SetColor", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			col, err := colorArg(args[0])
-			if err != nil {
-				return nil, err
-			}
-			guithread.Do(func() {
-				g.baseColor = col
-				g.refresh()
-			})
-			return object.Nil, nil
-		}), true
-	case "SetBarColor":
-		return object.NewBuiltin("chart.barchart.SetBarColor", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-			idx, err := object.AsInt(args[0])
-			if err != nil {
-				return nil, err
-			}
-			col, err := colorArg(args[1])
-			if err != nil {
-				return nil, err
-			}
-			if idx < 0 || idx >= int64(len(g.values)) {
-				return nil, fmt.Errorf("chart error: index %d out of range [0, %d)", idx, len(g.values))
-			}
-			guithread.Do(func() {
-				for len(g.colors) <= int(idx) {
-					g.colors = append(g.colors, nil)
-				}
-				g.colors[idx] = col
-				g.refresh()
-			})
-			return object.Nil, nil
-		}), true
+	if o, ok := barChartAttrs.GetAttr(g, name); ok {
+		return o, true
 	}
 	return g.chartCore.getAttr(name)
 }
@@ -399,4 +282,153 @@ func stringSliceArg(o object.Object) ([]string, error) {
 		result = append(result, s)
 	}
 	return result, nil
+}
+func init() {
+	objattrs.Add(barChartAttrs)
+	addInteractive(barChartAttrs)
+	barChartAttrs.Define("SetValues").Args("arg1").
+		Returns("nil").
+		Impl(func(g *BarChart, ctx context.Context, args ...object.Object) (object.
+			Object, error) {
+			values, err := floatSliceArg(args[0])
+			if err != nil {
+				return nil, err
+			}
+			if len(values) != len(g.labels) {
+
+				return nil, fmt.Errorf("chart error: values length %d does not match labels length %d",
+
+					len(values), len(
+						g.
+							labels))
+			}
+			guithread.Do(func() {
+				g.updateData(g.
+					labels, values)
+			})
+			return object.Nil, nil
+		})
+	barChartAttrs.Define("SetData").Args("arg1",
+		"arg2",
+	).Returns("nil").Impl(func(g *BarChart, ctx context.Context, args ...object.Object) (object.Object, error) {
+		labels, err :=
+			stringSliceArg(args[0])
+		if err != nil {
+			return nil, err
+		}
+		values, err := floatSliceArg(args[1])
+		if err != nil {
+			return nil, err
+		}
+		if len(labels) != len(values) {
+			return nil, fmt.Errorf("chart error: labels and values must have same length (got %d labels, %d values)",
+
+				len(labels), len(values))
+		}
+		guithread.Do(func() { g.updateData(labels, values) })
+		return object.Nil, nil
+	})
+	barChartAttrs.Define("SetValue").Doc("Set the value.").Args("arg1",
+
+		"arg2").Returns("nil").Impl(func(g *BarChart, ctx context.Context, args ...object.Object) (object.Object, error) {
+		idx, err := object.AsInt(args[0])
+		if err != nil {
+			return nil, err
+		}
+		v, err :=
+
+			object.AsFloat(args[1])
+		if err !=
+			nil {
+			return nil, err
+		}
+		if idx <
+			0 || idx >= int64(len(g.values)) {
+
+			return nil, fmt.Errorf("chart error: index %d out of range [0, %d)",
+
+				idx, len(g.values))
+		}
+		guithread.Do(func() {
+			g.values[idx] = v
+			g.clearHover()
+			g.recomputeDomains()
+			g.refresh()
+		})
+		return object.
+			Nil, nil
+	})
+	barChartAttrs.Define("SetLabel").Args("arg1",
+		"arg2",
+	).Returns(
+		"nil",
+	).Impl(func(g *BarChart, ctx context.Context, args ...object.Object) (object.Object, error) {
+		idx, err := object.
+			AsInt(args[0])
+		if err != nil {
+			return nil, err
+		}
+		s, err := object.AsString(args[1])
+		if err != nil {
+			return nil,
+				err
+		}
+		if idx < 0 || idx >= int64(
+			len(g.labels)) {
+			return nil, fmt.Errorf("chart error: index %d out of range [0, %d)", idx,
+
+				len(g.labels))
+		}
+		guithread.Do(func() {
+			g.labels[idx] = s
+			g.clearHover()
+			g.refresh()
+		})
+		return object.Nil, nil
+	})
+	barChartAttrs.Define("SetColor").Args("arg1").Returns("nil").Impl(func(g *BarChart,
+
+		ctx context.Context, args ...object.Object) (object.
+		Object, error) {
+		col, err := colorArg(args[0])
+		if err != nil {
+			return nil, err
+		}
+		guithread.Do(func() {
+			g.baseColor = col
+
+			g.
+				refresh()
+		})
+		return object.Nil,
+			nil
+	})
+	barChartAttrs.Define("SetBarColor").Args("arg1",
+		"arg2").Returns("nil").Impl(func(
+		g *BarChart, ctx context.Context, args ...object.
+			Object) (object.Object, error) {
+		idx, err :=
+			object.AsInt(args[0])
+		if err != nil {
+			return nil, err
+		}
+		col, err := colorArg(args[1])
+		if err != nil {
+			return nil, err
+		}
+		if idx < 0 || idx >= int64(len(g.values)) {
+			return nil, fmt.Errorf(
+				"chart error: index %d out of range [0, %d)", idx,
+
+				len(g.values))
+		}
+		guithread.Do(func() {
+			for len(g.colors) <= int(idx) {
+				g.colors = append(g.colors, nil)
+			}
+			g.colors[idx] = col
+			g.refresh()
+		})
+		return object.Nil, nil
+	})
 }

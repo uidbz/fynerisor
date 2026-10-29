@@ -10,6 +10,7 @@ import (
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 )
 
 var _ object.Object = &Histogram{}
@@ -93,8 +94,8 @@ func (r *Histogram) Equals(other object.Object) bool {
 	return r == other
 }
 
-func (r *Histogram) Attrs() []object.AttrSpec {
-	return nil
+func (*Histogram) Attrs() []object.AttrSpec {
+	return append(histogramAttrs.Specs(), saveImageSpec)
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -227,59 +228,71 @@ func (g *Histogram) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, g.getAttrUI)
 }
 
+var histogramAttrs = object.NewAttrRegistry[*Histogram](string(HistogramType))
+
 func (g *Histogram) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "SetValues":
-		return object.NewBuiltin("chart.histogram.SetValues", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
+	if o, ok := histogramAttrs.GetAttr(g, name); ok {
+		return o, true
+	}
+	return g.chartCore.getAttr(name)
+}
+func init() {
+	objattrs.Add(histogramAttrs)
+	addInteractive(histogramAttrs)
+	histogramAttrs.Define("SetValues").Args(
+		"arg1").
+		Returns("nil").
+		Impl(func(g *Histogram, ctx context.Context, args ...object.Object) (object.Object, error) {
 			values, err := floatSliceArg(args[0])
 			if err != nil {
-				return nil, err
+				return nil,
+
+					err
 			}
 			guithread.Do(func() {
 				g.values = values
 				g.computeBins()
-				g.clearHover()
+				g.
+					clearHover()
 				g.recomputeDomains()
 				g.refresh()
 			})
 			return object.Nil, nil
-		}), true
-	case "SetBins":
-		return object.NewBuiltin("chart.histogram.SetBins", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			n, err := object.AsInt(args[0])
-			if err != nil {
-				return nil, err
-			}
-			if n < 1 || n > 200 {
-				return nil, fmt.Errorf("chart error: bins must be in [1, 200] (got %d)", n)
-			}
-			guithread.Do(func() {
+		})
+	histogramAttrs.Define("SetBins").Args("arg1").Returns("nil").Impl(func(g *Histogram, ctx context.Context, args ...object.Object) (object.
+		Object, error) {
+		n, err := object.AsInt(args[0])
+		if err != nil {
+			return nil, err
+		}
+
+		if n < 1 || n > 200 {
+			return nil,
+				fmt.Errorf("chart error: bins must be in [1, 200] (got %d)",
+					n)
+		}
+		guithread.
+			Do(func() {
 				g.bins = int(n)
 				g.computeBins()
-				g.clearHover()
+				g.
+					clearHover()
 				g.recomputeDomains()
 				g.refresh()
 			})
-			return object.Nil, nil
-		}), true
-	case "ShowNormal":
-		return object.NewBuiltin("chart.histogram.ShowNormal", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
+		return object.Nil,
+
+			nil
+	})
+	histogramAttrs.Define("ShowNormal").Args("arg1").Returns("nil").
+		Impl(func(g *Histogram, ctx context.Context, args ...object.Object) (object.Object, error) {
 			on := args[0].IsTruthy()
 			guithread.Do(func() {
-				g.showNormal = on
+				g.showNormal =
+					on
 				g.refresh()
 			})
-			return object.Nil, nil
-		}), true
-	}
-	return g.chartCore.getAttr(name)
+			return object.Nil,
+				nil
+		})
 }

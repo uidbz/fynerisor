@@ -60,7 +60,7 @@ func (obj *TextStyle) Equals(other object.Object) bool {
 }
 
 func (obj *TextStyle) Attrs() []object.AttrSpec {
-	return nil
+	return textStyleAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -128,16 +128,30 @@ func (obj *TextStyle) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var textStyleAttrs = object.NewAttrRegistry[*TextStyle](string(TextStyleType))
+
 func (obj *TextStyle) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Bold":
-		return object.NewBool(obj.style.Bold), true
-	case "Italic":
-		return object.NewBool(obj.style.Italic), true
-	case "Monospace":
-		return object.NewBool(obj.style.Monospace), true
-	case "TabWidth":
-		return object.NewInt(int64(obj.style.TabWidth)), true
-	}
-	return nil, false
+	return textStyleAttrs.GetAttr(obj, name)
+
+}
+func init() {
+	textStyleAttrs.
+		Define("Bold").Getter(func(obj *TextStyle) object.Object {
+		return object.NewBool(obj.style.Bold)
+	})
+	textStyleAttrs.
+		Define("Italic").
+		Getter(func(obj *TextStyle) object.Object {
+			return object.NewBool(obj.style.Italic)
+		})
+	textStyleAttrs.
+		Define("Monospace").Getter(func(obj *TextStyle) object.Object {
+		return object.NewBool(obj.style.Monospace)
+	},
+	)
+	textStyleAttrs.
+		Define("TabWidth").
+		Getter(func(obj *TextStyle) object.Object {
+			return object.NewInt(int64(obj.style.TabWidth))
+		})
 }
