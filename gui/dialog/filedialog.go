@@ -84,10 +84,8 @@ func (obj *FileDialog) GetAttr(name string) (object.Object, bool) {
 var fileDialogAttrs = object.NewAttrRegistry[*FileDialog](string(FileDialogType))
 
 func (obj *FileDialog) getAttrUI(name string) (object.Object, bool) {
-	return fileDialogAttrs.GetAttr(obj, name)
-
 	// Create a simple extension filter
-
+	return fileDialogAttrs.GetAttr(obj, name)
 }
 
 func NewFileOpen(callback func(fyne.URIReadCloser, error), parent fyne.Window) *FileDialog {

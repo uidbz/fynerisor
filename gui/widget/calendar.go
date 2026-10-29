@@ -95,10 +95,8 @@ func (obj *Calendar) GetAttr(name string) (object.Object, bool) {
 }
 
 func (obj *Calendar) getAttrUI(name string) (object.Object, bool) {
-	return calendarAttrs.GetAttr(obj, name)
-
 	// Event: queued on the script's VM goroutine.
-
+	return calendarAttrs.GetAttr(obj, name)
 }
 func init() {
 	objattrs.Add(calendarAttrs)

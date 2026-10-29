@@ -94,118 +94,252 @@ func (obj *Constants) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var constantsAttrs = object.NewAttrRegistry[*Constants](string(ConstantsType))
+
 func (obj *Constants) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	// Button Importance
-	case "ImportanceHigh":
-		return object.NewInt(int64(widget.HighImportance)), true
-	case "ImportanceMedium":
-		return object.NewInt(int64(widget.MediumImportance)), true
-	case "ImportanceLow":
-		return object.NewInt(int64(widget.LowImportance)), true
-	case "DangerImportance":
-		return object.NewInt(int64(widget.DangerImportance)), true
-	case "WarningImportance":
-		return object.NewInt(int64(widget.WarningImportance)), true
-	case "SuccessImportance":
-		return object.NewInt(int64(widget.SuccessImportance)), true
+	return constantsAttrs.
+
+		// Button Importance
+		GetAttr(obj, name)
 
 	// Button Icon Placement
-	case "ButtonIconLeadingText":
-		return object.NewInt(int64(widget.ButtonIconLeadingText)), true
-	case "ButtonIconTrailingText":
-		return object.NewInt(int64(widget.ButtonIconTrailingText)), true
 
 	// Button Alignment
-	case "ButtonAlignCenter":
-		return object.NewInt(int64(widget.ButtonAlignCenter)), true
-	case "ButtonAlignLeading":
-		return object.NewInt(int64(widget.ButtonAlignLeading)), true
-	case "ButtonAlignTrailing":
-		return object.NewInt(int64(widget.ButtonAlignTrailing)), true
 
 	// Text Wrapping (fyne.TextWrap)
-	case "TextWrapOff":
-		return object.NewInt(0), true // fyne.TextWrapOff
-	case "TextWrapBreak":
-		return object.NewInt(1), true // fyne.TextWrapBreak
-	case "TextWrapWord":
-		return object.NewInt(2), true // fyne.TextWrapWord
+
+	// fyne.TextWrapOff
+
+	// fyne.TextWrapBreak
+
+	// fyne.TextWrapWord
 
 	// Text Truncation (fyne.TextTruncation)
-	case "TextTruncateOff":
-		return object.NewInt(0), true // fyne.TextTruncateOff
-	case "TextTruncateClip":
-		return object.NewInt(1), true // fyne.TextTruncateClip
-	case "TextTruncateEllipsis":
-		return object.NewInt(2), true // fyne.TextTruncateEllipsis
+
+	// fyne.TextTruncateOff
+
+	// fyne.TextTruncateClip
+
+	// fyne.TextTruncateEllipsis
 
 	// Scroll Direction (fyne.ScrollDirection)
-	case "ScrollBoth":
-		return object.NewInt(0), true
-	case "ScrollHorizontalOnly":
-		return object.NewInt(1), true
-	case "ScrollVerticalOnly":
-		return object.NewInt(2), true
-	case "ScrollNone":
-		return object.NewInt(3), true
 
 	// Orientation (fyne.Orientation)
-	case "Horizontal":
-		return object.NewInt(0), true
-	case "Vertical":
-		return object.NewInt(1), true
 
 	// Text Alignment (fyne.TextAlign)
-	case "TextAlignLeading":
-		return object.NewInt(0), true
-	case "TextAlignCenter":
-		return object.NewInt(1), true
-	case "TextAlignTrailing":
-		return object.NewInt(2), true
-	}
-	return nil, false
+
 }
 
 func (obj *Constants) Attrs() []object.AttrSpec {
-	return []object.AttrSpec{
-		// Button Importance
-		{Name: "ImportanceHigh"},
-		{Name: "ImportanceMedium"},
-		{Name: "ImportanceLow"},
-		{Name: "DangerImportance"},
-		{Name: "WarningImportance"},
-		{Name: "SuccessImportance"},
-		// Button Icon Placement
-		{Name: "ButtonIconLeadingText"},
-		{Name: "ButtonIconTrailingText"},
-		// Button Alignment
-		{Name: "ButtonAlignCenter"},
-		{Name: "ButtonAlignLeading"},
-		{Name: "ButtonAlignTrailing"},
-		// Text Wrapping
-		{Name: "TextWrapOff"},
-		{Name: "TextWrapBreak"},
-		{Name: "TextWrapWord"},
-		// Text Truncation
-		{Name: "TextTruncateOff"},
-		{Name: "TextTruncateClip"},
-		{Name: "TextTruncateEllipsis"},
-		// Scroll Direction
-		{Name: "ScrollBoth"},
-		{Name: "ScrollHorizontalOnly"},
-		{Name: "ScrollVerticalOnly"},
-		{Name: "ScrollNone"},
-		// Orientation
-		{Name: "Horizontal"},
-		{Name: "Vertical"},
-		// Text Alignment
-		{Name: "TextAlignLeading"},
-		{Name: "TextAlignCenter"},
-		{Name: "TextAlignTrailing"},
-	}
+	return constantsAttrs.Specs()
+	// Button Importance
+
+	// Button Icon Placement
+
+	// Button Alignment
+
+	// Text Wrapping
+
+	// Text Truncation
+
+	// Scroll Direction
+
+	// Orientation
+
+	// Text Alignment
+
 }
 
 func newConstantsObject() *Constants {
 	return &Constants{}
+}
+func init() {
+	constantsAttrs.
+		Define(
+			"ImportanceHigh",
+		).Getter(func(obj *Constants) object.
+		Object {
+		return object.NewInt(int64(widget.HighImportance))
+	})
+	constantsAttrs.
+		Define(
+			"ImportanceMedium",
+		).Getter(func(obj *Constants) object.
+		Object {
+		return object.
+			NewInt(int64(widget.MediumImportance))
+	})
+	constantsAttrs.
+		Define(
+			"ImportanceLow",
+		).Getter(func(obj *Constants) object.
+		Object {
+		return object.NewInt(int64(widget.LowImportance))
+	})
+	constantsAttrs.
+		Define(
+			"DangerImportance",
+		).Getter(func(obj *Constants) object.
+		Object {
+		return object.
+			NewInt(int64(widget.DangerImportance))
+	})
+	constantsAttrs.
+		Define(
+			"WarningImportance",
+		).Getter(func(obj *Constants) object.
+		Object {
+		return object.
+			NewInt(int64(widget.WarningImportance))
+	})
+	constantsAttrs.
+		Define(
+			"SuccessImportance",
+		).Getter(func(obj *Constants) object.
+		Object {
+		return object.
+			NewInt(int64(widget.SuccessImportance))
+	})
+	constantsAttrs.
+		Define(
+			"ButtonIconLeadingText",
+		).Getter(func(obj *Constants) object.Object {
+		return object.
+			NewInt(int64(widget.ButtonIconLeadingText))
+	})
+	constantsAttrs.
+		Define(
+			"ButtonIconTrailingText",
+		).Getter(func(obj *Constants) object.Object {
+		return object.
+			NewInt(int64(widget.ButtonIconTrailingText))
+	})
+	constantsAttrs.
+		Define(
+			"ButtonAlignCenter",
+		).Getter(func(obj *Constants) object.
+		Object {
+		return object.
+			NewInt(int64(widget.ButtonAlignCenter))
+	})
+	constantsAttrs.
+		Define(
+			"ButtonAlignLeading",
+		).Getter(func(obj *Constants) object.
+		Object {
+		return object.
+			NewInt(int64(widget.ButtonAlignLeading))
+	})
+	constantsAttrs.
+		Define(
+			"ButtonAlignTrailing",
+		).Getter(func(obj *Constants) object.
+		Object {
+		return object.
+			NewInt(int64(widget.ButtonAlignTrailing))
+	})
+	constantsAttrs.
+		Define(
+			"TextWrapOff",
+		).Getter(func(obj *Constants) object.Object {
+		return object.NewInt(0)
+	})
+	constantsAttrs.
+		Define(
+			"TextWrapBreak",
+		).Getter(func(obj *Constants) object.
+		Object {
+		return object.NewInt(1)
+	})
+	constantsAttrs.
+		Define(
+			"TextWrapWord",
+		).Getter(func(obj *Constants) object.
+		Object {
+		return object.NewInt(2)
+	})
+	constantsAttrs.
+		Define(
+			"TextTruncateOff",
+		).Getter(func(obj *Constants) object.
+		Object {
+		return object.NewInt(0)
+	})
+	constantsAttrs.
+		Define(
+			"TextTruncateClip",
+		).Getter(func(obj *Constants) object.
+		Object {
+		return object.
+			NewInt(1)
+	})
+	constantsAttrs.
+		Define(
+			"TextTruncateEllipsis",
+		).Getter(func(obj *Constants) object.Object {
+		return object.
+			NewInt(2)
+	})
+	constantsAttrs.
+		Define(
+			"ScrollBoth",
+		).Getter(func(obj *Constants) object.Object {
+		return object.NewInt(0)
+	})
+	constantsAttrs.
+		Define(
+			"ScrollHorizontalOnly",
+		).Getter(func(obj *Constants) object.Object {
+		return object.
+			NewInt(1)
+	})
+	constantsAttrs.
+		Define(
+			"ScrollVerticalOnly",
+		).Getter(func(obj *Constants) object.
+		Object {
+		return object.
+			NewInt(2)
+	})
+	constantsAttrs.
+		Define(
+			"ScrollNone",
+		).Getter(func(obj *Constants) object.Object {
+		return object.NewInt(3)
+	})
+	constantsAttrs.
+		Define(
+			"Horizontal",
+		).Getter(func(obj *Constants) object.Object {
+		return object.NewInt(0)
+	})
+	constantsAttrs.
+		Define(
+			"Vertical",
+		).Getter(func(obj *Constants) object.Object {
+		return object.NewInt(1)
+	})
+	constantsAttrs.
+		Define(
+			"TextAlignLeading",
+		).Getter(func(obj *Constants) object.
+		Object {
+		return object.
+			NewInt(0)
+	})
+	constantsAttrs.
+		Define(
+			"TextAlignCenter",
+		).Getter(func(obj *Constants) object.
+		Object {
+		return object.NewInt(1)
+	})
+	constantsAttrs.
+		Define(
+			"TextAlignTrailing",
+		).Getter(func(obj *Constants) object.
+		Object {
+		return object.
+			NewInt(2)
+	})
 }

@@ -76,12 +76,10 @@ func (obj *AppTabs) GetAttr(name string) (object.Object, bool) {
 var appTabsAttrs = object.NewAttrRegistry[*AppTabs](string(AppTabsType))
 
 func (obj *AppTabs) getAttrUI(name string) (object.Object, bool) {
-	return appTabsAttrs.GetAttr(obj, name)
-
 	// Event: Fyne invokes OnSelected on the GUI thread; the script
 	// callback is queued on the script's VM goroutine (recovered,
 	// serialized with every other VM entry).
-
+	return appTabsAttrs.GetAttr(obj, name)
 }
 
 func NewAppTabs(items ...*container.TabItem) *AppTabs {

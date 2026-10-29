@@ -63,76 +63,33 @@ func (obj *Fyne) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var fyneAttrs = object.NewAttrRegistry[*Fyne](string(FyneType))
+
 func (obj *Fyne) getAttrUI(name string) (object.Object, bool) {
+	if o, ok := fyneAttrs.GetAttr(obj, name); ok {
+		return o, true
+	}
 	switch name {
+
 	case "NewMenuItem":
 		return object.NewBuiltin("fyne.NewMenuItem", risorwidget.NewMenuItem(obj.w)), true
 
 	case "NewMenuItemSeparator":
 		return object.NewBuiltin("fyne.NewMenuItemSeparator", risorwidget.NewMenuItemSeparator), true
-
-	case "NewMenu":
-		return object.NewBuiltin("fyne.NewMenu", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) < 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=at least 1", len(args))
-			}
-
-			label, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			// Collect MenuItems
-			items := make([]*fyne.MenuItem, 0, len(args)-1)
-			for i := 1; i < len(args); i++ {
-				menuItemObj, ok := args[i].(*risorwidget.MenuItem)
-				if !ok {
-					return nil, object.Errorf("argument error: expected MenuItem, got %s", args[i].Type())
-				}
-				items = append(items, menuItemObj.Instance())
-			}
-
-			menu := fyne.NewMenu(label, items...)
-
-			return &Menu{instance: menu}, nil
-		}), true
-
-	case "NewMainMenu":
-		return object.NewBuiltin("fyne.NewMainMenu", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) < 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=at least 1", len(args))
-			}
-
-			// Collect Menus from list
-			listObj, ok := args[0].(*object.List)
-			if !ok {
-				return nil, object.Errorf("argument error: expected list of menus, got %s", args[0].Type())
-			}
-
-			menus := make([]*fyne.Menu, 0, len(listObj.Value()))
-			for _, item := range listObj.Value() {
-				menuObj, ok := item.(*Menu)
-				if !ok {
-					return nil, object.Errorf("argument error: expected Menu in list, got %s", item.Type())
-				}
-				menus = append(menus, menuObj.instance)
-			}
-
-			mainMenu := fyne.NewMainMenu(menus...)
-
-			return &MainMenu{instance: mainMenu}, nil
-		}), true
 	}
 	return nil, false
+
+	// Collect MenuItems
+
+	// Collect Menus from list
+
 }
 
 func (obj *Fyne) Attrs() []object.AttrSpec {
-	return []object.AttrSpec{
-		{Name: "NewMenuItem"},
-		{Name: "NewMenuItemSeparator"},
-		{Name: "NewMenu"},
-		{Name: "NewMainMenu"},
-	}
+	return append(fyneAttrs.Specs(),
+		object.AttrSpec{Name: "NewMenuItem", Doc: "Create a menu item: NewMenuItem(label, action)", Args: []string{"label", "action"}},
+		object.AttrSpec{Name: "NewMenuItemSeparator", Doc: "Create a menu separator item"},
+	)
 }
 
 // Menu wraps fyne.Menu
@@ -187,28 +144,16 @@ func (obj *Menu) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-func (obj *Menu) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Label":
-		return object.NewString(obj.instance.Label), true
+var menuAttrs = object.NewAttrRegistry[*Menu]("fyne.Menu")
 
-	case "Refresh":
-		return object.NewBuiltin("fyne.Menu.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			obj.instance.Refresh()
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
+func (obj *Menu) getAttrUI(name string) (object.Object, bool) {
+	return menuAttrs.GetAttr(obj, name)
+
 }
 
 func (obj *Menu) Attrs() []object.AttrSpec {
-	return []object.AttrSpec{
-		{Name: "Label"},
-		{Name: "Refresh"},
-	}
+	return menuAttrs.Specs()
+
 }
 
 // MainMenu wraps fyne.MainMenu
@@ -263,22 +208,97 @@ func (obj *MainMenu) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var mainMenuAttrs = object.NewAttrRegistry[*MainMenu]("fyne.MainMenu")
+
 func (obj *MainMenu) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Refresh":
-		return object.NewBuiltin("fyne.MainMenu.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			obj.instance.Refresh()
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
+	return mainMenuAttrs.GetAttr(obj, name)
+
 }
 
 func (obj *MainMenu) Attrs() []object.AttrSpec {
-	return []object.AttrSpec{
-		{Name: "Refresh"},
-	}
+	return mainMenuAttrs.Specs()
+
+}
+func init() {
+	menuAttrs.Define("Label").Doc("The menu's label.").Getter(
+		func(obj *Menu) object.Object {
+			return object.NewString(obj.instance.Label)
+		})
+	menuAttrs.Define("Refresh").Doc("Redraw the menu.").Args().Returns("nil").Impl(func(obj *Menu, ctx context.Context, args ...object.
+		Object) (object.Object, error) {
+		obj.instance.
+			Refresh()
+		return object.Nil, nil
+	})
+}
+func init() {
+	mainMenuAttrs.
+		Define("Refresh").Doc("Redraw the main menu.").Args().Returns("nil").Impl(func(obj *MainMenu, ctx context.
+		Context, args ...object.Object) (object.Object, error) {
+		obj.instance.
+			Refresh()
+		return object.Nil, nil
+	})
+}
+func init() {
+	fyneAttrs.Define("NewMenu").Doc("Create a menu: NewMenu(label, item...)").Variadic("args").Returns("nil").Impl(func(obj *Fyne, ctx context.Context, args ...object.Object) (object.Object, error) {
+		if len(args) < 1 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=at least 1",
+
+				len(args))
+		}
+		label, err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		items := make([]*fyne.
+			MenuItem, 0, len(args)-1)
+		for i := 1; i < len(args); i++ {
+			menuItemObj,
+				ok := args[i].(*risorwidget.MenuItem)
+			if !ok {
+				return nil, object.
+					Errorf("argument error: expected MenuItem, got %s", args[i].Type())
+			}
+			items = append(items, menuItemObj.Instance())
+		}
+		menu := fyne.NewMenu(label,
+			items...)
+		return &Menu{instance: menu},
+			nil
+	})
+	fyneAttrs.Define("NewMainMenu").Doc("Create a main menu: NewMainMenu(menu...)").Variadic("args").Returns("nil").Impl(func(obj *Fyne,
+
+		ctx context.Context,
+
+		args ...object.Object) (object.Object, error) {
+		if len(args) < 1 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=at least 1",
+
+				len(args))
+		}
+		listObj, ok := args[0].(*object.List)
+		if !ok {
+			return nil, object.Errorf("argument error: expected list of menus, got %s",
+				args[0].Type())
+		}
+		menus := make([]*fyne.
+			Menu, 0,
+			len(listObj.Value()))
+		for _, item := range listObj.Value() {
+			menuObj, ok := item.(*Menu)
+			if !ok {
+				return nil, object.Errorf("argument error: expected Menu in list, got %s",
+
+					item.Type())
+			}
+			menus = append(
+				menus,
+
+				menuObj.instance)
+		}
+		mainMenu := fyne.
+			NewMainMenu(menus...)
+		return &MainMenu{instance: mainMenu}, nil
+	})
 }

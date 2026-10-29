@@ -52,7 +52,7 @@ func (obj *Line) Equals(other object.Object) bool {
 }
 
 func (obj *Line) Attrs() []object.AttrSpec {
-	return nil
+	return lineAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -69,8 +69,11 @@ func (g *Line) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, g.getAttrUI)
 }
 
+var lineAttrs = object.NewAttrRegistry[*Line](string(LineType))
+
 func (g *Line) getAttrUI(name string) (object.Object, bool) {
-	return nil, false
+	return lineAttrs.GetAttr(g, name)
+
 }
 
 func NewLine(instance fyne.CanvasObject) *Line {

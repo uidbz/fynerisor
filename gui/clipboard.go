@@ -54,7 +54,7 @@ func (obj *Clipboard) Equals(other object.Object) bool {
 }
 
 func (obj *Clipboard) Attrs() []object.AttrSpec {
-	return nil
+	return clipboardAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -71,39 +71,41 @@ func (obj *Clipboard) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var clipboardAttrs = object.NewAttrRegistry[*Clipboard](string(ClipboardType))
+
 func (obj *Clipboard) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Copy":
-		return object.NewBuiltin("clipboard.Copy", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			s, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-			guithread.DoAndWait(func() {
-				fyne.CurrentApp().Clipboard().SetContent(s)
-			})
-			return object.Nil, nil
-		}), true
-	case "Read":
-		return object.NewBuiltin("clipboard.Read", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			var content string
-			// DoAndWait: the script body runs off the GUI thread and needs
-			// the value back (issue #18).
-			guithread.DoAndWait(func() {
-				content = fyne.CurrentApp().Clipboard().Content()
-			})
-			return object.NewString(content), nil
-		}), true
-	}
-	return nil, false
+	return clipboardAttrs.GetAttr(obj, name)
 }
 
 func NewFyneClipboard() *Clipboard {
 	return &Clipboard{}
+}
+func init() {
+	clipboardAttrs.
+		Define(
+			"Copy").Doc("Copy text to the clipboard.").Args("arg1").Returns("nil").Impl(func(obj *Clipboard, ctx context.Context, args ...object.Object) (object.Object, error) {
+		s, err := object.AsString(args[0])
+		if err !=
+
+			nil {
+			return nil, err
+		}
+		guithread.
+			DoAndWait(func() {
+				fyne.CurrentApp().Clipboard().SetContent(s)
+			})
+		return object.Nil, nil
+	})
+	clipboardAttrs.
+		Define(
+			"Read").Doc("Read the clipboard contents. DoAndWait: the script body runs off the GUI thread and needs the value back (issue #18).").Args().Returns("string").Impl(func(obj *Clipboard, ctx context.Context, args ...object.
+		Object) (object.Object, error) {
+		var content string
+		guithread.DoAndWait(func() {
+			content = fyne.CurrentApp().Clipboard().
+				Content()
+		})
+		return object.NewString(content),
+			nil
+	})
 }

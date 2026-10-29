@@ -56,32 +56,10 @@ func (a *App) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, a.getAttrUI)
 }
 
+var appAttrs = object.NewAttrRegistry[*App](string(AppType))
+
 func (a *App) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "name":
-		return object.NewString(a.appName), true
-	case "version":
-		// This window's app version (issue #44), empty if unset
-		appVer := a.win.appVersion
-		if appVer != "" {
-			return object.NewString(appVer), true
-		}
-		return object.NewString(""), true
-	case "Quit":
-		return object.NewBuiltin("app.Quit", func(_ context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			if a.win == nil || a.win.FyneApp == nil {
-				return nil, object.Errorf("runtime error: app.Quit unavailable (no Fyne app; host owns the window)")
-			}
-			guithread.Do(func() {
-				a.win.FyneApp.Quit()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
+	return appAttrs.GetAttr(a, name)
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -94,9 +72,22 @@ func (a *App) setAttrUI(name string, value object.Object) error {
 }
 
 func (a *App) Attrs() []object.AttrSpec {
-	return []object.AttrSpec{
-		{Name: "name", Doc: "Name of the embedding application"},
-		{Name: "version", Doc: "Version of the embedding application (if set via SetAppVersion)"},
-		{Name: "Quit", Doc: "Quit the application (app.Quit())"},
-	}
+	return appAttrs.Specs()
+}
+func init() {
+	appAttrs.Define("name").Doc("Name of the embedding application").Getter(func(a *App) object.Object {
+		return object.NewString(a.appName)
+	})
+	// This window's app version (issue #44), empty if unset.
+	appAttrs.Define("version").Doc("Version of the embedding application (if set via SetAppVersion)").Getter(func(a *App) object.Object {
+		return object.NewString(a.win.appVersion)
+	})
+	appAttrs.Define("Quit").Doc("Quit the application (app.Quit())").Args().Returns("nil").Impl(func(a *App, ctx context.Context, args ...object.Object) (object.Object, error) {
+		if a.win == nil || a.win.FyneApp == nil {
+			return nil, object.Errorf("runtime error: app.Quit unavailable (no Fyne app; host owns the window)")
+		}
+		guithread.Do(func() { a.win.FyneApp.Quit() })
+		return object.Nil,
+			nil
+	})
 }

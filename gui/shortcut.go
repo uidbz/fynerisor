@@ -196,11 +196,16 @@ func (sw *ShortcutWrapper) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, sw.getAttrUI)
 }
 
+var shortcutWrapperAttrs = object.NewAttrRegistry[*ShortcutWrapper]("shortcut")
+
 func (sw *ShortcutWrapper) getAttrUI(name string) (object.Object, bool) {
-	return nil, false
+	return shortcutWrapperAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		GetAttr(sw, name)
+
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (sw *ShortcutWrapper) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, sw.setAttrUI)
 }
@@ -210,5 +215,5 @@ func (sw *ShortcutWrapper) setAttrUI(name string, value object.Object) error {
 }
 
 func (sw *ShortcutWrapper) Attrs() []object.AttrSpec {
-	return nil
+	return shortcutWrapperAttrs.Specs()
 }

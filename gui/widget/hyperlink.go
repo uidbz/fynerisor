@@ -82,10 +82,8 @@ func (obj *Hyperlink) GetAttr(name string) (object.Object, bool) {
 }
 
 func (obj *Hyperlink) getAttrUI(name string) (object.Object, bool) {
-	return hyperlinkAttrs.GetAttr(obj, name)
-
 	// Event: queued on the script's VM goroutine.
-
+	return hyperlinkAttrs.GetAttr(obj, name)
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).

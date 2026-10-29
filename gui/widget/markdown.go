@@ -114,10 +114,8 @@ func (obj *Markdown) GetAttr(name string) (object.Object, bool) {
 }
 
 func (obj *Markdown) getAttrUI(name string) (object.Object, bool) {
-	return markdownAttrs.GetAttr(obj, name)
-
 	// Event: link taps are queued on the script's VM goroutine.
-
+	return markdownAttrs.GetAttr(obj, name)
 }
 
 func NewMarkdown(markdown string) *Markdown {

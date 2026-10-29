@@ -119,8 +119,6 @@ func (obj *GridWrap) GetAttr(name string) (object.Object, bool) {
 }
 
 func (obj *GridWrap) getAttrUI(name string) (object.Object, bool) {
-	return gridWrapAttrs.GetAttr(obj, name)
-
 	// Getter: called synchronously by Fyne during layout.
 
 	// Getter: called synchronously by Fyne during layout.
@@ -134,7 +132,7 @@ func (obj *GridWrap) getAttrUI(name string) (object.Object, bool) {
 	// Event: queued on the script's VM goroutine.
 
 	// Event: queued on the script's VM goroutine.
-
+	return gridWrapAttrs.GetAttr(obj, name)
 }
 func init() {
 	objattrs.Add(gridWrapAttrs)

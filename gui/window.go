@@ -716,7 +716,7 @@ func (w *Window) Equals(other object.Object) bool {
 }
 
 func (w *Window) Attrs() []object.AttrSpec {
-	return nil
+	return windowAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -737,296 +737,11 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, w.getAttrUI)
 }
 
+var windowAttrs = object.NewAttrRegistry[*Window](string(WindowType))
+
 func (w *Window) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "DroppedPaths":
-		return object.NewStringList(w.droppedPaths), true
-
-	case "Close":
-		return object.NewBuiltin("w.Close", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			if w.FyneWindow == nil {
-				return nil, object.Errorf("window.Close: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)")
-			}
-			if w.stale(ctx) {
-				return nil, vmexec.ErrStopped
-			}
-			guithread.Do(func() {
-				w.FyneWindow.Close()
-			})
-			return object.Nil, nil
-		}), true
-
-	case "SetContent":
-		return object.NewBuiltin("w.SetContent", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			obj, ok := args[0].(IsCanvasObject)
-			if !ok {
-				return nil, object.Errorf("argument error: expected IsCanvasObject, got %s", args[0].Type())
-			}
-
-			guithread.Do(func() {
-				// A run that has been stopped or replaced must not swap the
-				// content of the run that replaced it.
-				if w.stale(ctx) {
-					return
-				}
-				w.contentMu.Lock()
-				defer w.contentMu.Unlock()
-				w.content.Objects = []fyne.CanvasObject{obj.CanvasObject()}
-				w.content.Refresh()
-			})
-
-			return object.Nil, nil
-		}), true
-
-	case "SetStdout", "CaptureStdout":
-		return object.NewBuiltin("w.SetStdout", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			if w.stale(ctx) {
-				return nil, vmexec.ErrStopped
-			}
-			owner := vmexec.FromContext(ctx)
-
-			// A Log widget is the preferred sink: it is an io.Writer fed by
-			// print on the VM goroutine, appended via pure Go, never
-			// re-entering the VM (issue #24). nil restores the default.
-			// A closure is bridged as an io.Writer that queues each complete
-			// line onto its run like any other event.
-			switch arg := args[0].(type) {
-			case *object.NilType:
-				w.setStdout(nil, owner)
-			case *risorwidget.Log:
-				w.setStdout(arg, owner)
-			case *object.Closure:
-				cb, err := vmexec.NewCallback(ctx, "window.SetStdout", args[0])
-				if err != nil {
-					return nil, err
-				}
-				w.setStdout(&callbackWriter{cb: cb}, owner)
-			default:
-				return nil, object.Errorf("argument error: expected widget.Log, function, or nil, got %s", args[0].Type())
-			}
-			return object.Nil, nil
-		}), true
-
-	case "OnDropped":
-		return object.NewBuiltin("w.OnDropped", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			cb, err := vmexec.NewCallback(ctx, "window.OnDropped", args[0])
-			if err != nil {
-				return nil, err
-			}
-			if w.stale(ctx) {
-				return nil, vmexec.ErrStopped
-			}
-
-			w.cbMu.Lock()
-			w.onDropped = func(droppedPaths []string) {
-				cb.Fire(object.NewStringList(droppedPaths))
-			}
-			w.dropOwner = vmexec.FromContext(ctx)
-			w.cbMu.Unlock()
-
-			return object.Nil, nil
-		}), true
-
-	case "SetStatus":
-		return object.NewBuiltin("w.SetStatus", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			status, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-			// A stopped or replaced run must not overwrite the status of
-			// the run that replaced it (issues #16, #52).
-			if r := vmexec.FromContext(ctx); r != nil {
-				if w.stale(ctx) {
-					return nil, vmexec.ErrStopped
-				}
-				w.setStatusFor(r, status)
-			} else {
-				w.SetStatus(status)
-			}
-
-			return object.Nil, nil
-		}), true
-
-	case "Do":
-		return object.NewBuiltin("w.Do", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			cb, err := vmexec.NewCallback(ctx, "window.Do", args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			// Runs on the run's VM goroutine after the current body/event;
-			// widget methods marshal their own UI work (guithread.Do).
-			r := vmexec.FromContext(ctx)
-			cb.OnError(func(err error) { w.setStatusFor(r, "ERROR: "+err.Error()) }).Fire()
-
-			return object.Nil, nil
-		}), true
-
-	case "Size":
-		if w.FyneWindow != nil {
-			size := w.FyneWindow.Canvas().Size()
-			return object.NewMap(map[string]object.Object{
-				"width":  object.NewFloat(float64(size.Width)),
-				"height": object.NewFloat(float64(size.Height)),
-			}), true
-		}
-		size := w.content.Size()
-		if size.Width == 0 && size.Height == 0 {
-			size = w.content.MinSize()
-		}
-		return object.NewMap(map[string]object.Object{
-			"width":  object.NewFloat(float64(size.Width)),
-			"height": object.NewFloat(float64(size.Height)),
-		}), true
-
-	case "Resize":
-		return object.NewBuiltin("w.Resize", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-
-			width, err := object.AsFloat(args[0])
-			if err != nil {
-				return nil, object.Errorf("argument error: width must be a number, got %s", args[0].Type())
-			}
-
-			height, err := object.AsFloat(args[1])
-			if err != nil {
-				return nil, object.Errorf("argument error: height must be a number, got %s", args[1].Type())
-			}
-
-			if w.stale(ctx) {
-				return nil, vmexec.ErrStopped
-			}
-			// Must call Resize on the UI thread
-			guithread.Do(func() {
-				w.Resize(float32(width), float32(height))
-			})
-
-			return object.Nil, nil
-		}), true
-
-	case "AddShortcut":
-		return object.NewBuiltin("window.AddShortcut", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, fmt.Errorf("AddShortcut requires 2 arguments (shortcut, callback)")
-			}
-			if w.FyneWindow == nil {
-				return nil, object.Errorf("window.AddShortcut: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)")
-			}
-
-			// Parse shortcut string
-			shortcutStr, ok := args[0].(*object.String)
-			if !ok {
-				return nil, fmt.Errorf("first argument must be string (e.g., 'Ctrl+S')")
-			}
-
-			cb, err := vmexec.NewCallback(ctx, "window.AddShortcut", args[1])
-			if err != nil {
-				return nil, err
-			}
-			run := vmexec.FromContext(ctx)
-			cb.OnError(func(err error) { w.setStatusFor(run, "ERROR: "+err.Error()) })
-			if w.stale(ctx) {
-				return nil, vmexec.ErrStopped
-			}
-
-			// Parse the shortcut string
-			shortcut, err := ParseShortcutString(shortcutStr.Value())
-			if err != nil {
-				return nil, fmt.Errorf("invalid shortcut: %w", err)
-			}
-
-			// Register shortcut on canvas. Event: the handler is queued on
-			// the script's VM goroutine.
-			w.FyneWindow.Canvas().AddShortcut(shortcut, func(s fyne.Shortcut) {
-				cb.Fire()
-			})
-
-			// Track shortcut for removal (and for cleanup when the run ends)
-			w.shortcutMutex.Lock()
-			w.shortcuts[shortcutStr.Value()] = shortcutEntry{shortcut: shortcut, owner: run}
-			w.shortcutMutex.Unlock()
-
-			return object.Nil, nil
-		}), true
-
-	case "RemoveShortcut":
-		return object.NewBuiltin("window.RemoveShortcut", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, fmt.Errorf("RemoveShortcut requires 1 argument (shortcut string)")
-			}
-			if w.FyneWindow == nil {
-				return nil, object.Errorf("window.RemoveShortcut: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)")
-			}
-
-			shortcutStr, ok := args[0].(*object.String)
-			if !ok {
-				return nil, fmt.Errorf("argument must be string")
-			}
-
-			if w.stale(ctx) {
-				return nil, vmexec.ErrStopped
-			}
-			// Find and remove shortcut
-			w.shortcutMutex.Lock()
-			entry, found := w.shortcuts[shortcutStr.Value()]
-			if found {
-				delete(w.shortcuts, shortcutStr.Value())
-			}
-			w.shortcutMutex.Unlock()
-
-			if found {
-				w.FyneWindow.Canvas().RemoveShortcut(entry.shortcut)
-			}
-
-			return object.Nil, nil
-		}), true
-
-	case "SetMainMenu":
-		return object.NewBuiltin("window.SetMainMenu", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, fmt.Errorf("SetMainMenu requires 1 argument (MainMenu)")
-			}
-			if w.FyneWindow == nil {
-				return nil, object.Errorf("window.SetMainMenu: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)")
-			}
-
-			mainMenuObj, ok := args[0].(*MainMenu)
-			if !ok {
-				return nil, fmt.Errorf("argument must be MainMenu object")
-			}
-			if w.stale(ctx) {
-				return nil, vmexec.ErrStopped // stopped run (issues #16, #52)
-			}
-
-			// Remember which run owns the menu, so the next run can remove
-			// it together with its (dead) item callbacks.
-			w.menuOwner.Store(vmexec.FromContext(ctx))
-			guithread.Do(func() {
-				w.FyneWindow.SetMainMenu(mainMenuObj.instance)
-			})
-
-			return object.Nil, nil
-		}), true
+	if o, ok := windowAttrs.GetAttr(w, name); ok {
+		return o, true
 	}
 	return nil, false
 }
@@ -1051,4 +766,333 @@ func (w *Window) Canvas() fyne.Canvas {
 		return nil
 	}
 	return w.FyneWindow.Canvas()
+}
+func init() {
+	windowAttrs.
+		Define("DroppedPaths").Getter(func(
+		w *Window) object.
+		Object {
+		return object.
+			NewStringList(w.droppedPaths)
+	})
+	windowAttrs.
+		Define("Close").Args().Returns("nil").Impl(func(w *Window,
+
+		ctx context.
+			Context, args ...object.Object) (object.Object, error) {
+		if w.FyneWindow == nil {
+			return nil,
+				object.Errorf("window.Close: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)")
+		}
+		if w.stale(ctx) {
+			return nil, vmexec.ErrStopped
+		}
+		guithread.
+			Do(func() {
+				w.FyneWindow.Close()
+			})
+		return object.Nil, nil
+	})
+	windowAttrs.
+		Define("SetContent").
+		Doc("Set the window content. A run that has been stopped or replaced must not swap the content of the run that replaced it.").
+		Args("arg1").Returns("nil").Impl(func(
+		w *Window,
+		ctx context.
+			Context, args ...object.Object) (
+		object.Object, error) {
+		obj, ok := args[0].(IsCanvasObject)
+		if !ok {
+			return nil, object.Errorf("argument error: expected IsCanvasObject, got %s",
+				args[0].Type())
+		}
+		guithread.
+			Do(func() {
+				if w.stale(ctx) {
+					return
+				}
+				w.
+					contentMu.Lock()
+				defer w.contentMu.Unlock()
+				w.content.Objects = []fyne.
+					CanvasObject{obj.CanvasObject()}
+				w.content.
+					Refresh()
+			})
+		return object.Nil, nil
+	},
+	)
+	windowAttrs.
+		Define("SetStdout").Doc("Route the run's stdout to a Log widget, writer object, or closure; nil restores the default. A Log widget is the preferred sink: an io.Writer fed on the VM goroutine, never re-entering the VM (#24).").Args("arg1").Returns("nil").Impl(func(
+		w *Window, ctx context.
+			Context, args ...object.Object) (object.
+		Object, error) {
+		if w.stale(ctx) {
+			return nil, vmexec.ErrStopped
+		}
+		owner := vmexec.FromContext(ctx)
+		switch arg := args[0].(type) {
+		case *object.NilType:
+			w.setStdout(nil, owner)
+		case *risorwidget.Log:
+			w.setStdout(arg, owner)
+		case *object.Closure:
+			cb, err := vmexec.NewCallback(ctx,
+				"window.SetStdout", args[0])
+			if err != nil {
+				return nil, err
+			}
+			w.setStdout(&callbackWriter{cb: cb}, owner)
+		default:
+			return nil, object.
+				Errorf("argument error: expected widget.Log, function, or nil, got %s",
+
+					args[0].Type())
+		}
+		return object.Nil, nil
+	})
+	windowAttrs.
+		Define("CaptureStdout").Doc("Deprecated alias of SetStdout.").Args("arg1").Returns("nil").Impl(func(w *Window, ctx context.
+		Context, args ...object.Object) (object.Object, error) {
+		if w.stale(ctx) {
+			return nil, vmexec.ErrStopped
+		}
+		owner := vmexec.
+			FromContext(ctx)
+		switch arg :=
+			args[0].(type) {
+		case *object.NilType:
+			w.setStdout(nil, owner)
+		case *risorwidget.Log:
+			w.setStdout(arg, owner)
+		case
+			*object.Closure:
+			cb,
+				err := vmexec.NewCallback(ctx,
+				"window.SetStdout", args[0])
+			if err !=
+				nil {
+				return nil, err
+			}
+			w.setStdout(&callbackWriter{cb: cb}, owner)
+		default:
+			return nil,
+				object.
+					Errorf("argument error: expected widget.Log, function, or nil, got %s",
+
+						args[0].Type())
+		}
+		return object.Nil, nil
+	})
+	windowAttrs.
+		Define("OnDropped").Args("arg1").Returns("nil").Impl(func(
+		w *Window, ctx context.
+			Context, args ...object.Object) (object.
+		Object, error) {
+		cb, err := vmexec.NewCallback(ctx, "window.OnDropped", args[0])
+		if err !=
+			nil {
+			return nil, err
+		}
+		if w.stale(ctx) {
+			return nil, vmexec.ErrStopped
+		}
+		w.cbMu.Lock()
+		w.onDropped = func(droppedPaths []string) {
+			cb.Fire(object.NewStringList(droppedPaths))
+		}
+		w.dropOwner = vmexec.FromContext(ctx)
+		w.cbMu.Unlock()
+		return object.Nil, nil
+	})
+	windowAttrs.
+		Define("SetStatus").Doc("Set the run status shown in the title bar. A stopped or replaced run must not overwrite the status of the run that replaced it (#16, #52).").Args("arg1").Returns("nil").Impl(func(
+		w *Window, ctx context.
+			Context, args ...object.Object) (object.
+		Object, error) {
+		status, err := object.AsString(args[0])
+		if err != nil {
+			return nil,
+				err
+		}
+		if r := vmexec.FromContext(
+			ctx); r != nil {
+			if w.stale(ctx) {
+				return nil,
+					vmexec.ErrStopped
+			}
+			w.setStatusFor(r, status)
+		} else {
+			w.SetStatus(status)
+		}
+		return object.Nil, nil
+	})
+	windowAttrs.
+		Define("Do").Doc("Schedule a callback to run on the run's VM goroutine after the current body/event; widget methods marshal their own UI work (guithread.Do).").Args("arg1").Returns("nil").Impl(func(w *Window, ctx context.
+		Context, args ...object.Object) (object.Object, error) {
+		cb, err := vmexec.NewCallback(ctx,
+			"window.Do", args[0])
+		if err != nil {
+			return nil, err
+		}
+		r := vmexec.FromContext(ctx)
+		cb.OnError(func(err error) {
+			w.setStatusFor(r, "ERROR: "+err.Error())
+		}).Fire()
+
+		return object.Nil,
+			nil
+	})
+	windowAttrs.
+		Define("Resize").Args("arg1",
+		"arg2",
+	).Returns("nil").Impl(
+		func(w *Window, ctx context.Context, args ...object.Object) (object.Object, error) {
+			width, err := object.
+				AsFloat(args[0])
+			if err != nil {
+				return nil,
+					object.Errorf("argument error: width must be a number, got %s",
+						args[0].Type(),
+					)
+			}
+			height, err := object.AsFloat(args[1])
+			if err != nil {
+				return nil, object.Errorf("argument error: height must be a number, got %s",
+
+					args[1].Type())
+			}
+			if w.
+				stale(ctx) {
+				return nil, vmexec.ErrStopped
+			}
+			guithread.Do(func() {
+				w.Resize(float32(width),
+					float32(height))
+			})
+			return object.Nil, nil
+
+		})
+	windowAttrs.
+		Define("AddShortcut").
+		Doc("Bind a shortcut string (e.g. \"Ctrl+S\") to a callback; events queue on the script's VM goroutine. Tracked for removal when the run ends.").
+		Args(
+			"arg1",
+			"arg2").Returns("nil").
+		Impl(func(w *Window,
+
+			ctx context.Context, args ...object.
+				Object) (object.Object, error) {
+			if w.FyneWindow ==
+				nil {
+				return nil, object.Errorf("window.AddShortcut: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)")
+			}
+			shortcutStr, ok := args[0].(*object.
+				String)
+			if !ok {
+				return nil, fmt.Errorf("first argument must be string (e.g., 'Ctrl+S')")
+			}
+			cb, err := vmexec.
+				NewCallback(ctx, "window.AddShortcut",
+					args[1])
+			if err != nil {
+				return nil, err
+			}
+			run :=
+
+				vmexec.
+					FromContext(ctx)
+			cb.OnError(func(
+				err error) {
+				w.setStatusFor(run, "ERROR: "+err.Error())
+			})
+			if w.stale(ctx) {
+				return nil, vmexec.ErrStopped
+			}
+			shortcut, err := ParseShortcutString(shortcutStr.Value())
+			if err != nil {
+				return nil, fmt.
+					Errorf("invalid shortcut: %w", err)
+			}
+			w.FyneWindow.Canvas().AddShortcut(shortcut,
+				func(s fyne.Shortcut) { cb.Fire() })
+			w.shortcutMutex.Lock()
+			w.
+				shortcuts[shortcutStr.
+				Value()] = shortcutEntry{shortcut: shortcut, owner: run}
+			w.shortcutMutex.Unlock()
+			return object.Nil, nil
+		})
+	windowAttrs.
+		Define("RemoveShortcut").Doc("Remove a shortcut previously added with AddShortcut.").Args("arg1").Returns("nil").Impl(
+		func(w *Window, ctx context.Context, args ...object.Object) (object.Object, error) {
+			if w.FyneWindow == nil {
+				return nil, object.Errorf("window.RemoveShortcut: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)")
+			}
+			shortcutStr, ok := args[0].(*object.
+				String)
+			if !ok {
+				return nil, fmt.Errorf("argument must be string")
+			}
+			if w.stale(ctx) {
+				return nil, vmexec.ErrStopped
+			}
+			w.shortcutMutex.Lock()
+			entry,
+				found := w.shortcuts[shortcutStr.Value()]
+			if found {
+				delete(w.shortcuts, shortcutStr.Value())
+			}
+			w.shortcutMutex.Unlock()
+			if found {
+				w.FyneWindow.Canvas().RemoveShortcut(entry.shortcut)
+			}
+			return object.Nil, nil
+		})
+	windowAttrs.
+		Define("SetMainMenu").
+		Doc("Set the window's main menu. The owning run is tracked so the next run removes the old menu and its dead item callbacks.").
+		Args(
+			"arg1").
+		Returns("nil").
+		Impl(func(w *Window,
+			ctx context.
+				Context, args ...object.Object) (object.Object, error) {
+			if w.FyneWindow == nil {
+				return nil, object.Errorf("window.SetMainMenu: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)")
+			}
+			mainMenuObj, ok := args[0].(*MainMenu)
+			if !ok {
+				return nil, fmt.Errorf("argument must be MainMenu object")
+			}
+			if w.stale(ctx) {
+				return nil, vmexec.ErrStopped
+			}
+			w.menuOwner.Store(vmexec.FromContext(ctx))
+			guithread.Do(func() {
+				w.FyneWindow.SetMainMenu(mainMenuObj.instance)
+			})
+			return object.
+				Nil, nil
+		})
+
+	windowAttrs.Define("Size").
+		Doc("Current window size as a map with width and height keys.").
+		Getter(func(w *Window) object.Object {
+			if w.FyneWindow != nil {
+				size := w.FyneWindow.Canvas().Size()
+				return object.NewMap(map[string]object.Object{
+					"width":  object.NewFloat(float64(size.Width)),
+					"height": object.NewFloat(float64(size.Height)),
+				})
+			}
+			size := w.content.Size()
+			if size.Width == 0 && size.Height == 0 {
+				size = w.content.MinSize()
+			}
+			return object.NewMap(map[string]object.Object{
+				"width":  object.NewFloat(float64(size.Width)),
+				"height": object.NewFloat(float64(size.Height)),
+			})
+		})
 }

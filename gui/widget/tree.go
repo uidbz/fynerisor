@@ -102,8 +102,6 @@ func (t *Tree) GetAttr(name string) (object.Object, bool) {
 var treeAttrs = object.NewAttrRegistry[*Tree](string(TreeType))
 
 func (t *Tree) getAttrUI(name string) (object.Object, bool) {
-	return treeAttrs.GetAttr(t, name)
-
 	// Getter: called synchronously by Fyne during layout.
 
 	// Getter: called synchronously by Fyne during layout.
@@ -123,7 +121,7 @@ func (t *Tree) getAttrUI(name string) (object.Object, bool) {
 	// Event: queued on the script's VM goroutine.
 
 	// Event: queued on the script's VM goroutine.
-
+	return treeAttrs.GetAttr(t, name)
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).

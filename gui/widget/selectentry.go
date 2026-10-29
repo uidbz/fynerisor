@@ -112,10 +112,8 @@ func (obj *SelectEntry) GetAttr(name string) (object.Object, bool) {
 }
 
 func (obj *SelectEntry) getAttrUI(name string) (object.Object, bool) {
-	return selectEntryAttrs.GetAttr(obj, name)
-
 	// Change event: coalesced, latest text wins (issue #51).
-
+	return selectEntryAttrs.GetAttr(obj, name)
 }
 func init() {
 	objattrs.Add(selectEntryAttrs)

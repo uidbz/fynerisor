@@ -73,12 +73,10 @@ func (obj *Bool) GetAttr(name string) (object.Object, bool) {
 var boolAttrs = object.NewAttrRegistry[*Bool](string(BoolType))
 
 func (obj *Bool) getAttrUI(name string) (object.Object, bool) {
-	return boolAttrs.GetAttr(obj, name)
-
 	// Change event: coalesced on the run's queue — listeners
 	// re-read the binding, so the latest change is enough and a
 	// burst cannot fill the queue (issues #11, #51).
-
+	return boolAttrs.GetAttr(obj, name)
 }
 
 func NewBool() *Bool {

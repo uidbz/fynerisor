@@ -150,10 +150,8 @@ func (obj *TextGrid) GetAttr(name string) (object.Object, bool) {
 }
 
 func (obj *TextGrid) getAttrUI(name string) (object.Object, bool) {
-	return textGridAttrs.GetAttr(obj, name)
-
 	// Create TextGridRow from string
-
+	return textGridAttrs.GetAttr(obj, name)
 }
 func init() {
 	objattrs.Add(textGridAttrs)

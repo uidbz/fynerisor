@@ -159,11 +159,9 @@ func (obj *RichText) GetAttr(name string) (object.Object, bool) {
 var richTextAttrs = object.NewAttrRegistry[*RichText](string(RichTextType))
 
 func (obj *RichText) getAttrUI(name string) (object.Object, bool) {
-	return richTextAttrs.GetAttr(obj, name)
-
 	// Note: Direct segment manipulation not implemented
 	// Use ParseMarkdown() for rich text content instead
-
+	return richTextAttrs.GetAttr(obj, name)
 }
 func init() {
 	objattrs.Add(richTextAttrs)

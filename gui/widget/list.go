@@ -115,8 +115,6 @@ func (obj *List) GetAttr(name string) (object.Object, bool) {
 }
 
 func (obj *List) getAttrUI(name string) (object.Object, bool) {
-	return listAttrs.GetAttr(obj, name)
-
 	// Getter: Fyne calls it synchronously during layout on the UI
 	// thread. While the VM is busy (ErrBusy) keep the last-known
 	// length so the list doesn't collapse; the list is refreshed
@@ -135,7 +133,7 @@ func (obj *List) getAttrUI(name string) (object.Object, bool) {
 
 	// Event: queued on the script's VM goroutine, never run on (or
 	// blocking) the UI thread.
-
+	return listAttrs.GetAttr(obj, name)
 }
 
 // wrapCanvasObject wraps a fyne.CanvasObject so Risor scripts can access it

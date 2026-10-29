@@ -130,8 +130,6 @@ func (obj *Entry) GetAttr(name string) (object.Object, bool) {
 }
 
 func (obj *Entry) getAttrUI(name string) (object.Object, bool) {
-	return entryAttrs.GetAttr(obj, name)
-
 	// Event: queued on the script's VM goroutine.
 
 	// Change event: coalesced on the run's queue — a burst of
@@ -141,7 +139,7 @@ func (obj *Entry) getAttrUI(name string) (object.Object, bool) {
 
 	// Getter: Fyne calls the validator synchronously on the UI
 	// thread. While the VM is busy keep the previous verdict.
-
+	return entryAttrs.GetAttr(obj, name)
 }
 
 func NewEntry(w WindowInterface) *Entry {

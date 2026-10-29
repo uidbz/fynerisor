@@ -112,8 +112,6 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 var tableAttrs = object.NewAttrRegistry[*Table](string(TableType))
 
 func (obj *Table) getAttrUI(name string) (object.Object, bool) {
-	return tableAttrs.GetAttr(obj, name)
-
 	// Event: queued on the script's VM goroutine.
 
 	// Getter: Fyne calls it synchronously on the UI thread.
@@ -125,7 +123,7 @@ func (obj *Table) getAttrUI(name string) (object.Object, bool) {
 	// widget (issue #50).
 
 	// Getter-like: Fyne calls it synchronously on the UI thread.
-
+	return tableAttrs.GetAttr(obj, name)
 }
 
 // stringRowsFromObject converts a Risor list of string lists — the shape tie's
@@ -290,10 +288,8 @@ func (g *ImageCellWrapper) GetAttr(name string) (object.Object, bool) {
 var imageCellWrapperAttrs = object.NewAttrRegistry[*ImageCellWrapper]("canvas.Image")
 
 func (g *ImageCellWrapper) getAttrUI(name string) (object.Object, bool) {
-	return imageCellWrapperAttrs.GetAttr(g, name)
-
 	// Update the existing image instead of creating a new one
-
+	return imageCellWrapperAttrs.GetAttr(g, name)
 }
 
 // GenericCanvasObjectTable is a minimal wrapper for canvas objects in tables

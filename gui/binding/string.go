@@ -78,12 +78,10 @@ func (obj *String) GetAttr(name string) (object.Object, bool) {
 var stringAttrs = object.NewAttrRegistry[*String](string(StringType))
 
 func (obj *String) getAttrUI(name string) (object.Object, bool) {
-	return stringAttrs.GetAttr(obj, name)
-
 	// Change event: coalesced on the run's queue — listeners
 	// re-read the binding, so the latest change is enough and a
 	// burst cannot fill the queue (issues #11, #51).
-
+	return stringAttrs.GetAttr(obj, name)
 }
 
 func NewString() *String {

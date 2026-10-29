@@ -103,14 +103,12 @@ func (obj *DateEntry) GetAttr(name string) (object.Object, bool) {
 }
 
 func (obj *DateEntry) getAttrUI(name string) (object.Object, bool) {
-	return dateEntryAttrs.GetAttr(obj, name)
-
 	// Accept string in YYYY-MM-DD format
 
 	// Parse and validate
 
 	// Change event: coalesced, latest text wins (issue #51).
-
+	return dateEntryAttrs.GetAttr(obj, name)
 }
 func init() {
 	objattrs.Add(dateEntryAttrs)

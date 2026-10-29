@@ -95,11 +95,9 @@ func (obj *Slider) GetAttr(name string) (object.Object, bool) {
 }
 
 func (obj *Slider) getAttrUI(name string) (object.Object, bool) {
-	return sliderAttrs.GetAttr(obj, name)
-
 	// Change event: coalesced, latest value wins — a fast drag
 	// produces far more updates than the VM can run (issue #51).
-
+	return sliderAttrs.GetAttr(obj, name)
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
