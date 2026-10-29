@@ -125,6 +125,15 @@
   login dialog, so Basic-auth pages actually open. `History` is
   mutex-guarded; `CopyToClipboard` marshals to the UI thread; a repeated
   error on a later page is shown again (dedupe resets per navigation).
+- **Registry-backed attrs for every script wrapper type (issue #38).**
+  All ~100 wrapper types resolve attributes through `object.AttrRegistry`
+  instead of hand-written `GetAttr` switches. Arity errors raised by
+  registry methods now read
+  `widget.Label.SetText: expected 1 argument, got 0` instead of
+  `wrong number of arguments. got=1, want=2` (module-namespace factory
+  builtins — `widget.NewButton` and friends — keep the old wording).
+  `Tree`'s bespoke `Refresh` arity message is standardized to the shared
+  canvas verb.
 
 ### Fixed
 
@@ -280,7 +289,19 @@
   (serializable primitive scene + clip-aware painter + SVG writer),
   `core.go` (widget/renderer, pooled canvas objects, axes/grid/tooltip
   chrome), `interact.go` (hover/tap/scroll/drag handling + shared Risor
-  verbs). Chart types supply geometry + hit-testing only.
+  verbs; the interactive surface — `OnTap`/`OnHover`/`OnSecondaryTap`/
+  `ShowGrid`/`ShowValues`/`SetZoomEnabled`/`ResetZoom`/`SetTitle`/
+  `WriteSVG` — is now a generic `addInteractive` registrar over each
+  chart type's attr registry). Chart types supply geometry + hit-testing only.
+- **Introspection everywhere (issue #38).** `Attrs()` is populated for
+  every wrapper type (it returned `nil` for 81 of 88), so scripts, tests
+  and tooling can enumerate each object's attributes; this is the base
+  for the generated API reference (issue #47). Canvas wrappers gain the
+  consistent `Resize`/`Move`/`MinSize`/`Visible` verb set via
+  `gui/objattrs` (some widgets previously lacked some of them), layout
+  containers share `Append`/`Remove`, and the module namespaces
+  (`widget`, `container`, `dialog`, `binding`, `chart`, `canvas`) are
+  registry-driven too.
 - **Chart errors are real Risor exceptions.** Chart builtins now return Go
   errors (which throw and are catchable with `try/catch`) instead of the
   previous silently-returned error objects. Constructor validation is

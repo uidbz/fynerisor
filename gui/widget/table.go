@@ -331,7 +331,7 @@ func (g *GenericCanvasObjectTable) Equals(other object.Object) bool {
 }
 
 func (g *GenericCanvasObjectTable) Attrs() []object.AttrSpec {
-	return nil
+	return genericCanvasObjectTableAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -348,8 +348,11 @@ func (g *GenericCanvasObjectTable) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, g.getAttrUI)
 }
 
+var genericCanvasObjectTableAttrs = object.NewAttrRegistry[*GenericCanvasObjectTable]("canvas.Object")
+
 func (g *GenericCanvasObjectTable) getAttrUI(name string) (object.Object, bool) {
-	return nil, false
+	return genericCanvasObjectTableAttrs.GetAttr(g, name)
+
 }
 func init() {
 	objattrs.Add(tableAttrs)
