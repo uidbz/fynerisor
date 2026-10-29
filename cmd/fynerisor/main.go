@@ -255,9 +255,9 @@ func watchScript(path string, fw *gui.Window) {
 	}
 	defer watcher.Close()
 
-	err = watcher.Add(path)
-	if err != nil {
-		log.Printf("Failed to watch file: %v", err)
+	dir := filepath.Dir(path)
+	if err := watcher.Add(dir); err != nil {
+		log.Printf("Failed to watch %s: %v", dir, err)
 		return
 	}
 
@@ -265,7 +265,7 @@ func watchScript(path string, fw *gui.Window) {
 
 	// Debounce timer to avoid multiple reloads
 	var debounceTimer *time.Timer
-	debounce := 100 * time.Millisecond
+	debounce := 250 * time.Millisecond
 
 	for {
 		select {
@@ -273,27 +273,37 @@ func watchScript(path string, fw *gui.Window) {
 			if !ok {
 				return
 			}
-			if event.Op&fsnotify.Write == fsnotify.Write {
-				// Cancel any pending reload
-				if debounceTimer != nil {
-					debounceTimer.Stop()
-				}
-
-				// Schedule reload after debounce period
-				debounceTimer = time.AfterFunc(debounce, func() {
-					log.Printf("File modified, reloading...")
-					script, err := readScript(path)
-					if err != nil {
-						log.Printf("Error reading script: %v", err)
-						return
-					}
-
-					// Execute in main thread
-					fyne.Do(func() {
-						executeScript(fw, script, path)
-					})
-				})
+			// The *directory* is watched, not the file: atomic saves
+			// (vim, IDEs: write temp, rename/remove over the target)
+			// detach a file watch after the first save (issue #29).
+			if filepath.Base(event.Name) != filepath.Base(path) {
+				continue
 			}
+			if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Remove|fsnotify.Rename) == 0 {
+				continue
+			}
+			// Cancel any pending reload
+			if debounceTimer != nil {
+				debounceTimer.Stop()
+			}
+
+			// Schedule reload after debounce period
+			debounceTimer = time.AfterFunc(debounce, func() {
+				script, err := readScript(path)
+				if err != nil {
+					// The editor may still be mid-save; a follow-up
+					// event retries.
+					log.Printf("Error reading script: %v", err)
+					return
+				}
+				log.Printf("File modified, reloading...")
+
+				// Execute in main thread; Execute stops the run it
+				// replaces, so saves never stack VMs.
+				fyne.Do(func() {
+					executeScript(fw, script, path)
+				})
+			})
 		case err, ok := <-watcher.Errors:
 			if !ok {
 				return
