@@ -1,9 +1,12 @@
 package browser
 
 import (
+	"context"
+	"errors"
 	"log"
 	"net/url"
 	"strings"
+	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -15,14 +18,21 @@ import (
 	"github.com/uidbz/fynerisor/gui/guithread"
 )
 
+// ErrUnauthorized is the sentinel a LoadContent implementation returns
+// for an HTTP 401 (Basic auth) response. Detect it with
+// errors.Is(err, browser.ErrUnauthorized) — never error strings (issue #28).
+var ErrUnauthorized = errors.New("Unauthorized")
+
 // Config configures a Browser instance
 type Config struct {
 	// Required interfaces
 	MenuProvider MenuProvider
 	AuthProvider AuthProvider
 
-	// Required callback
-	LoadContent func(url, username, password string) (string, error)
+	// Required callback. It runs off the UI thread on a navigation
+	// goroutine and must honor ctx: a superseded navigation is cancelled
+	// so slow fetches die instead of piling up (issue #28).
+	LoadContent func(ctx context.Context, url, username, password string) (string, error)
 
 	// Optional callbacks
 	OnNavigate         func(url string) error
@@ -50,6 +60,13 @@ type Browser struct {
 	sourceProvider   SourceViewProvider
 	onOpenInBrowser  func(url string)
 	sourceViewActive bool
+
+	// Navigation state (issue #28): fetches run on goroutines tagged with
+	// a generation id; ctx cancels the superseded one, and results apply
+	// on the UI thread only while their generation is current.
+	navMu     sync.Mutex
+	navCancel context.CancelFunc
+	navID     uint64
 }
 
 // New creates a new Browser instance
@@ -159,7 +176,10 @@ func (b *Browser) Navigate(url string) {
 	b.navigate(url, true)
 }
 
-// navigate is the internal navigation method
+// navigate is the internal navigation method. The fetch runs on its own
+// goroutine so the UI thread never blocks on the network (issue #28);
+// starting a navigation cancels the previous one, and results apply
+// only while their generation is still current.
 func (b *Browser) navigate(url string, recordVisit bool) {
 	// Correct relative URLs
 	url = CorrectRelativeURL(b.history.Current(), url)
@@ -169,11 +189,7 @@ func (b *Browser) navigate(url string, recordVisit bool) {
 	b.params = parseParams(url)
 
 	// Store display URL (without index.risor suffix)
-	displayURL := url
-	if strings.HasSuffix(url, "/index.risor") {
-		displayURL = strings.TrimSuffix(url, "/index.risor")
-	}
-	b.url.Set(displayURL)
+	b.url.Set(displayURLFor(url))
 
 	// Call OnNavigate hook
 	if b.config.OnNavigate != nil {
@@ -183,23 +199,53 @@ func (b *Browser) navigate(url string, recordVisit bool) {
 		}
 	}
 
-	// Load content
-	content, err := b.config.LoadContent(url, "", "")
-	if err != nil {
-		// Check if it's an auth error
-		if err.Error() == "Unauthorized" {
-			b.showAuthDialog(url)
+	// Supersede any in-flight navigation (issue #28).
+	b.navMu.Lock()
+	if b.navCancel != nil {
+		b.navCancel()
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	b.navCancel = cancel
+	b.navID++
+	id := b.navID
+	b.navMu.Unlock()
+
+	go func() {
+		content, err := b.config.LoadContent(ctx, url, "", "")
+		if errors.Is(err, ErrUnauthorized) {
+			b.ifCurrent(id, func() { b.showAuthDialog(ctx, id, url) })
 			return
 		}
-
-		// Call error hook
-		if b.config.OnNavigateError != nil {
-			b.config.OnNavigateError(url, err)
+		if err != nil {
+			b.ifCurrent(id, func() {
+				if b.config.OnNavigateError != nil {
+					b.config.OnNavigateError(url, err)
+				}
+				b.SetStatus("Error: " + err.Error())
+			})
+			return
 		}
-		b.SetStatus("Error: " + err.Error())
+		b.ifCurrent(id, func() { b.loadPage(url, content, recordVisit) })
+	}()
+}
+
+// ifCurrent runs fn on the UI thread if (and only if) gen is still the
+// newest navigation; results of cancelled navigations are dropped.
+func (b *Browser) ifCurrent(gen uint64, fn func()) {
+	b.navMu.Lock()
+	current := gen == b.navID
+	b.navMu.Unlock()
+	if !current {
 		return
 	}
+	guithread.Do(fn)
+}
 
+// loadPage loads a fetched page into the script window (the single
+// place that clears, loads, executes, refreshes source view, records
+// the visit and reports completion — navigate and the auth retry share
+// it now, issue #28). Runs on the UI thread.
+func (b *Browser) loadPage(url, content string, recordVisit bool) {
 	// Clear and load the script, recording the page URL as its base so
 	// relative imports resolve against the page, same-origin only (issue #8).
 	b.window.Clear()
@@ -216,7 +262,7 @@ func (b *Browser) navigate(url string, recordVisit bool) {
 
 	// Record visit
 	if recordVisit {
-		b.history.Visit(displayURL)
+		b.history.Visit(displayURLFor(url))
 	}
 
 	// Call completion hook
@@ -225,49 +271,41 @@ func (b *Browser) navigate(url string, recordVisit bool) {
 	}
 }
 
-// showAuthDialog displays the authentication dialog
-func (b *Browser) showAuthDialog(url string) {
+// displayURLFor strips the implicit index.risor page name from a URL
+// for the address bar and history.
+func displayURLFor(url string) string {
+	if strings.HasSuffix(url, "/index.risor") {
+		return strings.TrimSuffix(url, "/index.risor")
+	}
+	return url
+}
+
+// showAuthDialog asks the AuthProvider for credentials (callback-based,
+// never blocking), then retries the fetch on its own goroutine with the
+// same generation guard (issue #28). Runs on the UI thread.
+func (b *Browser) showAuthDialog(ctx context.Context, gen uint64, url string) {
 	if b.config.AuthProvider == nil {
 		b.SetStatus("Authentication required but no auth provider configured")
 		return
 	}
 
-	username, password, submitted := b.config.AuthProvider.ShowAuthDialog(url, b.content)
-	if !submitted {
-		b.SetStatus("Authentication cancelled")
-		return
-	}
-
-	// Retry with credentials
-	content, err := b.config.LoadContent(url, username, password)
-	if err != nil {
-		b.SetStatus("Authentication failed: " + err.Error())
-		return
-	}
-
-	// Load the authenticated content (page URL is the import base, issue #8)
-	b.window.Clear()
-	b.window.LoadScriptFrom(content, url)
-	b.window.Execute()
-
-	// If source view is active, refresh it with new content
-	if b.sourceViewActive && b.sourceProvider != nil {
-		newSource := b.sourceProvider.GetCurrentSource()
-		if newSource != "" {
-			b.renderView(newSource)
-		}
-	}
-
-	// Record visit
-	displayURL := url
-	if strings.HasSuffix(url, "/index.risor") {
-		displayURL = strings.TrimSuffix(url, "/index.risor")
-	}
-	b.history.Visit(displayURL)
-
-	if b.config.OnNavigateComplete != nil {
-		b.config.OnNavigateComplete(url)
-	}
+	b.config.AuthProvider.ShowAuthDialog(ctx, url, b.window.FyneWindow,
+		func(username, password string, ok bool) {
+			if !ok {
+				b.SetStatus("Authentication cancelled")
+				return
+			}
+			go func() {
+				content, err := b.config.LoadContent(ctx, url, username, password)
+				if err != nil {
+					b.ifCurrent(gen, func() {
+						b.SetStatus("Authentication failed: " + err.Error())
+					})
+					return
+				}
+				b.ifCurrent(gen, func() { b.loadPage(url, content, true) })
+			}()
+		})
 }
 
 // GetURL returns the current URL

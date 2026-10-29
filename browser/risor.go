@@ -7,6 +7,8 @@ import (
 	"fyne.io/fyne/v2"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
+
+	"github.com/uidbz/fynerisor/gui/guithread"
 )
 
 // RisorBrowser wraps a Browser to expose it as a Risor object
@@ -156,7 +158,11 @@ func (rb *RisorBrowser) GetAttr(name string) (object.Object, bool) {
 				return nil, err
 			}
 
-			rb.app.Clipboard().SetContent(text)
+			// Fyne clipboard access belongs on the UI thread (issue #28);
+			// this builtin runs on the script's VM goroutine.
+			guithread.Do(func() {
+				rb.app.Clipboard().SetContent(text)
+			})
 			rb.browser.SetStatus("Copied to clipboard")
 			return object.Nil, nil
 		}), true

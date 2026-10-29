@@ -1,7 +1,13 @@
 package browser
 
-// History manages browser-style navigation with back/forward functionality
+import "sync"
+
+// History manages browser-style navigation with back/forward
+// functionality. Mutations land on the UI thread (loadPage) while
+// Current is read at navigation start from any goroutine (script
+// browser.Navigate), so the state is mutex-guarded (issue #28).
 type History struct {
+	mu         sync.Mutex
 	current    string
 	back       []string
 	forward    []string
@@ -20,6 +26,8 @@ func NewHistory(start string, onNavigate func(string, bool), onStatus func(strin
 
 // Visit adds a page to history and clears forward history
 func (h *History) Visit(page string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	if h.current != "" {
 		h.back = append(h.back, h.current)
 	}
@@ -29,7 +37,9 @@ func (h *History) Visit(page string) {
 
 // Back navigates to the previous page in history
 func (h *History) Back() {
+	h.mu.Lock()
 	if len(h.back) == 0 {
+		h.mu.Unlock()
 		if h.onStatus != nil {
 			h.onStatus("No pages in back history.")
 		}
@@ -38,14 +48,19 @@ func (h *History) Back() {
 	h.forward = append([]string{h.current}, h.forward...)
 	h.current = h.back[len(h.back)-1]
 	h.back = h.back[:len(h.back)-1]
+	target := h.current
+	h.mu.Unlock()
+	// Outside the lock: onNavigate reads history state itself.
 	if h.onNavigate != nil {
-		h.onNavigate(h.current, false)
+		h.onNavigate(target, false)
 	}
 }
 
 // Forward navigates to the next page in history
 func (h *History) Forward() {
+	h.mu.Lock()
 	if len(h.forward) == 0 {
+		h.mu.Unlock()
 		if h.onStatus != nil {
 			h.onStatus("No pages in forward history.")
 		}
@@ -54,12 +69,16 @@ func (h *History) Forward() {
 	h.back = append(h.back, h.current)
 	h.current = h.forward[0]
 	h.forward = h.forward[1:]
+	target := h.current
+	h.mu.Unlock()
 	if h.onNavigate != nil {
-		h.onNavigate(h.current, false)
+		h.onNavigate(target, false)
 	}
 }
 
 // Current returns the current URL
 func (h *History) Current() string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	return h.current
 }

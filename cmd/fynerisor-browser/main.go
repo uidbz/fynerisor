@@ -1,7 +1,7 @@
 package main
 
 import (
-	"errors"
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -14,7 +14,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/uidbz/fynerisor/browser"
@@ -101,6 +101,12 @@ func NewBrowserApp(title string) *BrowserApp {
 		// lifecycle is used instead of matching "ERROR: " in the status
 		// text, which pages could also set themselves (issue #39).
 		gui.WithOnStateChange(func(state gui.RunState, err error) {
+			if state == gui.StateReady {
+				// A good page resets the dedupe: the *same* error on a
+				// later page must show again (issue #28).
+				b.lastErrorShown = ""
+				return
+			}
 			if state != gui.StateFailed || err == nil {
 				return
 			}
@@ -140,6 +146,7 @@ func NewBrowserApp(title string) *BrowserApp {
 		LoadContent:  b.loadScript,
 		OnNavigate: func(url string) error {
 			log.Printf("Navigating to: %s", url)
+			b.lastErrorShown = "" // fresh page: fresh error reporting (issue #28)
 			return nil
 		},
 		OnNavigateError: func(url string, err error) {
@@ -181,8 +188,8 @@ func (b *BrowserApp) GetCurrentSource() string {
 }
 
 // loadScript loads and returns script content from URL
-func (b *BrowserApp) loadScript(url, username, password string) (string, error) {
-	script, err := b.loader.LoadScript(url, username, password)
+func (b *BrowserApp) loadScript(ctx context.Context, url, username, password string) (string, error) {
+	script, err := b.loader.LoadScript(ctx, url, username, password)
 	if err != nil {
 		return "", err
 	}
@@ -306,7 +313,11 @@ type BrowserAuthProvider struct {
 	app *BrowserApp
 }
 
-func (p *BrowserAuthProvider) ShowAuthDialog(url string, contentContainer *fyne.Container) (string, string, bool) {
+// ShowAuthDialog shows a modal login form (issue #28: callback-based,
+// it never returns credentials it does not have). done fires exactly
+// once — with the entered credentials on submit, with ok=false on
+// cancel; a superseded navigation (ctx cancelled) is silently dropped.
+func (p *BrowserAuthProvider) ShowAuthDialog(ctx context.Context, url string, parent fyne.Window, done func(username, password string, ok bool)) {
 	userEntry := widget.NewEntry()
 	userEntry.PlaceHolder = "Username"
 
@@ -314,35 +325,27 @@ func (p *BrowserAuthProvider) ShowAuthDialog(url string, contentContainer *fyne.
 	passEntry.Password = true
 	passEntry.PlaceHolder = "Password"
 
-	label := widget.NewLabel(fmt.Sprintf("Authentication required for:\n%s", url))
-	label.Wrapping = fyne.TextWrapWord
-
-	form := widget.NewForm(
-		widget.NewFormItem("Username:", userEntry),
-		widget.NewFormItem("Password:", passEntry),
+	d := dialog.NewForm(
+		"Authentication required",
+		"Login", "Cancel",
+		[]*widget.FormItem{
+			widget.NewFormItem(fmt.Sprintf("For %s", url), userEntry),
+			widget.NewFormItem("Password", passEntry),
+		},
+		func(ok bool) {
+			if ctx.Err() != nil {
+				return // this navigation was superseded
+			}
+			if ok {
+				done(userEntry.Text, passEntry.Text, true)
+			} else {
+				done("", "", false)
+			}
+		},
+		parent,
 	)
-	form.SubmitText = "Login"
-
-	submitted := false
-	form.OnSubmit = func() {
-		submitted = true
-	}
-
-	form.OnCancel = func() {
-		submitted = false
-	}
-
-	// Display in container
-	fyne.Do(func() {
-		contentContainer.Objects = []fyne.CanvasObject{
-			container.NewVBox(label, form),
-		}
-		contentContainer.Refresh()
-	})
-
-	// Note: This is a simplified implementation. In a real app, you'd need
-	// proper event handling to wait for form submission before returning.
-	return userEntry.Text, passEntry.Text, submitted
+	d.Resize(fyne.NewSize(420, 240))
+	d.Show()
 }
 
 // ScriptLoader handles fetching scripts from URLs or filesystem
@@ -360,7 +363,7 @@ func NewScriptLoader() *ScriptLoader {
 }
 
 // LoadScript fetches a script from the given URL with optional authentication
-func (sl *ScriptLoader) LoadScript(url, username, password string) (string, error) {
+func (sl *ScriptLoader) LoadScript(ctx context.Context, url, username, password string) (string, error) {
 	// Normalize the URL - convert file paths to file:// URLs
 	normalizedURL := normalizeURL(url)
 
@@ -375,7 +378,7 @@ func (sl *ScriptLoader) LoadScript(url, username, password string) (string, erro
 	}
 
 	// Handle HTTP(S) URLs
-	return sl.loadFromHTTP(fixedURL, username, password)
+	return sl.loadFromHTTP(ctx, fixedURL, username, password)
 }
 
 // normalizeURL converts file paths to file:// URLs
@@ -430,8 +433,8 @@ func (sl *ScriptLoader) loadFromFile(fileURL string) (string, error) {
 	return string(content), nil
 }
 
-func (sl *ScriptLoader) loadFromHTTP(url, username, password string) (string, error) {
-	req, err := http.NewRequest("GET", url, nil)
+func (sl *ScriptLoader) loadFromHTTP(ctx context.Context, url, username, password string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return "", err
 	}
@@ -450,7 +453,9 @@ func (sl *ScriptLoader) loadFromHTTP(url, username, password string) (string, er
 	if resp.StatusCode == http.StatusUnauthorized {
 		authHeader := resp.Header.Get("WWW-Authenticate")
 		if strings.HasPrefix(authHeader, "Basic") {
-			return "", errors.New("Unauthorized")
+			// Sentinel, matched with errors.Is (issue #28); the header
+			// text rides along for logs.
+			return "", fmt.Errorf("%w: %s", browser.ErrUnauthorized, authHeader)
 		}
 	}
 

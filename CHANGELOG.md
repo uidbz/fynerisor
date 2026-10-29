@@ -106,6 +106,16 @@
   is a plain option accepted anywhere. The old two-pass, concrete-type
   application (new option types silently ignored) is gone. Existing
   `With*` calls keep working unchanged.
+- **`browser` navigation is async; auth is a callback flow (issue #28).**
+  `Config.LoadContent` now takes a `context.Context` (superseded
+  navigations cancel their fetch instead of freezing the window up to
+  the client timeout); 401s are the sentinel `browser.ErrUnauthorized`
+  (match with `errors.Is`), not an error string; `AuthProvider` became
+  `ShowAuthDialog(ctx, url, parent, done)` — the form that used to
+  "return immediately with empty credentials" is now a real modal
+  login dialog, so Basic-auth pages actually open. `History` is
+  mutex-guarded; `CopyToClipboard` marshals to the UI thread; a repeated
+  error on a later page is shown again (dedupe resets per navigation).
 
 ### Fixed
 
