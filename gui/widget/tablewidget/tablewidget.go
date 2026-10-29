@@ -46,7 +46,28 @@ type TableWidget struct {
 	Data                 func(offset, limit int) *TableData
 	HeaderLevels         func() [][]string
 	Offset               int
-	Limit                int // this is currently not used. Offset for fetching data is pageSize
+	Limit                int                          // this is currently not used. Offset for fetching data is pageSize
+	report               func(what string, err error) // error sink; nil means stderr (issue #31)
+}
+
+// SetErrorSink routes this table's diagnostics (binding read failures,
+// export errors) to the embedding window's per-runtime error sink
+// instead of the process stderr (issue #31). Set before the table is
+// used; the gui widget factory wires it automatically.
+func (ctx *TableWidget) SetErrorSink(fn func(what string, err error)) {
+	ctx.report = fn
+}
+
+// reportError is the table's only diagnostic path: never fmt.Print.
+func (ctx *TableWidget) reportError(what string, err error) {
+	if err == nil {
+		return
+	}
+	if ctx.report != nil {
+		ctx.report(what, err)
+		return
+	}
+	fmt.Fprintf(os.Stderr, "fynerisor: %s: %v\n", what, err)
 }
 
 func (ctx *TableWidget) GetFlexTable() *FlexTable {
@@ -56,7 +77,7 @@ func (ctx *TableWidget) GetFlexTable() *FlexTable {
 func (ctx *TableWidget) prevPage() {
 	page, err := ctx.currentPage.Get()
 	if err != nil {
-		fmt.Println(err)
+		ctx.reportError("table.prevPage", err)
 		return
 	}
 	page -= 1
@@ -70,7 +91,7 @@ func (ctx *TableWidget) prevPage() {
 func (ctx *TableWidget) nextPage() {
 	page, err := ctx.currentPage.Get()
 	if err != nil {
-		fmt.Println(err)
+		ctx.reportError("table.nextPage", err)
 		return
 	}
 	page += 1
@@ -161,7 +182,7 @@ func moveItemToFront(slice []string, target string) []string {
 func (ctx *TableWidget) Refresh() {
 	page, err := ctx.currentPage.Get()
 	if err != nil {
-		fmt.Println(err)
+		ctx.reportError("table.Refresh", err)
 		return
 	}
 	ctx.Offset = (page - 1) * ctx.pageSize
@@ -433,7 +454,7 @@ func (ctx *TableWidget) ExportToExcel(data *TableData, columns []string, path st
 	for col, x := range columns {
 		cellName, err := excelize.CoordinatesToCellName(col+1, 1)
 		if err != nil {
-			fmt.Println("Error getting cellname:", err)
+			ctx.reportError("table export", err)
 		} else {
 
 		}
@@ -445,7 +466,7 @@ func (ctx *TableWidget) ExportToExcel(data *TableData, columns []string, path st
 		for col, x := range columns {
 			cellName, err := excelize.CoordinatesToCellName(col+1, row+2)
 			if err != nil {
-				fmt.Println("Error getting cellname:", err)
+				ctx.reportError("table export", err)
 			} else {
 				excel.SetCellValue(sheet, cellName, ctx.getCellValue(data, x, row))
 			}

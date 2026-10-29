@@ -868,6 +868,23 @@ window.SetStdout((line) => {
 })
 ```
 
+Output and diagnostics from Go code:
+
+```go
+view := gui.NewCanvasObject(script,
+    gui.WithStdout(io.MultiWriter(os.Stdout, logBuf)), // this runtime's print lands here
+    gui.WithStderr(logBuf),                           // execution errors land here
+    gui.WithErrorHandler(func(err error) {            // all runtime diagnostics as errors
+        log.Printf("script problem: %v", err)
+    }),
+)
+```
+
+`Window`/`CanvasObject` also expose `Stdout()`/`Stderr()`/`SetStdout()`/
+`SetStderr()` at runtime. Diagnostics never go to the process stdout:
+in `fynerisor x.risor | jq` pipelines and capture widgets, script data
+and library noise stay separate (issues #24, #31).
+
 ### Properties
 - `window.DroppedPaths` - List of dropped file paths
 

@@ -407,7 +407,9 @@ func stringsFromList(l *object.List) []string {
 }
 
 func NewTable(title string, pageSize int, w WindowInterface) *Table {
-	return &Table{instance: tablewidget.NewTableWidget(title, pageSize), w: w}
+	tw := tablewidget.NewTableWidget(title, pageSize)
+	tw.SetErrorSink(w.Report) // per-runtime diagnostics (issue #31)
+	return &Table{instance: tw, w: w}
 }
 
 // wrapCanvasObjectTable wraps a fyne.CanvasObject so Risor scripts can access it in table cells

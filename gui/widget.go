@@ -2,9 +2,9 @@ package gui
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/uidbz/fynerisor/gui/guithread"
-	"os"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -702,12 +702,13 @@ const callbackQueueSize = vmexec.DefaultQueueSize
 
 // queueCallback runs fn on the current run's VM goroutine, after the main
 // body and earlier events. It never blocks the sender: before Execute,
-// after Stop, or when the queue is full, the callback is dropped (the
-// latter two with a message on stderr).
+// after Stop, or when the queue is full, the callback is dropped and the
+// window's error sink reports it (issue #31: never the process stderr
+// directly, so hosts can route or suppress).
 func (w *Window) queueCallback(what string, fn func()) {
 	r := w.run.Load()
 	if r == nil {
-		fmt.Fprintf(os.Stderr, "fynerisor: %s called before Execute; callback dropped\n", what)
+		w.Report(what, errors.New("called before Execute; callback dropped"))
 		return
 	}
 	_ = r.Enqueue(what, fn)

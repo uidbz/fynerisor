@@ -106,11 +106,12 @@ type Window struct {
 	// library diagnostics to Stderr(). No os.Stdout hijack, no pipes:
 	// two CanvasObjects capture their own output, and a host's
 	// fmt.Println is untouched.
-	stdoutMu       sync.Mutex // guards the four fields below
+	stdoutMu       sync.Mutex // guards the five fields below
 	defaultOut     io.Writer  // WithStdout; nil means os.Stdout
 	defaultErr     io.Writer  // WithStderr; nil means os.Stderr
 	stdoutOverride io.Writer  // script SetStdout/CaptureStdout redirect
 	stdoutOwner    *vmexec.Run
+	errorHandler   func(error) // WithErrorHandler (issue #31)
 
 	contentMu      sync.Mutex // serializes SetContent swaps between overlapping runs
 	statusCallback func(string)
@@ -442,7 +443,13 @@ func (w *Window) start(ctx context.Context) <-chan error {
 	// Each run gets its own module system state and environment snapshot,
 	// carried in its context.
 	parent := context.WithValue(ctx, importStateKey{}, newImportState(base, env, opts))
-	r := vmexec.New(parent, vmexec.Config{QueueSize: callbackQueueSize})
+	r := vmexec.New(parent, vmexec.Config{
+		QueueSize: callbackQueueSize,
+		// Every error the runtime reports (callback raises, panics,
+		// event backlog) flows to this window's sink, not the process
+		// stderr (issue #31).
+		Report: w.Report,
+	})
 	// Publishing the run and its first state under statusMutex makes
 	// "is this run current?" checks (setStatusFor, setState) exact.
 	w.statusMutex.Lock()

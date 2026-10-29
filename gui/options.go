@@ -184,6 +184,28 @@ func WithStderr(err io.Writer) Option {
 	}
 }
 
+// WithErrorHandler routes every runtime diagnostic of this window —
+// callback errors, panics, dropped callbacks, event-backlog warnings —
+// to fn instead of the WithStderr writer (issue #31). Library code
+// never prints diagnostics itself, so a host can collect, suppress, or
+// surface them. The error arrives pre-contextualized ("button onClick:
+// ...").
+//
+// Example:
+//
+//	window := fynerisor.NewWindow(w,
+//	    fynerisor.WithErrorHandler(func(err error) {
+//	        log.Printf("script problem: %v", err)
+//	    }),
+//	)
+func WithErrorHandler(fn func(error)) Option {
+	return windowOption{
+		fn: func(w *Window) {
+			w.errorHandler = fn
+		},
+	}
+}
+
 // WithHTTP enables the HTTP module for making HTTP requests from Risor scripts.
 // The module provides functions: get, post, put, delete, and fetch.
 //

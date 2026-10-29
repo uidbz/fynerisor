@@ -385,6 +385,15 @@
   had been mutating it from non-UI goroutines while list callbacks read
   it. Script-visible argument errors in these builtins now *raise*
   (issue #30 convention).
+- **Runtime diagnostics reach a per-window error sink (issue #31).**
+  Library code no longer prints its own errors: callback failures,
+  panics, dropped callbacks and event-backlog warnings flow through
+  `Window.Report` into the `WithErrorHandler(func(error))` handler, or
+  by default into the window's `Stderr()` writer — never the process
+  stdout, so CLI pipelines keep clean data and capture widgets show
+  only script output. The `tablewidget` diagnostics (the last
+  `fmt.Println` sites in the library) gained an error sink wired from
+  the widget factory.
 
 ## [0.8.2] - 2026-09-03
 

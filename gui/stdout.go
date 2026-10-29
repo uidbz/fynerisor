@@ -2,6 +2,7 @@ package gui
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"sync"
@@ -66,6 +67,28 @@ func (w *Window) setStdout(sink io.Writer, owner *vmexec.Run) {
 	w.stdoutMu.Lock()
 	defer w.stdoutMu.Unlock()
 	w.stdoutOverride, w.stdoutOwner = sink, owner
+}
+
+// Report is the window's single error sink (issue #31): every runtime
+// diagnostic — callback raises, panics, dropped callbacks, event
+// backlog — goes through here, never through a bare fmt.Print. The
+// WithErrorHandler handler, if set, receives the wrapped error; the
+// default writes to this window's Stderr(). Library code must never
+// write diagnostics to Stdout: with print and diagnostics sharing a
+// stream, a log widget or a `fynerisor x.risor | jq` pipeline would
+// mix script data with internal noise.
+func (w *Window) Report(what string, err error) {
+	if err == nil {
+		return
+	}
+	w.stdoutMu.Lock()
+	h := w.errorHandler
+	w.stdoutMu.Unlock()
+	if h != nil {
+		h(fmt.Errorf("%s: %w", what, err))
+		return
+	}
+	fmt.Fprintf(w.Stderr(), "fynerisor: %s: %v\n", what, err)
 }
 
 // callbackWriter bridges the runtime stdout stream to a script closure:
