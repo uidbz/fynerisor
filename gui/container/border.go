@@ -76,12 +76,10 @@ func (obj *Border) Equals(other object.Object) bool {
 }
 
 func (obj *Border) Attrs() []object.AttrSpec {
-	return borderAttrs.
-
-		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
-		Specs()
+	return borderAttrs.Specs()
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Border) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }

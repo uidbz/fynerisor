@@ -56,12 +56,10 @@ func (obj *Scroll) Equals(other object.Object) bool {
 }
 
 func (obj *Scroll) Attrs() []object.AttrSpec {
-	return scrollAttrs.
-
-		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
-		Specs()
+	return scrollAttrs.Specs()
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Scroll) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }

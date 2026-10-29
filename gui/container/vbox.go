@@ -1,13 +1,13 @@
 package container
 
 import (
-	"context"
 	"fmt"
 
 	"fyne.io/fyne/v2/container"
 
 	"fyne.io/fyne/v2"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -55,7 +55,7 @@ func (obj *VBox) Equals(other object.Object) bool {
 }
 
 func (obj *VBox) Attrs() []object.AttrSpec {
-	return nil
+	return vBoxAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -72,37 +72,18 @@ func (obj *VBox) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var vBoxAttrs = object.NewAttrRegistry[*VBox](string(VBoxType))
+
 func (obj *VBox) getAttrUI(name string) (object.Object, bool) {
-	if o, ok := containerOps("VBox", obj.instance, name); ok {
-		return o, true
-	}
-	switch name {
-	case "Hide":
-		return object.NewBuiltin("container.VBox.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("container.VBox.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
+	return vBoxAttrs.GetAttr(obj, name)
+
 }
 
 func NewVBox(objects ...fyne.CanvasObject) *VBox {
 	return &VBox{
 		instance: container.NewVBox(objects...),
 	}
+}
+func init() {
+	objattrs.ContainerOps(vBoxAttrs)
 }

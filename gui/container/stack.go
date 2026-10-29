@@ -1,13 +1,13 @@
 package container
 
 import (
-	"context"
 	"fmt"
 
 	"fyne.io/fyne/v2/container"
 
 	"fyne.io/fyne/v2"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -55,7 +55,7 @@ func (obj *Stack) Equals(other object.Object) bool {
 }
 
 func (obj *Stack) Attrs() []object.AttrSpec {
-	return nil
+	return stackAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -72,37 +72,18 @@ func (obj *Stack) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var stackAttrs = object.NewAttrRegistry[*Stack](string(StackType))
+
 func (obj *Stack) getAttrUI(name string) (object.Object, bool) {
-	if o, ok := containerOps("Stack", obj.instance, name); ok {
-		return o, true
-	}
-	switch name {
-	case "Hide":
-		return object.NewBuiltin("container.Stack.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("container.Stack.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
+	return stackAttrs.GetAttr(obj, name)
+
 }
 
 func NewStack(objects ...fyne.CanvasObject) *Stack {
 	return &Stack{
 		instance: container.NewStack(objects...),
 	}
+}
+func init() {
+	objattrs.ContainerOps(stackAttrs)
 }

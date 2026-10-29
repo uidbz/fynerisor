@@ -1,13 +1,13 @@
 package container
 
 import (
-	"context"
 	"fmt"
 
 	"fyne.io/fyne/v2/container"
 
 	"fyne.io/fyne/v2"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -57,7 +57,7 @@ func (obj *GridWithColumns) Equals(other object.Object) bool {
 }
 
 func (obj *GridWithColumns) Attrs() []object.AttrSpec {
-	return nil
+	return gridWithColumnsAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -74,33 +74,11 @@ func (obj *GridWithColumns) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var gridWithColumnsAttrs = object.NewAttrRegistry[*GridWithColumns](string(GridWithColumnsType))
+
 func (obj *GridWithColumns) getAttrUI(name string) (object.Object, bool) {
-	if o, ok := containerOps("GridWithColumns", obj.instance, name); ok {
-		return o, true
-	}
-	switch name {
-	case "Hide":
-		return object.NewBuiltin("container.GridWithColumns.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("container.GridWithColumns.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
+	return gridWithColumnsAttrs.GetAttr(obj, name)
+
 }
 
 func NewGridWithColumns(cols int, objects ...fyne.CanvasObject) *GridWithColumns {
@@ -147,7 +125,7 @@ func (obj *GridWithRows) Equals(other object.Object) bool {
 }
 
 func (obj *GridWithRows) Attrs() []object.AttrSpec {
-	return nil
+	return gridWithRowsAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -164,37 +142,21 @@ func (obj *GridWithRows) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var gridWithRowsAttrs = object.NewAttrRegistry[*GridWithRows](string(GridWithRowsType))
+
 func (obj *GridWithRows) getAttrUI(name string) (object.Object, bool) {
-	if o, ok := containerOps("GridWithRows", obj.instance, name); ok {
-		return o, true
-	}
-	switch name {
-	case "Hide":
-		return object.NewBuiltin("container.GridWithRows.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("container.GridWithRows.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
+	return gridWithRowsAttrs.GetAttr(obj, name)
+
 }
 
 func NewGridWithRows(rows int, objects ...fyne.CanvasObject) *GridWithRows {
 	return &GridWithRows{
 		instance: container.NewGridWithRows(rows, objects...),
 	}
+}
+func init() {
+	objattrs.ContainerOps(gridWithColumnsAttrs)
+}
+func init() {
+	objattrs.ContainerOps(gridWithRowsAttrs)
 }

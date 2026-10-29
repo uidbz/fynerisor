@@ -1,13 +1,13 @@
 package container
 
 import (
-	"context"
 	"fmt"
 
 	"fyne.io/fyne/v2/container"
 
 	"fyne.io/fyne/v2"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -55,7 +55,7 @@ func (obj *Split) Equals(other object.Object) bool {
 }
 
 func (obj *Split) Attrs() []object.AttrSpec {
-	return nil
+	return splitAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -90,36 +90,23 @@ func (obj *Split) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var splitAttrs = object.NewAttrRegistry[*Split](string(SplitType))
+
+func init() {
+	objattrs.Add(splitAttrs)
+	splitAttrs.Define("Offset").
+		Doc("Divider offset ratio between 0 and 1.").
+		Getter(func(obj *Split) object.Object {
+			split, ok := obj.instance.(*container.Split)
+			if !ok {
+				return object.NewFloat(0.5) // Default if not a Split
+			}
+			return object.NewFloat(split.Offset)
+		})
+}
+
 func (obj *Split) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Hide":
-		return object.NewBuiltin("container.Split.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("container.Split.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	case "Offset":
-		split, ok := obj.instance.(*container.Split)
-		if !ok {
-			return object.NewFloat(0.5), true // Default if not a Split
-		}
-		return object.NewFloat(split.Offset), true
-	}
-	return nil, false
+	return splitAttrs.GetAttr(obj, name)
 }
 
 func NewHSplit(leading, trailing fyne.CanvasObject) *Split {

@@ -134,6 +134,66 @@ func Visible[T HasCanvas](r *object.AttrRegistry[T]) {
 		})
 }
 
+// Append registers the child-list Append verb for layout containers whose
+// Fyne instance is a *fyne.Container (VBox, HBox, Stack, Border, ...):
+// Append(child, ...) adds to the container and refreshes, on the UI
+// thread. Replaces the hand-written containerOps helper (issue #38).
+func Append[T HasCanvas](r *object.AttrRegistry[T]) {
+	r.Define("Append").
+		Doc("Append child objects to the container.").
+		Variadic("children").
+		Returns("nil").
+		Impl(func(o T, _ context.Context, args ...object.Object) (object.Object, error) {
+			objs := make([]fyne.CanvasObject, 0, len(args))
+			for i, a := range args {
+				co, ok := a.Interface().(fyne.CanvasObject)
+				if !ok {
+					return nil, object.Errorf("Append: expected canvas object at argument %d, got %s", i, a.Type())
+				}
+				objs = append(objs, co)
+			}
+			guithread.Do(func() {
+				c := o.CanvasObject().(*fyne.Container)
+				c.Objects = append(c.Objects, objs...)
+				c.Refresh()
+			})
+			return object.Nil, nil
+		})
+}
+
+// Remove registers the child-list Remove verb (see Append).
+func Remove[T HasCanvas](r *object.AttrRegistry[T]) {
+	r.Define("Remove").
+		Doc("Remove a child object from the container.").
+		Arg("child").
+		Returns("nil").
+		Impl(func(o T, _ context.Context, args ...object.Object) (object.Object, error) {
+			co, ok := args[0].Interface().(fyne.CanvasObject)
+			if !ok {
+				return nil, object.Errorf("Remove: expected canvas object, got %s", args[0].Type())
+			}
+			guithread.Do(func() {
+				c := o.CanvasObject().(*fyne.Container)
+				for i, x := range c.Objects {
+					if x == co {
+						c.Objects = append(c.Objects[:i], c.Objects[i+1:]...)
+						break
+					}
+				}
+				c.Refresh()
+			})
+			return object.Nil, nil
+		})
+}
+
+// ContainerOps registers the full layout-container verb set: the canvas
+// verbs plus Append/Remove. Refresh comes from the canvas set.
+func ContainerOps[T HasCanvas](r *object.AttrRegistry[T]) {
+	Add(r)
+	Append(r)
+	Remove(r)
+}
+
 func sizeObject(sz fyne.Size) object.Object {
 	return object.NewMap(map[string]object.Object{
 		"width":  object.NewFloat(float64(sz.Width)),

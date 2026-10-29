@@ -49,12 +49,10 @@ func (obj *TabItem) Equals(other object.Object) bool {
 }
 
 func (obj *TabItem) Attrs() []object.AttrSpec {
-	return tabItemAttrs.
-
-		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
-		Specs()
+	return tabItemAttrs.Specs()
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *TabItem) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
