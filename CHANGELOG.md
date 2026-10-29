@@ -410,6 +410,16 @@
   core too. The CLI gained `-e '<code>'` (inline script; stdin stays a
   data stream), so `cat data.csv | fynerisor --headless -e '...' | jq`
   is a clean filter.
+- **Imported modules see exactly the globals their VMs get (issue
+  #27).** Modules used to be *compiled* with the main script's options
+  (including opaque `WithRisorOptions` envs) but *run* with only the
+  shared environment: a module referencing such a name compiled fine
+  and failed at runtime. Compilation now uses the same environment as
+  the module VM, so those references fail at import with a clear
+  "undefined variable" error. `WithRisorOptions` is documented as VM
+  tuning only. The CLI passes its `args` global and `--globals` JSON
+  per key through `WithGlobal`, making them genuinely visible to
+  imported modules.
 
 ## [0.8.2] - 2026-09-03
 

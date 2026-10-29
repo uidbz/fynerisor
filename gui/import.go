@@ -27,13 +27,12 @@ type importState struct {
 	cache map[string]*core.ImportedModule
 	stack []core.ImportFrame
 	env   map[string]any // the run's environment snapshot (module VM globals)
-	opts  []risor.Option // the run's risor options (module compilation)
 }
 
 type importStateKey struct{}
 
-func newImportState(base string, env map[string]any, opts []risor.Option) *importState {
-	return &importState{base: base, cache: map[string]*core.ImportedModule{}, env: env, opts: opts}
+func newImportState(base string, env map[string]any) *importState {
+	return &importState{base: base, cache: map[string]*core.ImportedModule{}, env: env}
 }
 
 // importStateFor returns the import state of the run that owns ctx. A
@@ -44,8 +43,8 @@ func (w *Window) importStateFor(ctx context.Context) *importState {
 		return st
 	}
 	_, base := w.runner.snapshot()
-	env, opts := w.runOptions()
-	return newImportState(base, env, opts)
+	env, _ := w.runOptions()
+	return newImportState(base, env)
 }
 
 // newImportBuiltin creates the import() function that loads Risor modules
@@ -150,8 +149,11 @@ func (w *Window) newImportBuiltin() *object.Builtin {
 			return nil, object.Errorf("import error: %w", err)
 		}
 
-		// Compile the module
-		code, err := risor.Compile(ctx, source, st.opts...)
+		// Compile the module with exactly the globals the module VM will
+		// get (issue #27): names from opaque WithRisorOptions are not in
+		// the module VM, so compiling with them would let modules pass
+		// compilation and then fail at runtime. They fail now, clearly.
+		code, err := risor.Compile(ctx, source, risor.WithEnv(st.env))
 		if err != nil {
 			return nil, object.Errorf("import %q: compilation failed: %w", modulePath, err)
 		}

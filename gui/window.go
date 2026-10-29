@@ -464,7 +464,7 @@ func (w *Window) start(ctx context.Context) <-chan error {
 	}
 	// Each run gets its own module system state and environment snapshot,
 	// carried in its context.
-	parent := context.WithValue(ctx, importStateKey{}, newImportState(base, env, opts))
+	parent := context.WithValue(ctx, importStateKey{}, newImportState(base, env))
 	if w.scriptArgs != nil {
 		// os.args() answers from the run's context, not a process global
 		// (issue #44).

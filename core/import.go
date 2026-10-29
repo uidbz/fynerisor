@@ -225,8 +225,11 @@ func (cb *Context) newImportBuiltin() *object.Builtin {
 			return nil, object.Errorf("import error: %w", err)
 		}
 
-		// Compile the module
-		code, err := risor.Compile(ctx, source, cb.globals...)
+		// Compile the module with exactly the globals the module VM will
+		// get (issue #27): names from opaque WithRisorOptions are not in
+		// the module VM, so compiling with them would let modules pass
+		// compilation and then fail at runtime. They fail now, clearly.
+		code, err := risor.Compile(ctx, source, risor.WithEnv(cb.env))
 		if err != nil {
 			return nil, object.Errorf("import %q: compilation failed: %w", modulePath, err)
 		}

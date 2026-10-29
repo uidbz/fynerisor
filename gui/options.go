@@ -58,6 +58,11 @@ func (o appNameOption) applyToWindow(w *Window) {
 // Unlike WithGlobal(), these options are NOT forwarded to imported modules.
 //
 // Use WithGlobal() instead for named globals that modules should access.
+// Do not define script-visible names through
+// WithRisorOptions(risor.WithEnv(...)): imported modules are compiled and
+// run against the shared environment (the WithGlobal/module values), so
+// such names would be undefined in modules; keep this option for VM
+// tuning (issue #27).
 //
 // Example:
 //

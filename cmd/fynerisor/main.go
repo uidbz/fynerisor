@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deepnoodle-ai/risor/v2"
 	"github.com/fsnotify/fsnotify"
 
 	"fyne.io/fyne/v2"
@@ -74,6 +73,9 @@ func main() {
 	if *execCode == "" {
 		scriptPath = args[0]
 		scriptArgs = args[1:]
+	} else {
+		// Inline code: every positional arg is a script arg (issue #42).
+		scriptArgs = args
 	}
 
 	// Read script
@@ -106,21 +108,6 @@ func main() {
 		}
 	}
 
-	// Load custom globals if specified
-	var customGlobals []risor.Option
-	if *globals != "" {
-		customGlobals, err = loadGlobalsFile(*globals)
-		if err != nil {
-			log.Fatalf("Error loading globals file: %v", err)
-		}
-	}
-
-	// Add script arguments as global
-	scriptArgsGlobal := map[string]any{
-		"args": scriptArgs,
-	}
-	customGlobals = append(customGlobals, risor.WithEnv(scriptArgsGlobal))
-
 	// Create app and window
 	var a fyne.App
 	var w fyne.Window
@@ -147,22 +134,37 @@ func main() {
 		w.Resize(fyne.NewSize(float32(*width), float32(*height)))
 	}
 
-	// Create fynerisor window with standard modules enabled
-	var fyneWindow *gui.Window
+	// Create fynerisor window with standard modules enabled. Named
+	// globals (the args convenience variable, --globals JSON) go in per
+	// key via WithGlobal: they then live in the shared environment that
+	// imported modules are compiled and run against too, instead of
+	// being opaque WithRisorOptions that modules cannot see (issue #27).
+	var opts []gui.Option
+	opts = append(opts,
+		gui.WithHTTP(),
+		gui.WithOS(),
+		gui.WithStrings(),
+		gui.WithFilepath(),
+		gui.WithTime(),
+		gui.WithSQL(),
+		gui.WithTie(),
+		gui.WithIO(),
+		gui.WithJSON(),
+		gui.WithCSV(),
+		gui.WithScriptArgs(scriptArgs...),
+		gui.WithGlobal("args", scriptArgs),
+	)
+	if *globals != "" {
+		globalsMap, err := loadGlobalsFile(*globals)
+		if err != nil {
+			log.Fatalf("Error loading globals file: %v", err)
+		}
+		for name, value := range globalsMap {
+			opts = append(opts, gui.WithGlobal(name, value))
+		}
+	}
 	if *verbose {
-		fyneWindow = gui.NewWindow(w,
-			gui.WithHTTP(),
-			gui.WithOS(),
-			gui.WithStrings(),
-			gui.WithFilepath(),
-			gui.WithTime(),
-			gui.WithSQL(),
-			gui.WithTie(),
-			gui.WithIO(),
-			gui.WithJSON(),
-			gui.WithCSV(),
-			gui.WithScriptArgs(scriptArgs...),
-			gui.WithRisorOptions(customGlobals...),
+		opts = append(opts,
 			gui.WithStatusCallback(func(status string) {
 				log.Printf("[STATUS] %s", status)
 			}),
@@ -171,26 +173,13 @@ func main() {
 			}),
 		)
 	} else {
-		fyneWindow = gui.NewWindow(w,
-			gui.WithHTTP(),
-			gui.WithOS(),
-			gui.WithStrings(),
-			gui.WithFilepath(),
-			gui.WithTime(),
-			gui.WithSQL(),
-			gui.WithTie(),
-			gui.WithIO(),
-			gui.WithJSON(),
-			gui.WithCSV(),
-			gui.WithScriptArgs(scriptArgs...),
-			gui.WithRisorOptions(customGlobals...),
-			gui.WithOnStateChange(func(state gui.RunState, err error) {
-				if state == gui.StateFailed {
-					log.Printf("[ERROR] %v", err)
-				}
-			}),
-		)
+		opts = append(opts, gui.WithOnStateChange(func(state gui.RunState, err error) {
+			if state == gui.StateFailed {
+				log.Printf("[ERROR] %v", err)
+			}
+		}))
 	}
+	fyneWindow := gui.NewWindow(w, opts...)
 
 	// Analyze script requirements (informational). Imports are resolved by
 	// the runtime's import() builtin during execution; the removed
@@ -314,7 +303,7 @@ func watchScript(path string, fw *gui.Window) {
 	}
 }
 
-func loadGlobalsFile(path string) ([]risor.Option, error) {
+func loadGlobalsFile(path string) (map[string]any, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read globals file: %w", err)
@@ -325,5 +314,5 @@ func loadGlobalsFile(path string) ([]risor.Option, error) {
 		return nil, fmt.Errorf("parse globals JSON: %w", err)
 	}
 
-	return []risor.Option{risor.WithEnv(globalsMap)}, nil
+	return globalsMap, nil
 }
