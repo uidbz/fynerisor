@@ -106,6 +106,15 @@
   is a plain option accepted anywhere. The old two-pass, concrete-type
   application (new option types silently ignored) is gone. Existing
   `With*` calls keep working unchanged.
+- **`gui` now composes `core` instead of copying it (issue #32).**
+  `require()`, the `ScriptRunner` (now with the import-base pair:
+  `LoadScriptFrom`/`Snapshot`, plus `core.EvalScript`), and the module
+  import machinery (`core.WrapModuleExports`, `core.BindModuleFunction`,
+  `core.LoadImportSource`, `core.IsHTTPURL`, `core.FetchScript`) have a
+  single implementation shared by headless and GUI runtimes — bugs in
+  that area are fixed once. `gui.ScriptRunner` is removed (use
+  `core.NewScriptRunner`); `gui/require.go`, `gui/scriptrunner.go` and
+  the duplicated import helpers are gone (~350 lines).
 - **`browser` navigation is async; auth is a callback flow (issue #28).**
   `Config.LoadContent` now takes a `context.Context` (superseded
   navigations cancel their fetch instead of freezing the window up to

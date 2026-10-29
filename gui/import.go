@@ -2,8 +2,6 @@ package gui
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"strings"
 	"sync"
 
@@ -42,7 +40,7 @@ func (w *Window) importStateFor(ctx context.Context) *importState {
 	if st, ok := ctx.Value(importStateKey{}).(*importState); ok {
 		return st
 	}
-	_, base := w.runner.snapshot()
+	_, base := w.runner.Snapshot()
 	env, _ := w.runOptions()
 	return newImportState(base, env)
 }
@@ -97,7 +95,7 @@ func (w *Window) newImportBuiltin() *object.Builtin {
 			base = st.stack[n-1].Base
 		}
 		st.mu.Unlock()
-		baseIsRemote := isHTTPURL(base)
+		baseIsRemote := core.IsHTTPURL(base)
 
 		key, err := core.ResolveImportPath(modulePath, base)
 		if err != nil {
@@ -137,14 +135,14 @@ func (w *Window) newImportBuiltin() *object.Builtin {
 		// Check if HTTP(S) import is allowed. A remote script importing
 		// from its own origin is implicit (same-origin policy already
 		// applied); loading a URL from a local script needs httpimport.
-		if isHTTPURL(key) && !baseIsRemote {
+		if core.IsHTTPURL(key) && !baseIsRemote {
 			if !w.moduleEnabled("httpimport") {
 				return nil, object.Errorf("import error: HTTP(S) imports are disabled. Use gui.WithHTTPImport() to enable importing from URLs")
 			}
 		}
 
 		// Load script source
-		source, err := loadImportSource(ctx, key)
+		source, err := core.LoadImportSource(ctx, key)
 		if err != nil {
 			return nil, object.Errorf("import error: %w", err)
 		}
@@ -172,8 +170,8 @@ func (w *Window) newImportBuiltin() *object.Builtin {
 
 		// Extract exported globals. Exported functions are bound to the module's
 		// own VM so that references to other module-level variables and functions
-		// resolve correctly (see wrapModuleExports for details).
-		globals := wrapModuleExports(moduleVM)
+		// resolve correctly (see core.WrapModuleExports for details).
+		globals := core.WrapModuleExports(moduleVM)
 
 		// Create module object
 		module := core.NewImportedModule(key, globals)
@@ -185,66 +183,4 @@ func (w *Window) newImportBuiltin() *object.Builtin {
 
 		return module, nil
 	})
-}
-
-// wrapModuleExports converts a module VM's global variables into the export map
-// returned to the importing script.
-//
-// Risor v2 resolves global variable references by index against the *currently
-// executing* VM's globals array; globals are not captured into closures. If an
-// exported function were called directly by the importing script's VM, its
-// references to module-level variables/functions would resolve against the
-// wrong globals array (producing wrong values or an index-out-of-range error).
-//
-// To make module-level references work, every exported function is wrapped in a
-// builtin that re-enters the module's own VM via moduleVM.Call. Non-function
-// values (numbers, strings, lists, maps, ...) are exported directly.
-func wrapModuleExports(moduleVM *vm.VirtualMachine) map[string]object.Object {
-	// One mutex per module serializes calls into its (single, stateful) VM.
-	mu := &sync.Mutex{}
-	exports := make(map[string]object.Object)
-	for _, name := range moduleVM.GlobalNames() {
-		value, err := moduleVM.Get(name)
-		if err != nil || value == nil {
-			continue
-		}
-		if closure, ok := value.(*object.Closure); ok {
-			exports[name] = bindModuleFunction(moduleVM, mu, name, closure)
-		} else {
-			exports[name] = value
-		}
-	}
-	return exports
-}
-
-// bindModuleFunction wraps an exported module closure so that invoking it runs
-// the closure inside the module's own VM (where its global references resolve
-// correctly).
-func bindModuleFunction(moduleVM *vm.VirtualMachine, mu *sync.Mutex, name string, closure *object.Closure) *object.Builtin {
-	return object.NewBuiltin(name, func(ctx context.Context, args ...object.Object) (object.Object, error) {
-		mu.Lock()
-		defer mu.Unlock()
-		return moduleVM.Call(ctx, closure, args)
-	})
-}
-
-// isHTTPURL reports whether s is an http(s) URL.
-func isHTTPURL(s string) bool {
-	return strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://")
-}
-
-// loadImportSource loads source code from a canonical import key: an
-// http(s) URL is fetched through core.FetchScript (timeout + size limit,
-// issue #19), anything else is read from the local filesystem.
-func loadImportSource(ctx context.Context, path string) (string, error) {
-	if isHTTPURL(path) {
-		return core.FetchScript(ctx, path)
-	}
-
-	// Load from file
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", fmt.Errorf("failed to read %q: %w", path, err)
-	}
-	return string(data), nil
 }

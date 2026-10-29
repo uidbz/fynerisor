@@ -119,7 +119,7 @@ type Window struct {
 	contentMu      sync.Mutex // serializes SetContent swaps between overlapping runs
 	statusCallback func(string)
 	resultCallback func(string)
-	runner         *ScriptRunner
+	runner         *core.ScriptRunner
 
 	// Module import system: the module cache and import stack live in the
 	// per-run importState (see import.go); only the entry script's base is
@@ -284,7 +284,7 @@ func newWindow(opts ...Option) *Window {
 	w.globals = append([]risor.Option{risor.WithEnv(w.env)}, w.userGlobals...)
 
 	// Create script runner
-	w.runner = NewScriptRunner(w.globals)
+	w.runner = core.NewScriptRunner(w.globals)
 
 	// Initialize content container. A standalone NewWindow attaches it to the
 	// Fyne window; an embedded CanvasObject renders it as a widget.
@@ -393,7 +393,7 @@ func (w *Window) Status() string {
 // working directory; use LoadScriptFrom when the script's own location is
 // known (issue #8).
 func (w *Window) LoadScript(script string) {
-	w.runner.load(script, "")
+	w.runner.LoadScriptFrom(script, "")
 }
 
 // LoadScriptFrom loads a script together with its source (file path or
@@ -401,14 +401,14 @@ func (w *Window) LoadScript(script string) {
 // the containing directory for local files, the source URL (same origin
 // only) for http(s) sources. See issue #8.
 func (w *Window) LoadScriptFrom(script, source string) {
-	w.runner.load(script, core.ImportBaseFor(source))
+	w.runner.LoadScriptFrom(script, core.ImportBaseFor(source))
 }
 
 // CompileScript parses and compiles the currently loaded script without
 // executing it, returning any compile error. Use it to validate scripts
 // before Execute (issue #6).
 func (w *Window) CompileScript() error {
-	script, _ := w.runner.snapshot()
+	script, _ := w.runner.Snapshot()
 	_, opts := w.runOptions()
 	_, err := risor.Compile(context.Background(), script, opts...)
 	return err
@@ -448,7 +448,7 @@ func (w *Window) start(ctx context.Context) <-chan error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	script, base := w.runner.snapshot()
+	script, base := w.runner.Snapshot()
 	env, opts := w.runOptions()
 
 	// startMu serializes concurrent Execute calls (a host and a script's
@@ -536,7 +536,7 @@ func (w *Window) evalBody(ctx context.Context, script string, opts []risor.Optio
 			result, err = nil, fmt.Errorf("panic in script: %v", p)
 		}
 	}()
-	return evalScript(ctx, script, opts)
+	return core.EvalScript(ctx, script, opts)
 }
 
 // runOptions snapshots the script environment for one run: a copy of the

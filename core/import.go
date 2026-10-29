@@ -48,15 +48,16 @@ func ImportBaseFor(source string) string {
 	}
 }
 
-// isHTTPURL reports whether s is an http(s) URL.
-func isHTTPURL(s string) bool {
+// IsHTTPURL reports whether s is an http(s) URL.
+// IsHTTPURL reports whether s is an http(s) URL.
+func IsHTTPURL(s string) bool {
 	return strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://")
 }
 
 // importBaseForKey returns the base for resolving the imports *made by* the
 // module identified by a canonical key.
 func importBaseForKey(key string) string {
-	if isHTTPURL(key) {
+	if IsHTTPURL(key) {
 		return key
 	}
 	return filepath.Dir(key)
@@ -73,8 +74,8 @@ func importBaseForKey(key string) string {
 // Its relative paths resolve against the remote URL and are never consulted
 // on the local disk; absolute or cross-origin URLs are rejected.
 func ResolveImportPath(modulePath, base string) (string, error) {
-	argIsURL := isHTTPURL(modulePath)
-	baseIsRemote := isHTTPURL(base)
+	argIsURL := IsHTTPURL(modulePath)
+	baseIsRemote := IsHTTPURL(base)
 
 	if baseIsRemote {
 		baseURL, err := url.Parse(base)
@@ -173,7 +174,7 @@ func (cb *Context) newImportBuiltin() *object.Builtin {
 			base = cb.importStack[n-1].Base
 		}
 		cb.moduleMutex.Unlock()
-		baseIsRemote := isHTTPURL(base)
+		baseIsRemote := IsHTTPURL(base)
 
 		key, err := ResolveImportPath(modulePath, base)
 		if err != nil {
@@ -213,14 +214,14 @@ func (cb *Context) newImportBuiltin() *object.Builtin {
 		// Check if HTTP(S) import is allowed. A remote script importing
 		// from its own origin is implicit (same-origin policy already
 		// applied); loading a URL from a local script needs httpimport.
-		if isHTTPURL(key) && !baseIsRemote {
+		if IsHTTPURL(key) && !baseIsRemote {
 			if !cb.enabledModules["httpimport"] {
 				return nil, object.Errorf("import error: HTTP(S) imports are disabled. Use core.WithHTTPImport() to enable importing from URLs")
 			}
 		}
 
 		// Load script source
-		source, err := loadImportSource(ctx, key)
+		source, err := LoadImportSource(ctx, key)
 		if err != nil {
 			return nil, object.Errorf("import error: %w", err)
 		}
@@ -249,8 +250,8 @@ func (cb *Context) newImportBuiltin() *object.Builtin {
 
 		// Extract exported globals. Exported functions are bound to the module's
 		// own VM so that references to other module-level variables and functions
-		// resolve correctly (see wrapModuleExports for details).
-		globals := wrapModuleExports(moduleVM)
+		// resolve correctly (see WrapModuleExports for details).
+		globals := WrapModuleExports(moduleVM)
 
 		// Create module object
 		module := NewImportedModule(key, globals)
@@ -264,7 +265,7 @@ func (cb *Context) newImportBuiltin() *object.Builtin {
 	})
 }
 
-// wrapModuleExports converts a module VM's global variables into the export map
+// WrapModuleExports converts a module VM's global variables into the export map
 // returned to the importing script.
 //
 // Risor v2 resolves global variable references by index against the *currently
@@ -276,7 +277,9 @@ func (cb *Context) newImportBuiltin() *object.Builtin {
 // To make module-level references work, every exported function is wrapped in a
 // builtin that re-enters the module's own VM via moduleVM.Call. Non-function
 // values (numbers, strings, lists, maps, ...) are exported directly.
-func wrapModuleExports(moduleVM *vm.VirtualMachine) map[string]object.Object {
+// WrapModuleExports snapshots a module VM's top-level bindings as the
+// exporting module's public surface.
+func WrapModuleExports(moduleVM *vm.VirtualMachine) map[string]object.Object {
 	// One mutex per module serializes calls into its (single, stateful) VM.
 	mu := &sync.Mutex{}
 	exports := make(map[string]object.Object)
@@ -286,7 +289,7 @@ func wrapModuleExports(moduleVM *vm.VirtualMachine) map[string]object.Object {
 			continue
 		}
 		if closure, ok := value.(*object.Closure); ok {
-			exports[name] = bindModuleFunction(moduleVM, mu, name, closure)
+			exports[name] = BindModuleFunction(moduleVM, mu, name, closure)
 		} else {
 			exports[name] = value
 		}
@@ -294,10 +297,13 @@ func wrapModuleExports(moduleVM *vm.VirtualMachine) map[string]object.Object {
 	return exports
 }
 
-// bindModuleFunction wraps an exported module closure so that invoking it runs
+// BindModuleFunction wraps an exported module closure so that invoking it runs
 // the closure inside the module's own VM (where its global references resolve
 // correctly).
-func bindModuleFunction(moduleVM *vm.VirtualMachine, mu *sync.Mutex, name string, closure *object.Closure) *object.Builtin {
+// BindModuleFunction wraps one module closure into a Builtin bound to the
+// module VM (with its lock), so exported functions keep their closure
+// environment after import.
+func BindModuleFunction(moduleVM *vm.VirtualMachine, mu *sync.Mutex, name string, closure *object.Closure) *object.Builtin {
 	return object.NewBuiltin(name, func(ctx context.Context, args ...object.Object) (object.Object, error) {
 		mu.Lock()
 		defer mu.Unlock()
@@ -305,8 +311,10 @@ func bindModuleFunction(moduleVM *vm.VirtualMachine, mu *sync.Mutex, name string
 	})
 }
 
-// loadImportSource loads source code from a file path or URL.
-func loadImportSource(ctx context.Context, path string) (string, error) {
+// LoadImportSource loads source code from a file path or URL.
+// LoadImportSource reads an imported module's source from disk or over
+// HTTP (via FetchScript).
+func LoadImportSource(ctx context.Context, path string) (string, error) {
 	// Check if it's an HTTP(S) URL
 	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
 		return FetchScript(ctx, path)

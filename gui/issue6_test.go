@@ -3,12 +3,14 @@ package gui
 import (
 	"strings"
 	"testing"
+
+	"github.com/uidbz/fynerisor/core"
 )
 
 // Issue #6: the host app must be able to compile-check a script without
 // executing it. Window.CompileScript delegates to ScriptRunner.Compile.
 func TestIssue6CompileScript(t *testing.T) {
-	sr := NewScriptRunner(nil)
+	sr := core.NewScriptRunner(nil)
 
 	sr.LoadScript("let x = 1\nx + 1")
 	if err := sr.Compile(); err != nil {

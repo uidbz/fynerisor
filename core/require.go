@@ -9,8 +9,24 @@ import (
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 )
 
-// newRequireBuiltinForContext creates the require() function for Context
-func newRequireBuiltinForContext(cb *Context) *object.Builtin {
+// RequireEnv binds the require() engine to one runtime (issue #32:
+// a single implementation for both Context and Window).
+type RequireEnv struct {
+	// PkgName prefixes the fix-it hints ("core" or "gui").
+	PkgName string
+	// GUIAvailable reports whether @gui may be required (Window: yes,
+	// headless Context: no).
+	GUIAvailable bool
+	// AppVersion returns the runtime's app version at call time ("" =
+	// check against fynerisor's own Version).
+	AppVersion func() string
+	// ModuleEnabled reports whether @name is currently enabled; it is
+	// consulted live, so globals registered after construction count.
+	ModuleEnabled func(name string) bool
+}
+
+// NewRequireBuiltin builds the require() builtin for one runtime.
+func NewRequireBuiltin(env RequireEnv) *object.Builtin {
 	return object.NewBuiltin("require", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 		if len(args) != 1 {
 			return nil, fmt.Errorf("require: expected 1 argument (string or list), got %d", len(args))
@@ -18,7 +34,7 @@ func newRequireBuiltinForContext(cb *Context) *object.Builtin {
 
 		// Handle string argument
 		if str, ok := args[0].(*object.String); ok {
-			return processRequirementForContext(cb, str.Value())
+			return processRequirement(env, str.Value())
 		}
 
 		// Handle list argument
@@ -28,7 +44,7 @@ func newRequireBuiltinForContext(cb *Context) *object.Builtin {
 				if !ok {
 					return nil, fmt.Errorf("require: list items must be strings, got %s", item.Type())
 				}
-				if _, err := processRequirementForContext(cb, str.Value()); err != nil {
+				if _, err := processRequirement(env, str.Value()); err != nil {
 					return nil, err
 				}
 			}
@@ -36,6 +52,16 @@ func newRequireBuiltinForContext(cb *Context) *object.Builtin {
 		}
 
 		return nil, fmt.Errorf("require: argument must be a string or list, got %s", args[0].Type())
+	})
+}
+
+// newRequireBuiltinForContext creates the require() function for Context
+func newRequireBuiltinForContext(cb *Context) *object.Builtin {
+	return NewRequireBuiltin(RequireEnv{
+		PkgName:       "core",
+		GUIAvailable:  false,
+		AppVersion:    func() string { return cb.appVersion },
+		ModuleEnabled: func(name string) bool { return cb.enabledModules[name] },
 	})
 }
 
@@ -72,8 +98,9 @@ func ModuleOptionName(moduleName string) string {
 	return ""
 }
 
-// processRequirementForContext handles a single requirement string for Context
-func processRequirementForContext(cb *Context, req string) (object.Object, error) {
+// processRequirement handles a single requirement string against one
+// runtime's RequireEnv.
+func processRequirement(env RequireEnv, req string) (object.Object, error) {
 	// Module requirement (@module)
 	if strings.HasPrefix(req, "@") {
 		moduleName := strings.TrimPrefix(req, "@")
@@ -82,19 +109,22 @@ func processRequirementForContext(cb *Context, req string) (object.Object, error
 			return nil, fmt.Errorf("require: empty module name in %q (use '@sql' style for modules)", req)
 		}
 
-		// Special case: @gui is not available in headless Context
+		// Special case: @gui is only available where a window exists.
 		if moduleName == "gui" {
+			if env.GUIAvailable {
+				return object.Nil, nil
+			}
 			return nil, fmt.Errorf("require: @gui is not available in headless mode (script requires GUI window)")
 		}
 
-		if !cb.enabledModules[moduleName] {
+		if !env.ModuleEnabled(moduleName) {
 			if moduleName == "sql" {
-				return nil, fmt.Errorf("require: module @sql is not enabled (import github.com/uidbz/fynerisor/core/db and pass db.WithSQL())")
+				return nil, fmt.Errorf("require: module @sql is not enabled (import github.com/uidbz/fynerisor/%s/db and pass db.WithSQL())", env.PkgName)
 			}
 			if optionName := ModuleOptionName(moduleName); optionName != "" {
-				return nil, fmt.Errorf("require: module @%s is not enabled (use core.%s() option)", moduleName, optionName)
+				return nil, fmt.Errorf("require: module @%s is not enabled (use %s.%s() option)", moduleName, env.PkgName, optionName)
 			}
-			return nil, fmt.Errorf("require: module @%s is not enabled and is not a built-in module (host-provided modules are registered via core.WithGlobal())", moduleName)
+			return nil, fmt.Errorf("require: module @%s is not enabled and is not a built-in module (host-provided modules are registered via %s.WithGlobal())", moduleName, env.PkgName)
 		}
 		return object.Nil, nil
 	}
@@ -104,8 +134,8 @@ func processRequirementForContext(cb *Context, req string) (object.Object, error
 		// Use app version if set, otherwise use fynerisor version
 		versionToCheck := "v" + Version
 		versionName := "fynerisor"
-		if cb.appVersion != "" {
-			versionToCheck = cb.appVersion
+		if appVersion := env.AppVersion(); appVersion != "" {
+			versionToCheck = appVersion
 			if !strings.HasPrefix(versionToCheck, "v") {
 				versionToCheck = "v" + versionToCheck
 			}
