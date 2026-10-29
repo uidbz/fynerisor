@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 	"github.com/uidbz/fynerisor/gui/vmexec"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -55,7 +56,77 @@ func (obj *Button) Equals(other object.Object) bool {
 }
 
 func (obj *Button) Attrs() []object.AttrSpec {
-	return nil
+	return buttonAttrs.Specs()
+}
+
+// buttonAttrs declares the widget.Button surface (issue #38).
+var buttonAttrs = object.NewAttrRegistry[*Button](string(ButtonType))
+
+func init() {
+	objattrs.Add(buttonAttrs)
+
+	buttonAttrs.Define("Text").
+		Doc("The button's label.").
+		Returns("string").
+		Getter(func(obj *Button) object.Object { return object.NewString(obj.instance.Text) })
+	buttonAttrs.Define("Importance").
+		Doc("Visual importance level (a constants.Importance* value).").
+		Returns("int").
+		Getter(func(obj *Button) object.Object { return object.NewInt(int64(obj.instance.Importance)) })
+	buttonAttrs.Define("Disabled").
+		Doc("Whether the button is disabled.").
+		Returns("bool").
+		Getter(func(obj *Button) object.Object { return object.NewBool(obj.instance.Disabled()) })
+
+	buttonAttrs.Define("SetText").
+		Doc("Set the button label.").
+		Arg("text").
+		Returns("nil").
+		Impl(func(obj *Button, ctx context.Context, args ...object.Object) (object.Object, error) {
+			text, err := object.AsString(args[0])
+			if err != nil {
+				return nil, object.Errorf("type error: %v", err)
+			}
+			guithread.Do(func() {
+				obj.instance.SetText(text)
+			})
+			return object.Nil, nil
+		})
+	buttonAttrs.Define("Disable").
+		Doc("Disable (grey out) the button.").
+		Returns("nil").
+		Impl(func(obj *Button, ctx context.Context, args ...object.Object) (object.Object, error) {
+			guithread.Do(func() {
+				obj.instance.Disable()
+			})
+			return object.Nil, nil
+		})
+	buttonAttrs.Define("Enable").
+		Doc("Re-enable a disabled button.").
+		Returns("nil").
+		Impl(func(obj *Button, ctx context.Context, args ...object.Object) (object.Object, error) {
+			guithread.Do(func() {
+				obj.instance.Enable()
+			})
+			return object.Nil, nil
+		})
+	buttonAttrs.Define("OnTapped").
+		Doc("Set the tap handler; fires on the script VM goroutine.").
+		Arg("callback").
+		Returns("nil").
+		Impl(func(obj *Button, ctx context.Context, args ...object.Object) (object.Object, error) {
+			cb, err := vmexec.NewCallback(ctx, "widget.Button.OnTapped", args[0])
+			if err != nil {
+				return nil, err
+			}
+
+			// Event: queued on the script's VM goroutine (same path as the
+			// handler passed to widget.NewButton), never run on the UI thread.
+			guithread.Do(func() {
+				obj.instance.OnTapped = func() { cb.Fire() }
+			})
+			return object.Nil, nil
+		})
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -108,86 +179,7 @@ func (obj *Button) GetAttr(name string) (object.Object, bool) {
 }
 
 func (obj *Button) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Text":
-		return object.NewString(obj.instance.Text), true
-	case "Importance":
-		return object.NewInt(int64(obj.instance.Importance)), true
-	case "Disabled":
-		return object.NewBool(obj.instance.Disabled()), true
-	case "SetText":
-		return object.NewBuiltin("widget.Button.SetText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			text, err := object.AsString(args[0])
-			if err != nil {
-				return nil, object.Errorf("type error: %v", err)
-			}
-			guithread.Do(func() {
-				obj.instance.SetText(text)
-			})
-			return object.Nil, nil
-		}), true
-	case "Disable":
-		return object.NewBuiltin("widget.Button.Disable", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Disable()
-			})
-			return object.Nil, nil
-		}), true
-	case "Enable":
-		return object.NewBuiltin("widget.Button.Enable", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Enable()
-			})
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("widget.Button.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.Button.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	case "OnTapped":
-		return object.NewBuiltin("widget.Button.OnTapped", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			cb, err := vmexec.NewCallback(ctx, "widget.Button.OnTapped", args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			// Event: queued on the script's VM goroutine (same path as the
-			// handler passed to widget.NewButton), never run on the UI thread.
-			guithread.Do(func() {
-				obj.instance.OnTapped = func() { cb.Fire() }
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
+	return buttonAttrs.GetAttr(obj, name)
 }
 
 func NewButton(label string, tapped func()) *Button {

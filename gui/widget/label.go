@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -55,7 +56,57 @@ func (obj *Label) Equals(other object.Object) bool {
 }
 
 func (obj *Label) Attrs() []object.AttrSpec {
-	return nil
+	return labelAttrs.Specs()
+}
+
+// labelAttrs declares the widget.Label attribute surface (issue #38):
+// introspectable via Attrs(), with arity handled by the registry.
+var labelAttrs = object.NewAttrRegistry[*Label](string(LabelType))
+
+func init() {
+	objattrs.Add(labelAttrs)
+
+	labelAttrs.Define("Text").
+		Doc("The label's text.").
+		Returns("string").
+		Getter(func(o *Label) object.Object { return object.NewString(o.instance.Text) })
+	labelAttrs.Define("Wrapping").
+		Doc("Text wrapping mode (a constants.TextWrap* value).").
+		Returns("int").
+		Getter(func(o *Label) object.Object { return object.NewInt(int64(o.instance.Wrapping)) })
+	labelAttrs.Define("Truncation").
+		Doc("Text truncation mode.").
+		Returns("int").
+		Getter(func(o *Label) object.Object { return object.NewInt(int64(o.instance.Truncation)) })
+	labelAttrs.Define("Alignment").
+		Doc("Text alignment.").
+		Returns("int").
+		Getter(func(o *Label) object.Object { return object.NewInt(int64(o.instance.Alignment)) })
+	labelAttrs.Define("Importance").
+		Doc("Visual importance level.").
+		Returns("int").
+		Getter(func(o *Label) object.Object { return object.NewInt(int64(o.instance.Importance)) })
+	labelAttrs.Define("Selectable").
+		Doc("Whether the text can be selected.").
+		Returns("bool").
+		Getter(func(o *Label) object.Object { return object.NewBool(o.instance.Selectable) })
+	labelAttrs.Define("TextStyle").
+		Doc("Text style object; set Bold/Italic/Monospace on it.").
+		Returns("TextStyle").
+		Getter(func(o *Label) object.Object { return NewTextStyle(&o.instance.TextStyle, o.instance) })
+
+	labelAttrs.Define("SetText").
+		Doc("Set the label text.").
+		Arg("text").
+		Returns("nil").
+		Impl(func(o *Label, _ context.Context, args ...object.Object) (object.Object, error) {
+			text, err := object.AsString(args[0])
+			if err != nil {
+				return nil, object.Errorf("type error: %v", err)
+			}
+			guithread.Do(func() { o.instance.SetText(text) })
+			return object.Nil, nil
+		})
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -136,57 +187,7 @@ func (obj *Label) GetAttr(name string) (object.Object, bool) {
 }
 
 func (obj *Label) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Text":
-		return object.NewString(obj.instance.Text), true
-	case "Wrapping":
-		return object.NewInt(int64(obj.instance.Wrapping)), true
-	case "Truncation":
-		return object.NewInt(int64(obj.instance.Truncation)), true
-	case "Alignment":
-		return object.NewInt(int64(obj.instance.Alignment)), true
-	case "Importance":
-		return object.NewInt(int64(obj.instance.Importance)), true
-	case "Selectable":
-		return object.NewBool(obj.instance.Selectable), true
-	case "TextStyle":
-		return NewTextStyle(&obj.instance.TextStyle, obj.instance), true
-	case "SetText":
-		return object.NewBuiltin("widget.Label.SetText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			text, err := object.AsString(args[0])
-			if err != nil {
-				return nil, object.Errorf("type error: %v", err)
-			}
-			guithread.Do(func() {
-				obj.instance.SetText(text)
-			})
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("widget.Label.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.Label.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
+	return labelAttrs.GetAttr(obj, name)
 }
 
 func NewLabel(text string) *Label {
