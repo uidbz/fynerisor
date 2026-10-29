@@ -27,6 +27,7 @@ import (
 	"github.com/uidbz/fynerisor/core"
 	"github.com/uidbz/fynerisor/core/db"
 	"github.com/uidbz/fynerisor/gui"
+	guidb "github.com/uidbz/fynerisor/gui/db"
 )
 
 // Exit codes (issue #43): 0 success, 1 script error, 2 usage error.
@@ -222,7 +223,7 @@ func runRun(argv []string) int {
 		gui.WithStrings(),
 		gui.WithFilepath(),
 		gui.WithTime(),
-		gui.WithSQL(),
+		guidb.WithSQL(), // opt-in subpackage: links DB drivers only here (issue #40)
 		gui.WithTie(),
 		gui.WithIO(),
 		gui.WithJSON(),

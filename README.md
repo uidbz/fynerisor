@@ -103,7 +103,7 @@ func main() {
     // Create fynerisor app with modules
     fw := gui.NewApp("My App",
         gui.WithHTTP(),
-        gui.WithSQL(),
+        guidb.WithSQL(), // import "github.com/uidbz/fynerisor/gui/db"
         gui.WithTime(),
     )
     
@@ -269,7 +269,7 @@ fw := gui.NewApp("My App",
         log.Println("Status:", status)
     }),
     gui.WithHTTP(),
-    gui.WithSQL(),
+    guidb.WithSQL(), // import "github.com/uidbz/fynerisor/gui/db"
     gui.WithTime(),
 )
 ```
@@ -284,7 +284,7 @@ Enable modules via `With*()` options. Scripts can optionally use `require(["@mod
 | `@http` | `WithHTTP()` | HTTP requests |
 | `@os` | `WithOS()` | OS operations, open browser |
 | `@io` | `WithIO()` | File I/O operations (cp, etc.) |
-| `@sql` | `WithSQL()` (`db.WithSQL()` in headless core) | Database connectivity |
+| `@sql` | `db.WithSQL()` — opt-in subpackage (`core/db`, `gui/db`) | Database connectivity |
 | `@tie` | `WithTie()` | Tie triple store database |
 | `@strings` | `WithStrings()` | String manipulation |
 | `@filepath` | `WithFilepath()` | Path operations |
@@ -292,6 +292,11 @@ Enable modules via `With*()` options. Scripts can optionally use `require(["@mod
 | `@exec` | `WithExec()` | Run external commands |
 | `@json` | `WithJSON()` | JSON encoding/decoding |
 | `@csv` | `WithCSV()` | CSV encoding/decoding |
+
+Capability-style grants (issue #40): `Safe()`, `Files(readOnly bool)`,
+`Exec()`, `HTTP()`, `Full()` — presets over the same options, where
+`Files(true)` genuinely *removes* mutating operations instead of just
+discouraging them. Options are shared between gui and core runtimes.
 
 **Note:** The `require()` function is **optional**. It's a validation mechanism for scripts to declare their dependencies and minimum version requirements. If a script doesn't call `require()`, it will simply use whatever modules the embedding application has enabled. Use `require()` when you want scripts to fail fast with clear error messages if expected modules or versions are missing.
 

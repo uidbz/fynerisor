@@ -65,12 +65,22 @@ type Context struct {
 //
 //	result, err := ctx.Eval(script)
 func NewContext(opts ...Option) *Context {
+	// One ordered config pass (issue #40): options assemble a Config,
+	// then the Context is built from it.
+	cfg := Apply(opts...)
 	cb := &Context{
-		enabledModules: make(map[string]bool),
-		appName:        "fynerisor", // default
-		appVersion:     GetAppVersion(),
+		enabledModules: cfg.EnabledModules,
+		appName:        cfg.AppName,
+		appVersion:     cfg.AppVersion,
+		scriptArgs:     cfg.ScriptArgs,
+		stdin:          cfg.Stdin,
+		stdout:         cfg.Stdout,
+		stderr:         cfg.Stderr,
 		moduleCache:    make(map[string]*ImportedModule),
 		importStack:    []ImportFrame{},
+	}
+	if cb.appVersion == "" {
+		cb.appVersion = GetAppVersion()
 	}
 
 	// Set base globals first
@@ -91,13 +101,14 @@ func NewContext(opts ...Option) *Context {
 		cb.env[k] = v
 	}
 
-	// Apply functional options after (so they can populate cb.env / cb.userGlobals)
-	for _, opt := range opts {
-		opt.applyToContext(cb)
+	// Globals contributed by options (modules, WithGlobal).
+	for k, v := range cfg.Globals {
+		cb.env[k] = v
 	}
+	cb.userGlobals = cfg.UserVMOptions
 
 	// Compose the final risor options: the merged env first, then any opaque
-	// user-supplied globals (from WithGlobals).
+	// user-supplied globals (from WithRisorOptions).
 	cb.globals = append([]risor.Option{risor.WithEnv(cb.env)}, cb.userGlobals...)
 
 	// Create script runner

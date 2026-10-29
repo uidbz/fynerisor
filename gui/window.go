@@ -9,7 +9,6 @@ import (
 
 	_ "embed"
 	"fmt"
-	"os"
 
 	"github.com/deepnoodle-ai/risor/v2"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -46,7 +45,7 @@ const WindowType object.Type = "window"
 //
 //	fw := fynerisor.NewApp("My Application",
 //	    fynerisor.WithHTTP(),
-//	    fynerisor.WithSQL(),
+//	    guidb.WithSQL(), // import "github.com/uidbz/fynerisor/gui/db"
 //	)
 //	fw.LoadScript(`
 //	    require(["v0.2", "@sql"])
@@ -205,23 +204,34 @@ func newWindow(opts ...Option) *Window {
 	// Record the GUI goroutine without overwriting it: a host may create an
 	// embedded view on a background goroutine (issue #14).
 	guithread.Init(false)
-	w := &Window{
-		enabledModules: make(map[string]bool),
-		appName:        "fynerisor", // default
-		appVersion:     core.GetAppVersion(),
-		shortcuts:      make(map[string]shortcutEntry),
-		defaultIn:      os.Stdin,
-		defaultOut:     os.Stdout,
-		defaultErr:     os.Stderr,
-	}
 
-	// Apply appName and callback options first (before globals)
+	// One ordered config pass (issue #40): options assemble a shared
+	// core.Config, the Window is then built from it. No concrete-type
+	// switches, so no option is ever silently ignored.
+	cfg := core.Apply(opts...)
+	w := &Window{
+		enabledModules: cfg.EnabledModules,
+		appName:        cfg.AppName,
+		appVersion:     cfg.AppVersion,
+		scriptArgs:     cfg.ScriptArgs,
+		shortcuts:      make(map[string]shortcutEntry),
+		defaultIn:      cfg.Stdin, // nil accessors fall back to process streams
+		defaultOut:     cfg.Stdout,
+		defaultErr:     cfg.Stderr,
+		statusCallback: cfg.StatusCallback,
+		resultCallback: cfg.ResultCallback,
+		errorHandler:   cfg.ErrorHandler,
+	}
+	if w.appVersion == "" {
+		w.appVersion = core.GetAppVersion()
+	}
+	if hw, ok := cfg.HostWindow.(fyne.Window); ok && hw != nil {
+		w.FyneWindow = hw // WithHostWindow (embedded CanvasObject)
+	}
+	// gui-only option state (callbacks core.Config cannot express).
 	for _, opt := range opts {
-		if _, ok := opt.(appNameOption); ok {
-			opt.applyToWindow(w)
-		}
-		if _, ok := opt.(windowOption); ok {
-			opt.applyToWindow(w)
+		if h, ok := opt.(windowHook); ok {
+			h.applyToWindow(w)
 		}
 	}
 
@@ -263,15 +273,14 @@ func newWindow(opts ...Option) *Window {
 		w.env[k] = v
 	}
 
-	// Apply module options (which populate w.env, w.userGlobals and enabledModules)
-	for _, opt := range opts {
-		if _, ok := opt.(moduleOption); ok {
-			opt.applyToWindow(w)
-		}
+	// Globals contributed by options (modules, WithGlobal).
+	for k, v := range cfg.Globals {
+		w.env[k] = v
 	}
+	w.userGlobals = cfg.UserVMOptions
 
 	// Compose the final risor options: the merged env first, then any opaque
-	// user-supplied globals (from WithGlobals).
+	// user-supplied globals (from WithRisorOptions).
 	w.globals = append([]risor.Option{risor.WithEnv(w.env)}, w.userGlobals...)
 
 	// Create script runner

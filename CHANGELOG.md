@@ -94,6 +94,18 @@
   (`widget.NewPopUp(content, window)`). `gui.IsCanvasObject` is now an
   alias of `widget.IsCanvasObject` instead of a second definition.
   (issue #33)
+- **`gui.WithSQL()` removed; use `gui/db` (issue #40).** Like core
+  before it, `gui` no longer imports `modules/sql`, so embedding gui no
+  longer links the MySQL/PostgreSQL/SQLite(cgo)/SQL Server drivers.
+  Migrate: `import "github.com/uidbz/fynerisor/gui/db"`;
+  `gui.NewWindow(w, db.WithSQL())`.
+- **One option mechanism (issue #40).** `core.Option` is an exported
+  interface over a neutral `core.Config`, applied in a single ordered
+  pass; `gui.Option` is now an alias of it, so options interoperate:
+  `core.WithHTTP()` configures a gui Window, `gui.WithStatusCallback`
+  is a plain option accepted anywhere. The old two-pass, concrete-type
+  application (new option types silently ignored) is gone. Existing
+  `With*` calls keep working unchanged.
 
 ### Fixed
 
@@ -231,6 +243,16 @@
   `csv.parse(io.read(p))`, `json.parse(http.get(u).body)`,
   `csv.parse(exec("query.sh").stdout)` and `io.write(io.stdout, csv.format(rows))`
   all compose — data is no longer hard-wired to files.
+
+- **Capability presets and custom options (issue #40).** `core.Safe()`
+  (strings/filepath/time/json/csv), `core.Files(readOnly bool)` (io +
+  os; read-only *removes* the mutating operations — `io.write`,
+  `os.mkdir_all`, `os.exec`, ... raise "attribute not found"),
+  `core.Exec()`, `core.HTTP()`, `core.Full()` (CLI default set, sans
+  SQL). Hosts state policy — "read-only files, no exec" — instead of
+  accepting all-or-nothing module grants. `core.Module(name, value)`
+  and `core.NewOption(func(*core.Config))` let hosts register their own
+  modules and configuration steps on the same mechanism.
 
 ### Changed
 

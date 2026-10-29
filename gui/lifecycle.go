@@ -50,7 +50,7 @@ func (s RunState) String() string {
 // nothing further. The callback runs on the script's VM goroutine or the
 // caller of Stop; it must not block.
 func WithOnStateChange(fn func(state RunState, err error)) Option {
-	return windowOption{fn: func(w *Window) { w.stateCallback = fn }}
+	return hookOption{fn: func(w *Window) { w.stateCallback = fn }}
 }
 
 // State returns the lifecycle state of the current run and, for

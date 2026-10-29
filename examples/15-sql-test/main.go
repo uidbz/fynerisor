@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/uidbz/fynerisor/gui"
+	guidb "github.com/uidbz/fynerisor/gui/db"
 )
 
 func main() {
@@ -14,7 +15,7 @@ func main() {
 		gui.WithStatusCallback(func(status string) {
 			fmt.Println("Status:", status)
 		}),
-		gui.WithSQL(), // Enable SQL module
+		guidb.WithSQL(), // Enable SQL module (opt-in subpackage, issue #40)
 	)
 
 	// Load Risor script from file

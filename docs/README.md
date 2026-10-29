@@ -342,7 +342,23 @@ result, err := ctx.Eval(script)
 - `WithCSV()` - CSV module
 - `WithRisorOptions()` - Custom globals
 
-Note: Window-specific options like `WithStatusCallback()` and `WithResultCallback()` are silently ignored when used with ContextBuilder.
+**Capability presets (issue #40):** instead of enumerating modules,
+state what a script may touch:
+- `Safe()` — data modules only (strings, filepath, time, json, csv)
+- `Files(readOnly)` — io + os; with `readOnly` the mutating operations
+  (`io.write`, `os.mkdir_all`, `os.exec`, ...) don't exist at all
+- `Exec()` — the exec module, a separate capability
+- `HTTP()` — outbound HTTP
+- `Full()` — everything the CLI enables by default (SQL stays opt-in)
+
+Options are one shared mechanism (issue #40): `gui.Option` *is*
+`core.Option`, so `core.WithHTTP()` configures a gui Window and
+`gui.WithStatusCallback(...)` is accepted by a headless Context
+(where it simply has no effect). `core.Module(name, value)` and
+`core.NewOption(func(*core.Config))` register host-owned modules and
+configuration steps on the same path. SQL moved to opt-in subpackages
+(`core/db`, and `gui/db` for GUI runtimes), so importing gui no longer
+links database drivers.
 
 See [example 16-context-builder](examples/16-context-builder) for complete usage.
 
