@@ -373,6 +373,18 @@
   clipboard stack (`golang.design/x/clipboard`, X11 headers, separate
   init) and its mobile build-tag split are gone; the dependency was
   dropped from go.mod.
+- **stdout/stderr are per-runtime writers (issue #24).** `print` writes
+  to the window's `Stdout()`; the old `CaptureStdout` hijacked the
+  process-global `os.Stdout` with a pipe (leaking into host output and
+  across CanvasObjects, owning goroutines per capture). New:
+  `WithStdout`/`WithStderr` options, Go `SetStdout`/`SetStderr`, and a
+  script `window.SetStdout(log|closure|nil)` (`CaptureStdout` still
+  accepted as the old name). A redirect belongs to the run that set it
+  and is dropped on reload. The `Log` widget implements `io.Writer`
+  (line-buffered) and its line store is now mutex-guarded — `AppendGo`
+  had been mutating it from non-UI goroutines while list callbacks read
+  it. Script-visible argument errors in these builtins now *raise*
+  (issue #30 convention).
 
 ## [0.8.2] - 2026-09-03
 

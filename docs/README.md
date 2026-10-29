@@ -49,7 +49,7 @@ Risor language bindings for the Fyne GUI framework.
 - [Window Object](#window-object)
   - [SetContent](#setcontent)
   - [OnDropped](#ondropped)
-  - [CaptureStdout](#capturestdout)
+  - [SetStdout](#setstdout)
   - [Properties](#properties)
 - [Callbacks](#callbacks)
 - [Passing Custom Data](#passing-custom-data)
@@ -351,7 +351,7 @@ See [example 16-context-builder](examples/16-context-builder) for complete usage
 
 Risor scripts have access to these global factory objects:
 
-- **window**: Window control (`SetContent`, `SetStatus`, `AddShortcut`, `RemoveShortcut`, `SetMainMenu`, `OnDropped`, `CaptureStdout`)
+- **window**: Window control (`SetContent`, `SetStatus`, `AddShortcut`, `RemoveShortcut`, `SetMainMenu`, `OnDropped`, `SetStdout`)
 - **widget**: Widget factory (`NewButton`, `NewLabel`, `NewEntry`, `NewTable`, etc.)
 - **container**: Layout factory (`NewVBox`, `NewHBox`, `NewBorder`, `NewSplit`, `NewScroll`, `NewGrid`, `NewStack`)
 - **canvas**: Canvas objects (`NewLine`, `NewImageFromURI`, `NewRectangle`, `NewCircle`, `NewText`)
@@ -849,12 +849,22 @@ let mainMenu = fyne.NewMainMenu(fileMenu)
 window.SetMainMenu(mainMenu)
 ```
 
-### CaptureStdout
-Capture stdout in a callback.
+### SetStdout
+Route the script's `print` output — per runtime, no process hijacking
+(issue #24). Pass a `widget.Log` (preferred: lines are appended without
+re-entering the VM), a closure (each line is queued as an event), or
+`nil` to restore the default. `window.CaptureStdout(...)` is the old
+name and still works.
 
 ```js
-window.CaptureStdout((line) => {
-    print("Captured:", line)
+let log = widget.NewLog(100)
+window.SetStdout(log)
+print("this line lands in the log widget")
+```
+
+```js
+window.SetStdout((line) => {
+    print("Relayed:", line)
 })
 ```
 

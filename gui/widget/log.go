@@ -1,9 +1,11 @@
 package widget
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
@@ -19,7 +21,10 @@ const LogType object.Type = "widget.Log"
 
 type Log struct {
 	maxItems int
+	mu       sync.Mutex // guards data (written from any goroutine, read by the list callbacks)
 	data     []string
+	writeMu  sync.Mutex // guards pending (io.Write buffering)
+	pending  []byte
 	instance *widget.List
 }
 
@@ -93,15 +98,7 @@ func (obj *Log) getAttrUI(name string) (object.Object, bool) {
 				return nil, err
 			}
 
-			if len(obj.data) > obj.maxItems-1 {
-				obj.data = obj.data[1:]
-			}
-			obj.data = append(obj.data, line)
-			guithread.Do(func() {
-				obj.instance.Refresh()
-				obj.instance.ScrollToBottom()
-			})
-
+			obj.appendLine(line)
 			return object.Nil, nil
 		}), true
 
@@ -111,7 +108,9 @@ func (obj *Log) getAttrUI(name string) (object.Object, bool) {
 				return object.Errorf("wrong number of arguments. got=%d, want=exactly 0", len(args)), nil
 			}
 
+			obj.mu.Lock()
 			obj.data = []string{}
+			obj.mu.Unlock()
 			guithread.Do(func() {
 				obj.instance.Refresh()
 				obj.instance.ScrollToBottom()
@@ -143,24 +142,69 @@ func (obj *Log) getAttrUI(name string) (object.Object, bool) {
 	return nil, false
 }
 
-// AppendGo appends a line from Go code without entering the Risor VM. The
-// stdout-capture path uses this so it can run concurrently with a go() script
-// goroutine (which holds the single, non-threadsafe VM) without corrupting it.
+// Lines returns a snapshot of the buffered lines, safe from any
+// goroutine (issue #24: hosts and tests inspect what the runtime
+// printed).
+func (obj *Log) Lines() []string {
+	obj.mu.Lock()
+	defer obj.mu.Unlock()
+	return append([]string(nil), obj.data...)
+}
+
+// AppendGo appends a line from Go code without entering the Risor VM.
+// It is safe from any goroutine (issue #24: it is the sink of the
+// runtime's stdout writer, which the print builtin feeds from the VM
+// goroutine); the list refresh is marshalled to Fyne's UI thread.
 func (obj *Log) AppendGo(line string) {
+	obj.appendLine(line)
+}
+
+// appendLine is the single mutation path for data; every reader of
+// obj.data (the list callbacks, Clear, the script Append builtin) takes
+// the same lock, so a Log stays consistent no matter which goroutine
+// writes it.
+func (obj *Log) appendLine(line string) {
+	obj.mu.Lock()
 	if len(obj.data) > obj.maxItems-1 {
 		obj.data = obj.data[1:]
 	}
 	obj.data = append(obj.data, line)
+	obj.mu.Unlock()
 	guithread.Do(func() {
 		obj.instance.Refresh()
 		obj.instance.ScrollToBottom()
 	})
 }
 
+// Write implements io.Writer (issue #24): a Log can be used anywhere a
+// text sink is expected — window.SetStdout(log), io.MultiWriter, the
+// exec module. Complete lines are appended via AppendGo; a trailing
+// partial line stays buffered until the newline arrives.
+func (obj *Log) Write(p []byte) (int, error) {
+	obj.writeMu.Lock()
+	obj.pending = append(obj.pending, p...)
+	var lines []string
+	for {
+		i := bytes.IndexByte(obj.pending, '\n')
+		if i < 0 {
+			break
+		}
+		lines = append(lines, string(obj.pending[:i]))
+		obj.pending = obj.pending[i+1:]
+	}
+	obj.writeMu.Unlock()
+	for _, line := range lines {
+		obj.AppendGo(line)
+	}
+	return len(p), nil
+}
+
 func NewLog(maxItems int) *Log {
 	log := &Log{maxItems: maxItems}
 	log.instance = widget.NewList(
 		func() int {
+			log.mu.Lock()
+			defer log.mu.Unlock()
 			return len(log.data)
 		},
 		func() fyne.CanvasObject {
@@ -169,6 +213,11 @@ func NewLog(maxItems int) *Log {
 			return l
 		},
 		func(i widget.ListItemID, o fyne.CanvasObject) {
+			log.mu.Lock()
+			defer log.mu.Unlock()
+			if i >= len(log.data) {
+				return // trimmed concurrently; keep the label as-is
+			}
 			o.(*widget.Label).SetText(log.data[i])
 		})
 	log.instance.HideSeparators = true

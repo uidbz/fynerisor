@@ -127,7 +127,7 @@ window.SetContent(layout)
 
 ## Global Objects Available in Scripts
 
-- **window**: Window control (`SetContent`, `SetStatus`, `AddShortcut`, `RemoveShortcut`, `SetMainMenu`, `OnDropped`, `CaptureStdout`)
+- **window**: Window control (`SetContent`, `SetStatus`, `AddShortcut`, `RemoveShortcut`, `SetMainMenu`, `OnDropped`, `SetStdout`)
 - **widget**: Widget factory (`NewButton`, `NewLabel`, `NewEntry`, `NewTable`, etc.)
 - **container**: Layout factory (`NewVBox`, `NewHBox`, `NewBorder`, `NewSplit`, `NewScroll`, `NewGrid`, `NewStack`)
 - **canvas**: Canvas objects (`NewLine`, `NewImageFromURI`, `NewRectangle`, `NewCircle`, `NewText`)

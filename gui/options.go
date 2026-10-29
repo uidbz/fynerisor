@@ -1,6 +1,8 @@
 package gui
 
 import (
+	"io"
+
 	"fyne.io/fyne/v2"
 
 	"github.com/deepnoodle-ai/risor/v2"
@@ -148,6 +150,36 @@ func WithHostWindow(window fyne.Window) Option {
 	return windowOption{
 		fn: func(w *Window) {
 			w.FyneWindow = window
+		},
+	}
+}
+
+// WithStdout sets where the script's print output goes for this runtime
+// (issue #24). It replaces the os.Stdout default for this window only:
+// no process-wide redirection, and two CanvasObjects in one app each
+// capture their own output. A *widget.Log is an io.Writer, so a log
+// widget is a ready-made sink; io.MultiWriter combines several.
+//
+// Example:
+//
+//	view := gui.NewCanvasObject(script, gui.WithStdout(logBuffer))
+//
+// Scripts change the same setting at runtime with window.SetStdout().
+func WithStdout(out io.Writer) Option {
+	return windowOption{
+		fn: func(w *Window) {
+			w.defaultOut = out
+		},
+	}
+}
+
+// WithStderr sets where this window reports script-execution errors and
+// library diagnostics (issue #24). Replaces the os.Stderr default for
+// this window only.
+func WithStderr(err io.Writer) Option {
+	return windowOption{
+		fn: func(w *Window) {
+			w.defaultErr = err
 		},
 	}
 }

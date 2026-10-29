@@ -1,9 +1,8 @@
 package gui
 
 import (
-	"bufio"
 	"context"
-	"strings"
+	"io"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -79,7 +78,7 @@ func NewApp(title string, opts ...Option) *Window {
 //
 // The Window implements object.Object to be accessible from Risor scripts.
 // Scripts can call window.SetContent() to update the UI, window.OnDropped() to handle
-// file drops, and window.CaptureStdout() to capture printed output.
+// file drops, and window.SetStdout() to route printed output (issue #24).
 type Window struct {
 	FyneWindow fyne.Window
 	// FyneApp is the owning Fyne app (set by NewApp; nil when a host
@@ -98,14 +97,22 @@ type Window struct {
 	enabledModules map[string]bool // Track which modules are enabled
 	appName        string          // Name of the embedding application
 	droppedPaths   []string
-	cbMu           sync.Mutex // guards onDropped, onNewStdout, stdoutSink and their owners
+	cbMu           sync.Mutex // guards onDropped and dropOwner
 	dropOwner      *vmexec.Run
-	stdoutOwner    *vmexec.Run
 	onDropped      func(droppedPaths []string)
-	onNewStdout    func(text string)
-	stdoutSink     func(text string)          // Go sink for captured stdout; bypasses the Risor VM
 	run            atomic.Pointer[vmexec.Run] // current script run: VM goroutine, guard, event queue, context (issue #37)
-	contentMu      sync.Mutex                 // serializes SetContent swaps between overlapping runs
+
+	// Per-runtime text streams (issue #24): print writes to Stdout(),
+	// library diagnostics to Stderr(). No os.Stdout hijack, no pipes:
+	// two CanvasObjects capture their own output, and a host's
+	// fmt.Println is untouched.
+	stdoutMu       sync.Mutex // guards the four fields below
+	defaultOut     io.Writer  // WithStdout; nil means os.Stdout
+	defaultErr     io.Writer  // WithStderr; nil means os.Stderr
+	stdoutOverride io.Writer  // script SetStdout/CaptureStdout redirect
+	stdoutOwner    *vmexec.Run
+
+	contentMu      sync.Mutex // serializes SetContent swaps between overlapping runs
 	statusCallback func(string)
 	resultCallback func(string)
 	runner         *ScriptRunner
@@ -197,6 +204,8 @@ func newWindow(opts ...Option) *Window {
 		enabledModules: make(map[string]bool),
 		appName:        "fynerisor", // default
 		shortcuts:      make(map[string]shortcutEntry),
+		defaultOut:     os.Stdout,
+		defaultErr:     os.Stderr,
 	}
 
 	// Apply appName and callback options first (before globals)
@@ -232,7 +241,7 @@ func newWindow(opts ...Option) *Window {
 		"constants": constants,
 		"fyne":      fyneobj,
 		"binding":   bindingobj,
-		"print":     newPrintBuiltin(),
+		"print":     w.newPrintBuiltin(),
 		"require":   newRequireBuiltin(w),
 		"import":    w.newImportBuiltin(),
 		"go":        newGoBuiltin(),
@@ -291,13 +300,16 @@ func (w *Window) installDropHandler() {
 	})
 }
 
-func newPrintBuiltin() *object.Builtin {
+// newPrintBuiltin implements print(): output goes to the window's stdout
+// writer (issue #24), never to a process-global os.Stdout. Each runtime
+// captures its own print output; hosts keep theirs.
+func (w *Window) newPrintBuiltin() *object.Builtin {
 	return object.NewBuiltin("print", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 		values := make([]any, len(args))
 		for i, arg := range args {
 			values[i] = object.PrintableValue(arg)
 		}
-		fmt.Println(values...)
+		fmt.Fprintln(w.Stdout(), values...)
 		return object.Nil, nil
 	})
 }
@@ -463,8 +475,9 @@ func (w *Window) start(ctx context.Context) <-chan error {
 			return
 		}
 		if err != nil {
-			// Log error to stderr so it's visible in terminal
-			fmt.Fprintf(os.Stderr, "Script execution error: %v\n", err)
+			// Report on the window's stderr writer (issue #24); the process's
+			// own stderr is never hijacked.
+			fmt.Fprintf(w.Stderr(), "Script execution error: %v\n", err)
 			w.setStatusFor(r, "ERROR: "+err.Error())
 			w.setState(r, StateFailed, err)
 			done <- err
@@ -561,10 +574,16 @@ func (w *Window) resetRunState() {
 	if w.dropOwner != current {
 		w.onDropped, w.dropOwner = nil, nil
 	}
-	if w.stdoutOwner != current {
-		w.onNewStdout, w.stdoutSink, w.stdoutOwner = nil, nil, nil
-	}
 	w.cbMu.Unlock()
+
+	// Drop stdout redirects installed by a superseded run (script
+	// SetStdout/CaptureStdout); a host-configured writer has no owner and
+	// persists across runs (issue #24).
+	w.stdoutMu.Lock()
+	if w.stdoutOwner != nil && w.stdoutOwner != current {
+		w.stdoutOverride, w.stdoutOwner = nil, nil
+	}
+	w.stdoutMu.Unlock()
 
 	if w.FyneWindow == nil {
 		return
@@ -743,50 +762,35 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 			return object.Nil, nil
 		}), true
 
-	case "CaptureStdout":
-		return object.NewBuiltin("w.CaptureStdout", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+	case "SetStdout", "CaptureStdout":
+		return object.NewBuiltin("w.SetStdout", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
-
-			// Preferred form: pass a Log widget directly. Captured lines are
-			// appended via pure Go (AppendGo), never re-entering the Risor VM,
-			// so stdout capture is safe while a go() goroutine holds the single
-			// non-threadsafe VM.
 			if w.stale(ctx) {
 				return nil, vmexec.ErrStopped
 			}
-			if logWidget, ok := args[0].(*risorwidget.Log); ok {
-				w.cbMu.Lock()
-				w.stdoutSink, w.onNewStdout, w.stdoutOwner = logWidget.AppendGo, nil, vmexec.FromContext(ctx)
-				w.cbMu.Unlock()
-				w.captureStdout()
-				return object.Nil, nil
-			}
+			owner := vmexec.FromContext(ctx)
 
-			// Legacy form: a closure. This re-enters the VM on each line and is
-			// NOT safe together with go() that produces output — prefer passing
-			// the Log widget instead.
-			if _, ok := args[0].(*object.Closure); !ok {
-				return object.Errorf("argument error: expected widget.Log or function, got %s", args[0].Type()), nil
+			// A Log widget is the preferred sink: it is an io.Writer fed by
+			// print on the VM goroutine, appended via pure Go, never
+			// re-entering the VM (issue #24). nil restores the default.
+			// A closure is bridged as an io.Writer that queues each complete
+			// line onto its run like any other event.
+			switch arg := args[0].(type) {
+			case *object.NilType:
+				w.setStdout(nil, owner)
+			case *risorwidget.Log:
+				w.setStdout(arg, owner)
+			case *object.Closure:
+				cb, err := vmexec.NewCallback(ctx, "window.SetStdout", args[0])
+				if err != nil {
+					return nil, err
+				}
+				w.setStdout(&callbackWriter{cb: cb}, owner)
+			default:
+				return nil, object.Errorf("argument error: expected widget.Log, function, or nil, got %s", args[0].Type())
 			}
-			cb, err := vmexec.NewCallback(ctx, "window.CaptureStdout", args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			w.cbMu.Lock()
-			w.onNewStdout = func(text string) {
-				// Discrete, never dropped: each call carries one distinct
-				// output line, so coalescing would lose data; the queue is
-				// unbounded (issue #51).
-				cb.Fire(object.NewString(text))
-			}
-			w.stdoutSink, w.stdoutOwner = nil, vmexec.FromContext(ctx)
-			w.cbMu.Unlock()
-
-			w.captureStdout()
-
 			return object.Nil, nil
 		}), true
 
@@ -1028,87 +1032,4 @@ func (w *Window) Canvas() fyne.Canvas {
 		return nil
 	}
 	return w.FyneWindow.Canvas()
-}
-
-func (w *Window) captureStdout() {
-	// Save the original os.Stdout
-	// originalStdout := os.Stdout
-
-	// Create a pipe
-	reader, writer, err := os.Pipe()
-	if err != nil {
-		panic(err)
-	}
-
-	// Redirect os.Stdout to the pipe writer
-	os.Stdout = writer
-
-	// Unbounded, mutex-guarded buffer between the pipe reader and the GUI
-	// dispatcher. The pipe MUST always be drained: if the reader ever blocks
-	// (e.g. the GUI thread is busy and a bounded channel fills), the OS pipe
-	// buffer fills and any fmt.Println/print on the redirected stdout blocks
-	// the calling goroutine, deadlocking the script. Buffering here decouples
-	// pipe draining from GUI processing so print() never blocks.
-	var (
-		mu      sync.Mutex
-		pending []string
-		notify  = make(chan struct{}, 1)
-	)
-
-	// Goroutine to read from the pipe; never blocks on the GUI.
-	//
-	// Use bufio.Reader.ReadString rather than bufio.Scanner: Scanner has a
-	// 64KB max line length and returns false (killing this loop) on a longer
-	// line. If the reader dies, the pipe stops draining, the OS pipe buffer
-	// fills, and the next fmt.Println/print blocks the calling goroutine
-	// forever - freezing the script. ReadString has no length limit.
-	go func() {
-		br := bufio.NewReader(reader)
-		for {
-			line, err := br.ReadString('\n')
-			if len(line) > 0 {
-				mu.Lock()
-				pending = append(pending, strings.TrimRight(line, "\n"))
-				mu.Unlock()
-				select {
-				case notify <- struct{}{}:
-				default:
-				}
-			}
-			if err != nil {
-				return
-			}
-		}
-	}()
-
-	// Dispatcher: forwards buffered lines to the GUI as fast as it can drain.
-	go func() {
-		for range notify {
-			for {
-				mu.Lock()
-				if len(pending) == 0 {
-					mu.Unlock()
-					break
-				}
-				msg := pending[0]
-				pending = pending[1:]
-				mu.Unlock()
-				// Prefer the Go sink: it appends to the log widget without
-				// entering the Risor VM at all. Otherwise the script closure
-				// is queued on its run like any other event.
-				w.cbMu.Lock()
-				sink, onLine := w.stdoutSink, w.onNewStdout
-				if owner := w.stdoutOwner; owner != nil && owner != w.run.Load() {
-					sink, onLine = nil, nil // hook of a stopped run
-				}
-				w.cbMu.Unlock()
-				switch {
-				case sink != nil:
-					guithread.Do(func() { sink(msg) })
-				case onLine != nil:
-					onLine(msg)
-				}
-			}
-		}
-	}()
 }
