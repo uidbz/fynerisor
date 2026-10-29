@@ -2,7 +2,6 @@ package widget
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"fyne.io/fyne/v2"
@@ -49,7 +48,7 @@ type RichText struct {
 
 func NewRichText(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) > 1 {
-		return object.Errorf("wrong number of arguments. got=%d, want=0 or 1", len(args)), nil
+		return nil, object.Errorf("wrong number of arguments. got=%d, want=0 or 1", len(args))
 	}
 
 	var instance *widget.RichText
@@ -104,9 +103,7 @@ func (obj *RichText) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *RichText) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(RichTextType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", RichTextType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", RichTextType, opType)
 }
 
 func (obj *RichText) Equals(other object.Object) bool {
@@ -178,7 +175,7 @@ func (obj *RichText) getAttrUI(name string) (object.Object, bool) {
 	case "ParseMarkdown":
 		return object.NewBuiltin("widget.RichText.ParseMarkdown", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 
 			text, err := object.AsString(args[0])
@@ -196,7 +193,7 @@ func (obj *RichText) getAttrUI(name string) (object.Object, bool) {
 	case "Refresh":
 		return object.NewBuiltin("widget.RichText.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 
 			guithread.Do(func() {
@@ -213,7 +210,7 @@ func (obj *RichText) getAttrUI(name string) (object.Object, bool) {
 	case "Hide":
 		return object.NewBuiltin("widget.RichText.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Hide()
@@ -223,7 +220,7 @@ func (obj *RichText) getAttrUI(name string) (object.Object, bool) {
 	case "Show":
 		return object.NewBuiltin("widget.RichText.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Show()

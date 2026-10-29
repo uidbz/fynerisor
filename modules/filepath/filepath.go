@@ -22,7 +22,7 @@ func Module() *object.Module {
 
 func join(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) < 1 {
-		return object.Errorf("filepath.join: expected at least 1 argument, got %d", len(args)), nil
+		return nil, object.Errorf("filepath.join: expected at least 1 argument, got %d", len(args))
 	}
 
 	parts := make([]string, len(args))
@@ -39,7 +39,7 @@ func join(ctx context.Context, args ...object.Object) (object.Object, error) {
 
 func base(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 1 {
-		return object.Errorf("filepath.base: expected 1 argument, got %d", len(args)), nil
+		return nil, object.Errorf("filepath.base: expected 1 argument, got %d", len(args))
 	}
 
 	path, err := object.AsString(args[0])
@@ -52,7 +52,7 @@ func base(ctx context.Context, args ...object.Object) (object.Object, error) {
 
 func dir(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 1 {
-		return object.Errorf("filepath.dir: expected 1 argument, got %d", len(args)), nil
+		return nil, object.Errorf("filepath.dir: expected 1 argument, got %d", len(args))
 	}
 
 	path, err := object.AsString(args[0])
@@ -65,7 +65,7 @@ func dir(ctx context.Context, args ...object.Object) (object.Object, error) {
 
 func ext(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 1 {
-		return object.Errorf("filepath.ext: expected 1 argument, got %d", len(args)), nil
+		return nil, object.Errorf("filepath.ext: expected 1 argument, got %d", len(args))
 	}
 
 	path, err := object.AsString(args[0])
@@ -78,7 +78,7 @@ func ext(ctx context.Context, args ...object.Object) (object.Object, error) {
 
 func abs(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 1 {
-		return object.Errorf("filepath.abs: expected 1 argument, got %d", len(args)), nil
+		return nil, object.Errorf("filepath.abs: expected 1 argument, got %d", len(args))
 	}
 
 	path, err := object.AsString(args[0])
@@ -88,7 +88,7 @@ func abs(ctx context.Context, args ...object.Object) (object.Object, error) {
 
 	absPath, err := filepath.Abs(path)
 	if err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 
 	return object.NewString(absPath), nil
@@ -96,7 +96,7 @@ func abs(ctx context.Context, args ...object.Object) (object.Object, error) {
 
 func clean(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 1 {
-		return object.Errorf("filepath.clean: expected 1 argument, got %d", len(args)), nil
+		return nil, object.Errorf("filepath.clean: expected 1 argument, got %d", len(args))
 	}
 
 	path, err := object.AsString(args[0])

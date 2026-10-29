@@ -8,7 +8,6 @@ import (
 	"time"
 
 	_ "embed"
-	"errors"
 	"fmt"
 	"os"
 
@@ -721,9 +720,7 @@ func (w *Window) MarshalJSON() ([]byte, error) {
 }
 
 func (w *Window) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(WindowType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", WindowType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", WindowType, opType)
 }
 func (w *Window) Equals(other object.Object) bool {
 	return w == other
@@ -759,10 +756,10 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 	case "Close":
 		return object.NewBuiltin("w.Close", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			if w.FyneWindow == nil {
-				return object.Errorf("window.Close: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)"), nil
+				return nil, object.Errorf("window.Close: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)")
 			}
 			if w.stale(ctx) {
 				return nil, vmexec.ErrStopped
@@ -776,11 +773,11 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 	case "SetContent":
 		return object.NewBuiltin("w.SetContent", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			obj, ok := args[0].(IsCanvasObject)
 			if !ok {
-				return object.Errorf("argument error: expected IsCanvasObject, got %s", args[0].Type()), nil
+				return nil, object.Errorf("argument error: expected IsCanvasObject, got %s", args[0].Type())
 			}
 
 			guithread.Do(func() {
@@ -833,7 +830,7 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 	case "OnDropped":
 		return object.NewBuiltin("w.OnDropped", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			cb, err := vmexec.NewCallback(ctx, "window.OnDropped", args[0])
 			if err != nil {
@@ -856,7 +853,7 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 	case "SetStatus":
 		return object.NewBuiltin("w.SetStatus", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			status, err := object.AsString(args[0])
 			if err != nil {
@@ -879,7 +876,7 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 	case "Do":
 		return object.NewBuiltin("w.Do", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			cb, err := vmexec.NewCallback(ctx, "window.Do", args[0])
 			if err != nil {
@@ -917,17 +914,17 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 	case "Resize":
 		return object.NewBuiltin("w.Resize", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 2 {
-				return object.Errorf("wrong number of arguments. got=%d, want=2", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
 			}
 
 			width, err := object.AsFloat(args[0])
 			if err != nil {
-				return object.Errorf("argument error: width must be a number, got %s", args[0].Type()), nil
+				return nil, object.Errorf("argument error: width must be a number, got %s", args[0].Type())
 			}
 
 			height, err := object.AsFloat(args[1])
 			if err != nil {
-				return object.Errorf("argument error: height must be a number, got %s", args[1].Type()), nil
+				return nil, object.Errorf("argument error: height must be a number, got %s", args[1].Type())
 			}
 
 			if w.stale(ctx) {
@@ -947,7 +944,7 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 				return nil, fmt.Errorf("AddShortcut requires 2 arguments (shortcut, callback)")
 			}
 			if w.FyneWindow == nil {
-				return object.Errorf("window.AddShortcut: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)"), nil
+				return nil, object.Errorf("window.AddShortcut: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)")
 			}
 
 			// Parse shortcut string
@@ -992,7 +989,7 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 				return nil, fmt.Errorf("RemoveShortcut requires 1 argument (shortcut string)")
 			}
 			if w.FyneWindow == nil {
-				return object.Errorf("window.RemoveShortcut: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)"), nil
+				return nil, object.Errorf("window.RemoveShortcut: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)")
 			}
 
 			shortcutStr, ok := args[0].(*object.String)
@@ -1024,7 +1021,7 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 				return nil, fmt.Errorf("SetMainMenu requires 1 argument (MainMenu)")
 			}
 			if w.FyneWindow == nil {
-				return object.Errorf("window.SetMainMenu: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)"), nil
+				return nil, object.Errorf("window.SetMainMenu: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)")
 			}
 
 			mainMenuObj, ok := args[0].(*MainMenu)

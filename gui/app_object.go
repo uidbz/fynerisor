@@ -80,10 +80,10 @@ func (a *App) getAttrUI(name string) (object.Object, bool) {
 	case "Quit":
 		return object.NewBuiltin("app.Quit", func(_ context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			if a.win == nil || a.win.FyneApp == nil {
-				return object.Errorf("runtime error: app.Quit unavailable (no Fyne app; host owns the window)"), nil
+				return nil, object.Errorf("runtime error: app.Quit unavailable (no Fyne app; host owns the window)")
 			}
 			guithread.Do(func() {
 				a.win.FyneApp.Quit()

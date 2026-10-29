@@ -49,7 +49,7 @@ func (obj *ConfirmDialog) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *ConfirmDialog) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	return object.Errorf("eval error: unsupported operation for %s: %v", ConfirmDialogType, opType), nil
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", ConfirmDialogType, opType)
 }
 
 func (obj *ConfirmDialog) Equals(other object.Object) bool {
@@ -79,7 +79,7 @@ func (obj *ConfirmDialog) getAttrUI(name string) (object.Object, bool) {
 	case "Show":
 		return object.NewBuiltin("dialog.ConfirmDialog.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Show()
@@ -89,7 +89,7 @@ func (obj *ConfirmDialog) getAttrUI(name string) (object.Object, bool) {
 	case "Hide":
 		return object.NewBuiltin("dialog.ConfirmDialog.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Hide()
@@ -99,7 +99,7 @@ func (obj *ConfirmDialog) getAttrUI(name string) (object.Object, bool) {
 	case "Refresh":
 		return object.NewBuiltin("dialog.ConfirmDialog.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Refresh()
@@ -109,15 +109,15 @@ func (obj *ConfirmDialog) getAttrUI(name string) (object.Object, bool) {
 	case "Resize":
 		return object.NewBuiltin("dialog.ConfirmDialog.Resize", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 2 {
-				return object.Errorf("wrong number of arguments. got=%d, want=2", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
 			}
 			width, err := object.AsFloat(args[0])
 			if err != nil {
-				return object.Errorf("argument error: width must be a number, got %s", args[0].Type()), nil
+				return nil, object.Errorf("argument error: width must be a number, got %s", args[0].Type())
 			}
 			height, err := object.AsFloat(args[1])
 			if err != nil {
-				return object.Errorf("argument error: height must be a number, got %s", args[1].Type()), nil
+				return nil, object.Errorf("argument error: height must be a number, got %s", args[1].Type())
 			}
 			guithread.Do(func() {
 				obj.instance.Resize(fyne.NewSize(float32(width), float32(height)))
@@ -127,11 +127,11 @@ func (obj *ConfirmDialog) getAttrUI(name string) (object.Object, bool) {
 	case "SetDismissText":
 		return object.NewBuiltin("dialog.ConfirmDialog.SetDismissText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			text, err := object.AsString(args[0])
 			if err != nil {
-				return object.Errorf("type error: %v", err), nil
+				return nil, object.Errorf("type error: %v", err)
 			}
 			guithread.Do(func() {
 				obj.instance.SetDismissText(text)
@@ -141,11 +141,11 @@ func (obj *ConfirmDialog) getAttrUI(name string) (object.Object, bool) {
 	case "SetConfirmText":
 		return object.NewBuiltin("dialog.ConfirmDialog.SetConfirmText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			text, err := object.AsString(args[0])
 			if err != nil {
-				return object.Errorf("type error: %v", err), nil
+				return nil, object.Errorf("type error: %v", err)
 			}
 			guithread.Do(func() {
 				obj.instance.SetConfirmText(text)
@@ -155,11 +155,11 @@ func (obj *ConfirmDialog) getAttrUI(name string) (object.Object, bool) {
 	case "SetConfirmImportance":
 		return object.NewBuiltin("dialog.ConfirmDialog.SetConfirmImportance", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			importance, err := object.AsInt(args[0])
 			if err != nil {
-				return object.Errorf("type error: %v", err), nil
+				return nil, object.Errorf("type error: %v", err)
 			}
 			guithread.Do(func() {
 				obj.instance.SetConfirmImportance(widget.Importance(importance))

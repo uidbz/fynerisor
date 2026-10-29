@@ -51,6 +51,7 @@ Risor language bindings for the Fyne GUI framework.
   - [OnDropped](#ondropped)
   - [SetStdout](#setstdout)
   - [Text Streams in Scripts](#text-streams-in-scripts-issue-42)
+  - [Error Handling](#error-handling)
   - [Properties](#properties)
 - [Callbacks](#callbacks)
 - [Passing Custom Data](#passing-custom-data)
@@ -909,6 +910,21 @@ $ cat data.csv | fynerisor --headless \
 `fynerisor -e '<code>'` runs inline code and leaves stdin as a data
 stream; a script *file* likewise never consumes stdin (`fynerisor -`
 still means "script on stdin").
+
+### Error Handling
+
+Builtins fail noisily: wrong arguments, wrong types and I/O failures
+*raise* (issue #30), halting the script at the failing line — no silent
+error values drifting through variables. Scripts that want to continue
+catch explicitly:
+
+```js
+try {
+    let b = widget.NewButton("Save") // arity mistake: raises
+} catch e {
+    eprint("caught:", e.message())   // "wrong number of arguments. got=1, want=2"
+}
+```
 
 ### Properties
 - `window.DroppedPaths` - List of dropped file paths

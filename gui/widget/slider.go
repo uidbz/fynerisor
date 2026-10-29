@@ -2,7 +2,6 @@ package widget
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"fyne.io/fyne/v2"
@@ -84,9 +83,7 @@ func (obj *Slider) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *Slider) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(SliderType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", SliderType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", SliderType, opType)
 }
 
 func (obj *Slider) Equals(other object.Object) bool {
@@ -115,7 +112,7 @@ func (obj *Slider) getAttrUI(name string) (object.Object, bool) {
 	case "OnChanged":
 		return object.NewBuiltin("widget.Slider.OnChanged", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			cb, err := vmexec.NewCallback(ctx, "widget.Slider.OnChanged", args[0])
 			if err != nil {
@@ -132,7 +129,7 @@ func (obj *Slider) getAttrUI(name string) (object.Object, bool) {
 	case "Hide":
 		return object.NewBuiltin("widget.Slider.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Hide()
@@ -142,7 +139,7 @@ func (obj *Slider) getAttrUI(name string) (object.Object, bool) {
 	case "Show":
 		return object.NewBuiltin("widget.Slider.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Show()

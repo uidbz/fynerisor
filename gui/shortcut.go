@@ -189,7 +189,7 @@ func (sw *ShortcutWrapper) MarshalJSON() ([]byte, error) {
 }
 
 func (sw *ShortcutWrapper) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	return object.Errorf("eval error: unsupported operation for shortcut: %v", opType), nil
+	return nil, object.Errorf("eval error: unsupported operation for shortcut: %v", opType)
 }
 
 func (sw *ShortcutWrapper) Equals(other object.Object) bool {

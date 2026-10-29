@@ -44,7 +44,7 @@ func containerOps(owner string, inst fyne.CanvasObject, name string) (object.Obj
 			for i, a := range args {
 				co, ok := canvasArg(a)
 				if !ok {
-					return object.Errorf("Append: expected canvas object at argument %d, got %s", i, a.Type()), nil
+					return nil, object.Errorf("Append: expected canvas object at argument %d, got %s", i, a.Type())
 				}
 				objs = append(objs, co)
 			}
@@ -58,11 +58,11 @@ func containerOps(owner string, inst fyne.CanvasObject, name string) (object.Obj
 	case "Remove":
 		return object.NewBuiltin(owner+".Remove", func(_ context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			co, ok := canvasArg(args[0])
 			if !ok {
-				return object.Errorf("Remove: expected canvas object, got %s", args[0].Type()), nil
+				return nil, object.Errorf("Remove: expected canvas object, got %s", args[0].Type())
 			}
 			guithread.Do(func() {
 				for i, o := range c.Objects {
@@ -79,7 +79,7 @@ func containerOps(owner string, inst fyne.CanvasObject, name string) (object.Obj
 	case "Refresh":
 		return object.NewBuiltin(owner+".Refresh", func(_ context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() { c.Refresh() })
 			return object.Nil, nil

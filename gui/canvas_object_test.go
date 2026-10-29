@@ -127,8 +127,10 @@ func TestCanvasObjectHostWindow(t *testing.T) {
 	}
 }
 
-// TestCanvasObjectWithoutHostGuards checks that window features return script
-// errors instead of panicking when no host window was supplied.
+// TestCanvasObjectWithoutHostGuards checks that window features *raise*
+// script errors (catchable, with position) instead of panicking when no
+// host window was supplied (issue #30 turned these error values into
+// raised errors).
 func TestCanvasObjectWithoutHostGuards(t *testing.T) {
 	a := newTestApp(t)
 	defer a.Quit()
@@ -144,24 +146,18 @@ func TestCanvasObjectWithoutHostGuards(t *testing.T) {
 	if !ok {
 		t.Fatal("Close attr missing")
 	}
-	result, err := closeBuiltin.(*object.Builtin).Call(context.Background())
-	if err != nil {
-		t.Fatalf("Close call returned Go error: %v", err)
-	}
-	if _, ok := result.(*object.Error); !ok {
-		t.Fatalf("Close without host returned %T, want *object.Error", result)
+	_, err := closeBuiltin.(*object.Builtin).Call(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "no host window") {
+		t.Fatalf("Close without host: got error %v, want a raised 'no host window' error", err)
 	}
 
 	dialogBuiltin, ok := NewDialog(w).GetAttr("ShowInformation")
 	if !ok {
 		t.Fatal("dialog.ShowInformation attr missing")
 	}
-	result, err = dialogBuiltin.(*object.Builtin).Call(context.Background())
-	if err != nil {
-		t.Fatalf("dialog call returned Go error: %v", err)
-	}
-	if _, ok := result.(*object.Error); !ok {
-		t.Fatalf("dialog without host returned %T, want *object.Error", result)
+	_, err = dialogBuiltin.(*object.Builtin).Call(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "no host window") {
+		t.Fatalf("dialog without host: got error %v, want a raised 'no host window' error", err)
 	}
 }
 

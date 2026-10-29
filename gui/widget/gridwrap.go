@@ -2,7 +2,6 @@ package widget
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync/atomic"
 
@@ -99,9 +98,7 @@ func (obj *GridWrap) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *GridWrap) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(GridWrapType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", GridWrapType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", GridWrapType, opType)
 }
 
 func (obj *GridWrap) Equals(other object.Object) bool {
@@ -131,7 +128,7 @@ func (obj *GridWrap) getAttrUI(name string) (object.Object, bool) {
 	case "Length":
 		return object.NewBuiltin("widget.GridWrap.Length", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 
 			cb, err := vmexec.NewCallback(ctx, "widget.GridWrap.Length", args[0])
@@ -162,7 +159,7 @@ func (obj *GridWrap) getAttrUI(name string) (object.Object, bool) {
 	case "CreateItem":
 		return object.NewBuiltin("widget.GridWrap.CreateItem", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 
 			cb, err := vmexec.NewCallback(ctx, "widget.GridWrap.CreateItem", args[0])
@@ -188,7 +185,7 @@ func (obj *GridWrap) getAttrUI(name string) (object.Object, bool) {
 	case "UpdateItem":
 		return object.NewBuiltin("widget.GridWrap.UpdateItem", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 
 			cb, err := vmexec.NewCallback(ctx, "widget.GridWrap.UpdateItem", args[0])
@@ -215,7 +212,7 @@ func (obj *GridWrap) getAttrUI(name string) (object.Object, bool) {
 	case "OnSelected":
 		return object.NewBuiltin("widget.GridWrap.OnSelected", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 
 			cb, err := vmexec.NewCallback(ctx, "widget.GridWrap.OnSelected", args[0])
@@ -234,7 +231,7 @@ func (obj *GridWrap) getAttrUI(name string) (object.Object, bool) {
 	case "OnUnselected":
 		return object.NewBuiltin("widget.GridWrap.OnUnselected", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 
 			cb, err := vmexec.NewCallback(ctx, "widget.GridWrap.OnUnselected", args[0])
@@ -253,7 +250,7 @@ func (obj *GridWrap) getAttrUI(name string) (object.Object, bool) {
 	case "Select":
 		return object.NewBuiltin("widget.GridWrap.Select", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 
 			id, err := object.AsInt(args[0])
@@ -271,7 +268,7 @@ func (obj *GridWrap) getAttrUI(name string) (object.Object, bool) {
 	case "Unselect":
 		return object.NewBuiltin("widget.GridWrap.Unselect", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 
 			id, err := object.AsInt(args[0])
@@ -289,7 +286,7 @@ func (obj *GridWrap) getAttrUI(name string) (object.Object, bool) {
 	case "UnselectAll":
 		return object.NewBuiltin("widget.GridWrap.UnselectAll", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 
 			guithread.Do(func() {
@@ -302,7 +299,7 @@ func (obj *GridWrap) getAttrUI(name string) (object.Object, bool) {
 	case "Refresh":
 		return object.NewBuiltin("widget.GridWrap.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 
 			guithread.Do(func() {
@@ -314,7 +311,7 @@ func (obj *GridWrap) getAttrUI(name string) (object.Object, bool) {
 	case "Hide":
 		return object.NewBuiltin("widget.GridWrap.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Hide()
@@ -324,7 +321,7 @@ func (obj *GridWrap) getAttrUI(name string) (object.Object, bool) {
 	case "Show":
 		return object.NewBuiltin("widget.GridWrap.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Show()

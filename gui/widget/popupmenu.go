@@ -2,7 +2,6 @@ package widget
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"fyne.io/fyne/v2"
@@ -39,22 +38,22 @@ type PopUpMenu struct {
 
 func NewPopUpMenu(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 2 {
-		return object.Errorf("wrong number of arguments. got=%d, want=2", len(args)), nil
+		return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
 	}
 
 	// First arg should be a Menu (from fyne.NewMenu)
 	menuObj, ok := args[0].(interface{ Instance() *fyne.Menu })
 	if !ok {
-		return object.Errorf("argument error: expected Menu, got %s", args[0].Type()), nil
+		return nil, object.Errorf("argument error: expected Menu, got %s", args[0].Type())
 	}
 
 	canvasObj, ok := args[1].(interface{ Canvas() fyne.Canvas })
 	if !ok {
-		return object.Errorf("argument error: expected canvas (use window.Canvas), got %s", args[1].Type()), nil
+		return nil, object.Errorf("argument error: expected canvas (use window.Canvas), got %s", args[1].Type())
 	}
 	canvas := canvasObj.Canvas()
 	if canvas == nil {
-		return object.Errorf("argument error: no canvas available (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)"), nil
+		return nil, object.Errorf("argument error: no canvas available (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)")
 	}
 
 	instance := widget.NewPopUpMenu(menuObj.Instance(), canvas)
@@ -98,9 +97,7 @@ func (obj *PopUpMenu) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *PopUpMenu) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(PopUpMenuType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", PopUpMenuType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", PopUpMenuType, opType)
 }
 
 func (obj *PopUpMenu) Equals(other object.Object) bool {
@@ -130,7 +127,7 @@ func (obj *PopUpMenu) getAttrUI(name string) (object.Object, bool) {
 	case "Show":
 		return object.NewBuiltin("widget.PopUpMenu.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 
 			guithread.Do(func() {
@@ -143,7 +140,7 @@ func (obj *PopUpMenu) getAttrUI(name string) (object.Object, bool) {
 	case "Hide":
 		return object.NewBuiltin("widget.PopUpMenu.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 
 			guithread.Do(func() {
@@ -156,7 +153,7 @@ func (obj *PopUpMenu) getAttrUI(name string) (object.Object, bool) {
 	case "ShowAtPosition":
 		return object.NewBuiltin("widget.PopUpMenu.ShowAtPosition", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 2 {
-				return object.Errorf("wrong number of arguments. got=%d, want=2", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
 			}
 
 			x, err := object.AsFloat(args[0])
@@ -179,7 +176,7 @@ func (obj *PopUpMenu) getAttrUI(name string) (object.Object, bool) {
 	case "Move":
 		return object.NewBuiltin("widget.PopUpMenu.Move", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 2 {
-				return object.Errorf("wrong number of arguments. got=%d, want=2", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
 			}
 
 			x, err := object.AsFloat(args[0])
@@ -202,7 +199,7 @@ func (obj *PopUpMenu) getAttrUI(name string) (object.Object, bool) {
 	case "Resize":
 		return object.NewBuiltin("widget.PopUpMenu.Resize", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 2 {
-				return object.Errorf("wrong number of arguments. got=%d, want=2", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
 			}
 
 			w, err := object.AsFloat(args[0])

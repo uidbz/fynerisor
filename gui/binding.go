@@ -2,7 +2,6 @@ package gui
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/uidbz/fynerisor/gui/guithread"
 
@@ -58,9 +57,7 @@ func (obj *Binding) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *Binding) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(BindingType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", BindingType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", BindingType, opType)
 }
 
 func (obj *Binding) Equals(other object.Object) bool {
@@ -90,7 +87,7 @@ func (obj *Binding) getAttrUI(name string) (object.Object, bool) {
 	case "NewString":
 		return object.NewBuiltin("binding.NewString", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) > 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0 or 1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0 or 1", len(args))
 			}
 			if len(args) == 0 {
 				return risorbinding.NewString(), nil
@@ -98,7 +95,7 @@ func (obj *Binding) getAttrUI(name string) (object.Object, bool) {
 			// Optional initial value
 			val, err := object.AsString(args[0])
 			if err != nil {
-				return object.Errorf("type error: %v", err), nil
+				return nil, object.Errorf("type error: %v", err)
 			}
 			return risorbinding.BindString(val), nil
 		}), true
@@ -106,7 +103,7 @@ func (obj *Binding) getAttrUI(name string) (object.Object, bool) {
 	case "NewBool":
 		return object.NewBuiltin("binding.NewBool", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) > 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0 or 1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0 or 1", len(args))
 			}
 			if len(args) == 0 {
 				return risorbinding.NewBool(), nil
@@ -114,7 +111,7 @@ func (obj *Binding) getAttrUI(name string) (object.Object, bool) {
 			// Optional initial value
 			val, err := object.AsBool(args[0])
 			if err != nil {
-				return object.Errorf("type error: %v", err), nil
+				return nil, object.Errorf("type error: %v", err)
 			}
 			return risorbinding.BindBool(val), nil
 		}), true
@@ -122,7 +119,7 @@ func (obj *Binding) getAttrUI(name string) (object.Object, bool) {
 	case "NewInt":
 		return object.NewBuiltin("binding.NewInt", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) > 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0 or 1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0 or 1", len(args))
 			}
 			if len(args) == 0 {
 				return risorbinding.NewInt(), nil
@@ -130,7 +127,7 @@ func (obj *Binding) getAttrUI(name string) (object.Object, bool) {
 			// Optional initial value
 			val, err := object.AsInt(args[0])
 			if err != nil {
-				return object.Errorf("type error: %v", err), nil
+				return nil, object.Errorf("type error: %v", err)
 			}
 			return risorbinding.BindInt(int(val)), nil
 		}), true
@@ -138,7 +135,7 @@ func (obj *Binding) getAttrUI(name string) (object.Object, bool) {
 	case "NewFloat":
 		return object.NewBuiltin("binding.NewFloat", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) > 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0 or 1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0 or 1", len(args))
 			}
 			if len(args) == 0 {
 				return risorbinding.NewFloat(), nil
@@ -146,7 +143,7 @@ func (obj *Binding) getAttrUI(name string) (object.Object, bool) {
 			// Optional initial value
 			val, err := object.AsFloat(args[0])
 			if err != nil {
-				return object.Errorf("type error: %v", err), nil
+				return nil, object.Errorf("type error: %v", err)
 			}
 			return risorbinding.BindFloat(val), nil
 		}), true

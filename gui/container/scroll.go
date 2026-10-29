@@ -2,7 +2,6 @@ package container
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"fyne.io/fyne/v2/container"
@@ -52,9 +51,7 @@ func (obj *Scroll) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *Scroll) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(ScrollType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", ScrollType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", ScrollType, opType)
 }
 
 func (obj *Scroll) Equals(other object.Object) bool {
@@ -84,11 +81,11 @@ func (obj *Scroll) getAttrUI(name string) (object.Object, bool) {
 	case "SetContent":
 		return object.NewBuiltin("container.Scroll.SetContent", func(_ context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			co, ok := canvasArg(args[0])
 			if !ok {
-				return object.Errorf("SetContent: expected canvas object, got %s", args[0].Type()), nil
+				return nil, object.Errorf("SetContent: expected canvas object, got %s", args[0].Type())
 			}
 			guithread.Do(func() {
 				obj.instance.Content = co
@@ -99,7 +96,7 @@ func (obj *Scroll) getAttrUI(name string) (object.Object, bool) {
 	case "Refresh":
 		return object.NewBuiltin("container.Scroll.Refresh", func(_ context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() { obj.instance.Refresh() })
 			return object.Nil, nil
@@ -107,7 +104,7 @@ func (obj *Scroll) getAttrUI(name string) (object.Object, bool) {
 	case "Hide":
 		return object.NewBuiltin("container.Scroll.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Hide()
@@ -117,7 +114,7 @@ func (obj *Scroll) getAttrUI(name string) (object.Object, bool) {
 	case "Show":
 		return object.NewBuiltin("container.Scroll.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Show()
@@ -127,7 +124,7 @@ func (obj *Scroll) getAttrUI(name string) (object.Object, bool) {
 	case "ScrollToBottom":
 		return object.NewBuiltin("container.Scroll.ScrollToBottom", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.ScrollToBottom()
@@ -137,7 +134,7 @@ func (obj *Scroll) getAttrUI(name string) (object.Object, bool) {
 	case "ScrollToTop":
 		return object.NewBuiltin("container.Scroll.ScrollToTop", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.ScrollToTop()

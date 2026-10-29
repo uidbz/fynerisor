@@ -2,7 +2,6 @@ package container
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"fyne.io/fyne/v2/container"
@@ -52,9 +51,7 @@ func (obj *Padded) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *Padded) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(PaddedType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", PaddedType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", PaddedType, opType)
 }
 
 func (obj *Padded) Equals(other object.Object) bool {
@@ -87,7 +84,7 @@ func (obj *Padded) getAttrUI(name string) (object.Object, bool) {
 	case "Hide":
 		return object.NewBuiltin("container.Padded.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Hide()
@@ -97,7 +94,7 @@ func (obj *Padded) getAttrUI(name string) (object.Object, bool) {
 	case "Show":
 		return object.NewBuiltin("container.Padded.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Show()

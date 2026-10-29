@@ -99,7 +99,7 @@ func (t *Tree) MarshalJSON() ([]byte, error) {
 }
 
 func (t *Tree) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	return object.Errorf("eval error: unsupported operation for tree: %v", opType), nil
+	return nil, object.Errorf("eval error: unsupported operation for tree: %v", opType)
 }
 
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
@@ -336,7 +336,7 @@ func (t *Tree) getAttrUI(name string) (object.Object, bool) {
 	case "Hide":
 		return object.NewBuiltin("widget.Tree.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				t.instance.Hide()
@@ -346,7 +346,7 @@ func (t *Tree) getAttrUI(name string) (object.Object, bool) {
 	case "Show":
 		return object.NewBuiltin("widget.Tree.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				t.instance.Show()

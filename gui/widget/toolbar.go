@@ -54,7 +54,7 @@ func (obj *Toolbar) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *Toolbar) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	return object.Errorf("eval error: unsupported operation for Toolbar: %v", opType), nil
+	return nil, object.Errorf("eval error: unsupported operation for Toolbar: %v", opType)
 }
 
 func (obj *Toolbar) Equals(other object.Object) bool {
@@ -87,11 +87,11 @@ func (obj *Toolbar) getAttrUI(name string) (object.Object, bool) {
 	case "Append":
 		return object.NewBuiltin("Toolbar.Append", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			item, ok := args[0].Interface().(widget.ToolbarItem)
 			if !ok {
-				return object.Errorf("argument error: expected ToolbarItem, got %s", args[0].Type()), nil
+				return nil, object.Errorf("argument error: expected ToolbarItem, got %s", args[0].Type())
 			}
 			guithread.Do(func() {
 				obj.instance.Append(item)
@@ -102,11 +102,11 @@ func (obj *Toolbar) getAttrUI(name string) (object.Object, bool) {
 	case "Prepend":
 		return object.NewBuiltin("Toolbar.Prepend", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			item, ok := args[0].Interface().(widget.ToolbarItem)
 			if !ok {
-				return object.Errorf("argument error: expected ToolbarItem, got %s", args[0].Type()), nil
+				return nil, object.Errorf("argument error: expected ToolbarItem, got %s", args[0].Type())
 			}
 			guithread.Do(func() {
 				obj.instance.Prepend(item)
@@ -117,7 +117,7 @@ func (obj *Toolbar) getAttrUI(name string) (object.Object, bool) {
 	case "Refresh":
 		return object.NewBuiltin("Toolbar.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Refresh()
@@ -127,7 +127,7 @@ func (obj *Toolbar) getAttrUI(name string) (object.Object, bool) {
 	case "Hide":
 		return object.NewBuiltin("widget.Toolbar.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Hide()
@@ -137,7 +137,7 @@ func (obj *Toolbar) getAttrUI(name string) (object.Object, bool) {
 	case "Show":
 		return object.NewBuiltin("widget.Toolbar.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Show()
@@ -187,7 +187,7 @@ func (obj *ToolbarAction) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *ToolbarAction) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	return object.Errorf("eval error: unsupported operation for ToolbarAction: %v", opType), nil
+	return nil, object.Errorf("eval error: unsupported operation for ToolbarAction: %v", opType)
 }
 
 func (obj *ToolbarAction) Equals(other object.Object) bool {
@@ -258,7 +258,7 @@ func (obj *ToolbarSeparator) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *ToolbarSeparator) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	return object.Errorf("eval error: unsupported operation for ToolbarSeparator: %v", opType), nil
+	return nil, object.Errorf("eval error: unsupported operation for ToolbarSeparator: %v", opType)
 }
 
 func (obj *ToolbarSeparator) Equals(other object.Object) bool {
@@ -329,7 +329,7 @@ func (obj *ToolbarSpacer) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *ToolbarSpacer) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	return object.Errorf("eval error: unsupported operation for ToolbarSpacer: %v", opType), nil
+	return nil, object.Errorf("eval error: unsupported operation for ToolbarSpacer: %v", opType)
 }
 
 func (obj *ToolbarSpacer) Equals(other object.Object) bool {

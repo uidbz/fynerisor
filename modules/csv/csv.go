@@ -87,7 +87,7 @@ func parseCSV(text string, opts options) (object.Object, error) {
 	r.FieldsPerRecord = -1
 	records, err := r.ReadAll()
 	if err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 
 	if !opts.header {
@@ -136,7 +136,7 @@ func formatCSV(rowsObj object.Object, opts options) (object.Object, error) {
 	if len(rows) == 0 {
 		w.Flush()
 		if err := w.Error(); err != nil {
-			return object.NewError(err), nil
+			return nil, object.NewError(err)
 		}
 		return object.NewString(sb.String()), nil
 	}
@@ -149,7 +149,7 @@ func formatCSV(rowsObj object.Object, opts options) (object.Object, error) {
 			for _, r := range rows {
 				m, ok := r.(*object.Map)
 				if !ok {
-					return object.Errorf("csv.format: mixed row types (expected map)"), nil
+					return nil, object.Errorf("csv.format: mixed row types (expected map)")
 				}
 				for k := range m.Value() {
 					seen[k] = true
@@ -162,13 +162,13 @@ func formatCSV(rowsObj object.Object, opts options) (object.Object, error) {
 		}
 		if opts.header {
 			if err := w.Write(columns); err != nil {
-				return object.NewError(err), nil
+				return nil, object.NewError(err)
 			}
 		}
 		for _, r := range rows {
 			m, ok := r.(*object.Map)
 			if !ok {
-				return object.Errorf("csv.format: mixed row types (expected map)"), nil
+				return nil, object.Errorf("csv.format: mixed row types (expected map)")
 			}
 			rec := make([]string, len(columns))
 			for i, col := range columns {
@@ -184,14 +184,14 @@ func formatCSV(rowsObj object.Object, opts options) (object.Object, error) {
 				rec[i] = s
 			}
 			if err := w.Write(rec); err != nil {
-				return object.NewError(err), nil
+				return nil, object.NewError(err)
 			}
 		}
 	default:
 		for _, r := range rows {
 			cells, err := object.AsList(r)
 			if err != nil {
-				return object.Errorf("csv.format: mixed row types (expected list)"), nil
+				return nil, object.Errorf("csv.format: mixed row types (expected list)")
 			}
 			rec := make([]string, len(cells.Value()))
 			for i, c := range cells.Value() {
@@ -202,21 +202,21 @@ func formatCSV(rowsObj object.Object, opts options) (object.Object, error) {
 				rec[i] = s
 			}
 			if err := w.Write(rec); err != nil {
-				return object.NewError(err), nil
+				return nil, object.NewError(err)
 			}
 		}
 	}
 
 	w.Flush()
 	if err := w.Error(); err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 	return object.NewString(sb.String()), nil
 }
 
 func parse(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) < 1 || len(args) > 2 {
-		return object.Errorf("csv.parse: expected 1 or 2 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("csv.parse: expected 1 or 2 arguments, got %d", len(args))
 	}
 	text, err := object.AsString(args[0])
 	if err != nil {
@@ -224,25 +224,25 @@ func parse(ctx context.Context, args ...object.Object) (object.Object, error) {
 	}
 	opts, err := parseOptions(optArg(args, 1))
 	if err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 	return parseCSV(text, opts)
 }
 
 func format(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) < 1 || len(args) > 2 {
-		return object.Errorf("csv.format: expected 1 or 2 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("csv.format: expected 1 or 2 arguments, got %d", len(args))
 	}
 	opts, err := parseOptions(optArg(args, 1))
 	if err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 	return formatCSV(args[0], opts)
 }
 
 func read(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) < 1 || len(args) > 2 {
-		return object.Errorf("csv.read: expected 1 or 2 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("csv.read: expected 1 or 2 arguments, got %d", len(args))
 	}
 	path, err := object.AsString(args[0])
 	if err != nil {
@@ -250,18 +250,18 @@ func read(ctx context.Context, args ...object.Object) (object.Object, error) {
 	}
 	opts, err := parseOptions(optArg(args, 1))
 	if err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 	content, err := os.ReadFile(path)
 	if err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 	return parseCSV(string(content), opts)
 }
 
 func write(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) < 2 || len(args) > 3 {
-		return object.Errorf("csv.write: expected 2 or 3 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("csv.write: expected 2 or 3 arguments, got %d", len(args))
 	}
 	path, err := object.AsString(args[0])
 	if err != nil {
@@ -269,7 +269,7 @@ func write(ctx context.Context, args ...object.Object) (object.Object, error) {
 	}
 	opts, err := parseOptions(optArg(args, 2))
 	if err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 	result, err := formatCSV(args[1], opts)
 	if err != nil {
@@ -283,7 +283,7 @@ func write(ctx context.Context, args ...object.Object) (object.Object, error) {
 		return nil, err
 	}
 	if err := os.WriteFile(path, []byte(text), 0644); err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 	return object.Nil, nil
 }

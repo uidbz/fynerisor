@@ -2,7 +2,6 @@ package risorcanvas
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -59,9 +58,7 @@ func (r *Image) MarshalJSON() ([]byte, error) {
 }
 
 func (r *Image) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(ImageType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", ImageType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", ImageType, opType)
 }
 
 func (r *Image) Equals(other object.Object) bool {
@@ -91,7 +88,7 @@ func (g *Image) getAttrUI(name string) (object.Object, bool) {
 	case "SetImageFromURI":
 		return object.NewBuiltin("canvas.Image.SetImageFromURI", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			path, err := object.AsString(args[0])
 			if err != nil {
@@ -100,7 +97,7 @@ func (g *Image) getAttrUI(name string) (object.Object, bool) {
 
 			uri, err := storage.ParseURI(path)
 			if err != nil {
-				return object.NewError(err), nil
+				return nil, object.NewError(err)
 			}
 
 			guithread.Do(func() {

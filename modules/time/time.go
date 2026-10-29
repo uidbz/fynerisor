@@ -24,7 +24,7 @@ func Module() *object.Module {
 // in the local timezone.
 func unix(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 1 {
-		return object.Errorf("time.unix: expected 1 argument (seconds), got %d", len(args)), nil
+		return nil, object.Errorf("time.unix: expected 1 argument (seconds), got %d", len(args))
 	}
 	secs, err := object.AsInt(args[0])
 	if err != nil {
@@ -36,7 +36,7 @@ func unix(ctx context.Context, args ...object.Object) (object.Object, error) {
 // now returns the current time as a Time object
 func now(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 0 {
-		return object.Errorf("time.now: expected 0 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("time.now: expected 0 arguments, got %d", len(args))
 	}
 	return NewTimeObject(time.Now()), nil
 }
@@ -44,7 +44,7 @@ func now(ctx context.Context, args ...object.Object) (object.Object, error) {
 // date creates a time object from year, month, day
 func date(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 3 {
-		return object.Errorf("time.date: expected 3 arguments (year, month, day), got %d", len(args)), nil
+		return nil, object.Errorf("time.date: expected 3 arguments (year, month, day), got %d", len(args))
 	}
 
 	year, err := object.AsInt(args[0])
@@ -69,7 +69,7 @@ func date(ctx context.Context, args ...object.Object) (object.Object, error) {
 // parse parses a date string in YYYY-MM-DD format
 func parse(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 1 {
-		return object.Errorf("time.parse: expected 1 argument, got %d", len(args)), nil
+		return nil, object.Errorf("time.parse: expected 1 argument, got %d", len(args))
 	}
 
 	dateStr, err := object.AsString(args[0])
@@ -119,7 +119,7 @@ func (t *TimeObject) MarshalJSON() ([]byte, error) {
 }
 
 func (t *TimeObject) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	return object.Errorf("eval error: unsupported operation for time: %v", opType), nil
+	return nil, object.Errorf("eval error: unsupported operation for time: %v", opType)
 }
 
 func (t *TimeObject) Equals(other object.Object) bool {
@@ -140,7 +140,7 @@ func (t *TimeObject) GetAttr(name string) (object.Object, bool) {
 	case "format":
 		return object.NewBuiltin("time.format", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("format: expected 1 argument, got %d", len(args)), nil
+				return nil, object.Errorf("format: expected 1 argument, got %d", len(args))
 			}
 			layout, err := object.AsString(args[0])
 			if err != nil {

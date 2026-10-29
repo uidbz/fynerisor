@@ -1,7 +1,6 @@
 package risorcanvas
 
 import (
-	"errors"
 	"fmt"
 	"github.com/uidbz/fynerisor/gui/guithread"
 
@@ -49,9 +48,7 @@ func (obj *Line) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *Line) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(LineType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", LineType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", LineType, opType)
 }
 
 func (obj *Line) Equals(other object.Object) bool {

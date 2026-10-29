@@ -28,13 +28,11 @@ func TestCreate(t *testing.T) {
 		t.Errorf("file was not created: %v", err)
 	}
 
-	// Fails on an invalid path and returns an error object
+	// Fails on an invalid path: the error is *raised* (issue #30), so
+	// scripts can catch it with try/catch instead of inspecting values.
 	result, err = create(ctx, object.NewString(filepath.Join(dir, "missing", "x.txt")))
-	if err != nil {
-		t.Fatalf("create returned Go error: %v", err)
-	}
-	if _, ok := result.(*object.Error); !ok {
-		t.Errorf("expected error object, got %s", result.Type())
+	if err == nil {
+		t.Errorf("create on a missing dir should raise, got result %s", result.Type())
 	}
 }
 
@@ -73,13 +71,10 @@ func TestCopyFile(t *testing.T) {
 		t.Errorf("expected mode 0600, got %v", info.Mode().Perm())
 	}
 
-	// Missing source returns an error object
+	// Missing source raises (issue #30).
 	result, err = copyFile(ctx, object.NewString(filepath.Join(dir, "nope")), object.NewString(dst))
-	if err != nil {
-		t.Fatalf("copy_file returned Go error: %v", err)
-	}
-	if _, ok := result.(*object.Error); !ok {
-		t.Errorf("expected error object, got %s", result.Type())
+	if err == nil {
+		t.Errorf("copy_file of a missing source should raise, got result %s", result.Type())
 	}
 }
 
@@ -107,13 +102,10 @@ func TestMkdir(t *testing.T) {
 		t.Errorf("expected mode 0700, got %v", info.Mode().Perm())
 	}
 
-	// Nested path without -all must fail with an error object
+	// Nested path without -all raises (issue #30).
 	result, err = mkdir(ctx, object.NewString(filepath.Join(dir, "missing", "deep")))
-	if err != nil {
-		t.Fatalf("mkdir returned Go error: %v", err)
-	}
-	if _, ok := result.(*object.Error); !ok {
-		t.Errorf("expected error object, got %s", result.Type())
+	if err == nil {
+		t.Errorf("nested mkdir without -all should raise, got result %s", result.Type())
 	}
 }
 

@@ -81,7 +81,7 @@ func (obj *Constants) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *Constants) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	return object.Errorf("eval error: unsupported operation for %s: %v", ConstantsType, opType), nil
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", ConstantsType, opType)
 }
 
 func (obj *Constants) Equals(other object.Object) bool {

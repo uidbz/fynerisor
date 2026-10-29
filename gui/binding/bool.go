@@ -2,7 +2,6 @@ package binding
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/uidbz/fynerisor/gui/guithread"
 
@@ -54,9 +53,7 @@ func (obj *Bool) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *Bool) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(BoolType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", BoolType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", BoolType, opType)
 }
 
 func (obj *Bool) Equals(other object.Object) bool {
@@ -86,11 +83,11 @@ func (obj *Bool) getAttrUI(name string) (object.Object, bool) {
 	case "Get":
 		return object.NewBuiltin("binding.Bool.Get", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			val, err := obj.instance.Get()
 			if err != nil {
-				return object.Errorf("binding error: %v", err), nil
+				return nil, object.Errorf("binding error: %v", err)
 			}
 			return object.NewBool(val), nil
 		}), true
@@ -98,15 +95,15 @@ func (obj *Bool) getAttrUI(name string) (object.Object, bool) {
 	case "Set":
 		return object.NewBuiltin("binding.Bool.Set", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			val, err := object.AsBool(args[0])
 			if err != nil {
-				return object.Errorf("type error: %v", err), nil
+				return nil, object.Errorf("type error: %v", err)
 			}
 			err = obj.instance.Set(val)
 			if err != nil {
-				return object.Errorf("binding error: %v", err), nil
+				return nil, object.Errorf("binding error: %v", err)
 			}
 			return object.Nil, nil
 		}), true
@@ -114,7 +111,7 @@ func (obj *Bool) getAttrUI(name string) (object.Object, bool) {
 	case "AddListener":
 		return object.NewBuiltin("binding.Bool.AddListener", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			cb, err := vmexec.NewCallback(ctx, "binding.Bool.AddListener", args[0])
 			if err != nil {

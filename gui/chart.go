@@ -2,7 +2,6 @@ package gui
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/uidbz/fynerisor/gui/guithread"
 
@@ -63,9 +62,7 @@ func (obj *Chart) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *Chart) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(ChartType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", ChartType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", ChartType, opType)
 }
 
 func (obj *Chart) Equals(other object.Object) bool {

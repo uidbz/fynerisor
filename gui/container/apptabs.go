@@ -2,7 +2,6 @@ package container
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"fyne.io/fyne/v2"
@@ -52,9 +51,7 @@ func (obj *AppTabs) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *AppTabs) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(AppTabsType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", AppTabsType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", AppTabsType, opType)
 }
 
 func (obj *AppTabs) Equals(other object.Object) bool {
@@ -84,11 +81,11 @@ func (obj *AppTabs) getAttrUI(name string) (object.Object, bool) {
 	case "Append":
 		return object.NewBuiltin("container.AppTabs.Append", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			tabItem, ok := args[0].(*TabItem)
 			if !ok {
-				return object.Errorf("type error: expected TabItem, got %s", args[0].Type()), nil
+				return nil, object.Errorf("type error: expected TabItem, got %s", args[0].Type())
 			}
 			guithread.Do(func() {
 				obj.instance.Append(tabItem.instance)
@@ -99,11 +96,11 @@ func (obj *AppTabs) getAttrUI(name string) (object.Object, bool) {
 	case "Remove":
 		return object.NewBuiltin("container.AppTabs.Remove", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			tabItem, ok := args[0].(*TabItem)
 			if !ok {
-				return object.Errorf("type error: expected TabItem, got %s", args[0].Type()), nil
+				return nil, object.Errorf("type error: expected TabItem, got %s", args[0].Type())
 			}
 			guithread.Do(func() {
 				obj.instance.Remove(tabItem.instance)
@@ -114,11 +111,11 @@ func (obj *AppTabs) getAttrUI(name string) (object.Object, bool) {
 	case "RemoveIndex":
 		return object.NewBuiltin("container.AppTabs.RemoveIndex", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			index, err := object.AsInt(args[0])
 			if err != nil {
-				return object.Errorf("type error: %v", err), nil
+				return nil, object.Errorf("type error: %v", err)
 			}
 			guithread.Do(func() {
 				obj.instance.RemoveIndex(int(index))
@@ -129,11 +126,11 @@ func (obj *AppTabs) getAttrUI(name string) (object.Object, bool) {
 	case "Select":
 		return object.NewBuiltin("container.AppTabs.Select", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			tabItem, ok := args[0].(*TabItem)
 			if !ok {
-				return object.Errorf("type error: expected TabItem, got %s", args[0].Type()), nil
+				return nil, object.Errorf("type error: expected TabItem, got %s", args[0].Type())
 			}
 			guithread.Do(func() {
 				obj.instance.Select(tabItem.instance)
@@ -144,11 +141,11 @@ func (obj *AppTabs) getAttrUI(name string) (object.Object, bool) {
 	case "SelectIndex":
 		return object.NewBuiltin("container.AppTabs.SelectIndex", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			index, err := object.AsInt(args[0])
 			if err != nil {
-				return object.Errorf("type error: %v", err), nil
+				return nil, object.Errorf("type error: %v", err)
 			}
 			guithread.Do(func() {
 				obj.instance.SelectIndex(int(index))
@@ -159,7 +156,7 @@ func (obj *AppTabs) getAttrUI(name string) (object.Object, bool) {
 	case "OnSelected":
 		return object.NewBuiltin("container.AppTabs.OnSelected", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			cb, err := vmexec.NewCallback(ctx, "container.AppTabs.OnSelected", args[0])
 			if err != nil {
@@ -177,7 +174,7 @@ func (obj *AppTabs) getAttrUI(name string) (object.Object, bool) {
 	case "Selected":
 		return object.NewBuiltin("container.AppTabs.Selected", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			selected := obj.instance.Selected()
 			if selected == nil {
@@ -189,7 +186,7 @@ func (obj *AppTabs) getAttrUI(name string) (object.Object, bool) {
 	case "SelectedIndex":
 		return object.NewBuiltin("container.AppTabs.SelectedIndex", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			return object.NewInt(int64(obj.instance.SelectedIndex())), nil
 		}), true
@@ -197,11 +194,11 @@ func (obj *AppTabs) getAttrUI(name string) (object.Object, bool) {
 	case "EnableIndex":
 		return object.NewBuiltin("container.AppTabs.EnableIndex", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			index, err := object.AsInt(args[0])
 			if err != nil {
-				return object.Errorf("type error: %v", err), nil
+				return nil, object.Errorf("type error: %v", err)
 			}
 			guithread.Do(func() {
 				obj.instance.EnableIndex(int(index))
@@ -212,11 +209,11 @@ func (obj *AppTabs) getAttrUI(name string) (object.Object, bool) {
 	case "DisableIndex":
 		return object.NewBuiltin("container.AppTabs.DisableIndex", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			index, err := object.AsInt(args[0])
 			if err != nil {
-				return object.Errorf("type error: %v", err), nil
+				return nil, object.Errorf("type error: %v", err)
 			}
 			guithread.Do(func() {
 				obj.instance.DisableIndex(int(index))
@@ -227,11 +224,11 @@ func (obj *AppTabs) getAttrUI(name string) (object.Object, bool) {
 	case "EnableItem":
 		return object.NewBuiltin("container.AppTabs.EnableItem", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			tabItem, ok := args[0].(*TabItem)
 			if !ok {
-				return object.Errorf("type error: expected TabItem, got %s", args[0].Type()), nil
+				return nil, object.Errorf("type error: expected TabItem, got %s", args[0].Type())
 			}
 			guithread.Do(func() {
 				obj.instance.EnableItem(tabItem.instance)
@@ -242,11 +239,11 @@ func (obj *AppTabs) getAttrUI(name string) (object.Object, bool) {
 	case "DisableItem":
 		return object.NewBuiltin("container.AppTabs.DisableItem", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			tabItem, ok := args[0].(*TabItem)
 			if !ok {
-				return object.Errorf("type error: expected TabItem, got %s", args[0].Type()), nil
+				return nil, object.Errorf("type error: expected TabItem, got %s", args[0].Type())
 			}
 			guithread.Do(func() {
 				obj.instance.DisableItem(tabItem.instance)
@@ -257,7 +254,7 @@ func (obj *AppTabs) getAttrUI(name string) (object.Object, bool) {
 	case "Hide":
 		return object.NewBuiltin("container.AppTabs.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Hide()
@@ -268,7 +265,7 @@ func (obj *AppTabs) getAttrUI(name string) (object.Object, bool) {
 	case "Show":
 		return object.NewBuiltin("container.AppTabs.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Show()

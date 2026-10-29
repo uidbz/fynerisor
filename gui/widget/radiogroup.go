@@ -55,7 +55,7 @@ func (obj *RadioGroup) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *RadioGroup) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	return object.Errorf("eval error: unsupported operation for RadioGroup: %v", opType), nil
+	return nil, object.Errorf("eval error: unsupported operation for RadioGroup: %v", opType)
 }
 
 func (obj *RadioGroup) Equals(other object.Object) bool {
@@ -140,7 +140,7 @@ func (obj *RadioGroup) getAttrUI(name string) (object.Object, bool) {
 	case "SetSelected":
 		return object.NewBuiltin("RadioGroup.SetSelected", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			selected, err := object.AsString(args[0])
 			if err != nil {
@@ -155,7 +155,7 @@ func (obj *RadioGroup) getAttrUI(name string) (object.Object, bool) {
 	case "Append":
 		return object.NewBuiltin("RadioGroup.Append", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			option, err := object.AsString(args[0])
 			if err != nil {
@@ -170,7 +170,7 @@ func (obj *RadioGroup) getAttrUI(name string) (object.Object, bool) {
 	case "Disable":
 		return object.NewBuiltin("RadioGroup.Disable", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Disable()
@@ -181,7 +181,7 @@ func (obj *RadioGroup) getAttrUI(name string) (object.Object, bool) {
 	case "Enable":
 		return object.NewBuiltin("RadioGroup.Enable", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Enable()
@@ -192,7 +192,7 @@ func (obj *RadioGroup) getAttrUI(name string) (object.Object, bool) {
 	case "Refresh":
 		return object.NewBuiltin("RadioGroup.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Refresh()
@@ -202,7 +202,7 @@ func (obj *RadioGroup) getAttrUI(name string) (object.Object, bool) {
 	case "Hide":
 		return object.NewBuiltin("widget.RadioGroup.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Hide()
@@ -212,7 +212,7 @@ func (obj *RadioGroup) getAttrUI(name string) (object.Object, bool) {
 	case "Show":
 		return object.NewBuiltin("widget.RadioGroup.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Show()

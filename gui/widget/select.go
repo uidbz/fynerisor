@@ -2,7 +2,6 @@ package widget
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"fyne.io/fyne/v2"
@@ -51,9 +50,7 @@ func (obj *Select) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *Select) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(SelectType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", SelectType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", SelectType, opType)
 }
 
 func (obj *Select) Equals(other object.Object) bool {
@@ -83,7 +80,7 @@ func (obj *Select) getAttrUI(name string) (object.Object, bool) {
 	case "SetSelectedIndex":
 		return object.NewBuiltin("widget.Select.SetSelectedIndex", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
 			}
 
 			index, err := object.AsInt(args[0])
@@ -98,7 +95,7 @@ func (obj *Select) getAttrUI(name string) (object.Object, bool) {
 	case "SetOptions":
 		return object.NewBuiltin("widget.Select.SetOptions", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
 			}
 
 			options, err := object.AsStringSlice(args[0])
@@ -114,7 +111,7 @@ func (obj *Select) getAttrUI(name string) (object.Object, bool) {
 	case "SetSelected":
 		return object.NewBuiltin("widget.Select.SetSelected", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
 			}
 
 			selected, err := object.AsString(args[0])
@@ -133,7 +130,7 @@ func (obj *Select) getAttrUI(name string) (object.Object, bool) {
 	case "Hide":
 		return object.NewBuiltin("widget.Select.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Hide()
@@ -143,7 +140,7 @@ func (obj *Select) getAttrUI(name string) (object.Object, bool) {
 	case "Show":
 		return object.NewBuiltin("widget.Select.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Show()

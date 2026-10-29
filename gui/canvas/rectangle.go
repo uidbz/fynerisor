@@ -1,7 +1,6 @@
 package risorcanvas
 
 import (
-	"errors"
 	"fmt"
 	"image/color"
 	"strconv"
@@ -59,9 +58,7 @@ func (obj *Rectangle) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *Rectangle) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(RectangleType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", RectangleType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", RectangleType, opType)
 }
 
 func (obj *Rectangle) Equals(other object.Object) bool {

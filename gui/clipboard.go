@@ -82,7 +82,7 @@ func (obj *Clipboard) getAttrUI(name string) (object.Object, bool) {
 	case "Copy":
 		return object.NewBuiltin("clipboard.Copy", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			s, err := object.AsString(args[0])
 			if err != nil {
@@ -96,7 +96,7 @@ func (obj *Clipboard) getAttrUI(name string) (object.Object, bool) {
 	case "Read":
 		return object.NewBuiltin("clipboard.Read", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			var content string
 			// DoAndWait: the script body runs off the GUI thread and needs

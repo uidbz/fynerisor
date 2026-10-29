@@ -2,7 +2,6 @@ package widget
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"fyne.io/fyne/v2"
@@ -45,7 +44,7 @@ type TextGrid struct {
 
 func NewTextGrid(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 0 {
-		return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+		return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 	}
 
 	instance := widget.NewTextGrid()
@@ -89,9 +88,7 @@ func (obj *TextGrid) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *TextGrid) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(TextGridType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", TextGridType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", TextGridType, opType)
 }
 
 func (obj *TextGrid) Equals(other object.Object) bool {
@@ -171,7 +168,7 @@ func (obj *TextGrid) getAttrUI(name string) (object.Object, bool) {
 	case "SetText":
 		return object.NewBuiltin("widget.TextGrid.SetText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 
 			text, err := object.AsString(args[0])
@@ -189,7 +186,7 @@ func (obj *TextGrid) getAttrUI(name string) (object.Object, bool) {
 	case "SetRow":
 		return object.NewBuiltin("widget.TextGrid.SetRow", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 2 {
-				return object.Errorf("wrong number of arguments. got=%d, want=2", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
 			}
 
 			row, err := object.AsInt(args[0])
@@ -218,7 +215,7 @@ func (obj *TextGrid) getAttrUI(name string) (object.Object, bool) {
 	case "Row":
 		return object.NewBuiltin("widget.TextGrid.Row", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 
 			row, err := object.AsInt(args[0])
@@ -232,7 +229,7 @@ func (obj *TextGrid) getAttrUI(name string) (object.Object, bool) {
 	case "RowCount":
 		return object.NewBuiltin("widget.TextGrid.RowCount", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 
 			return object.NewInt(int64(len(obj.instance.Rows))), nil
@@ -241,7 +238,7 @@ func (obj *TextGrid) getAttrUI(name string) (object.Object, bool) {
 	case "Refresh":
 		return object.NewBuiltin("widget.TextGrid.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 
 			guithread.Do(func() {
@@ -253,7 +250,7 @@ func (obj *TextGrid) getAttrUI(name string) (object.Object, bool) {
 	case "Hide":
 		return object.NewBuiltin("widget.TextGrid.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Hide()
@@ -263,7 +260,7 @@ func (obj *TextGrid) getAttrUI(name string) (object.Object, bool) {
 	case "Show":
 		return object.NewBuiltin("widget.TextGrid.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Show()

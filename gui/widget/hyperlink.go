@@ -2,7 +2,6 @@ package widget
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/url"
 
@@ -71,9 +70,7 @@ func (obj *Hyperlink) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *Hyperlink) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(HyperlinkType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", HyperlinkType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", HyperlinkType, opType)
 }
 
 func (obj *Hyperlink) Equals(other object.Object) bool {
@@ -98,7 +95,7 @@ func (obj *Hyperlink) getAttrUI(name string) (object.Object, bool) {
 	case "SetText":
 		return object.NewBuiltin("widget.Hyperlink.SetText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			text, err := object.AsString(args[0])
 			if err != nil {
@@ -112,7 +109,7 @@ func (obj *Hyperlink) getAttrUI(name string) (object.Object, bool) {
 	case "SetURL":
 		return object.NewBuiltin("widget.Hyperlink.SetURL", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			urlStr, err := object.AsString(args[0])
 			if err != nil {
@@ -120,7 +117,7 @@ func (obj *Hyperlink) getAttrUI(name string) (object.Object, bool) {
 			}
 			parsedURL, err := url.Parse(urlStr)
 			if err != nil {
-				return object.Errorf("invalid URL: %v", err), nil
+				return nil, object.Errorf("invalid URL: %v", err)
 			}
 			guithread.Do(func() {
 				obj.instance.SetURL(parsedURL)
@@ -130,7 +127,7 @@ func (obj *Hyperlink) getAttrUI(name string) (object.Object, bool) {
 	case "OnTapped":
 		return object.NewBuiltin("widget.Hyperlink.OnTapped", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			cb, err := vmexec.NewCallback(ctx, "widget.Hyperlink.OnTapped", args[0])
 			if err != nil {
@@ -146,7 +143,7 @@ func (obj *Hyperlink) getAttrUI(name string) (object.Object, bool) {
 	case "Hide":
 		return object.NewBuiltin("widget.Hyperlink.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Hide()
@@ -156,7 +153,7 @@ func (obj *Hyperlink) getAttrUI(name string) (object.Object, bool) {
 	case "Show":
 		return object.NewBuiltin("widget.Hyperlink.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Show()

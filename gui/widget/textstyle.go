@@ -53,7 +53,7 @@ func (obj *TextStyle) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *TextStyle) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	return object.Errorf("eval error: unsupported operation for TextStyle: %v", opType), nil
+	return nil, object.Errorf("eval error: unsupported operation for TextStyle: %v", opType)
 }
 
 func (obj *TextStyle) Equals(other object.Object) bool {

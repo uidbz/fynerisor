@@ -2,7 +2,6 @@ package widget
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/uidbz/fynerisor/gui/guithread"
 	"strings"
@@ -42,7 +41,7 @@ type MenuItem struct {
 func NewMenuItem(w WindowInterface) func(ctx context.Context, args ...object.Object) (object.Object, error) {
 	return func(ctx context.Context, args ...object.Object) (object.Object, error) {
 		if len(args) != 2 {
-			return object.Errorf("wrong number of arguments. got=%d, want=2", len(args)), nil
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
 		}
 
 		label, err := object.AsString(args[0])
@@ -69,7 +68,7 @@ func NewMenuItem(w WindowInterface) func(ctx context.Context, args ...object.Obj
 
 func NewMenuItemSeparator(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 0 {
-		return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+		return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 	}
 
 	instance := fyne.NewMenuItemSeparator()
@@ -113,9 +112,7 @@ func (obj *MenuItem) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *MenuItem) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(MenuItemType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", MenuItemType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", MenuItemType, opType)
 }
 
 func (obj *MenuItem) Equals(other object.Object) bool {

@@ -27,7 +27,7 @@ func Module() *object.Module {
 
 func replaceAll(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 3 {
-		return object.Errorf("strings.replace_all: expected 3 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("strings.replace_all: expected 3 arguments, got %d", len(args))
 	}
 
 	s, err := object.AsString(args[0])
@@ -50,7 +50,7 @@ func replaceAll(ctx context.Context, args ...object.Object) (object.Object, erro
 
 func trimPrefix(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 2 {
-		return object.Errorf("strings.trim_prefix: expected 2 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("strings.trim_prefix: expected 2 arguments, got %d", len(args))
 	}
 
 	s, err := object.AsString(args[0])
@@ -68,7 +68,7 @@ func trimPrefix(ctx context.Context, args ...object.Object) (object.Object, erro
 
 func trimSuffix(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 2 {
-		return object.Errorf("strings.trim_suffix: expected 2 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("strings.trim_suffix: expected 2 arguments, got %d", len(args))
 	}
 
 	s, err := object.AsString(args[0])
@@ -86,7 +86,7 @@ func trimSuffix(ctx context.Context, args ...object.Object) (object.Object, erro
 
 func trim(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 2 {
-		return object.Errorf("strings.trim: expected 2 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("strings.trim: expected 2 arguments, got %d", len(args))
 	}
 
 	s, err := object.AsString(args[0])
@@ -104,7 +104,7 @@ func trim(ctx context.Context, args ...object.Object) (object.Object, error) {
 
 func toLower(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 1 {
-		return object.Errorf("strings.to_lower: expected 1 argument, got %d", len(args)), nil
+		return nil, object.Errorf("strings.to_lower: expected 1 argument, got %d", len(args))
 	}
 
 	s, err := object.AsString(args[0])
@@ -117,7 +117,7 @@ func toLower(ctx context.Context, args ...object.Object) (object.Object, error) 
 
 func toUpper(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 1 {
-		return object.Errorf("strings.to_upper: expected 1 argument, got %d", len(args)), nil
+		return nil, object.Errorf("strings.to_upper: expected 1 argument, got %d", len(args))
 	}
 
 	s, err := object.AsString(args[0])
@@ -130,7 +130,7 @@ func toUpper(ctx context.Context, args ...object.Object) (object.Object, error) 
 
 func split(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 2 {
-		return object.Errorf("strings.split: expected 2 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("strings.split: expected 2 arguments, got %d", len(args))
 	}
 
 	s, err := object.AsString(args[0])
@@ -154,7 +154,7 @@ func split(ctx context.Context, args ...object.Object) (object.Object, error) {
 
 func join(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 2 {
-		return object.Errorf("strings.join: expected 2 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("strings.join: expected 2 arguments, got %d", len(args))
 	}
 
 	list, err := object.AsList(args[0])
@@ -181,7 +181,7 @@ func join(ctx context.Context, args ...object.Object) (object.Object, error) {
 
 func contains(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 2 {
-		return object.Errorf("strings.contains: expected 2 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("strings.contains: expected 2 arguments, got %d", len(args))
 	}
 
 	s, err := object.AsString(args[0])
@@ -199,7 +199,7 @@ func contains(ctx context.Context, args ...object.Object) (object.Object, error)
 
 func hasPrefix(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 2 {
-		return object.Errorf("strings.has_prefix: expected 2 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("strings.has_prefix: expected 2 arguments, got %d", len(args))
 	}
 
 	s, err := object.AsString(args[0])
@@ -217,7 +217,7 @@ func hasPrefix(ctx context.Context, args ...object.Object) (object.Object, error
 
 func hasSuffix(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 2 {
-		return object.Errorf("strings.has_suffix: expected 2 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("strings.has_suffix: expected 2 arguments, got %d", len(args))
 	}
 
 	s, err := object.AsString(args[0])

@@ -72,6 +72,19 @@ through `vmexec.NewCallback`; script access to Fyne objects runs on the
 UI thread via `guithread`; the UI thread never waits on the VM. CI runs
 `go test -race ./...` on every push and PR.
 
+### Error convention (issue #30)
+
+In builtins and attribute methods, programmer/runtime errors **raise**:
+`return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))`.
+Never hand the script an error *value* (`return object.Errorf(...), nil`):
+the script keeps running with an error object in hand and the failure
+surfaces later, far from its cause and without a line number. Raised
+errors are catchable with `try { … } catch e { e.message() }` and stop
+the run noisily otherwise. The same applies to I/O failures
+(`return nil, err`), which is also what Risor v2's own objects do.
+(Operator methods may still raise through the error slot:
+`return nil, object.Errorf("eval error: unsupported operation …")`.)
+
 ### Running Examples
 
 ```bash

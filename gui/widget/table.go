@@ -87,7 +87,7 @@ func (obj *Table) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *Table) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	return object.Errorf("eval error: unsupported operation for %s: %v", TableType, opType), nil
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", TableType, opType)
 }
 
 func (obj *Table) Equals(other object.Object) bool {
@@ -117,7 +117,7 @@ func (obj *Table) getAttrUI(name string) (object.Object, bool) {
 	case "Columns":
 		return object.NewBuiltin("widget.Table.Columns", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
 			}
 			cb, err := vmexec.NewCallback(ctx, "widget.Table.Columns", args[0])
 			if err != nil {
@@ -145,7 +145,7 @@ func (obj *Table) getAttrUI(name string) (object.Object, bool) {
 	case "HeaderLevels":
 		return object.NewBuiltin("widget.Table.HeaderLevels", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
 			}
 			cb, err := vmexec.NewCallback(ctx, "widget.Table.HeaderLevels", args[0])
 			if err != nil {
@@ -173,7 +173,7 @@ func (obj *Table) getAttrUI(name string) (object.Object, bool) {
 	case "RowCount":
 		return object.NewBuiltin("widget.Table.RowCount", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
 			}
 			cb, err := vmexec.NewCallback(ctx, "widget.Table.RowCount", args[0])
 			if err != nil {
@@ -201,7 +201,7 @@ func (obj *Table) getAttrUI(name string) (object.Object, bool) {
 	case "Refresh":
 		return object.NewBuiltin("widget.Table.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() { obj.instance.Refresh() })
 			return object.Nil, nil
@@ -210,7 +210,7 @@ func (obj *Table) getAttrUI(name string) (object.Object, bool) {
 	case "SetColumnWidth":
 		return object.NewBuiltin("widget.Table.SetColumWidth", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 2 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			column, err := object.AsInt(args[0])
 			if err != nil {
@@ -227,7 +227,7 @@ func (obj *Table) getAttrUI(name string) (object.Object, bool) {
 	case "SetOnClick":
 		return object.NewBuiltin("widget.Table.SetOnClick", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
 			}
 			cb, err := vmexec.NewCallback(ctx, "widget.Table.SetOnClick", args[0])
 			if err != nil {
@@ -244,7 +244,7 @@ func (obj *Table) getAttrUI(name string) (object.Object, bool) {
 	case "Data":
 		return object.NewBuiltin("widget.Table.Data", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
 			}
 			cb, err := vmexec.NewCallback(ctx, "widget.Table.Data", args[0])
 			if err != nil {
@@ -288,7 +288,7 @@ func (obj *Table) getAttrUI(name string) (object.Object, bool) {
 	case "CreateCell":
 		return object.NewBuiltin("widget.Table.CreateCell", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			cb, err := vmexec.NewCallback(ctx, "widget.Table.CreateCell", args[0])
 			if err != nil {
@@ -331,7 +331,7 @@ func (obj *Table) getAttrUI(name string) (object.Object, bool) {
 	case "UpdateCell":
 		return object.NewBuiltin("widget.Table.UpdateCell", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			cb, err := vmexec.NewCallback(ctx, "widget.Table.UpdateCell", args[0])
 			if err != nil {
@@ -354,7 +354,7 @@ func (obj *Table) getAttrUI(name string) (object.Object, bool) {
 	case "Hide":
 		return object.NewBuiltin("widget.Table.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Instance.Hide()
@@ -364,7 +364,7 @@ func (obj *Table) getAttrUI(name string) (object.Object, bool) {
 	case "Show":
 		return object.NewBuiltin("widget.Table.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Instance.Show()
@@ -513,7 +513,7 @@ func (g *ImageCellWrapper) MarshalJSON() ([]byte, error) {
 }
 
 func (g *ImageCellWrapper) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	return object.Errorf("eval error: unsupported operation for canvas.Image"), nil
+	return nil, object.Errorf("eval error: unsupported operation for canvas.Image")
 }
 
 func (g *ImageCellWrapper) Equals(other object.Object) bool {
@@ -543,7 +543,7 @@ func (g *ImageCellWrapper) getAttrUI(name string) (object.Object, bool) {
 	case "SetImageFromURI":
 		return object.NewBuiltin("canvas.Image.SetImageFromURI", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			path, err := object.AsString(args[0])
 			if err != nil {
@@ -552,7 +552,7 @@ func (g *ImageCellWrapper) getAttrUI(name string) (object.Object, bool) {
 
 			uri, err := storage.ParseURI(path)
 			if err != nil {
-				return object.NewError(err), nil
+				return nil, object.NewError(err)
 			}
 
 			guithread.Do(func() {
@@ -606,7 +606,7 @@ func (g *GenericCanvasObjectTable) MarshalJSON() ([]byte, error) {
 }
 
 func (g *GenericCanvasObjectTable) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	return object.Errorf("eval error: unsupported operation for canvas.Object"), nil
+	return nil, object.Errorf("eval error: unsupported operation for canvas.Object")
 }
 
 func (g *GenericCanvasObjectTable) Equals(other object.Object) bool {

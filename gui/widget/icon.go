@@ -2,7 +2,6 @@ package widget
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"fyne.io/fyne/v2"
@@ -172,9 +171,7 @@ func (obj *Icon) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *Icon) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(IconType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", IconType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", IconType, opType)
 }
 
 func (obj *Icon) Equals(other object.Object) bool {
@@ -195,7 +192,7 @@ func (obj *Icon) getAttrUI(name string) (object.Object, bool) {
 	case "SetResource":
 		return object.NewBuiltin("widget.Icon.SetResource", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			resourceName, err := object.AsString(args[0])
 			if err != nil {
@@ -203,7 +200,7 @@ func (obj *Icon) getAttrUI(name string) (object.Object, bool) {
 			}
 			res := GetThemeResource(resourceName)
 			if res == nil {
-				return object.Errorf("unknown icon resource: %s", resourceName), nil
+				return nil, object.Errorf("unknown icon resource: %s", resourceName)
 			}
 			guithread.Do(func() {
 				obj.instance.SetResource(res)
@@ -213,7 +210,7 @@ func (obj *Icon) getAttrUI(name string) (object.Object, bool) {
 	case "Hide":
 		return object.NewBuiltin("widget.Icon.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Hide()
@@ -223,7 +220,7 @@ func (obj *Icon) getAttrUI(name string) (object.Object, bool) {
 	case "Show":
 		return object.NewBuiltin("widget.Icon.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Show()

@@ -2,7 +2,6 @@ package widget
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"fyne.io/fyne/v2"
@@ -52,9 +51,7 @@ func (obj *Check) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *Check) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(CheckType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", CheckType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", CheckType, opType)
 }
 
 func (obj *Check) Equals(other object.Object) bool {
@@ -84,7 +81,7 @@ func (obj *Check) getAttrUI(name string) (object.Object, bool) {
 	case "SetChecked":
 		return object.NewBuiltin("widget.Check.SetChecked", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
 			}
 
 			val, err := object.AsBool(args[0])
@@ -101,7 +98,7 @@ func (obj *Check) getAttrUI(name string) (object.Object, bool) {
 	case "Hide":
 		return object.NewBuiltin("widget.Check.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Hide()
@@ -111,7 +108,7 @@ func (obj *Check) getAttrUI(name string) (object.Object, bool) {
 	case "Show":
 		return object.NewBuiltin("widget.Check.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Show()

@@ -2,7 +2,6 @@ package gui
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/uidbz/fynerisor/gui/guithread"
 	"image/color"
@@ -60,9 +59,7 @@ func (obj *Canvas) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *Canvas) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(CanvasType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", CanvasType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", CanvasType, opType)
 }
 
 func (obj *Canvas) Equals(other object.Object) bool {
@@ -111,7 +108,7 @@ func (obj *Canvas) getAttrUI(name string) (object.Object, bool) {
 	case "NewLine":
 		return object.NewBuiltin("canvas.NewLine", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			color, err := object.AsString(args[0])
 			if err != nil {
@@ -126,7 +123,7 @@ func (obj *Canvas) getAttrUI(name string) (object.Object, bool) {
 	case "NewText":
 		return object.NewBuiltin("canvas.NewText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 2 {
-				return object.Errorf("wrong number of arguments. got=%d, want=2", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
 			}
 			text, err := object.AsString(args[0])
 			if err != nil {
@@ -150,7 +147,7 @@ func (obj *Canvas) getAttrUI(name string) (object.Object, bool) {
 	case "NewRectangle":
 		return object.NewBuiltin("canvas.NewRectangle", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 2 {
-				return object.Errorf("wrong number of arguments. got=%d, want=2", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
 			}
 			colorName, err := object.AsString(args[0])
 			if err != nil {
@@ -177,7 +174,7 @@ func (obj *Canvas) getAttrUI(name string) (object.Object, bool) {
 		// screen yet, so it is built on the script's goroutine.
 		return guithread.OffUI(object.NewBuiltin("canvas.NewImageFromURI", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			path, err := object.AsString(args[0])
 			if err != nil {
@@ -186,7 +183,7 @@ func (obj *Canvas) getAttrUI(name string) (object.Object, bool) {
 
 			img, err := risorcanvas.NewImageFromURIContext(ctx, path)
 			if err != nil {
-				return object.NewError(err), nil
+				return nil, object.NewError(err)
 			}
 
 			return img, nil

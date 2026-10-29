@@ -2,7 +2,6 @@ package widget
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"fyne.io/fyne/v2"
@@ -68,9 +67,7 @@ func (obj *ProgressBarInfinite) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *ProgressBarInfinite) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(ProgressBarInfiniteType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", ProgressBarInfiniteType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", ProgressBarInfiniteType, opType)
 }
 
 func (obj *ProgressBarInfinite) Equals(other object.Object) bool {
@@ -91,7 +88,7 @@ func (obj *ProgressBarInfinite) getAttrUI(name string) (object.Object, bool) {
 	case "Start":
 		return object.NewBuiltin("widget.ProgressBarInfinite.Start", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Show()
@@ -102,7 +99,7 @@ func (obj *ProgressBarInfinite) getAttrUI(name string) (object.Object, bool) {
 	case "Stop":
 		return object.NewBuiltin("widget.ProgressBarInfinite.Stop", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Stop()
@@ -115,7 +112,7 @@ func (obj *ProgressBarInfinite) getAttrUI(name string) (object.Object, bool) {
 	case "Hide":
 		return object.NewBuiltin("widget.ProgressBarInfinite.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Hide()
@@ -125,7 +122,7 @@ func (obj *ProgressBarInfinite) getAttrUI(name string) (object.Object, bool) {
 	case "Show":
 		return object.NewBuiltin("widget.ProgressBarInfinite.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Show()

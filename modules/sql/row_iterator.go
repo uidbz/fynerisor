@@ -163,7 +163,7 @@ func (ri *RowIterator) Attrs() []object.AttrSpec {
 }
 
 func (ri *RowIterator) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	return object.Errorf("eval error: unsupported operation for sql.row_iterator: %v", opType), nil
+	return nil, object.Errorf("eval error: unsupported operation for sql.row_iterator: %v", opType)
 }
 
 func (ri *RowIterator) Close() {

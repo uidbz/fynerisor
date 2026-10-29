@@ -2,7 +2,6 @@ package widget
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -72,9 +71,7 @@ func (obj *DateEntry) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *DateEntry) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(DateEntryType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", DateEntryType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", DateEntryType, opType)
 }
 
 func (obj *DateEntry) Equals(other object.Object) bool {
@@ -118,7 +115,7 @@ func (obj *DateEntry) getAttrUI(name string) (object.Object, bool) {
 	case "SetText":
 		return object.NewBuiltin("widget.DateEntry.SetText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 
 			text, err := object.AsString(args[0])
@@ -136,7 +133,7 @@ func (obj *DateEntry) getAttrUI(name string) (object.Object, bool) {
 	case "SetDate":
 		return object.NewBuiltin("widget.DateEntry.SetDate", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 
 			// Accept string in YYYY-MM-DD format
@@ -148,7 +145,7 @@ func (obj *DateEntry) getAttrUI(name string) (object.Object, bool) {
 			// Parse and validate
 			_, parseErr := time.Parse("2006-01-02", dateStr)
 			if parseErr != nil {
-				return object.Errorf("invalid date format, expected YYYY-MM-DD: %v", parseErr), nil
+				return nil, object.Errorf("invalid date format, expected YYYY-MM-DD: %v", parseErr)
 			}
 
 			guithread.Do(func() {
@@ -161,7 +158,7 @@ func (obj *DateEntry) getAttrUI(name string) (object.Object, bool) {
 	case "OnChanged":
 		return object.NewBuiltin("widget.DateEntry.OnChanged", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 
 			cb, err := vmexec.NewCallback(ctx, "widget.DateEntry.OnChanged", args[0])
@@ -179,7 +176,7 @@ func (obj *DateEntry) getAttrUI(name string) (object.Object, bool) {
 	case "Hide":
 		return object.NewBuiltin("widget.DateEntry.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Hide()
@@ -189,7 +186,7 @@ func (obj *DateEntry) getAttrUI(name string) (object.Object, bool) {
 	case "Show":
 		return object.NewBuiltin("widget.DateEntry.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Show()

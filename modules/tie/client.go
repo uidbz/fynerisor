@@ -47,7 +47,7 @@ func (c *Client) MarshalJSON() ([]byte, error) {
 }
 
 func (c *Client) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	return object.Errorf("eval error: unsupported operation for tie.client: %v", opType), nil
+	return nil, object.Errorf("eval error: unsupported operation for tie.client: %v", opType)
 }
 
 func (c *Client) Equals(other object.Object) bool {

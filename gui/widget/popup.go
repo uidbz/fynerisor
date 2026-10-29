@@ -2,7 +2,6 @@ package widget
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"fyne.io/fyne/v2"
@@ -45,21 +44,21 @@ type PopUp struct {
 
 func NewPopUp(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 2 {
-		return object.Errorf("wrong number of arguments. got=%d, want=2", len(args)), nil
+		return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
 	}
 
 	contentObj, ok := args[0].(interface{ CanvasObject() fyne.CanvasObject })
 	if !ok {
-		return object.Errorf("argument error: expected widget/container, got %s", args[0].Type()), nil
+		return nil, object.Errorf("argument error: expected widget/container, got %s", args[0].Type())
 	}
 
 	canvasObj, ok := args[1].(interface{ Canvas() fyne.Canvas })
 	if !ok {
-		return object.Errorf("argument error: expected canvas (use window.Canvas), got %s", args[1].Type()), nil
+		return nil, object.Errorf("argument error: expected canvas (use window.Canvas), got %s", args[1].Type())
 	}
 	canvas := canvasObj.Canvas()
 	if canvas == nil {
-		return object.Errorf("argument error: no canvas available (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)"), nil
+		return nil, object.Errorf("argument error: no canvas available (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)")
 	}
 
 	instance := widget.NewPopUp(contentObj.CanvasObject(), canvas)
@@ -71,21 +70,21 @@ func NewPopUp(ctx context.Context, args ...object.Object) (object.Object, error)
 
 func NewModalPopUp(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 2 {
-		return object.Errorf("wrong number of arguments. got=%d, want=2", len(args)), nil
+		return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
 	}
 
 	contentObj, ok := args[0].(interface{ CanvasObject() fyne.CanvasObject })
 	if !ok {
-		return object.Errorf("argument error: expected widget/container, got %s", args[0].Type()), nil
+		return nil, object.Errorf("argument error: expected widget/container, got %s", args[0].Type())
 	}
 
 	canvasObj, ok := args[1].(interface{ Canvas() fyne.Canvas })
 	if !ok {
-		return object.Errorf("argument error: expected canvas (use window.Canvas), got %s", args[1].Type()), nil
+		return nil, object.Errorf("argument error: expected canvas (use window.Canvas), got %s", args[1].Type())
 	}
 	canvas := canvasObj.Canvas()
 	if canvas == nil {
-		return object.Errorf("argument error: no canvas available (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)"), nil
+		return nil, object.Errorf("argument error: no canvas available (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)")
 	}
 
 	instance := widget.NewModalPopUp(contentObj.CanvasObject(), canvas)
@@ -129,9 +128,7 @@ func (obj *PopUp) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *PopUp) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(PopUpType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", PopUpType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", PopUpType, opType)
 }
 
 func (obj *PopUp) Equals(other object.Object) bool {
@@ -161,7 +158,7 @@ func (obj *PopUp) getAttrUI(name string) (object.Object, bool) {
 	case "Show":
 		return object.NewBuiltin("widget.PopUp.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 
 			guithread.Do(func() {
@@ -174,7 +171,7 @@ func (obj *PopUp) getAttrUI(name string) (object.Object, bool) {
 	case "Hide":
 		return object.NewBuiltin("widget.PopUp.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 
 			guithread.Do(func() {
@@ -187,7 +184,7 @@ func (obj *PopUp) getAttrUI(name string) (object.Object, bool) {
 	case "ShowAtPosition":
 		return object.NewBuiltin("widget.PopUp.ShowAtPosition", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 2 {
-				return object.Errorf("wrong number of arguments. got=%d, want=2", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
 			}
 
 			x, err := object.AsFloat(args[0])
@@ -210,7 +207,7 @@ func (obj *PopUp) getAttrUI(name string) (object.Object, bool) {
 	case "Move":
 		return object.NewBuiltin("widget.PopUp.Move", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 2 {
-				return object.Errorf("wrong number of arguments. got=%d, want=2", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
 			}
 
 			x, err := object.AsFloat(args[0])
@@ -233,7 +230,7 @@ func (obj *PopUp) getAttrUI(name string) (object.Object, bool) {
 	case "Resize":
 		return object.NewBuiltin("widget.PopUp.Resize", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 2 {
-				return object.Errorf("wrong number of arguments. got=%d, want=2", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
 			}
 
 			w, err := object.AsFloat(args[0])

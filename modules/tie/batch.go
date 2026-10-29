@@ -46,7 +46,7 @@ func (b *Batch) MarshalJSON() ([]byte, error) {
 }
 
 func (b *Batch) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	return object.Errorf("eval error: unsupported operation for tie.batch: %v", opType), nil
+	return nil, object.Errorf("eval error: unsupported operation for tie.batch: %v", opType)
 }
 
 func (b *Batch) Equals(other object.Object) bool {

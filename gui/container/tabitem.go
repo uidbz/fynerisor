@@ -1,7 +1,6 @@
 package container
 
 import (
-	"errors"
 	"fmt"
 
 	"fyne.io/fyne/v2"
@@ -46,9 +45,7 @@ func (obj *TabItem) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *TabItem) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(TabItemType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", TabItemType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", TabItemType, opType)
 }
 
 func (obj *TabItem) Equals(other object.Object) bool {

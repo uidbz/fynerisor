@@ -98,7 +98,7 @@ func (rb *RisorBrowser) GetAttr(name string) (object.Object, bool) {
 	case "Open":
 		return object.NewBuiltin("browser.Open", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			url, err := object.AsString(args[0])
 			if err != nil {
@@ -112,7 +112,7 @@ func (rb *RisorBrowser) GetAttr(name string) (object.Object, bool) {
 	case "GetURL":
 		return object.NewBuiltin("browser.GetURL", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			return object.NewString(rb.browser.GetURL()), nil
 		}), true
@@ -120,7 +120,7 @@ func (rb *RisorBrowser) GetAttr(name string) (object.Object, bool) {
 	case "SetStatus":
 		return object.NewBuiltin("browser.SetStatus", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			status, err := object.AsString(args[0])
 			if err != nil {
@@ -142,7 +142,7 @@ func (rb *RisorBrowser) GetAttr(name string) (object.Object, bool) {
 	case "GetParam":
 		return object.NewBuiltin("browser.GetParam", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			name, err := object.AsString(args[0])
 			if err != nil {
@@ -157,7 +157,7 @@ func (rb *RisorBrowser) GetAttr(name string) (object.Object, bool) {
 		}
 		return object.NewBuiltin("browser.CopyToClipboard", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			text, err := object.AsString(args[0])
 			if err != nil {

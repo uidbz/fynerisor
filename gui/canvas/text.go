@@ -1,7 +1,6 @@
 package risorcanvas
 
 import (
-	"errors"
 	"fmt"
 
 	"fyne.io/fyne/v2"
@@ -53,9 +52,7 @@ func (obj *Text) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *Text) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(TextType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", TextType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", TextType, opType)
 }
 
 func (obj *Text) Equals(other object.Object) bool {

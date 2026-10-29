@@ -69,9 +69,7 @@ func (obj *Entry) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *Entry) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(EntryType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", EntryType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", EntryType, opType)
 }
 
 func (obj *Entry) Equals(other object.Object) bool {
@@ -146,7 +144,7 @@ func (obj *Entry) getAttrUI(name string) (object.Object, bool) {
 	case "SetText":
 		return object.NewBuiltin("widget.Entry.SetText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
 			}
 
 			val, err := object.AsString(args[0])
@@ -164,7 +162,7 @@ func (obj *Entry) getAttrUI(name string) (object.Object, bool) {
 	case "SetPlaceHolder":
 		return object.NewBuiltin("widget.Entry.SetPlaceHolder", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 
 			val, err := object.AsString(args[0])
@@ -183,7 +181,7 @@ func (obj *Entry) getAttrUI(name string) (object.Object, bool) {
 	case "Append":
 		return object.NewBuiltin("widget.Entry.Append", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
 			}
 
 			val, err := object.AsString(args[0])
@@ -199,7 +197,7 @@ func (obj *Entry) getAttrUI(name string) (object.Object, bool) {
 	case "OnSubmitted":
 		return object.NewBuiltin("widget.OnSubmitted", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			cb, err := vmexec.NewCallback(ctx, "widget.Entry.OnSubmitted", args[0])
 			if err != nil {
@@ -217,7 +215,7 @@ func (obj *Entry) getAttrUI(name string) (object.Object, bool) {
 	case "OnChanged":
 		return object.NewBuiltin("widget.Entry.OnChanged", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			cb, err := vmexec.NewCallback(ctx, "widget.Entry.OnChanged", args[0])
 			if err != nil {
@@ -238,7 +236,7 @@ func (obj *Entry) getAttrUI(name string) (object.Object, bool) {
 	case "SetValidator":
 		return object.NewBuiltin("widget.Entry.SetValidator", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			cb, err := vmexec.NewCallback(ctx, "widget.Entry.SetValidator", args[0])
 			if err != nil {
@@ -268,7 +266,7 @@ func (obj *Entry) getAttrUI(name string) (object.Object, bool) {
 	case "Disable":
 		return object.NewBuiltin("widget.Entry.Disable", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Disable()
@@ -279,7 +277,7 @@ func (obj *Entry) getAttrUI(name string) (object.Object, bool) {
 	case "Enable":
 		return object.NewBuiltin("widget.Entry.Enable", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Enable()
@@ -289,7 +287,7 @@ func (obj *Entry) getAttrUI(name string) (object.Object, bool) {
 	case "Hide":
 		return object.NewBuiltin("widget.Entry.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Hide()
@@ -299,7 +297,7 @@ func (obj *Entry) getAttrUI(name string) (object.Object, bool) {
 	case "Show":
 		return object.NewBuiltin("widget.Entry.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Show()

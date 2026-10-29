@@ -68,6 +68,18 @@
   callback is shared with a stopped run. On re-`Execute` the previous
   run's keyboard shortcuts, script-installed main menu and
   drop/stdout-capture handlers are removed. (issue #16)
+- **Script-visible errors now raise.** ~600 arity/type/argument/I-O
+  checks across gui, modules, core and browser builtins returned error
+  *values* (`return object.Errorf(...), nil`): a call like
+  `widget.NewButton("Save")` (missing callback) handed the script an
+  error object and execution continued, surfacing the failure later at
+  `SetContent` far from its cause. All of them now *raise*
+  (`return nil, object.Errorf(...)`): catchable with
+  `try { … } catch e { e.message() }`, and without a catch the run
+  stops at the failing line with the message. This matches Risor v2's
+  own object convention and the json/http conversions from earlier
+  releases. Scripts that tested results with `.Type() == "error"`
+  should switch to `try`/`catch`. (issue #30)
 
 ### Fixed
 

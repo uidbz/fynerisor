@@ -98,7 +98,7 @@ func (d *Dialog) MarshalJSON() ([]byte, error) {
 }
 
 func (d *Dialog) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	return object.Errorf("eval error: unsupported operation for %s: %v", DialogType, opType), nil
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", DialogType, opType)
 }
 
 func (d *Dialog) Equals(other object.Object) bool {
@@ -136,7 +136,7 @@ func (d *Dialog) getAttrUI(name string) (object.Object, bool) {
 		"NewColorPicker", "NewForm":
 		if d.w.FyneWindow == nil {
 			return object.NewBuiltin("dialog."+name, func(context.Context, ...object.Object) (object.Object, error) {
-				return object.Errorf("dialog.%s: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)", name), nil
+				return nil, object.Errorf("dialog.%s: no host window (pass gui.WithHostWindow when embedding with gui.NewCanvasObject)", name)
 			}), true
 		}
 	}
@@ -145,15 +145,15 @@ func (d *Dialog) getAttrUI(name string) (object.Object, bool) {
 	case "ShowInformation":
 		return object.NewBuiltin("dialog.ShowInformation", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 2 {
-				return object.Errorf("wrong number of arguments. got=%d, want=2", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
 			}
 			title, err := object.AsString(args[0])
 			if err != nil {
-				return object.Errorf("type error: title must be string, got %s", args[0].Type()), nil
+				return nil, object.Errorf("type error: title must be string, got %s", args[0].Type())
 			}
 			message, err := object.AsString(args[1])
 			if err != nil {
-				return object.Errorf("type error: message must be string, got %s", args[1].Type()), nil
+				return nil, object.Errorf("type error: message must be string, got %s", args[1].Type())
 			}
 			guithread.Do(func() {
 				dialog.ShowInformation(title, message, d.w.FyneWindow)
@@ -164,11 +164,11 @@ func (d *Dialog) getAttrUI(name string) (object.Object, bool) {
 	case "ShowError":
 		return object.NewBuiltin("dialog.ShowError", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			message, err := object.AsString(args[0])
 			if err != nil {
-				return object.Errorf("type error: message must be string, got %s", args[0].Type()), nil
+				return nil, object.Errorf("type error: message must be string, got %s", args[0].Type())
 			}
 			guithread.Do(func() {
 				dialog.ShowError(fmt.Errorf("%s", message), d.w.FyneWindow)
@@ -179,15 +179,15 @@ func (d *Dialog) getAttrUI(name string) (object.Object, bool) {
 	case "ShowConfirm":
 		return object.NewBuiltin("dialog.ShowConfirm", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 3 {
-				return object.Errorf("wrong number of arguments. got=%d, want=3", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=3", len(args))
 			}
 			title, err := object.AsString(args[0])
 			if err != nil {
-				return object.Errorf("type error: title must be string, got %s", args[0].Type()), nil
+				return nil, object.Errorf("type error: title must be string, got %s", args[0].Type())
 			}
 			message, err := object.AsString(args[1])
 			if err != nil {
-				return object.Errorf("type error: message must be string, got %s", args[1].Type()), nil
+				return nil, object.Errorf("type error: message must be string, got %s", args[1].Type())
 			}
 			cb, err := vmexec.NewCallback(ctx, "dialog.ShowConfirm", args[2])
 			if err != nil {
@@ -207,7 +207,7 @@ func (d *Dialog) getAttrUI(name string) (object.Object, bool) {
 	case "ShowFileOpen":
 		return object.NewBuiltin("dialog.ShowFileOpen", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			cb, err := vmexec.NewCallback(ctx, "dialog.ShowFileOpen", args[0])
 			if err != nil {
@@ -227,7 +227,7 @@ func (d *Dialog) getAttrUI(name string) (object.Object, bool) {
 	case "ShowFileSave":
 		return object.NewBuiltin("dialog.ShowFileSave", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			cb, err := vmexec.NewCallback(ctx, "dialog.ShowFileSave", args[0])
 			if err != nil {
@@ -247,7 +247,7 @@ func (d *Dialog) getAttrUI(name string) (object.Object, bool) {
 	case "ShowFolderOpen":
 		return object.NewBuiltin("dialog.ShowFolderOpen", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			cb, err := vmexec.NewCallback(ctx, "dialog.ShowFolderOpen", args[0])
 			if err != nil {
@@ -267,21 +267,21 @@ func (d *Dialog) getAttrUI(name string) (object.Object, bool) {
 	case "ShowCustom":
 		return object.NewBuiltin("dialog.ShowCustom", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 3 {
-				return object.Errorf("wrong number of arguments. got=%d, want=3", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=3", len(args))
 			}
 			title, err := object.AsString(args[0])
 			if err != nil {
-				return object.Errorf("type error: title must be string, got %s", args[0].Type()), nil
+				return nil, object.Errorf("type error: title must be string, got %s", args[0].Type())
 			}
 			dismiss, err := object.AsString(args[1])
 			if err != nil {
-				return object.Errorf("type error: dismiss must be string, got %s", args[1].Type()), nil
+				return nil, object.Errorf("type error: dismiss must be string, got %s", args[1].Type())
 			}
 
 			// Content must be a CanvasObject
 			content, ok := args[2].(interface{ CanvasObject() fyne.CanvasObject })
 			if !ok {
-				return object.Errorf("type error: content must be a widget or canvas object"), nil
+				return nil, object.Errorf("type error: content must be a widget or canvas object")
 			}
 
 			guithread.Do(func() {
@@ -293,25 +293,25 @@ func (d *Dialog) getAttrUI(name string) (object.Object, bool) {
 	case "ShowCustomConfirm":
 		return object.NewBuiltin("dialog.ShowCustomConfirm", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 5 {
-				return object.Errorf("wrong number of arguments. got=%d, want=5", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=5", len(args))
 			}
 			title, err := object.AsString(args[0])
 			if err != nil {
-				return object.Errorf("type error: title must be string, got %s", args[0].Type()), nil
+				return nil, object.Errorf("type error: title must be string, got %s", args[0].Type())
 			}
 			confirm, err := object.AsString(args[1])
 			if err != nil {
-				return object.Errorf("type error: confirm must be string, got %s", args[1].Type()), nil
+				return nil, object.Errorf("type error: confirm must be string, got %s", args[1].Type())
 			}
 			dismiss, err := object.AsString(args[2])
 			if err != nil {
-				return object.Errorf("type error: dismiss must be string, got %s", args[2].Type()), nil
+				return nil, object.Errorf("type error: dismiss must be string, got %s", args[2].Type())
 			}
 
 			// Content must be a CanvasObject
 			content, ok := args[3].(interface{ CanvasObject() fyne.CanvasObject })
 			if !ok {
-				return object.Errorf("type error: content must be a widget or canvas object"), nil
+				return nil, object.Errorf("type error: content must be a widget or canvas object")
 			}
 
 			cb, err := vmexec.NewCallback(ctx, "dialog.ShowCustomConfirm", args[4])
@@ -332,15 +332,15 @@ func (d *Dialog) getAttrUI(name string) (object.Object, bool) {
 	case "ShowColorPicker":
 		return object.NewBuiltin("dialog.ShowColorPicker", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 3 {
-				return object.Errorf("wrong number of arguments. got=%d, want=3", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=3", len(args))
 			}
 			title, err := object.AsString(args[0])
 			if err != nil {
-				return object.Errorf("type error: title must be string, got %s", args[0].Type()), nil
+				return nil, object.Errorf("type error: title must be string, got %s", args[0].Type())
 			}
 			message, err := object.AsString(args[1])
 			if err != nil {
-				return object.Errorf("type error: message must be string, got %s", args[1].Type()), nil
+				return nil, object.Errorf("type error: message must be string, got %s", args[1].Type())
 			}
 			cb, err := vmexec.NewCallback(ctx, "dialog.ShowColorPicker", args[2])
 			if err != nil {
@@ -369,36 +369,36 @@ func (d *Dialog) getAttrUI(name string) (object.Object, bool) {
 	case "ShowForm":
 		return object.NewBuiltin("dialog.ShowForm", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 5 {
-				return object.Errorf("wrong number of arguments. got=%d, want=5", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=5", len(args))
 			}
 			title, err := object.AsString(args[0])
 			if err != nil {
-				return object.Errorf("type error: title must be string, got %s", args[0].Type()), nil
+				return nil, object.Errorf("type error: title must be string, got %s", args[0].Type())
 			}
 			confirm, err := object.AsString(args[1])
 			if err != nil {
-				return object.Errorf("type error: confirm must be string, got %s", args[1].Type()), nil
+				return nil, object.Errorf("type error: confirm must be string, got %s", args[1].Type())
 			}
 			dismiss, err := object.AsString(args[2])
 			if err != nil {
-				return object.Errorf("type error: dismiss must be string, got %s", args[2].Type()), nil
+				return nil, object.Errorf("type error: dismiss must be string, got %s", args[2].Type())
 			}
 
 			// Items must be a list of FormItems
 			itemsList, ok := args[3].(*object.List)
 			if !ok {
-				return object.Errorf("type error: items must be a list, got %s", args[3].Type()), nil
+				return nil, object.Errorf("type error: items must be a list, got %s", args[3].Type())
 			}
 
 			var formItems []*widget.FormItem
 			for i, item := range itemsList.Value() {
 				formItemObj, ok := item.(interface{ Interface() interface{} })
 				if !ok {
-					return object.Errorf("type error: item %d is not a valid form item", i), nil
+					return nil, object.Errorf("type error: item %d is not a valid form item", i)
 				}
 				formItem, ok := formItemObj.Interface().(*widget.FormItem)
 				if !ok {
-					return object.Errorf("type error: item %d is not a form item", i), nil
+					return nil, object.Errorf("type error: item %d is not a form item", i)
 				}
 				formItems = append(formItems, formItem)
 			}
@@ -421,7 +421,7 @@ func (d *Dialog) getAttrUI(name string) (object.Object, bool) {
 	case "NewFileOpen":
 		return object.NewBuiltin("dialog.NewFileOpen", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			cb, err := vmexec.NewCallback(ctx, "dialog.NewFileOpen", args[0])
 			if err != nil {
@@ -439,7 +439,7 @@ func (d *Dialog) getAttrUI(name string) (object.Object, bool) {
 	case "NewFileSave":
 		return object.NewBuiltin("dialog.NewFileSave", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			cb, err := vmexec.NewCallback(ctx, "dialog.NewFileSave", args[0])
 			if err != nil {
@@ -457,7 +457,7 @@ func (d *Dialog) getAttrUI(name string) (object.Object, bool) {
 	case "NewFolderOpen":
 		return object.NewBuiltin("dialog.NewFolderOpen", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			cb, err := vmexec.NewCallback(ctx, "dialog.NewFolderOpen", args[0])
 			if err != nil {
@@ -475,15 +475,15 @@ func (d *Dialog) getAttrUI(name string) (object.Object, bool) {
 	case "NewConfirm":
 		return object.NewBuiltin("dialog.NewConfirm", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 3 {
-				return object.Errorf("wrong number of arguments. got=%d, want=3", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=3", len(args))
 			}
 			title, err := object.AsString(args[0])
 			if err != nil {
-				return object.Errorf("type error: title must be string, got %s", args[0].Type()), nil
+				return nil, object.Errorf("type error: title must be string, got %s", args[0].Type())
 			}
 			message, err := object.AsString(args[1])
 			if err != nil {
-				return object.Errorf("type error: message must be string, got %s", args[1].Type()), nil
+				return nil, object.Errorf("type error: message must be string, got %s", args[1].Type())
 			}
 			cb, err := vmexec.NewCallback(ctx, "dialog.NewConfirm", args[2])
 			if err != nil {
@@ -501,24 +501,24 @@ func (d *Dialog) getAttrUI(name string) (object.Object, bool) {
 	case "NewCustomConfirm":
 		return object.NewBuiltin("dialog.NewCustomConfirm", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 5 {
-				return object.Errorf("wrong number of arguments. got=%d, want=5", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=5", len(args))
 			}
 			title, err := object.AsString(args[0])
 			if err != nil {
-				return object.Errorf("type error: title must be string, got %s", args[0].Type()), nil
+				return nil, object.Errorf("type error: title must be string, got %s", args[0].Type())
 			}
 			confirm, err := object.AsString(args[1])
 			if err != nil {
-				return object.Errorf("type error: confirm must be string, got %s", args[1].Type()), nil
+				return nil, object.Errorf("type error: confirm must be string, got %s", args[1].Type())
 			}
 			dismiss, err := object.AsString(args[2])
 			if err != nil {
-				return object.Errorf("type error: dismiss must be string, got %s", args[2].Type()), nil
+				return nil, object.Errorf("type error: dismiss must be string, got %s", args[2].Type())
 			}
 
 			content, ok := args[3].(interface{ CanvasObject() fyne.CanvasObject })
 			if !ok {
-				return object.Errorf("type error: content must be a widget or canvas object"), nil
+				return nil, object.Errorf("type error: content must be a widget or canvas object")
 			}
 
 			cb, err := vmexec.NewCallback(ctx, "dialog.NewCustomConfirm", args[4])
@@ -537,20 +537,20 @@ func (d *Dialog) getAttrUI(name string) (object.Object, bool) {
 	case "NewCustom":
 		return object.NewBuiltin("dialog.NewCustom", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 3 {
-				return object.Errorf("wrong number of arguments. got=%d, want=3", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=3", len(args))
 			}
 			title, err := object.AsString(args[0])
 			if err != nil {
-				return object.Errorf("type error: title must be string, got %s", args[0].Type()), nil
+				return nil, object.Errorf("type error: title must be string, got %s", args[0].Type())
 			}
 			dismiss, err := object.AsString(args[1])
 			if err != nil {
-				return object.Errorf("type error: dismiss must be string, got %s", args[1].Type()), nil
+				return nil, object.Errorf("type error: dismiss must be string, got %s", args[1].Type())
 			}
 
 			content, ok := args[2].(interface{ CanvasObject() fyne.CanvasObject })
 			if !ok {
-				return object.Errorf("type error: content must be a widget or canvas object"), nil
+				return nil, object.Errorf("type error: content must be a widget or canvas object")
 			}
 
 			customDialog := risorDialog.NewCustom(title, dismiss, content.CanvasObject(), d.w.FyneWindow)
@@ -560,15 +560,15 @@ func (d *Dialog) getAttrUI(name string) (object.Object, bool) {
 	case "NewColorPicker":
 		return object.NewBuiltin("dialog.NewColorPicker", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 3 {
-				return object.Errorf("wrong number of arguments. got=%d, want=3", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=3", len(args))
 			}
 			title, err := object.AsString(args[0])
 			if err != nil {
-				return object.Errorf("type error: title must be string, got %s", args[0].Type()), nil
+				return nil, object.Errorf("type error: title must be string, got %s", args[0].Type())
 			}
 			message, err := object.AsString(args[1])
 			if err != nil {
-				return object.Errorf("type error: message must be string, got %s", args[1].Type()), nil
+				return nil, object.Errorf("type error: message must be string, got %s", args[1].Type())
 			}
 			cb, err := vmexec.NewCallback(ctx, "dialog.NewColorPicker", args[2])
 			if err != nil {
@@ -593,35 +593,35 @@ func (d *Dialog) getAttrUI(name string) (object.Object, bool) {
 	case "NewForm":
 		return object.NewBuiltin("dialog.NewForm", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 5 {
-				return object.Errorf("wrong number of arguments. got=%d, want=5", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=5", len(args))
 			}
 			title, err := object.AsString(args[0])
 			if err != nil {
-				return object.Errorf("type error: title must be string, got %s", args[0].Type()), nil
+				return nil, object.Errorf("type error: title must be string, got %s", args[0].Type())
 			}
 			confirm, err := object.AsString(args[1])
 			if err != nil {
-				return object.Errorf("type error: confirm must be string, got %s", args[1].Type()), nil
+				return nil, object.Errorf("type error: confirm must be string, got %s", args[1].Type())
 			}
 			dismiss, err := object.AsString(args[2])
 			if err != nil {
-				return object.Errorf("type error: dismiss must be string, got %s", args[2].Type()), nil
+				return nil, object.Errorf("type error: dismiss must be string, got %s", args[2].Type())
 			}
 
 			itemsList, ok := args[3].(*object.List)
 			if !ok {
-				return object.Errorf("type error: items must be a list, got %s", args[3].Type()), nil
+				return nil, object.Errorf("type error: items must be a list, got %s", args[3].Type())
 			}
 
 			var formItems []*widget.FormItem
 			for i, item := range itemsList.Value() {
 				formItemObj, ok := item.(interface{ Interface() interface{} })
 				if !ok {
-					return object.Errorf("type error: item %d is not a valid form item", i), nil
+					return nil, object.Errorf("type error: item %d is not a valid form item", i)
 				}
 				formItem, ok := formItemObj.Interface().(*widget.FormItem)
 				if !ok {
-					return object.Errorf("type error: item %d is not a form item", i), nil
+					return nil, object.Errorf("type error: item %d is not a form item", i)
 				}
 				formItems = append(formItems, formItem)
 			}

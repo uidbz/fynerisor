@@ -76,7 +76,7 @@ func Module() *object.Module {
 // goos returns the operating system name
 func goos(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 0 {
-		return object.Errorf("os.goos: expected 0 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("os.goos: expected 0 arguments, got %d", len(args))
 	}
 	return object.NewString(runtime.GOOS), nil
 }
@@ -84,12 +84,12 @@ func goos(ctx context.Context, args ...object.Object) (object.Object, error) {
 // currentUser returns information about the current user
 func currentUser(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 0 {
-		return object.Errorf("os.current_user: expected 0 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("os.current_user: expected 0 arguments, got %d", len(args))
 	}
 
 	u, err := user.Current()
 	if err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 
 	userMap := map[string]object.Object{
@@ -107,12 +107,12 @@ func currentUser(ctx context.Context, args ...object.Object) (object.Object, err
 // current_user().home_dir
 func homeDir(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 0 {
-		return object.Errorf("os.home_dir: expected 0 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("os.home_dir: expected 0 arguments, got %d", len(args))
 	}
 
 	u, err := user.Current()
 	if err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 
 	return object.NewString(u.HomeDir), nil
@@ -121,7 +121,7 @@ func homeDir(ctx context.Context, args ...object.Object) (object.Object, error) 
 // openBrowser opens a URL in the default browser
 func openBrowser(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 1 {
-		return object.Errorf("os.open_browser: expected 1 argument, got %d", len(args)), nil
+		return nil, object.Errorf("os.open_browser: expected 1 argument, got %d", len(args))
 	}
 
 	url, err := object.AsString(args[0])
@@ -138,11 +138,11 @@ func openBrowser(ctx context.Context, args ...object.Object) (object.Object, err
 	case "darwin":
 		cmd = exec.Command("open", url)
 	default:
-		return object.Errorf("os.open_browser: unsupported platform: %s", runtime.GOOS), nil
+		return nil, object.Errorf("os.open_browser: unsupported platform: %s", runtime.GOOS)
 	}
 
 	if err := cmd.Start(); err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 
 	return object.Nil, nil
@@ -151,7 +151,7 @@ func openBrowser(ctx context.Context, args ...object.Object) (object.Object, err
 // readFile reads the named file and returns bytes
 func readFile(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 1 {
-		return object.Errorf("os.read_file: expected 1 argument, got %d", len(args)), nil
+		return nil, object.Errorf("os.read_file: expected 1 argument, got %d", len(args))
 	}
 
 	path, err := object.AsString(args[0])
@@ -161,7 +161,7 @@ func readFile(ctx context.Context, args ...object.Object) (object.Object, error)
 
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 
 	return object.NewBytes(data), nil
@@ -170,7 +170,7 @@ func readFile(ctx context.Context, args ...object.Object) (object.Object, error)
 // writeFile writes data (bytes or string) to the named file
 func writeFile(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 2 {
-		return object.Errorf("os.write_file: expected 2 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("os.write_file: expected 2 arguments, got %d", len(args))
 	}
 
 	path, err := object.AsString(args[0])
@@ -185,12 +185,12 @@ func writeFile(ctx context.Context, args ...object.Object) (object.Object, error
 	case *object.String:
 		data = []byte(v.Value())
 	default:
-		return object.Errorf("os.write_file: expected bytes or string as second argument, got %s", args[1].Type()), nil
+		return nil, object.Errorf("os.write_file: expected bytes or string as second argument, got %s", args[1].Type())
 	}
 
 	err = os.WriteFile(path, data, 0644)
 	if err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 
 	return object.Nil, nil
@@ -199,7 +199,7 @@ func writeFile(ctx context.Context, args ...object.Object) (object.Object, error
 // create creates an empty file (truncating it if it already exists)
 func create(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 1 {
-		return object.Errorf("os.create: expected 1 argument, got %d", len(args)), nil
+		return nil, object.Errorf("os.create: expected 1 argument, got %d", len(args))
 	}
 
 	path, err := object.AsString(args[0])
@@ -209,11 +209,11 @@ func create(ctx context.Context, args ...object.Object) (object.Object, error) {
 
 	f, err := os.Create(path)
 	if err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 
 	if err := f.Close(); err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 
 	return object.Nil, nil
@@ -222,7 +222,7 @@ func create(ctx context.Context, args ...object.Object) (object.Object, error) {
 // copyFile copies a file from src to dst, preserving the source file mode
 func copyFile(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 2 {
-		return object.Errorf("os.copy_file: expected 2 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("os.copy_file: expected 2 arguments, got %d", len(args))
 	}
 
 	src, err := object.AsString(args[0])
@@ -237,27 +237,27 @@ func copyFile(ctx context.Context, args ...object.Object) (object.Object, error)
 
 	srcInfo, err := os.Stat(src)
 	if err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 
 	in, err := os.Open(src)
 	if err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 	defer in.Close()
 
 	out, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, srcInfo.Mode())
 	if err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 
 	if _, err := io.Copy(out, in); err != nil {
 		out.Close()
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 
 	if err := out.Close(); err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 
 	return object.Nil, nil
@@ -266,7 +266,7 @@ func copyFile(ctx context.Context, args ...object.Object) (object.Object, error)
 // readDir reads the directory and returns an iterator of directory entries
 func readDir(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 1 {
-		return object.Errorf("os.read_dir: expected 1 argument, got %d", len(args)), nil
+		return nil, object.Errorf("os.read_dir: expected 1 argument, got %d", len(args))
 	}
 
 	path, err := object.AsString(args[0])
@@ -276,7 +276,7 @@ func readDir(ctx context.Context, args ...object.Object) (object.Object, error) 
 
 	entries, err := os.ReadDir(path)
 	if err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 
 	// Convert entries to a list of maps
@@ -301,7 +301,7 @@ func readDir(ctx context.Context, args ...object.Object) (object.Object, error) 
 // mkdirAll creates a directory along with any necessary parents
 func mkdirAll(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) < 1 || len(args) > 2 {
-		return object.Errorf("os.mkdir_all: expected 1 or 2 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("os.mkdir_all: expected 1 or 2 arguments, got %d", len(args))
 	}
 
 	path, err := object.AsString(args[0])
@@ -321,7 +321,7 @@ func mkdirAll(ctx context.Context, args ...object.Object) (object.Object, error)
 
 	err = os.MkdirAll(path, perm)
 	if err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 
 	return object.Nil, nil
@@ -330,7 +330,7 @@ func mkdirAll(ctx context.Context, args ...object.Object) (object.Object, error)
 // mkdir creates a single directory (parents must already exist)
 func mkdir(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) < 1 || len(args) > 2 {
-		return object.Errorf("os.mkdir: expected 1 or 2 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("os.mkdir: expected 1 or 2 arguments, got %d", len(args))
 	}
 
 	path, err := object.AsString(args[0])
@@ -350,7 +350,7 @@ func mkdir(ctx context.Context, args ...object.Object) (object.Object, error) {
 
 	err = os.Mkdir(path, perm)
 	if err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 
 	return object.Nil, nil
@@ -359,7 +359,7 @@ func mkdir(ctx context.Context, args ...object.Object) (object.Object, error) {
 // removeAll removes a directory or file along with any children it contains
 func removeAll(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 1 {
-		return object.Errorf("os.remove_all: expected 1 argument, got %d", len(args)), nil
+		return nil, object.Errorf("os.remove_all: expected 1 argument, got %d", len(args))
 	}
 
 	path, err := object.AsString(args[0])
@@ -369,7 +369,7 @@ func removeAll(ctx context.Context, args ...object.Object) (object.Object, error
 
 	err = os.RemoveAll(path)
 	if err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 
 	return object.Nil, nil
@@ -378,7 +378,7 @@ func removeAll(ctx context.Context, args ...object.Object) (object.Object, error
 // isDir checks if a path is a directory
 func isDir(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 1 {
-		return object.Errorf("os.is_dir: expected 1 argument, got %d", len(args)), nil
+		return nil, object.Errorf("os.is_dir: expected 1 argument, got %d", len(args))
 	}
 
 	path, err := object.AsString(args[0])
@@ -398,12 +398,12 @@ func isDir(ctx context.Context, args ...object.Object) (object.Object, error) {
 // getwd returns the current working directory
 func getwd(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 0 {
-		return object.Errorf("os.getwd: expected 0 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("os.getwd: expected 0 arguments, got %d", len(args))
 	}
 
 	wd, err := os.Getwd()
 	if err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 
 	return object.NewString(wd), nil
@@ -425,7 +425,7 @@ func scriptArgsFunc(ctx context.Context, args ...object.Object) (object.Object, 
 // execCommand executes a command with arguments
 func execCommand(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) < 1 {
-		return object.Errorf("os.exec: expected at least 1 argument, got %d", len(args)), nil
+		return nil, object.Errorf("os.exec: expected at least 1 argument, got %d", len(args))
 	}
 
 	command, err := object.AsString(args[0])
@@ -446,7 +446,7 @@ func execCommand(ctx context.Context, args ...object.Object) (object.Object, err
 
 	cmd := exec.Command(command, cmdArgs...)
 	if err := cmd.Start(); err != nil {
-		return object.NewError(err), nil
+		return nil, object.NewError(err)
 	}
 
 	return object.Nil, nil

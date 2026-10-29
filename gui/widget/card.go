@@ -2,7 +2,6 @@ package widget
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"fyne.io/fyne/v2"
@@ -61,9 +60,7 @@ func (obj *Card) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *Card) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(CardType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", CardType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", CardType, opType)
 }
 
 func (obj *Card) Equals(other object.Object) bool {
@@ -88,7 +85,7 @@ func (obj *Card) getAttrUI(name string) (object.Object, bool) {
 	case "SetTitle":
 		return object.NewBuiltin("widget.Card.SetTitle", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			title, err := object.AsString(args[0])
 			if err != nil {
@@ -102,7 +99,7 @@ func (obj *Card) getAttrUI(name string) (object.Object, bool) {
 	case "SetSubTitle":
 		return object.NewBuiltin("widget.Card.SetSubTitle", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			subtitle, err := object.AsString(args[0])
 			if err != nil {
@@ -116,11 +113,11 @@ func (obj *Card) getAttrUI(name string) (object.Object, bool) {
 	case "SetContent":
 		return object.NewBuiltin("widget.Card.SetContent", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
 			}
 			contentObj, ok := args[0].(IsCanvasObject)
 			if !ok {
-				return object.Errorf("argument error: expected CanvasObject, got %s", args[0].Type()), nil
+				return nil, object.Errorf("argument error: expected CanvasObject, got %s", args[0].Type())
 			}
 			guithread.Do(func() {
 				obj.instance.SetContent(contentObj.CanvasObject())
@@ -130,7 +127,7 @@ func (obj *Card) getAttrUI(name string) (object.Object, bool) {
 	case "Hide":
 		return object.NewBuiltin("widget.Card.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Hide()
@@ -140,7 +137,7 @@ func (obj *Card) getAttrUI(name string) (object.Object, bool) {
 	case "Show":
 		return object.NewBuiltin("widget.Card.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Show()

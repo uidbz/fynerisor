@@ -50,7 +50,7 @@ func (obj *Fyne) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *Fyne) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	return object.Errorf("eval error: unsupported operation for %s: %v", FyneType, opType), nil
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", FyneType, opType)
 }
 
 func (obj *Fyne) Equals(other object.Object) bool {
@@ -82,7 +82,7 @@ func (obj *Fyne) getAttrUI(name string) (object.Object, bool) {
 	case "NewMenu":
 		return object.NewBuiltin("fyne.NewMenu", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) < 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=at least 1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=at least 1", len(args))
 			}
 
 			label, err := object.AsString(args[0])
@@ -95,7 +95,7 @@ func (obj *Fyne) getAttrUI(name string) (object.Object, bool) {
 			for i := 1; i < len(args); i++ {
 				menuItemObj, ok := args[i].(*risorwidget.MenuItem)
 				if !ok {
-					return object.Errorf("argument error: expected MenuItem, got %s", args[i].Type()), nil
+					return nil, object.Errorf("argument error: expected MenuItem, got %s", args[i].Type())
 				}
 				items = append(items, menuItemObj.Instance())
 			}
@@ -108,20 +108,20 @@ func (obj *Fyne) getAttrUI(name string) (object.Object, bool) {
 	case "NewMainMenu":
 		return object.NewBuiltin("fyne.NewMainMenu", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) < 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=at least 1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=at least 1", len(args))
 			}
 
 			// Collect Menus from list
 			listObj, ok := args[0].(*object.List)
 			if !ok {
-				return object.Errorf("argument error: expected list of menus, got %s", args[0].Type()), nil
+				return nil, object.Errorf("argument error: expected list of menus, got %s", args[0].Type())
 			}
 
 			menus := make([]*fyne.Menu, 0, len(listObj.Value()))
 			for _, item := range listObj.Value() {
 				menuObj, ok := item.(*Menu)
 				if !ok {
-					return object.Errorf("argument error: expected Menu in list, got %s", item.Type()), nil
+					return nil, object.Errorf("argument error: expected Menu in list, got %s", item.Type())
 				}
 				menus = append(menus, menuObj.instance)
 			}
@@ -182,7 +182,7 @@ func (obj *Menu) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *Menu) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	return object.Errorf("eval error: unsupported operation for Menu: %v", opType), nil
+	return nil, object.Errorf("eval error: unsupported operation for Menu: %v", opType)
 }
 
 func (obj *Menu) Equals(other object.Object) bool {
@@ -211,7 +211,7 @@ func (obj *Menu) getAttrUI(name string) (object.Object, bool) {
 	case "Refresh":
 		return object.NewBuiltin("fyne.Menu.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			obj.instance.Refresh()
 			return object.Nil, nil
@@ -266,7 +266,7 @@ func (obj *MainMenu) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *MainMenu) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	return object.Errorf("eval error: unsupported operation for MainMenu: %v", opType), nil
+	return nil, object.Errorf("eval error: unsupported operation for MainMenu: %v", opType)
 }
 
 func (obj *MainMenu) Equals(other object.Object) bool {
@@ -292,7 +292,7 @@ func (obj *MainMenu) getAttrUI(name string) (object.Object, bool) {
 	case "Refresh":
 		return object.NewBuiltin("fyne.MainMenu.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			obj.instance.Refresh()
 			return object.Nil, nil

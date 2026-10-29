@@ -3,7 +3,6 @@ package widget
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 
@@ -58,9 +57,7 @@ func (obj *Log) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *Log) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(LogType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", LogType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", LogType, opType)
 }
 
 func (obj *Log) Equals(other object.Object) bool {
@@ -90,7 +87,7 @@ func (obj *Log) getAttrUI(name string) (object.Object, bool) {
 	case "Append":
 		return object.NewBuiltin("widget.Log.Append", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
-				return object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
 			}
 
 			line, err := object.AsString(args[0])
@@ -105,7 +102,7 @@ func (obj *Log) getAttrUI(name string) (object.Object, bool) {
 	case "Clear":
 		return object.NewBuiltin("widget.Log.Clear", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=exactly 0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 0", len(args))
 			}
 
 			obj.mu.Lock()
@@ -121,7 +118,7 @@ func (obj *Log) getAttrUI(name string) (object.Object, bool) {
 	case "Hide":
 		return object.NewBuiltin("widget.Log.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Hide()
@@ -131,7 +128,7 @@ func (obj *Log) getAttrUI(name string) (object.Object, bool) {
 	case "Show":
 		return object.NewBuiltin("widget.Log.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 0 {
-				return object.Errorf("wrong number of arguments. got=%d, want=0", len(args)), nil
+				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
 			}
 			guithread.Do(func() {
 				obj.instance.Show()

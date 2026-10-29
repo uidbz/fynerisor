@@ -55,7 +55,7 @@ func (db *DB) MarshalJSON() ([]byte, error) {
 }
 
 func (db *DB) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	return object.Errorf("eval error: unsupported operation for sql.conn: %v", opType), nil
+	return nil, object.Errorf("eval error: unsupported operation for sql.conn: %v", opType)
 }
 
 func (db *DB) Equals(other object.Object) bool {

@@ -1,7 +1,6 @@
 package widget
 
 import (
-	"errors"
 	"fmt"
 	"github.com/uidbz/fynerisor/gui/guithread"
 
@@ -46,9 +45,7 @@ func (obj *FormItem) MarshalJSON() ([]byte, error) {
 }
 
 func (obj *FormItem) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(FormItemType))
-	errObj := object.Errorf("eval error: unsupported operation for %s: %v", FormItemType, opType)
-	return errObj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", FormItemType, opType)
 }
 
 func (obj *FormItem) Equals(other object.Object) bool {
