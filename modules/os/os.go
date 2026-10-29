@@ -58,18 +58,24 @@ func Module() *object.Module {
 		"current_user": object.NewBuiltin("os.current_user", currentUser),
 		"home_dir":     object.NewBuiltin("os.home_dir", homeDir),
 		"open_browser": object.NewBuiltin("os.open_browser", openBrowser),
-		"read_file":    object.NewBuiltin("os.read_file", readFile),
-		"write_file":   object.NewBuiltin("os.write_file", writeFile),
-		"create":       object.NewBuiltin("os.create", create),
-		"copy_file":    object.NewBuiltin("os.copy_file", copyFile),
-		"read_dir":     object.NewBuiltin("os.read_dir", readDir),
-		"mkdir":        object.NewBuiltin("os.mkdir", mkdir),
-		"mkdir_all":    object.NewBuiltin("os.mkdir_all", mkdirAll),
-		"remove_all":   object.NewBuiltin("os.remove_all", removeAll),
-		"is_dir":       object.NewBuiltin("os.is_dir", isDir),
-		"getwd":        object.NewBuiltin("os.getwd", getwd),
-		"args":         object.NewBuiltin("os.args", scriptArgsFunc),
-		"exec":         object.NewBuiltin("os.exec", execCommand),
+		// Deprecated data-stream operations (issue #41): io owns byte and
+		// text streams now. Kept for one release as fallback defaults;
+		// use io.read / io.write / io.copy.
+		"read_file":  object.NewBuiltin("os.read_file", readFile),
+		"write_file": object.NewBuiltin("os.write_file", writeFile),
+		"create":     object.NewBuiltin("os.create", create),
+		"copy_file":  object.NewBuiltin("os.copy_file", copyFile),
+		// Directory structure stays with os (issue #41).
+		"read_dir":   object.NewBuiltin("os.read_dir", readDir),
+		"mkdir":      object.NewBuiltin("os.mkdir", mkdir),
+		"mkdir_all":  object.NewBuiltin("os.mkdir_all", mkdirAll),
+		"remove_all": object.NewBuiltin("os.remove_all", removeAll),
+		"is_dir":     object.NewBuiltin("os.is_dir", isDir),
+		"getwd":      object.NewBuiltin("os.getwd", getwd),
+		"args":       object.NewBuiltin("os.args", scriptArgsFunc),
+		// Deprecated (issue #41): fire-and-forget without context or
+		// result capture; use the exec module (exec.command / exec()).
+		"exec": object.NewBuiltin("os.exec", execCommand),
 	})
 }
 

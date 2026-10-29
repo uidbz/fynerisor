@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
 	stdio "io"
 
@@ -122,16 +121,7 @@ func (s *StdinObject) GetAttr(name string) (object.Object, bool) {
 			if err != nil {
 				return nil, err
 			}
-			data = strings.TrimSuffix(data, "\n")
-			if data == "" {
-				return object.NewList([]object.Object{}), nil
-			}
-			lines := strings.Split(data, "\n")
-			items := make([]object.Object, len(lines))
-			for i, l := range lines {
-				items[i] = object.NewString(strings.TrimSuffix(l, "\r"))
-			}
-			return object.NewList(items), nil
+			return splitLines(data), nil
 		}), true
 	}
 	return nil, false

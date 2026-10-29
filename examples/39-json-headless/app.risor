@@ -1,4 +1,4 @@
-require(["v0.8", "@json"])
+require(["v0.8", "@json", "@io"])
 
 // ---------------------------------------------------------------------------
 // json.parse — decode a JSON string into Risor values (maps, lists, scalars)
@@ -33,12 +33,12 @@ print("  valid   `{\"a\": 1}` -> " + string(json.valid(`{"a": 1}`)))
 print("  invalid `{bad`      -> " + string(json.valid("{bad")))
 
 // ---------------------------------------------------------------------------
-// json.write then json.read — round-trip through a file
+// io.write + json.format, then io.read + json.parse — file round-trip
 // ---------------------------------------------------------------------------
-print("\n=== json.write + json.read (file round-trip) ===")
+print("\n=== io.write + json.format/parse (file round-trip) ===")
 let path = "record-out.json"
-json.write(path, record, "  ")   // optional indent -> pretty file
-let reloaded = json.read(path)
+io.write(path, json.format(record, "  "))   // optional indent -> pretty file
+let reloaded = json.parse(io.read(path))
 print("  wrote and re-read " + path)
 print("  reloaded.id       = " + string(reloaded["id"]))
 print("  reloaded.nested.ok = " + string(reloaded["nested"]["ok"]))

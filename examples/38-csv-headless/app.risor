@@ -1,4 +1,4 @@
-require(["v0.8", "@csv"])
+require(["v0.8", "@csv", "@io"])
 
 // ---------------------------------------------------------------------------
 // csv.parse — first row becomes headers, returns a list of maps (the default)
@@ -47,11 +47,11 @@ let rows = [["x", "y"], ["1", "2"], ["3", "4"]]
 print(csv.format(rows, {delimiter: ";"}))
 
 // ---------------------------------------------------------------------------
-// csv.write then csv.read — round-trip through a file
+// io.write + csv.format, then io.read + csv.parse — file round-trip
 // ---------------------------------------------------------------------------
-print("=== csv.write + csv.read (file round-trip) ===")
+print("=== io.write + csv.format/parse (file round-trip) ===")
 let path = "people-out.csv"
-csv.write(path, people)
-let reloaded = csv.read(path)
+io.write(path, csv.format(people))
+let reloaded = csv.parse(io.read(path))
 print("  wrote and re-read " + string(len(reloaded)) + " rows from " + path)
 reloaded.each(row => print("    " + row["name"] + ", " + row["age"] + ", " + row["city"]))

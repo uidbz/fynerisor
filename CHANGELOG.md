@@ -222,6 +222,16 @@
   generated image" use case is fully covered by exporting, so the static
   renderer was removed entirely; gonum/plot is no longer a dependency.
 
+- **Modules compose like shell filters (issue #41).** `io` is now the one
+  byte/text stream module: `io.read(path | bytes | io.stdin)`,
+  `io.lines(path | io.stdin)`, `io.write(path | io.stdout | io.stderr, text)`
+  (returns the byte count), and `io.copy(src, dst)` which preserves the
+  source's mode. `json.format(v[, indent])` completes the parse/format
+  transform pair next to `csv.parse`/`csv.format`. So
+  `csv.parse(io.read(p))`, `json.parse(http.get(u).body)`,
+  `csv.parse(exec("query.sh").stdout)` and `io.write(io.stdout, csv.format(rows))`
+  all compose — data is no longer hard-wired to files.
+
 ### Changed
 
 - **Chart engine internals (`gui/chart/`).** New shared engine: `scale.go`
@@ -468,6 +478,16 @@
   list arguments are collected, non-literal arguments are reported in
   the new `Dynamic` field with line numbers instead of evaluated, and
   syntax errors are returned.
+- **Module responsibilities separated (issue #41).** `io` owns byte and
+  text streams; `json` and `csv` are pure string↔value transforms; `os`
+  keeps process/environment info and directory structure. Deprecated for
+  removal in the next release: `os.read_file`/`os.write_file`/`os.copy_file`
+  (use `io.read`/`io.write`/`io.copy`), `os.exec` (fire-and-forget without
+  context; use the `exec` module), `json.read`/`json.write` and
+  `csv.read`/`csv.write` (use `json.parse(io.read(p))` /
+  `io.write(p, json.format(v))`, same for csv), and `io.cp` (now an alias
+  of `io.copy`, which preserves the source mode). All still work as thin
+  fallbacks this release.
 
 ## [0.8.2] - 2026-09-03
 

@@ -51,6 +51,7 @@ Risor language bindings for the Fyne GUI framework.
   - [OnDropped](#ondropped)
   - [SetStdout](#setstdout)
   - [Text Streams in Scripts](#text-streams-in-scripts-issue-42)
+  - [Streams and Transforms Compose](#streams-and-transforms-compose-issue-41)
   - [Error Handling](#error-handling)
   - [Properties](#properties)
 - [Callbacks](#callbacks)
@@ -906,6 +907,32 @@ $ cat data.csv | fynerisor --headless \
 `fynerisor -e '<code>'` runs inline code and leaves stdin as a data
 stream; a script *file* likewise never consumes stdin (`fynerisor -`
 still means "script on stdin").
+
+### Streams and Transforms Compose (issue #41)
+
+`io` is the one byte/text stream module; `json` and `csv` are pure
+transforms. Everything composes like a shell pipeline — data can come
+from (and go to) a file, stdin, stdout, HTTP or a command:
+
+| task | spelling |
+|---|---|
+| read text | `io.read(path)`, `io.read(io.stdin)`, `io.read(some_bytes)` |
+| read lines | `io.lines(path)`, `io.lines(io.stdin)` |
+| write text | `io.write(path, text)`, `io.write(io.stdout, text)` (byte count) |
+| copy file | `io.copy(src, dst)` (preserves mode) |
+| JSON | `json.parse(text)`, `json.format(value[, indent])` |
+| CSV | `csv.parse(text)`, `csv.format(rows)` |
+
+```js
+let rows = csv.parse(io.read("data.csv"))          // file → rows
+let fromCmd = exec("query.sh").stdout              // command → text
+io.write(io.stdout, json.format(rows))             // rows → stdout
+io.write("out.json", json.format(rows))            // rows → file
+```
+
+Deprecated (still work this release): `os.read_file`/`os.write_file`/
+`os.copy_file`/`os.exec`, `json.read`/`json.write`, `csv.read`/`csv.write`
+and `io.cp` — they are thin aliases of the composable forms above.
 
 ### Error Handling
 

@@ -1,8 +1,8 @@
-require(["v0.8", "@csv"])
+require(["v0.8", "@csv", "@io"])
 
 // `file` is supplied per-input by core.EvalBatch — one run per CSV file, each
 // on its own isolated VM. This script is the unit of work that runs in parallel.
-let rows = csv.read(file)
+let rows = csv.parse(io.read(file))
 
 // The final expression is this run's result (a map, returned to Go as
 // map[string]any). Do a little per-file work so the batch has something to do.

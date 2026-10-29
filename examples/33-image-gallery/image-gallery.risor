@@ -1,4 +1,4 @@
-require(["v0.5"])
+require(["v0.5", "@exec"])
 
 // Scan pics directory for image files
 let scanImages = () => {
@@ -102,7 +102,7 @@ table.UpdateCell((col, row, cell) => {
         cell.OnTapped(() => {
             // Open in system viewer
             window.SetStatus("Opening: " + path)
-            os.exec("xdg-open", path)
+            exec(["xdg-open", path])
         })
     }
 })

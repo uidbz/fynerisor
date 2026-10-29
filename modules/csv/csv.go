@@ -12,13 +12,18 @@ import (
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 )
 
-// Module returns the csv module for risor.
+// Module returns the csv module for risor. csv is a pure transform
+// module (issue #41): parse/format move between strings and rows and
+// compose with io/exec (csv.parse(io.read(p)), csv.parse(exec("q").stdout)).
+// read/write remain as thin deprecated sugar over that behaviour.
 func Module() *object.Module {
 	return object.NewBuiltinsModule("csv", map[string]object.Object{
 		"parse":  object.NewBuiltin("csv.parse", parse),
 		"format": object.NewBuiltin("csv.format", format),
-		"read":   object.NewBuiltin("csv.read", read),
-		"write":  object.NewBuiltin("csv.write", write),
+		// Deprecated sugar (issue #41): use csv.parse(io.read(p)) and
+		// io.write(p, csv.format(rows)).
+		"read":  object.NewBuiltin("csv.read", read),
+		"write": object.NewBuiltin("csv.write", write),
 	})
 }
 
