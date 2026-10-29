@@ -194,7 +194,6 @@ let result = rows.map(row => [row["id"], row["name"]])
 - `window.RemoveShortcut(shortcut)` - Remove keyboard shortcut
 - `window.SetMainMenu(mainMenu)` - Set window's main menu bar
 - `window.Title` - Get/set window title (read/write)
-- `window.Do(func)` - Queue a callback on the script's VM goroutine (runs after the current body/event). Not needed for GUI updates: widget methods marshal their own UI work; script code never runs on the UI thread
 
 **widget** - Factory for all widgets
 **container** - Factory for layouts

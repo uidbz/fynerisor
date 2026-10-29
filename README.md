@@ -343,9 +343,9 @@ go(() => {
 There is no "GUI thread juggling" in scripts: every widget method routes
 its own UI work to Fyne's UI thread (`guithread.Do`, issue #49), so
 `label.SetText(x)` is safe to call from anywhere in a script — top level,
-inside an event handler, or inside `go()`. `window.Do(() => ...)` just
-queues the closure onto the script's own VM goroutine; it is **not
-needed for GUI updates** and is rarely needed from scripts at all.
+inside an event handler, or inside `go()`. (The old `window.Do(() => ...)`
+script attribute was removed: it was a redundant alias of `go()`; the
+Go-side `Window.Do(func())` host API is a different thing.)
 
 For genuinely parallel work, use Go: a host global or module that runs
 its own goroutine and reports back through a callback — the callback is

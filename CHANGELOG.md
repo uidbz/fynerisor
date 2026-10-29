@@ -134,6 +134,12 @@
   builtins — `widget.NewButton` and friends — keep the old wording).
   `Tree`'s bespoke `Refresh` arity message is standardized to the shared
   canvas verb.
+- **`window.Do` (script attribute) is removed.** After issue #17 it was a
+  pure alias of `go()`: same callback queue, same ordering — and all
+  script code can already touch widgets from anywhere, since widget
+  methods marshal their own UI work (issue #49). Use `go(fn)`. The
+  Go-side `Window.Do(func())` host API (host goroutine → VM goroutine
+  marshalling) is unchanged and unrelated.
 
 ### Fixed
 
@@ -301,12 +307,6 @@
   `ShowGrid`/`ShowValues`/`SetZoomEnabled`/`ResetZoom`/`SetTitle`/
   `WriteSVG` — is now a generic `addInteractive` registrar over each
   chart type's attr registry). Chart types supply geometry + hit-testing only.
-- **`window.Do` (script attribute) is deprecated in favour of `go()`.**
-  Since #17 they are the same thing: both queue the callback on the run's
-  VM goroutine, in order, after the current body/event. The attr remains
-  for one release (its only nuance: callback errors also set the window
-  status). The Go-side `Window.Do(func())` host API is unaffected — it
-  stays the way host goroutines marshal work onto the VM goroutine.
 - **Introspection everywhere (issue #38).** `Attrs()` is populated for
   every wrapper type (it returned `nil` for 81 of 88), so scripts, tests
   and tooling can enumerate each object's attributes; this is the base
