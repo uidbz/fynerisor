@@ -795,7 +795,7 @@ let statusLabel = widget.NewLabel("Ready")
 let startButton = widget.NewButton("Start Processing", () => {
     statusLabel.Text = "Processing..."
     
-    // Run in background
+    // Defer the work: runs on the script's VM goroutine after the click handler
     go(() => {
         // Simulate long operation
         let result = 0
@@ -803,10 +803,8 @@ let startButton = widget.NewButton("Start Processing", () => {
             result = result + i
         })
         
-        // Update GUI safely from background thread
-        window.Do(() => {
-            statusLabel.Text = sprintf("Complete! Result: %d", result)
-        })
+        // Safe: no window.Do() needed — widget methods marshal their own UI work
+        statusLabel.Text = sprintf("Complete! Result: %d", result)
     })
 })
 

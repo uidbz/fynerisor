@@ -323,32 +323,33 @@ object you can configure and `Show()` repeatedly.
 
 ## Concurrency
 
-### Background Tasks
+### Deferred Work
 
-Use `go()` for long-running operations:
-
-```js
-go(() => {
-    // Heavy computation here
-    print("Processing...")
-})
-```
-
-### GUI Updates from Goroutines
-
-Use `window.Do()` to safely update GUI from background threads:
+`go(() => {...})` queues a closure on the script's own VM goroutine; it
+runs after the current body or event, in call order — **not in parallel**
+(see `docs/CONCURRENCY.md`). The window stays responsive while it runs
+because script code never runs on Fyne's UI thread; later events of the
+same script wait their turn behind it:
 
 ```js
 go(() => {
-    // Do work in background
     let result = processData()
-    
-    // Update GUI safely
-    window.Do(() => {
-        label.SetText(result)
-    })
+    label.SetText(result)   // safe: no wrapper needed, see below
 })
 ```
+
+### GUI Updates Are Always Safe
+
+There is no "GUI thread juggling" in scripts: every widget method routes
+its own UI work to Fyne's UI thread (`guithread.Do`, issue #49), so
+`label.SetText(x)` is safe to call from anywhere in a script — top level,
+inside an event handler, or inside `go()`. `window.Do(() => ...)` just
+queues the closure onto the script's own VM goroutine; it is **not
+needed for GUI updates** and is rarely needed from scripts at all.
+
+For genuinely parallel work, use Go: a host global or module that runs
+its own goroutine and reports back through a callback — the callback is
+queued onto the VM goroutine, so touching widgets from it is safe.
 
 ## Keyboard Shortcuts
 
