@@ -92,12 +92,10 @@ func (obj *Table) Equals(other object.Object) bool {
 }
 
 func (obj *Table) Attrs() []object.AttrSpec {
-	return tableAttrs.
-
-		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
-		Specs()
+	return tableAttrs.Specs()
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Table) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -272,12 +270,10 @@ func (g *ImageCellWrapper) Equals(other object.Object) bool {
 }
 
 func (g *ImageCellWrapper) Attrs() []object.AttrSpec {
-	return imageCellWrapperAttrs.
-
-		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
-		Specs()
+	return imageCellWrapperAttrs.Specs()
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (g *ImageCellWrapper) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, g.setAttrUI)
 }

@@ -172,12 +172,10 @@ func (obj *Icon) Equals(other object.Object) bool {
 }
 
 func (obj *Icon) Attrs() []object.AttrSpec {
-	return iconAttrs.
-
-		// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
-		Specs()
+	return iconAttrs.Specs()
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 var iconAttrs = object.NewAttrRegistry[*Icon](string(IconType))
 
 func (obj *Icon) GetAttr(name string) (object.Object, bool) {

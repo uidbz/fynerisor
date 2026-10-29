@@ -98,12 +98,10 @@ func (obj *PopUpMenu) Equals(other object.Object) bool {
 }
 
 func (obj *PopUpMenu) Attrs() []object.AttrSpec {
-	return popUpMenuAttrs.
-
-		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
-		Specs()
+	return popUpMenuAttrs.Specs()
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *PopUpMenu) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }

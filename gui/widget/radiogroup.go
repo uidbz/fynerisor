@@ -63,12 +63,10 @@ func (obj *RadioGroup) Equals(other object.Object) bool {
 }
 
 func (obj *RadioGroup) Attrs() []object.AttrSpec {
-	return radioGroupAttrs.
-
-		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
-		Specs()
+	return radioGroupAttrs.Specs()
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *RadioGroup) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }

@@ -62,12 +62,10 @@ func (obj *Toolbar) Equals(other object.Object) bool {
 }
 
 func (obj *Toolbar) Attrs() []object.AttrSpec {
-	return toolbarAttrs.
-
-		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
-		Specs()
+	return toolbarAttrs.Specs()
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Toolbar) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -134,7 +132,7 @@ func (obj *ToolbarAction) Equals(other object.Object) bool {
 }
 
 func (obj *ToolbarAction) Attrs() []object.AttrSpec {
-	return nil
+	return toolbarActionAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -151,8 +149,10 @@ func (obj *ToolbarAction) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var toolbarActionAttrs = object.NewAttrRegistry[*ToolbarAction](string(ToolbarActionType))
+
 func (obj *ToolbarAction) getAttrUI(name string) (object.Object, bool) {
-	return nil, false
+	return toolbarActionAttrs.GetAttr(obj, name)
 }
 
 // ToolbarSeparator wraps a toolbar separator
@@ -201,7 +201,7 @@ func (obj *ToolbarSeparator) Equals(other object.Object) bool {
 }
 
 func (obj *ToolbarSeparator) Attrs() []object.AttrSpec {
-	return nil
+	return toolbarSeparatorAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -218,8 +218,10 @@ func (obj *ToolbarSeparator) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var toolbarSeparatorAttrs = object.NewAttrRegistry[*ToolbarSeparator](string(ToolbarSeparatorType))
+
 func (obj *ToolbarSeparator) getAttrUI(name string) (object.Object, bool) {
-	return nil, false
+	return toolbarSeparatorAttrs.GetAttr(obj, name)
 }
 
 // ToolbarSpacer wraps a toolbar spacer
@@ -268,7 +270,7 @@ func (obj *ToolbarSpacer) Equals(other object.Object) bool {
 }
 
 func (obj *ToolbarSpacer) Attrs() []object.AttrSpec {
-	return nil
+	return toolbarSpacerAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -285,8 +287,10 @@ func (obj *ToolbarSpacer) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var toolbarSpacerAttrs = object.NewAttrRegistry[*ToolbarSpacer](string(ToolbarSpacerType))
+
 func (obj *ToolbarSpacer) getAttrUI(name string) (object.Object, bool) {
-	return nil, false
+	return toolbarSpacerAttrs.GetAttr(obj, name)
 }
 func init() {
 	objattrs.Add(toolbarAttrs)

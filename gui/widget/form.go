@@ -54,12 +54,10 @@ func (obj *Form) Equals(other object.Object) bool {
 }
 
 func (obj *Form) Attrs() []object.AttrSpec {
-	return formAttrs.
-
-		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
-		Specs()
+	return formAttrs.Specs()
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Form) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }

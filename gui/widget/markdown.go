@@ -62,12 +62,10 @@ func (obj *Markdown) Equals(other object.Object) bool {
 }
 
 func (obj *Markdown) Attrs() []object.AttrSpec {
-	return markdownAttrs.
-
-		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
-		Specs()
+	return markdownAttrs.Specs()
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Markdown) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }

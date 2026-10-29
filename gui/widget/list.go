@@ -83,12 +83,10 @@ func (obj *List) Equals(other object.Object) bool {
 }
 
 func (obj *List) Attrs() []object.AttrSpec {
-	return listAttrs.
-
-		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
-		Specs()
+	return listAttrs.Specs()
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *List) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }

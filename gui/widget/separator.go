@@ -60,12 +60,10 @@ func (obj *Separator) Equals(other object.Object) bool {
 }
 
 func (obj *Separator) Attrs() []object.AttrSpec {
-	return separatorAttrs.
-
-		// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
-		Specs()
+	return separatorAttrs.Specs()
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 var separatorAttrs = object.NewAttrRegistry[*Separator](string(SeparatorType))
 
 func (obj *Separator) GetAttr(name string) (object.Object, bool) {

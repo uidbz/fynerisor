@@ -61,12 +61,10 @@ func (obj *Activity) Equals(other object.Object) bool {
 }
 
 func (obj *Activity) Attrs() []object.AttrSpec {
-	return activityAttrs.
-
-		// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
-		Specs()
+	return activityAttrs.Specs()
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 var activityAttrs = object.NewAttrRegistry[*Activity](string(ActivityType))
 
 func (obj *Activity) GetAttr(name string) (object.Object, bool) {

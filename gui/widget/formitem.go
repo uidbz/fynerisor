@@ -49,7 +49,7 @@ func (obj *FormItem) Equals(other object.Object) bool {
 }
 
 func (obj *FormItem) Attrs() []object.AttrSpec {
-	return nil
+	return formItemAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -66,8 +66,10 @@ func (obj *FormItem) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var formItemAttrs = object.NewAttrRegistry[*FormItem](string(FormItemType))
+
 func (obj *FormItem) getAttrUI(name string) (object.Object, bool) {
-	return nil, false
+	return formItemAttrs.GetAttr(obj, name)
 }
 
 func NewFormItem(label string, item fyne.CanvasObject) *FormItem {

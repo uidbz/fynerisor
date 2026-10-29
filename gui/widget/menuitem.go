@@ -112,7 +112,7 @@ func (obj *MenuItem) Equals(other object.Object) bool {
 }
 
 func (obj *MenuItem) Attrs() []object.AttrSpec {
-	return nil
+	return menuItemAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -169,27 +169,37 @@ func (obj *MenuItem) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var menuItemAttrs = object.NewAttrRegistry[*MenuItem](string(MenuItemType))
+
+func init() {
+	menuItemAttrs.Define("Label").
+		Doc("The menu item's text.").
+		Getter(func(obj *MenuItem) object.Object { return object.NewString(obj.instance.Label) })
+	menuItemAttrs.Define("Disabled").
+		Doc("Whether the menu item is disabled.").
+		Getter(func(obj *MenuItem) object.Object { return object.NewBool(obj.instance.Disabled) })
+	menuItemAttrs.Define("Checked").
+		Doc("Whether the menu item is checked.").
+		Getter(func(obj *MenuItem) object.Object { return object.NewBool(obj.instance.Checked) })
+	menuItemAttrs.Define("IsSeparator").
+		Doc("Whether the item is a separator line.").
+		Getter(func(obj *MenuItem) object.Object { return object.NewBool(obj.instance.IsSeparator) })
+	menuItemAttrs.Define("Shortcut").
+		Doc("Formatted keyboard shortcut string, or nil.").
+		Getter(func(obj *MenuItem) object.Object {
+			if obj.instance.Shortcut == nil {
+				return object.Nil
+			}
+			// Return string representation
+			if cs, ok := obj.instance.Shortcut.(*desktop.CustomShortcut); ok {
+				return object.NewString(formatShortcut(cs))
+			}
+			return object.Nil
+		})
+}
+
 func (obj *MenuItem) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Label":
-		return object.NewString(obj.instance.Label), true
-	case "Disabled":
-		return object.NewBool(obj.instance.Disabled), true
-	case "Checked":
-		return object.NewBool(obj.instance.Checked), true
-	case "IsSeparator":
-		return object.NewBool(obj.instance.IsSeparator), true
-	case "Shortcut":
-		if obj.instance.Shortcut == nil {
-			return object.Nil, true
-		}
-		// Return string representation
-		if cs, ok := obj.instance.Shortcut.(*desktop.CustomShortcut); ok {
-			return object.NewString(formatShortcut(cs)), true
-		}
-		return object.Nil, true
-	}
-	return nil, false
+	return menuItemAttrs.GetAttr(obj, name)
 }
 
 // parseShortcutString parses strings like "Ctrl+S", "Alt+Shift+A", etc.

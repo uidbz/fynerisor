@@ -62,12 +62,10 @@ func (obj *Log) Equals(other object.Object) bool {
 }
 
 func (obj *Log) Attrs() []object.AttrSpec {
-	return logAttrs.
-
-		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
-		Specs()
+	return logAttrs.Specs()
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Log) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }

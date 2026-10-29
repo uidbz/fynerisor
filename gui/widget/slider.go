@@ -84,12 +84,10 @@ func (obj *Slider) Equals(other object.Object) bool {
 }
 
 func (obj *Slider) Attrs() []object.AttrSpec {
-	return sliderAttrs.
-
-		// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
-		Specs()
+	return sliderAttrs.Specs()
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 var sliderAttrs = object.NewAttrRegistry[*Slider](string(SliderType))
 
 func (obj *Slider) GetAttr(name string) (object.Object, bool) {

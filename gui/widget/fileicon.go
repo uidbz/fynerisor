@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -91,7 +92,7 @@ func (obj *FileIcon) Equals(other object.Object) bool {
 }
 
 func (obj *FileIcon) Attrs() []object.AttrSpec {
-	return nil
+	return fileIconAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -119,60 +120,43 @@ func (obj *FileIcon) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-func (obj *FileIcon) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "URI":
-		if obj.instance.URI == nil {
-			return object.Nil, true
-		}
-		return object.NewString(obj.instance.URI.String()), true
+var fileIconAttrs = object.NewAttrRegistry[*FileIcon](string(FileIconType))
 
-	case "Selected":
-		return object.NewBool(obj.instance.Selected), true
-
-	case "SetURI":
-		return object.NewBuiltin("widget.FileIcon.SetURI", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
+func init() {
+	objattrs.Add(fileIconAttrs)
+	fileIconAttrs.Define("URI").
+		Doc("The file URI shown by the icon, or nil.").
+		Getter(func(obj *FileIcon) object.Object {
+			if obj.instance.URI == nil {
+				return object.Nil
 			}
-
+			return object.NewString(obj.instance.URI.String())
+		})
+	fileIconAttrs.Define("Selected").
+		Doc("Whether the file is selected.").
+		Getter(func(obj *FileIcon) object.Object {
+			return object.NewBool(obj.instance.Selected)
+		})
+	fileIconAttrs.Define("SetURI").
+		Doc("Set the file URI from a string.").
+		Arg("uri").
+		Returns("nil").
+		Impl(func(obj *FileIcon, _ context.Context, args ...object.Object) (object.Object, error) {
 			uriStr, err := object.AsString(args[0])
 			if err != nil {
 				return nil, err
 			}
-
 			uri, err := storage.ParseURI(uriStr)
 			if err != nil {
 				return nil, fmt.Errorf("invalid URI: %w", err)
 			}
-
 			guithread.Do(func() {
 				obj.instance.SetURI(uri)
 			})
+			return object.Nil, nil
+		})
+}
 
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("widget.FileIcon.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.FileIcon.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-
-	return nil, false
+func (obj *FileIcon) getAttrUI(name string) (object.Object, bool) {
+	return fileIconAttrs.GetAttr(obj, name)
 }

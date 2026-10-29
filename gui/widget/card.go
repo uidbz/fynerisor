@@ -61,12 +61,10 @@ func (obj *Card) Equals(other object.Object) bool {
 }
 
 func (obj *Card) Attrs() []object.AttrSpec {
-	return cardAttrs.
-
-		// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
-		Specs()
+	return cardAttrs.Specs()
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 var cardAttrs = object.NewAttrRegistry[*Card](string(CardType))
 
 func (obj *Card) GetAttr(name string) (object.Object, bool) {

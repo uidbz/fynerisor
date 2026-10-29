@@ -73,12 +73,10 @@ func (obj *ProgressBar) Equals(other object.Object) bool {
 }
 
 func (obj *ProgressBar) Attrs() []object.AttrSpec {
-	return progressBarAttrs.
-
-		// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
-		Specs()
+	return progressBarAttrs.Specs()
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 var progressBarAttrs = object.NewAttrRegistry[*ProgressBar](string(ProgressBarType))
 
 func (obj *ProgressBar) GetAttr(name string) (object.Object, bool) {

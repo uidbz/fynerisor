@@ -73,12 +73,10 @@ func (obj *SelectEntry) Equals(other object.Object) bool {
 }
 
 func (obj *SelectEntry) Attrs() []object.AttrSpec {
-	return selectEntryAttrs.
-
-		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
-		Specs()
+	return selectEntryAttrs.Specs()
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *SelectEntry) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }

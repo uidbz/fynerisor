@@ -68,12 +68,10 @@ func (obj *ProgressBarInfinite) Equals(other object.Object) bool {
 }
 
 func (obj *ProgressBarInfinite) Attrs() []object.AttrSpec {
-	return progressBarInfiniteAttrs.
-
-		// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
-		Specs()
+	return progressBarInfiniteAttrs.Specs()
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 var progressBarInfiniteAttrs = object.NewAttrRegistry[*ProgressBarInfinite](string(ProgressBarInfiniteType))
 
 func (obj *ProgressBarInfinite) GetAttr(name string) (object.Object, bool) {

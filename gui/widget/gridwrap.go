@@ -99,12 +99,10 @@ func (obj *GridWrap) Equals(other object.Object) bool {
 }
 
 func (obj *GridWrap) Attrs() []object.AttrSpec {
-	return gridWrapAttrs.
-
-		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
-		Specs()
+	return gridWrapAttrs.Specs()
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *GridWrap) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }

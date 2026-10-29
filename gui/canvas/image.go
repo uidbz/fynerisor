@@ -63,12 +63,10 @@ func (r *Image) Equals(other object.Object) bool {
 }
 
 func (r *Image) Attrs() []object.AttrSpec {
-	return imageAttrs.
-
-		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
-		Specs()
+	return imageAttrs.Specs()
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (r *Image) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, r.setAttrUI)
 }

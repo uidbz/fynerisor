@@ -104,12 +104,10 @@ func (obj *RichText) Equals(other object.Object) bool {
 }
 
 func (obj *RichText) Attrs() []object.AttrSpec {
-	return richTextAttrs.
-
-		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
-		Specs()
+	return richTextAttrs.Specs()
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *RichText) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }

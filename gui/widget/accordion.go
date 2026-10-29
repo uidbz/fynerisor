@@ -63,12 +63,10 @@ func (obj *Accordion) Equals(other object.Object) bool {
 }
 
 func (obj *Accordion) Attrs() []object.AttrSpec {
-	return accordionAttrs.
-
-		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
-		Specs()
+	return accordionAttrs.Specs()
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Accordion) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -149,12 +147,10 @@ func (obj *AccordionItem) Equals(other object.Object) bool {
 }
 
 func (obj *AccordionItem) Attrs() []object.AttrSpec {
-	return accordionItemAttrs.
-
-		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
-		Specs()
+	return accordionItemAttrs.Specs()
 }
 
+// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *AccordionItem) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }

@@ -71,12 +71,10 @@ func (obj *Hyperlink) Equals(other object.Object) bool {
 }
 
 func (obj *Hyperlink) Attrs() []object.AttrSpec {
-	return hyperlinkAttrs.
-
-		// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
-		Specs()
+	return hyperlinkAttrs.Specs()
 }
 
+// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 var hyperlinkAttrs = object.NewAttrRegistry[*Hyperlink](string(HyperlinkType))
 
 func (obj *Hyperlink) GetAttr(name string) (object.Object, bool) {
