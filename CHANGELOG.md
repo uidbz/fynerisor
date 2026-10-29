@@ -420,6 +420,19 @@
   tuning only. The CLI passes its `args` global and `--globals` JSON
   per key through `WithGlobal`, making them genuinely visible to
   imported modules.
+- **The `fynerisor` CLI is a composable tool (issue #43).** New
+  subcommands: `check` (compile-only, no execution), `analyze
+  [--json]` (requirements/imports as text or JSON), and explicit
+  `run`; `fynerisor script.risor` stays an alias. Exit codes are 0
+  success / 1 script error / 2 usage error; script errors print as
+  `file:line:col: message` on stderr. `run` gained `--timeout`,
+  `--max-steps`, and `--core` — a Fyne-free headless runtime wired to
+  the process streams, so `cat data.csv | fynerisor run --core -e ...
+  | jq` needs no test driver; `--headless` keeps the GUI-on-test-driver
+  semantics for widget scripts, and GUI-global usage is auto-detected
+  so `--headless` picks the core runtime for plain scripts (use
+  `--gui` to pin). `fynerisor-cli` is no longer referenced in docs;
+  the binary is `fynerisor`.
 - **`AnalyzeRequirements` is a real parser walk (issue #23).** It used
   to Eval each line starting with `require(`/`import(`: it missed
   `let m = import("m.risor")` and multi-line `require([...])`, could

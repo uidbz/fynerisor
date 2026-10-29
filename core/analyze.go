@@ -126,6 +126,28 @@ func literalRequirementStrings(arg ast.Node) ([]string, bool) {
 	}
 }
 
+// UsesGlobals reports whether the script references any of the given
+// names as a bare identifier (issue #43: the CLI uses it to decide
+// whether a script can run through the core runtime; a parse error is
+// returned so callers can surface it). String literals and comments do
+// not count.
+func UsesGlobals(script string, names ...string) (bool, error) {
+	prog, err := parser.Parse(context.Background(), script, nil)
+	if err != nil {
+		return false, fmt.Errorf("analyze: %w", err)
+	}
+	want := make(map[string]bool, len(names))
+	for _, n := range names {
+		want[n] = true
+	}
+	for node := range ast.Preorder(prog) {
+		if id, ok := node.(*ast.Ident); ok && want[id.Name] {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // addRequirement records one raw requirement string, splitting it into
 // the version/module fields the struct exposes.
 func addRequirement(reqs *Requirements, req string) {

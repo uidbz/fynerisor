@@ -136,7 +136,7 @@ fynerisor enables building cross-platform desktop applications using Risor scrip
 - **Standard Modules**: Time, HTTP, OS, Strings, Filepath modules included
 - **Code Organization**: ImportScript() for splitting code across files and URLs
 - **Cross-platform**: Works on Windows, Linux, and macOS
-- **CLI Tool**: `fynerisor-cli` for running scripts directly with watch mode, stdin, headless testing
+- **CLI Tool**: `fynerisor` with `run`/`check`/`analyze` subcommands, watch mode, stdin, headless core/GUI modes
 - **See [WIDGET_STATUS.md](WIDGET_STATUS.md)** for complete widget implementation status
 
 ## Installation
@@ -1031,34 +1031,52 @@ filepath.abs(path)
 
 ## CLI Tool
 
-The `fynerisor-cli` command runs Risor scripts directly:
+The `fynerisor` command runs Risor scripts. It has small, composable
+subcommands (issue #43) plus a shorthand that defaults to `run`:
 
 ```bash
-# Run a script
-fynerisor-cli script.risor
-
-# With options
-fynerisor-cli --title "My App" --width 1024 --height 768 script.risor
-
-# Watch mode (auto-reload on file change)
-fynerisor-cli --watch script.risor
-
-# Verbose mode (show status messages)
-fynerisor-cli --verbose script.risor
-
-# Headless mode (for testing)
-fynerisor-cli --headless script.risor
-
-# Read from stdin
-cat script.risor | fynerisor-cli -
-
-# Pass script arguments
-fynerisor-cli script.risor arg1 arg2
-# Access in script via: args[0], args[1]
-
-# Custom globals from JSON file
-fynerisor-cli --globals data.json script.risor
+fynerisor run     [flags] script.risor [args...]   # run (GUI runtime)
+fynerisor check           script.risor...          # compile only, no execute
+fynerisor analyze [--json] script.risor            # requirements + imports
+fynerisor                 script.risor [args...]   # alias for `run`
 ```
+
+**Exit codes:** `0` success, `1` script error, `2` usage error. Errors
+are printed as `file:line:col: message` on stderr, so editors, `grep`
+and CI annotations can consume them.
+
+### run
+
+```bash
+fynerisor run --core script.risor              # headless, no Fyne at all
+fynerisor run --headless --gui script.risor    # GUI runtime via the test driver
+fynerisor run --timeout 5s --max-steps 100000 script.risor
+fynerisor run --title "My App" --width 1024 --height 768 script.risor
+fynerisor run --watch script.risor             # auto-reload on save
+fynerisor run --globals data.json script.risor arg1 arg2
+cat script.risor | fynerisor run -
+```
+
+`--core` runs the script through the core runtime with no Fyne
+dependency: faster startup and the process's stdin/stdout/stderr are
+wired to `io.stdin/stdout/stderr`, so scripts compose as filters. A
+script that uses GUI globals (`widget`, `window`, …) or `require("@gui")`
+is refused under `--core`; use the GUI runtime for it. `--headless` (the
+GUI runtime on Fyne's test driver) is for testing scripts that build
+widgets; `--gui` pins the GUI runtime explicitly.
+
+### check and analyze
+
+```bash
+fynerisor check script.risor lib.risor   # exit 1 + file:line:col: msg on errors
+fynerisor analyze script.risor           # version, modules, imports
+fynerisor analyze --json script.risor    # machine-readable
+```
+
+`analyze` reports a script's `require()`/`import()` call sites without
+executing it: `imports: utils.risor; modules: sql, http; version >=v0.2`.
+Non-literal arguments are listed as `dynamic` (with line numbers) rather
+than evaluated (issue #23).
 
 ## Examples
 

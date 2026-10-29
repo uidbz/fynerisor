@@ -183,6 +183,15 @@ func (cb *Context) runContext(ctx context.Context) context.Context {
 	return ctx
 }
 
+// CompileScript compiles the given script against this Context's
+// environment (globals, modules) without executing it (issue #43:
+// `fynerisor check`). The returned error carries the parse/compile
+// diagnostics.
+func (cb *Context) CompileScript(script string) error {
+	_, err := risor.Compile(context.Background(), script, cb.globals...)
+	return err
+}
+
 // Stdin/Stdout/Stderr implement modules/io.StreamSource (issue #42):
 // io.stdin, io.stdout/io.stderr and print/eprint follow this Context's
 // configured streams, with the process streams as defaults.

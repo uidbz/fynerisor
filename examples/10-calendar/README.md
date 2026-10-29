@@ -23,7 +23,7 @@ Or use the CLI:
 
 ```bash
 cd examples/10-calendar
-../../cmd/fynerisor/fynerisor-cli app.risor
+fynerisor app.risor
 ```
 
 ## Key Concepts
