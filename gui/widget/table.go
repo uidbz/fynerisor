@@ -11,6 +11,7 @@ import (
 	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 	"github.com/uidbz/fynerisor/gui/vmexec"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -91,10 +92,12 @@ func (obj *Table) Equals(other object.Object) bool {
 }
 
 func (obj *Table) Attrs() []object.AttrSpec {
-	return nil
+	return tableAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		Specs()
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Table) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -108,267 +111,23 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var tableAttrs = object.NewAttrRegistry[*Table](string(TableType))
+
 func (obj *Table) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Columns":
-		return object.NewBuiltin("widget.Table.Columns", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
-			}
-			cb, err := vmexec.NewCallback(ctx, "widget.Table.Columns", args[0])
-			if err != nil {
-				return nil, err
-			}
-			cb.RefreshWhenBusy(obj.refresh)
+	return tableAttrs.GetAttr(obj, name)
 
-			obj.Columns = func() []string {
-				o, err := cb.Call()
-				if err != nil {
-					cb.Report(err)
-					return obj.cached(func() any { return obj.lastColumns }).([]string)
-				}
-				s, err2 := object.AsStringSlice(o)
-				if err2 != nil {
-					cb.Report(fmt.Errorf("expected []string: %w", err2))
-					return obj.cached(func() any { return obj.lastColumns }).([]string)
-				}
-				obj.setCache(func() { obj.lastColumns = s })
-				return s
-			}
-			return object.Nil, nil
-		}), true
+	// Event: queued on the script's VM goroutine.
 
-	case "HeaderLevels":
-		return object.NewBuiltin("widget.Table.HeaderLevels", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
-			}
-			cb, err := vmexec.NewCallback(ctx, "widget.Table.HeaderLevels", args[0])
-			if err != nil {
-				return nil, err
-			}
-			cb.RefreshWhenBusy(obj.refresh)
+	// Getter: Fyne calls it synchronously on the UI thread.
 
-			obj.instance.HeaderLevels = func() [][]string {
-				o, err := cb.Call()
-				if err != nil {
-					cb.Report(err)
-					return obj.cached(func() any { return obj.lastHeaderLevels }).([][]string)
-				}
-				rows, err2 := stringRowsFromObject(o)
-				if err2 != nil {
-					cb.Report(fmt.Errorf("expected list of lists of strings: %w", err2))
-					return obj.cached(func() any { return obj.lastHeaderLevels }).([][]string)
-				}
-				obj.setCache(func() { obj.lastHeaderLevels = rows })
-				return rows
-			}
-			return object.Nil, nil
-		}), true
+	// VM busy or run stopped: nil tells the flex table
+	// to leave the cell empty and ask again on a later
+	// refresh; a placeholder here would be pooled and
+	// then updated forever in place of the script's
+	// widget (issue #50).
 
-	case "RowCount":
-		return object.NewBuiltin("widget.Table.RowCount", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
-			}
-			cb, err := vmexec.NewCallback(ctx, "widget.Table.RowCount", args[0])
-			if err != nil {
-				return nil, err
-			}
-			cb.RefreshWhenBusy(obj.refresh)
+	// Getter-like: Fyne calls it synchronously on the UI thread.
 
-			obj.instance.RowCount = func() int {
-				o, err := cb.Call()
-				if err != nil {
-					cb.Report(err)
-					return obj.cached(func() any { return obj.lastRowCount }).(int)
-				}
-				s, err2 := object.AsInt(o)
-				if err2 != nil {
-					cb.Report(fmt.Errorf("expected int: %w", err2))
-					return obj.cached(func() any { return obj.lastRowCount }).(int)
-				}
-				obj.setCache(func() { obj.lastRowCount = int(s) })
-				return obj.cached(func() any { return obj.lastRowCount }).(int)
-			}
-			return object.Nil, nil
-		}), true
-
-	case "Refresh":
-		return object.NewBuiltin("widget.Table.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() { obj.instance.Refresh() })
-			return object.Nil, nil
-		}), true
-
-	case "SetColumnWidth":
-		return object.NewBuiltin("widget.Table.SetColumWidth", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			column, err := object.AsInt(args[0])
-			if err != nil {
-				return nil, err
-			}
-			width, err := object.AsFloat(args[1])
-			if err != nil {
-				return nil, err
-			}
-			guithread.Do(func() { obj.instance.SetColumnWidth(int(column), float32(width)) })
-			return object.Nil, nil
-		}), true
-
-	case "SetOnClick":
-		return object.NewBuiltin("widget.Table.SetOnClick", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
-			}
-			cb, err := vmexec.NewCallback(ctx, "widget.Table.SetOnClick", args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			// Event: queued on the script's VM goroutine.
-			obj.instance.SetOnClick(func(row, col int) {
-				cb.Fire(object.NewInt(int64(row)), object.NewInt(int64(col)))
-			})
-			return object.Nil, nil
-		}), true
-
-	case "Data":
-		return object.NewBuiltin("widget.Table.Data", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
-			}
-			cb, err := vmexec.NewCallback(ctx, "widget.Table.Data", args[0])
-			if err != nil {
-				return nil, err
-			}
-			cb.RefreshWhenBusy(obj.refresh)
-
-			obj.instance.Data = func(offset, limit int) *tablewidget.TableData {
-				lastOrEmpty := func() *tablewidget.TableData {
-					if last := obj.cached(func() any { return obj.lastData }).(*tablewidget.TableData); last != nil {
-						return last
-					}
-					return tablewidget.NewTableData(obj.instance.Title)
-				}
-				o, err := cb.Call(object.NewInt(int64(offset)), object.NewInt(int64(limit)))
-				if err != nil {
-					cb.Report(err)
-					return lastOrEmpty()
-				}
-				outer, err2 := object.AsList(o)
-				if err2 != nil {
-					cb.Report(fmt.Errorf("expected list: %w", err2))
-					return lastOrEmpty()
-				}
-				td := tablewidget.NewTableData(obj.instance.Title)
-				for _, inner := range outer.Value() {
-					switch inner := inner.(type) {
-					case *object.List:
-						td.AddStringRow(obj.Columns(), stringsFromList(inner))
-					default:
-						cb.Report(fmt.Errorf("expected list of rows, got row of type %s", inner.Type()))
-						return lastOrEmpty()
-					}
-				}
-				obj.setCache(func() { obj.lastData = td })
-				return td
-			}
-			return object.Nil, nil
-		}), true
-
-	case "CreateCell":
-		return object.NewBuiltin("widget.Table.CreateCell", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			cb, err := vmexec.NewCallback(ctx, "widget.Table.CreateCell", args[0])
-			if err != nil {
-				return nil, err
-			}
-			cb.RefreshWhenBusy(obj.refresh)
-
-			createFunc := func(col, row int) fyne.CanvasObject {
-				// Getter: Fyne calls it synchronously on the UI thread.
-				result, err := cb.Call(object.NewInt(int64(col)), object.NewInt(int64(row)))
-				if err != nil {
-					if vmexec.Quiet(err) {
-						// VM busy or run stopped: nil tells the flex table
-						// to leave the cell empty and ask again on a later
-						// refresh; a placeholder here would be pooled and
-						// then updated forever in place of the script's
-						// widget (issue #50).
-						return nil
-					}
-					cb.Report(err)
-					return widget.NewLabel("")
-				}
-				if widgetObj, ok := result.(interface{ CanvasObject() fyne.CanvasObject }); ok {
-					return widgetObj.CanvasObject()
-				}
-				if errObj, ok := result.(*object.Error); ok {
-					cb.Report(errObj.Value())
-				} else {
-					cb.Report(fmt.Errorf("result does not implement CanvasObject() - got type: %T", result))
-				}
-				return widget.NewLabel("")
-			}
-
-			guithread.Do(func() {
-				obj.instance.GetFlexTable().SetCreateCell(createFunc)
-			})
-			return object.Nil, nil
-		}), true
-
-	case "UpdateCell":
-		return object.NewBuiltin("widget.Table.UpdateCell", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			cb, err := vmexec.NewCallback(ctx, "widget.Table.UpdateCell", args[0])
-			if err != nil {
-				return nil, err
-			}
-			cb.RefreshWhenBusy(obj.refresh)
-
-			updateFunc := func(col, row int, canvasObj fyne.CanvasObject) {
-				// Getter-like: Fyne calls it synchronously on the UI thread.
-				_, err := cb.Call(object.NewInt(int64(col)), object.NewInt(int64(row)), wrapCanvasObjectTable(canvasObj))
-				cb.Report(err)
-			}
-
-			guithread.Do(func() {
-				obj.instance.GetFlexTable().SetUpdateCell(updateFunc)
-			})
-			return object.Nil, nil
-		}), true
-
-	case "Hide":
-		return object.NewBuiltin("widget.Table.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.Table.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
 }
 
 // stringRowsFromObject converts a Risor list of string lists — the shape tie's
@@ -513,10 +272,12 @@ func (g *ImageCellWrapper) Equals(other object.Object) bool {
 }
 
 func (g *ImageCellWrapper) Attrs() []object.AttrSpec {
-	return nil
+	return imageCellWrapperAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		Specs()
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (g *ImageCellWrapper) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, g.setAttrUI)
 }
@@ -530,37 +291,13 @@ func (g *ImageCellWrapper) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, g.getAttrUI)
 }
 
+var imageCellWrapperAttrs = object.NewAttrRegistry[*ImageCellWrapper]("canvas.Image")
+
 func (g *ImageCellWrapper) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "SetImageFromURI":
-		return object.NewBuiltin("canvas.Image.SetImageFromURI", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			path, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
+	return imageCellWrapperAttrs.GetAttr(g, name)
 
-			uri, err := storage.ParseURI(path)
-			if err != nil {
-				return nil, object.NewError(err)
-			}
+	// Update the existing image instead of creating a new one
 
-			guithread.Do(func() {
-				// Update the existing image instead of creating a new one
-				newImg := canvas.NewImageFromURI(uri)
-				newImg.FillMode = canvas.ImageFillOriginal
-				g.image.Resource = newImg.Resource
-				g.image.File = newImg.File
-				g.image.FillMode = newImg.FillMode
-				g.image.Refresh()
-			})
-
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
 }
 
 // GenericCanvasObjectTable is a minimal wrapper for canvas objects in tables
@@ -621,4 +358,293 @@ func (g *GenericCanvasObjectTable) GetAttr(name string) (object.Object, bool) {
 
 func (g *GenericCanvasObjectTable) getAttrUI(name string) (object.Object, bool) {
 	return nil, false
+}
+func init() {
+	objattrs.Add(tableAttrs)
+	tableAttrs.Define("Columns").Args("arg1").Returns("nil").Impl(func(obj *Table, ctx context.Context, args ...object.Object) (object.
+		Object, error) {
+		cb, err := vmexec.NewCallback(ctx,
+			"widget.Table.Columns", args[0])
+		if err !=
+			nil {
+			return nil, err
+		}
+		cb.RefreshWhenBusy(obj.refresh)
+		obj.Columns = func() []string {
+			o, err := cb.Call()
+			if err != nil {
+
+				cb.Report(err)
+				return obj.cached(func() any {
+					return obj.lastColumns
+				}).([]string)
+			}
+			s, err2 := object.
+				AsStringSlice(o)
+			if err2 != nil {
+				cb.Report(fmt.Errorf("expected []string: %w",
+					err2))
+				return obj.cached(func() any {
+					return obj.lastColumns
+
+				}).([]string)
+			}
+			obj.setCache(func() { obj.lastColumns = s })
+			return s
+		}
+		return object.Nil, nil
+	})
+	tableAttrs.Define("HeaderLevels").Args("arg1").Returns("nil").Impl(func(obj *Table, ctx context.Context, args ...object.Object) (object.Object, error) {
+		cb, err := vmexec.NewCallback(ctx, "widget.Table.HeaderLevels", args[0])
+		if err != nil {
+			return nil, err
+		}
+		cb.
+			RefreshWhenBusy(obj.refresh)
+		obj.instance.HeaderLevels = func() [][]string {
+			o, err := cb.
+				Call()
+			if err != nil {
+				cb.Report(err)
+				return obj.
+					cached(func() any {
+						return obj.lastHeaderLevels
+					},
+					).([][]string)
+			}
+			rows, err2 := stringRowsFromObject(o)
+			if err2 !=
+				nil {
+				cb.Report(fmt.Errorf("expected list of lists of strings: %w",
+
+					err2))
+				return obj.cached(func() any { return obj.lastHeaderLevels }).([][]string)
+			}
+			obj.setCache(func() { obj.lastHeaderLevels = rows })
+			return rows
+		}
+		return object.Nil, nil
+	})
+	tableAttrs.Define("RowCount").Args("arg1").
+		Returns(
+			"nil",
+		).Impl(func(obj *Table, ctx context.Context, args ...object.Object) (object.
+		Object, error) {
+		cb,
+			err := vmexec.NewCallback(
+			ctx, "widget.Table.RowCount", args[0])
+		if err !=
+			nil {
+			return nil, err
+		}
+		cb.RefreshWhenBusy(obj.refresh)
+		obj.instance.RowCount = func() int {
+			o, err := cb.Call()
+			if err !=
+				nil {
+				cb.Report(err)
+				return obj.cached(func() any { return obj.lastRowCount }).(int)
+			}
+			s, err2 :=
+
+				object.
+					AsInt(o)
+			if err2 != nil {
+				cb.Report(
+					fmt.
+						Errorf("expected int: %w",
+							err2))
+				return obj.cached(func() any {
+					return obj.
+						lastRowCount
+				}).(int)
+
+			}
+			obj.setCache(func() { obj.lastRowCount = int(s) })
+			return obj.cached(func() any { return obj.lastRowCount }).(int)
+		}
+		return object.Nil, nil
+	})
+	tableAttrs.Define("SetColumnWidth").
+		Args("arg1",
+			"arg2",
+		).Returns("nil").
+		Impl(func(obj *Table, ctx context.Context, args ...object.
+			Object) (object.Object,
+			error) {
+			column, err := object.
+				AsInt(args[0])
+			if err != nil {
+				return nil, err
+			}
+			width, err := object.AsFloat(args[1])
+			if err != nil {
+				return nil, err
+			}
+			guithread.
+				Do(func() {
+					obj.instance.SetColumnWidth(int(column), float32(width))
+				})
+			return object.Nil,
+				nil
+		})
+	tableAttrs.Define("SetOnClick").Args("arg1").Returns("nil").Impl(func(obj *Table, ctx context.Context, args ...object.Object) (object.Object, error) {
+		cb,
+			err := vmexec.NewCallback(ctx, "widget.Table.SetOnClick", args[0])
+		if err != nil {
+			return nil, err
+		}
+		obj.instance.
+			SetOnClick(func(row, col int) {
+				cb.Fire(
+					object.NewInt(int64(row)), object.NewInt(int64(col)))
+			})
+		return object.Nil, nil
+	})
+	tableAttrs.Define("Data").
+		Args("arg1").Returns("nil").Impl(func(obj *Table, ctx context.Context,
+		args ...object.Object) (object.
+		Object, error) {
+		cb, err := vmexec.NewCallback(ctx,
+			"widget.Table.Data", args[0])
+		if err != nil {
+			return nil, err
+		}
+		cb.RefreshWhenBusy(obj.refresh)
+		obj.instance.Data = func(offset,
+			limit int) *tablewidget.TableData {
+			lastOrEmpty := func() *tablewidget.TableData {
+				if last := obj.
+					cached(func() any { return obj.lastData }).(*tablewidget.
+					TableData); last != nil {
+					return last
+				}
+				return tablewidget.
+					NewTableData(obj.instance.
+						Title)
+			}
+			o, err := cb.Call(object.NewInt(int64(offset)), object.NewInt(int64(limit)))
+			if err != nil {
+				cb.Report(err)
+				return lastOrEmpty()
+			}
+			outer, err2 := object.AsList(o)
+			if err2 != nil {
+				cb.
+					Report(fmt.Errorf("expected list: %w", err2))
+				return lastOrEmpty()
+			}
+			td := tablewidget.NewTableData(obj.instance.Title)
+			for _, inner := range outer.Value() {
+				switch inner := inner.(type) {
+				case *object.List:
+					td.AddStringRow(obj.Columns(),
+						stringsFromList(inner))
+				default:
+					cb.Report(fmt.Errorf("expected list of rows, got row of type %s",
+						inner.Type()))
+					return lastOrEmpty()
+				}
+			}
+			obj.setCache(func() {
+				obj.lastData = td
+			})
+			return td
+		}
+		return object.Nil,
+			nil
+	})
+	tableAttrs.Define("CreateCell").Args("arg1").Returns("nil").Impl(func(obj *Table, ctx context.Context, args ...object.Object) (object.Object, error) {
+		cb,
+			err := vmexec.NewCallback(ctx, "widget.Table.CreateCell", args[0])
+		if err != nil {
+			return nil, err
+		}
+		cb.RefreshWhenBusy(obj.refresh)
+		createFunc := func(col,
+			row int) fyne.CanvasObject {
+			result, err := cb.Call(object.NewInt(int64(col)), object.NewInt(int64(row)))
+			if err != nil {
+				if vmexec.Quiet(err) {
+
+					return nil
+				}
+				cb.Report(err)
+				return widget.
+					NewLabel("")
+			}
+			if widgetObj, ok := result.(interface {
+				CanvasObject() fyne.CanvasObject
+			}); ok {
+				return widgetObj.CanvasObject()
+			}
+			if errObj, ok := result.(*object.Error); ok {
+				cb.Report(errObj.Value())
+			} else {
+				cb.Report(fmt.Errorf("result does not implement CanvasObject() - got type: %T",
+					result))
+			}
+			return widget.
+				NewLabel("")
+		}
+		guithread.Do(func() {
+			obj.instance.GetFlexTable().SetCreateCell(
+				createFunc)
+		})
+		return object.Nil, nil
+	})
+	tableAttrs.Define("UpdateCell").Args("arg1").Returns("nil").Impl(func(obj *Table, ctx context.Context, args ...object.Object) (object.Object, error) {
+		cb,
+			err := vmexec.NewCallback(ctx, "widget.Table.UpdateCell", args[0])
+		if err != nil {
+			return nil, err
+		}
+		cb.RefreshWhenBusy(obj.refresh)
+		updateFunc := func(col,
+			row int, canvasObj fyne.CanvasObject) {
+			_,
+				err := cb.Call(object.NewInt(int64(col)), object.NewInt(int64(row)), wrapCanvasObjectTable(canvasObj))
+			cb.
+				Report(err)
+		}
+		guithread.Do(func() {
+			obj.instance.
+				GetFlexTable().
+				SetUpdateCell(updateFunc)
+		})
+		return object.Nil, nil
+	})
+}
+func init() {
+	objattrs.Add(imageCellWrapperAttrs)
+	imageCellWrapperAttrs.
+		Define("SetImageFromURI").Args("arg1").Returns("nil").Impl(func(g *ImageCellWrapper, ctx context.Context, args ...object.Object) (object.
+		Object, error) {
+		path,
+			err := object.AsString(args[0])
+		if err !=
+			nil {
+			return nil, err
+		}
+		uri, err := storage.
+			ParseURI(path)
+		if err != nil {
+			return nil,
+				object.NewError(err)
+		}
+		guithread.Do(func() {
+			newImg := canvas.NewImageFromURI(uri)
+			newImg.FillMode = canvas.ImageFillOriginal
+			g.image.Resource =
+				newImg.
+					Resource
+			g.image.File = newImg.File
+			g.
+				image.
+				FillMode = newImg.
+				FillMode
+			g.image.Refresh()
+		})
+		return object.Nil, nil
+	})
 }

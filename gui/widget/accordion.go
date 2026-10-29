@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -62,10 +63,12 @@ func (obj *Accordion) Equals(other object.Object) bool {
 }
 
 func (obj *Accordion) Attrs() []object.AttrSpec {
-	return nil
+	return accordionAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		Specs()
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Accordion) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -92,129 +95,11 @@ func (obj *Accordion) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var accordionAttrs = object.NewAttrRegistry[*Accordion](string(AccordionType))
+
 func (obj *Accordion) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "MultiOpen":
-		return object.NewBool(obj.instance.MultiOpen), true
+	return accordionAttrs.GetAttr(obj, name)
 
-	case "Append":
-		return object.NewBuiltin("Accordion.Append", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			item, ok := args[0].Interface().(*widget.AccordionItem)
-			if !ok {
-				return nil, object.Errorf("argument error: expected AccordionItem, got %s", args[0].Type())
-			}
-			guithread.Do(func() {
-				obj.instance.Append(item)
-			})
-			return object.Nil, nil
-		}), true
-
-	case "Remove":
-		return object.NewBuiltin("Accordion.Remove", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			item, ok := args[0].Interface().(*widget.AccordionItem)
-			if !ok {
-				return nil, object.Errorf("argument error: expected AccordionItem, got %s", args[0].Type())
-			}
-			guithread.Do(func() {
-				obj.instance.Remove(item)
-			})
-			return object.Nil, nil
-		}), true
-
-	case "RemoveIndex":
-		return object.NewBuiltin("Accordion.RemoveIndex", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			index, err := object.AsInt(args[0])
-			if err != nil {
-				return nil, err
-			}
-			guithread.Do(func() {
-				obj.instance.RemoveIndex(int(index))
-			})
-			return object.Nil, nil
-		}), true
-
-	case "Open":
-		return object.NewBuiltin("Accordion.Open", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			index, err := object.AsInt(args[0])
-			if err != nil {
-				return nil, err
-			}
-			guithread.Do(func() {
-				obj.instance.Open(int(index))
-			})
-			return object.Nil, nil
-		}), true
-
-	case "Close":
-		return object.NewBuiltin("Accordion.Close", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			index, err := object.AsInt(args[0])
-			if err != nil {
-				return nil, err
-			}
-			guithread.Do(func() {
-				obj.instance.Close(int(index))
-			})
-			return object.Nil, nil
-		}), true
-
-	case "CloseAll":
-		return object.NewBuiltin("Accordion.CloseAll", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.CloseAll()
-			})
-			return object.Nil, nil
-		}), true
-
-	case "Refresh":
-		return object.NewBuiltin("Accordion.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Refresh()
-			})
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("widget.Accordion.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.Accordion.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
 }
 
 // AccordionItem wraps a Fyne AccordionItem
@@ -264,10 +149,12 @@ func (obj *AccordionItem) Equals(other object.Object) bool {
 }
 
 func (obj *AccordionItem) Attrs() []object.AttrSpec {
-	return nil
+	return accordionItemAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		Specs()
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *AccordionItem) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -298,12 +185,109 @@ func (obj *AccordionItem) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var accordionItemAttrs = object.NewAttrRegistry[*AccordionItem](string(AccordionItemType))
+
 func (obj *AccordionItem) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Title":
-		return object.NewString(obj.instance.Title), true
-	case "Open":
-		return object.NewBool(obj.instance.Open), true
-	}
-	return nil, false
+	return accordionItemAttrs.GetAttr(obj, name)
+
+}
+func init() {
+	objattrs.Add(accordionAttrs)
+	accordionAttrs.
+		Define("MultiOpen").Getter(func(obj *Accordion) object.Object {
+		return object.
+			NewBool(obj.instance.MultiOpen)
+	})
+	accordionAttrs.
+		Define("Append").Args("arg1").
+		Returns("nil").Impl(func(obj *Accordion, ctx context.Context, args ...object.Object) (object.
+		Object, error) {
+		item, ok := args[0].Interface().(*widget.AccordionItem)
+		if !ok {
+			return nil, object.Errorf("argument error: expected AccordionItem, got %s",
+				args[0].Type())
+		}
+		guithread.Do(func() {
+			obj.
+				instance.Append(item)
+		})
+		return object.Nil, nil
+	})
+	accordionAttrs.
+		Define("Remove").Args("arg1").
+		Returns("nil").Impl(func(obj *Accordion, ctx context.Context, args ...object.Object) (object.
+		Object, error) {
+		item, ok := args[0].Interface().(*widget.AccordionItem)
+		if !ok {
+			return nil, object.Errorf("argument error: expected AccordionItem, got %s",
+				args[0].Type())
+		}
+		guithread.Do(func() {
+			obj.
+				instance.Remove(item)
+		})
+		return object.Nil, nil
+	})
+	accordionAttrs.
+		Define("RemoveIndex").
+		Args("arg1").Returns("nil").Impl(func(obj *Accordion, ctx context.Context, args ...object.Object) (object.Object, error) {
+		index, err := object.AsInt(args[0])
+		if err != nil {
+			return nil,
+				err
+
+		}
+		guithread.Do(func() {
+			obj.instance.RemoveIndex(int(index))
+		})
+		return object.Nil, nil
+	})
+	accordionAttrs.
+		Define("Open").Args("arg1").
+		Returns("nil").Impl(
+		func(obj *Accordion, ctx context.
+			Context, args ...object.Object) (object.
+			Object, error) {
+			index, err := object.AsInt(args[0])
+			if err != nil {
+				return nil, err
+			}
+			guithread.
+				Do(func() { obj.instance.Open(int(index)) })
+			return object.Nil, nil
+		})
+	accordionAttrs.
+		Define("Close").Args(
+		"arg1").
+		Returns("nil").Impl(func(obj *Accordion, ctx context.Context, args ...object.Object) (object.
+		Object, error) {
+		index, err := object.AsInt(args[0])
+		if err != nil {
+			return nil, err
+		}
+		guithread.
+			Do(func() { obj.instance.Close(int(index)) })
+		return object.Nil, nil
+	})
+	accordionAttrs.
+		Define("CloseAll").Args().Returns("nil").Impl(func(obj *Accordion, ctx context.
+		Context, args ...object.Object) (object.
+		Object, error) {
+		guithread.Do(func() {
+			obj.instance.
+				CloseAll()
+		})
+		return object.Nil, nil
+	},
+	)
+}
+func init() {
+	accordionItemAttrs.
+		Define("Title").Getter(func(obj *AccordionItem) object.Object {
+		return object.NewString(obj.instance.Title)
+	})
+	accordionItemAttrs.
+		Define("Open").Getter(func(obj *AccordionItem) object.Object {
+		return object.NewBool(obj.instance.Open)
+	})
 }

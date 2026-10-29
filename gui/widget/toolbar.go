@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -61,10 +62,12 @@ func (obj *Toolbar) Equals(other object.Object) bool {
 }
 
 func (obj *Toolbar) Attrs() []object.AttrSpec {
-	return nil
+	return toolbarAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		Specs()
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Toolbar) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -78,70 +81,11 @@ func (obj *Toolbar) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var toolbarAttrs = object.NewAttrRegistry[*Toolbar](string(ToolbarType))
+
 func (obj *Toolbar) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Append":
-		return object.NewBuiltin("Toolbar.Append", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			item, ok := args[0].Interface().(widget.ToolbarItem)
-			if !ok {
-				return nil, object.Errorf("argument error: expected ToolbarItem, got %s", args[0].Type())
-			}
-			guithread.Do(func() {
-				obj.instance.Append(item)
-			})
-			return object.Nil, nil
-		}), true
+	return toolbarAttrs.GetAttr(obj, name)
 
-	case "Prepend":
-		return object.NewBuiltin("Toolbar.Prepend", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			item, ok := args[0].Interface().(widget.ToolbarItem)
-			if !ok {
-				return nil, object.Errorf("argument error: expected ToolbarItem, got %s", args[0].Type())
-			}
-			guithread.Do(func() {
-				obj.instance.Prepend(item)
-			})
-			return object.Nil, nil
-		}), true
-
-	case "Refresh":
-		return object.NewBuiltin("Toolbar.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Refresh()
-			})
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("widget.Toolbar.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.Toolbar.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
 }
 
 // ToolbarAction wraps a toolbar action button
@@ -343,4 +287,45 @@ func (obj *ToolbarSpacer) GetAttr(name string) (object.Object, bool) {
 
 func (obj *ToolbarSpacer) getAttrUI(name string) (object.Object, bool) {
 	return nil, false
+}
+func init() {
+	objattrs.Add(toolbarAttrs)
+	toolbarAttrs.Define("Append").Args("arg1").
+		Returns("nil").Impl(
+		func(obj *Toolbar, ctx context.
+			Context, args ...object.Object) (object.
+			Object, error) {
+			item, ok := args[0].Interface().(widget.ToolbarItem)
+			if !ok {
+				return nil,
+					object.
+						Errorf("argument error: expected ToolbarItem, got %s",
+
+							args[0].Type())
+			}
+			guithread.Do(func() {
+
+				obj.instance.Append(item)
+			})
+			return object.Nil, nil
+		})
+	toolbarAttrs.Define("Prepend").Args(
+		"arg1").
+		Returns("nil").Impl(func(obj *Toolbar, ctx context.
+		Context, args ...object.Object) (object.
+		Object, error) {
+		item, ok := args[0].Interface().(widget.ToolbarItem)
+		if !ok {
+			return nil,
+
+				object.
+					Errorf("argument error: expected ToolbarItem, got %s",
+
+						args[0].Type())
+		}
+		guithread.Do(func() {
+			obj.instance.Prepend(item)
+		})
+		return object.Nil, nil
+	})
 }
