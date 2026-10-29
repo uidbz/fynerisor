@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 	"github.com/uidbz/fynerisor/gui/vmexec"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -82,10 +83,12 @@ func (obj *List) Equals(other object.Object) bool {
 }
 
 func (obj *List) Attrs() []object.AttrSpec {
-	return nil
+	return listAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		Specs()
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *List) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -106,226 +109,35 @@ func (obj *List) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", ListType, name)
 }
 
+var listAttrs = object.NewAttrRegistry[*List](string(ListType))
+
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *List) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
 func (obj *List) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Length":
-		return object.NewBuiltin("widget.List.Length", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
+	return listAttrs.GetAttr(obj, name)
 
-			cb, err := vmexec.NewCallback(ctx, "widget.List.Length", args[0])
-			if err != nil {
-				return nil, err
-			}
-			cb.RefreshWhenBusy(obj.refresh)
+	// Getter: Fyne calls it synchronously during layout on the UI
+	// thread. While the VM is busy (ErrBusy) keep the last-known
+	// length so the list doesn't collapse; the list is refreshed
+	// once the VM is idle again.
 
-			// Getter: Fyne calls it synchronously during layout on the UI
-			// thread. While the VM is busy (ErrBusy) keep the last-known
-			// length so the list doesn't collapse; the list is refreshed
-			// once the VM is idle again.
-			obj.instance.Length = func() int {
-				result, err := cb.Call()
-				if err != nil {
-					cb.Report(err)
-					return int(obj.lastLen.Load())
-				}
-				count, err := object.AsInt(result)
-				if err != nil {
-					cb.Report(fmt.Errorf("expected int, got %s", result.Type()))
-					return int(obj.lastLen.Load())
-				}
-				obj.lastLen.Store(count)
-				return int(obj.lastLen.Load())
-			}
+	// VM busy or run stopped: never pool a fake. The slot
+	// is invisible for now and takes the script's real
+	// widget the first UpdateItem can run (issue #50).
 
-			return object.Nil, nil
-		}), true
+	// Getter-like: runs synchronously during render. Materialize
+	// any slot left by a busy-VM template call so the script
+	// always gets its own widget, then wrap the canvas object so
+	// Risor can access it (issue #50).
 
-	case "CreateItem":
-		return object.NewBuiltin("widget.List.CreateItem", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
+	// VM still busy; a later refresh retries
 
-			cb, err := vmexec.NewCallback(ctx, "widget.List.CreateItem", args[0])
-			if err != nil {
-				return nil, err
-			}
-			cb.RefreshWhenBusy(obj.refresh)
-			obj.createCb = cb
+	// Event: queued on the script's VM goroutine, never run on (or
+	// blocking) the UI thread.
 
-			obj.instance.CreateItem = func() fyne.CanvasObject {
-				inner, ok := callTemplate(cb)
-				if !ok {
-					// VM busy or run stopped: never pool a fake. The slot
-					// is invisible for now and takes the script's real
-					// widget the first UpdateItem can run (issue #50).
-					return newTemplateSlot()
-				}
-				return inner
-			}
-
-			return object.Nil, nil
-		}), true
-
-	case "UpdateItem":
-		return object.NewBuiltin("widget.List.UpdateItem", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-
-			cb, err := vmexec.NewCallback(ctx, "widget.List.UpdateItem", args[0])
-			if err != nil {
-				return nil, err
-			}
-			cb.RefreshWhenBusy(obj.refresh)
-
-			obj.instance.UpdateItem = func(id widget.ListItemID, item fyne.CanvasObject) {
-				// Getter-like: runs synchronously during render. Materialize
-				// any slot left by a busy-VM template call so the script
-				// always gets its own widget, then wrap the canvas object so
-				// Risor can access it (issue #50).
-				item, ok := resolveTemplateItem(item, func() (fyne.CanvasObject, bool) {
-					return callTemplate(obj.createCb)
-				})
-				if !ok {
-					return // VM still busy; a later refresh retries
-				}
-				_, err := cb.Call(object.NewInt(int64(id)), wrapCanvasObject(item))
-				cb.Report(err)
-			}
-
-			return object.Nil, nil
-		}), true
-
-	case "OnSelected":
-		return object.NewBuiltin("widget.List.OnSelected", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-
-			cb, err := vmexec.NewCallback(ctx, "widget.List.OnSelected", args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			// Event: queued on the script's VM goroutine, never run on (or
-			// blocking) the UI thread.
-			obj.instance.OnSelected = func(id widget.ListItemID) {
-				cb.Fire(object.NewInt(int64(id)))
-			}
-
-			return object.Nil, nil
-		}), true
-
-	case "Refresh":
-		return object.NewBuiltin("widget.List.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-
-			guithread.Do(func() {
-				obj.instance.Refresh()
-			})
-
-			return object.Nil, nil
-		}), true
-
-	case "Select":
-		return object.NewBuiltin("widget.List.Select", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-
-			id, err := object.AsInt(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			guithread.Do(func() {
-				obj.instance.Select(widget.ListItemID(id))
-			})
-
-			return object.Nil, nil
-		}), true
-
-	case "Unselect":
-		return object.NewBuiltin("widget.List.Unselect", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-
-			id, err := object.AsInt(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			guithread.Do(func() {
-				obj.instance.Unselect(widget.ListItemID(id))
-			})
-
-			return object.Nil, nil
-		}), true
-
-	case "UnselectAll":
-		return object.NewBuiltin("widget.List.UnselectAll", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-
-			guithread.Do(func() {
-				obj.instance.UnselectAll()
-			})
-
-			return object.Nil, nil
-		}), true
-
-	case "ScrollTo":
-		return object.NewBuiltin("widget.List.ScrollTo", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-
-			id, err := object.AsInt(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			guithread.Do(func() {
-				obj.instance.ScrollTo(widget.ListItemID(id))
-			})
-
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("widget.List.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.List.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-
-	return nil, false
 }
 
 // wrapCanvasObject wraps a fyne.CanvasObject so Risor scripts can access it
@@ -369,4 +181,159 @@ func (g *GenericCanvasObject) SetAttr(name string, value object.Object) error {
 func (g *GenericCanvasObject) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("no attributes")
 }
-func (g *GenericCanvasObject) Attrs() []object.AttrSpec { return nil }
+func (g *GenericCanvasObject) Attrs() []object.AttrSpec { return listAttrs.Specs() }
+func init() {
+	objattrs.Add(listAttrs)
+	listAttrs.Define("Length").Args("arg1").Returns("nil").Impl(func(obj *List, ctx context.Context, args ...object.Object) (object.Object, error) {
+		cb,
+			err := vmexec.NewCallback(ctx, "widget.List.Length",
+
+			args[0])
+		if err != nil {
+			return nil,
+				err
+		}
+		cb.RefreshWhenBusy(obj.refresh)
+		obj.
+			instance.Length = func() int {
+
+			result, err := cb.Call()
+			if err != nil {
+
+				cb.Report(err)
+				return int(obj.lastLen.Load())
+			}
+			count, err := object.AsInt(result)
+			if err !=
+				nil {
+				cb.Report(fmt.
+					Errorf("expected int, got %s",
+						result.Type()))
+				return int(obj.lastLen.Load())
+			}
+			obj.lastLen.Store(count)
+			return int(obj.
+				lastLen.Load())
+		}
+		return object.Nil, nil
+	})
+	listAttrs.Define("CreateItem").Args(
+		"arg1").
+		Returns("nil").
+		Impl(func(obj *List, ctx context.Context, args ...object.Object) (object.Object, error) {
+			cb, err := vmexec.NewCallback(ctx, "widget.List.CreateItem",
+
+				args[0])
+			if err != nil {
+				return nil, err
+			}
+			cb.RefreshWhenBusy(obj.refresh)
+			obj.createCb = cb
+			obj.instance.
+				CreateItem = func() fyne.CanvasObject {
+				inner, ok := callTemplate(cb)
+				if !ok {
+					return newTemplateSlot()
+				}
+				return inner
+			}
+			return object.
+				Nil, nil
+		})
+	listAttrs.Define("UpdateItem").Args(
+		"arg1").
+		Returns("nil").
+		Impl(func(obj *List, ctx context.Context, args ...object.Object) (object.Object, error) {
+			cb, err := vmexec.NewCallback(ctx, "widget.List.UpdateItem",
+
+				args[0])
+			if err != nil {
+				return nil, err
+			}
+			cb.RefreshWhenBusy(obj.refresh)
+			obj.instance.UpdateItem =
+				func(id widget.ListItemID, item fyne.CanvasObject) {
+					item, ok := resolveTemplateItem(item, func() (fyne.CanvasObject, bool) {
+						return callTemplate(obj.createCb)
+					})
+					if !ok {
+						return
+					}
+					_,
+						err := cb.Call(object.NewInt(int64(id)), wrapCanvasObject(item))
+					cb.Report(err)
+				}
+			return object.
+				Nil, nil
+		})
+	listAttrs.Define("OnSelected").Args(
+		"arg1").
+		Returns("nil").
+		Impl(func(obj *List, ctx context.Context, args ...object.Object) (object.Object, error) {
+			cb, err := vmexec.NewCallback(ctx, "widget.List.OnSelected",
+
+				args[0])
+			if err != nil {
+				return nil, err
+			}
+			obj.instance.OnSelected =
+				func(id widget.ListItemID) {
+					cb.
+						Fire(object.NewInt(int64(id)))
+				}
+			return object.
+				Nil, nil
+		})
+	listAttrs.Define("Select").Doc("Select an index.").Args("arg1").Returns("nil").
+		Impl(func(obj *List, ctx context.Context, args ...object.Object) (object.
+			Object, error) {
+			id, err := object.AsInt(args[0])
+			if err != nil {
+				return nil, err
+			}
+			guithread.Do(func() {
+				obj.instance.Select(
+					widget.
+						ListItemID(id))
+			})
+			return object.Nil, nil
+		})
+	listAttrs.Define("Unselect").Args("arg1").Returns("nil").Impl(func(obj *List,
+		ctx context.Context, args ...object.Object) (object.Object, error) {
+		id,
+			err := object.AsInt(args[0])
+		if err !=
+
+			nil {
+			return nil, err
+		}
+		guithread.Do(func() {
+			obj.instance.Unselect(widget.ListItemID(id))
+
+		})
+		return object.Nil, nil
+	})
+	listAttrs.Define("UnselectAll").Args().Returns("nil").Impl(
+		func(obj *List, ctx context.Context, args ...object.Object) (object.Object, error) {
+			guithread.
+				Do(func() {
+					obj.instance.UnselectAll()
+				})
+			return object.Nil, nil
+		})
+	listAttrs.Define("ScrollTo").Args("arg1").Returns("nil").Impl(func(obj *List,
+		ctx context.Context, args ...object.Object) (object.Object, error) {
+		id,
+			err := object.AsInt(args[0])
+		if err !=
+
+			nil {
+			return nil, err
+		}
+		guithread.Do(func() {
+			obj.instance.ScrollTo(widget.ListItemID(id))
+
+		})
+		return object.Nil, nil
+	})
+}

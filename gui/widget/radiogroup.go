@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -62,10 +63,12 @@ func (obj *RadioGroup) Equals(other object.Object) bool {
 }
 
 func (obj *RadioGroup) Attrs() []object.AttrSpec {
-	return nil
+	return radioGroupAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		Specs()
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *RadioGroup) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -117,104 +120,83 @@ func (obj *RadioGroup) setAttrUI(name string, value object.Object) error {
 	}
 }
 
+var radioGroupAttrs = object.NewAttrRegistry[*RadioGroup](string(RadioGroupType))
+
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *RadioGroup) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
 func (obj *RadioGroup) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Selected":
-		return object.NewString(obj.instance.Selected), true
-	case "Options":
-		return object.NewStringList(obj.instance.Options), true
-	case "Horizontal":
-		return object.NewBool(obj.instance.Horizontal), true
-	case "Required":
-		return object.NewBool(obj.instance.Required), true
+	return radioGroupAttrs.GetAttr(obj, name)
 
-	case "SetSelected":
-		return object.NewBuiltin("RadioGroup.SetSelected", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			selected, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-			guithread.Do(func() {
-				obj.instance.SetSelected(selected)
+}
+func init() {
+	objattrs.Add(radioGroupAttrs)
+	radioGroupAttrs.
+		Define("Selected").Doc("The selected index.").Getter(func(obj *RadioGroup) object.Object {
+		return object.NewString(obj.
+			instance.Selected)
+	})
+	radioGroupAttrs.
+		Define("Options").Getter(func(obj *RadioGroup) object.Object {
+		return object.
+			NewStringList(obj.instance.Options)
+	})
+	radioGroupAttrs.
+		Define("Horizontal").
+		Getter(
+			func(obj *RadioGroup) object.Object {
+				return object.NewBool(obj.instance.Horizontal)
 			})
-			return object.Nil, nil
-		}), true
+	radioGroupAttrs.
+		Define("Required").Getter(func(obj *RadioGroup) object.Object {
+		return object.
+			NewBool(obj.instance.Required)
+	})
+	radioGroupAttrs.
+		Define("SetSelected").Args(
+		"arg1",
+	).Returns("nil").Impl(func(obj *RadioGroup, ctx context.Context, args ...object.Object) (object.Object, error) {
+		selected, err := object.
+			AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		guithread.Do(func() {
+			obj.instance.SetSelected(selected)
+		})
+		return object.Nil, nil
+	})
+	radioGroupAttrs.
+		Define("Append").Args("arg1").Returns("nil").Impl(func(obj *RadioGroup, ctx context.Context, args ...object.Object) (
+		object.
+			Object, error) {
+		option, err := object.AsString(args[0])
+		if err != nil {
+			return nil,
+				err
 
-	case "Append":
-		return object.NewBuiltin("RadioGroup.Append", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			option, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-			guithread.Do(func() {
-				obj.instance.Append(option)
-			})
-			return object.Nil, nil
-		}), true
+		}
+		guithread.Do(func() {
+			obj.instance.Append(option)
 
-	case "Disable":
-		return object.NewBuiltin("RadioGroup.Disable", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Disable()
-			})
-			return object.Nil, nil
-		}), true
+		})
+		return object.Nil, nil
+	})
+	radioGroupAttrs.
+		Define("Disable").Doc("Disable the object.").Args().Returns("nil").Impl(func(obj *RadioGroup, ctx context.Context, args ...object.Object) (object.Object, error) {
+		guithread.
+			Do(func() { obj.instance.Disable() })
 
-	case "Enable":
-		return object.NewBuiltin("RadioGroup.Enable", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Enable()
-			})
-			return object.Nil, nil
-		}), true
+		return object.Nil, nil
+	})
+	radioGroupAttrs.
+		Define("Enable").Doc("Re-enable the object.").Args().Returns("nil").Impl(
+		func(obj *RadioGroup, ctx context.Context, args ...object.Object) (object.Object, error) {
+			guithread.
+				Do(func() { obj.instance.Enable() })
 
-	case "Refresh":
-		return object.NewBuiltin("RadioGroup.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Refresh()
-			})
 			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("widget.RadioGroup.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.RadioGroup.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
+		})
 }

@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -67,62 +68,21 @@ func (obj *ProgressBarInfinite) Equals(other object.Object) bool {
 }
 
 func (obj *ProgressBarInfinite) Attrs() []object.AttrSpec {
-	return nil
+	return progressBarInfiniteAttrs.
+
+		// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
+		Specs()
 }
 
-// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
+var progressBarInfiniteAttrs = object.NewAttrRegistry[*ProgressBarInfinite](string(ProgressBarInfiniteType))
+
 func (obj *ProgressBarInfinite) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
 func (obj *ProgressBarInfinite) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Start":
-		return object.NewBuiltin("widget.ProgressBarInfinite.Start", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-				obj.instance.Start()
-			})
-			return object.Nil, nil
-		}), true
-	case "Stop":
-		return object.NewBuiltin("widget.ProgressBarInfinite.Stop", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Stop()
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Running":
-		return object.NewBool(obj.instance.Running()), true
-	case "Hide":
-		return object.NewBuiltin("widget.ProgressBarInfinite.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.ProgressBarInfinite.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
+	return progressBarInfiniteAttrs.GetAttr(obj, name)
+
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -132,4 +92,31 @@ func (obj *ProgressBarInfinite) SetAttr(name string, value object.Object) error 
 
 func (obj *ProgressBarInfinite) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", ProgressBarInfiniteType, name)
+}
+func init() {
+	objattrs.Add(progressBarInfiniteAttrs)
+	progressBarInfiniteAttrs.
+		Define("Start").Args().Returns("nil").
+		Impl(func(obj *ProgressBarInfinite, ctx context.Context, args ...object.
+			Object) (object.Object, error) {
+			guithread.Do(func() {
+				obj.instance.Show()
+				obj.instance.Start()
+			})
+			return object.Nil, nil
+		})
+	progressBarInfiniteAttrs.
+		Define("Stop").Args().Returns("nil").Impl(func(obj *ProgressBarInfinite, ctx context.Context, args ...object.
+		Object) (object.Object, error) {
+		guithread.Do(func() {
+			obj.instance.Stop()
+			obj.instance.Hide()
+		})
+		return object.Nil, nil
+	})
+	progressBarInfiniteAttrs.
+		Define("Running").
+		Getter(func(obj *ProgressBarInfinite) object.Object {
+			return object.NewBool(obj.instance.Running())
+		})
 }

@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 	"github.com/uidbz/fynerisor/gui/vmexec"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -71,10 +72,12 @@ func (obj *DateEntry) Equals(other object.Object) bool {
 }
 
 func (obj *DateEntry) Attrs() []object.AttrSpec {
-	return nil
+	return dateEntryAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		Specs()
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *DateEntry) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -94,98 +97,80 @@ func (obj *DateEntry) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", DateEntryType, name)
 }
 
+var dateEntryAttrs = object.NewAttrRegistry[*DateEntry](string(DateEntryType))
+
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *DateEntry) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
 func (obj *DateEntry) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Text":
-		return object.NewString(obj.instance.Text), true
+	return dateEntryAttrs.GetAttr(obj, name)
 
-	case "SetText":
-		return object.NewBuiltin("widget.DateEntry.SetText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
+	// Accept string in YYYY-MM-DD format
 
-			text, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
+	// Parse and validate
 
-			guithread.Do(func() {
-				obj.instance.SetText(text)
-			})
+	// Change event: coalesced, latest text wins (issue #51).
 
-			return object.Nil, nil
-		}), true
+}
+func init() {
+	objattrs.Add(dateEntryAttrs)
+	dateEntryAttrs.
+		Define("Text").Doc("The text.").Getter(func(obj *DateEntry) object.Object {
+		return object.NewString(obj.instance.Text)
+	})
+	dateEntryAttrs.
+		Define("SetText").Doc("Set the text.").Args("arg1").Returns("nil").Impl(func(obj *DateEntry, ctx context.Context, args ...object.
+		Object) (object.Object, error) {
+		text,
 
-	case "SetDate":
-		return object.NewBuiltin("widget.DateEntry.SetDate", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
+			err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		guithread.Do(func() {
+			obj.
+				instance.SetText(text)
+		})
+		return object.
+			Nil, nil
+	})
+	dateEntryAttrs.
+		Define("SetDate").Args("arg1").Returns("nil").Impl(func(
+		obj *DateEntry, ctx context.
+			Context, args ...object.Object) (object.Object, error) {
+		dateStr, err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		_, parseErr := time.Parse("2006-01-02", dateStr)
+		if parseErr != nil {
+			return nil,
+				object.Errorf("invalid date format, expected YYYY-MM-DD: %v",
 
-			// Accept string in YYYY-MM-DD format
-			dateStr, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
+					parseErr)
+		}
+		guithread.Do(func() {
+			obj.instance.SetText(
+				dateStr)
+		})
+		return object.
+			Nil, nil
+	})
+	dateEntryAttrs.
+		Define("OnChanged").Doc("Set the change handler; fires on the script VM goroutine.").Args("arg1").Returns("nil").Impl(func(obj *DateEntry, ctx context.Context, args ...object.Object) (object.Object, error) {
+		cb, err := vmexec.NewCallback(ctx, "widget.DateEntry.OnChanged",
 
-			// Parse and validate
-			_, parseErr := time.Parse("2006-01-02", dateStr)
-			if parseErr != nil {
-				return nil, object.Errorf("invalid date format, expected YYYY-MM-DD: %v", parseErr)
-			}
+			args[0])
+		if err != nil {
 
-			guithread.Do(func() {
-				obj.instance.SetText(dateStr)
-			})
-
-			return object.Nil, nil
-		}), true
-
-	case "OnChanged":
-		return object.NewBuiltin("widget.DateEntry.OnChanged", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-
-			cb, err := vmexec.NewCallback(ctx, "widget.DateEntry.OnChanged", args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			// Change event: coalesced, latest text wins (issue #51).
-			obj.instance.OnChanged = func(text string) {
-				cb.FireCoalesced(object.NewString(text))
-			}
-
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("widget.DateEntry.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.DateEntry.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-
-	return nil, false
+			return nil, err
+		}
+		obj.instance.OnChanged = func(text string) {
+			cb.FireCoalesced(object.NewString(text))
+		}
+		return object.
+			Nil, nil
+	})
 }

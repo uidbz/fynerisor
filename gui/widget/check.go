@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -55,10 +56,12 @@ func (obj *Check) Equals(other object.Object) bool {
 }
 
 func (obj *Check) Attrs() []object.AttrSpec {
-	return nil
+	return checkAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		Specs()
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Check) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -67,52 +70,16 @@ func (obj *Check) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", CheckType, name)
 }
 
+var checkAttrs = object.NewAttrRegistry[*Check](string(CheckType))
+
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Check) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
 func (obj *Check) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "SetChecked":
-		return object.NewBuiltin("widget.Check.SetChecked", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
-			}
+	return checkAttrs.GetAttr(obj, name)
 
-			val, err := object.AsBool(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			obj.instance.SetChecked(val)
-
-			return object.Nil, nil
-		}), true
-	case "Checked":
-		return object.NewBool(obj.instance.Checked), true
-	case "Hide":
-		return object.NewBuiltin("widget.Check.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.Check.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
 }
 
 func NewCheck(label string, changed func(bool)) *Check {
@@ -128,4 +95,24 @@ func NewCheckWithData(label string, data interface{ Get() (bool, error) }) *Chec
 	}
 
 	return &Check{instance: widget.NewCheckWithData(label, bindingBool)}
+}
+func init() {
+	objattrs.Add(checkAttrs)
+	checkAttrs.Define("SetChecked").Args("arg1").
+		Returns("nil").Impl(func(obj *Check, ctx context.Context, args ...object.Object) (object.Object, error) {
+		val, err := object.
+			AsBool(args[0])
+		if err != nil {
+			return nil,
+				err
+		}
+		obj.instance.SetChecked(val)
+		return object.
+			Nil, nil
+	})
+	checkAttrs.Define("Checked").Getter(
+		func(obj *Check) object.Object {
+			return object.NewBool(obj.
+				instance.Checked)
+		})
 }

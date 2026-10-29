@@ -9,6 +9,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -61,10 +62,12 @@ func (obj *Log) Equals(other object.Object) bool {
 }
 
 func (obj *Log) Attrs() []object.AttrSpec {
-	return nil
+	return logAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		Specs()
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Log) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -73,66 +76,16 @@ func (obj *Log) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", LogType, name)
 }
 
+var logAttrs = object.NewAttrRegistry[*Log](string(LogType))
+
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Log) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
 func (obj *Log) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Append":
-		return object.NewBuiltin("widget.Log.Append", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
-			}
+	return logAttrs.GetAttr(obj, name)
 
-			line, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			obj.appendLine(line)
-			return object.Nil, nil
-		}), true
-
-	case "Clear":
-		return object.NewBuiltin("widget.Log.Clear", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 0", len(args))
-			}
-
-			obj.mu.Lock()
-			obj.data = []string{}
-			obj.mu.Unlock()
-			guithread.Do(func() {
-				obj.instance.Refresh()
-				obj.instance.ScrollToBottom()
-			})
-
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("widget.Log.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.Log.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
 }
 
 // Lines returns a snapshot of the buffered lines, safe from any
@@ -216,4 +169,38 @@ func NewLog(maxItems int) *Log {
 	log.instance.HideSeparators = true
 
 	return log
+}
+func init() {
+	objattrs.Add(logAttrs)
+	logAttrs.Define(
+		"Append").
+		Args("arg1").Returns("nil").Impl(func(obj *Log, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		line, err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		obj.appendLine(line)
+		return object.Nil, nil
+	})
+	logAttrs.Define(
+		"Clear").
+		Doc("Clear the contents.").
+		Args().Returns("nil").Impl(func(obj *Log, ctx context.
+		Context, args ...object.Object) (object.Object, error) {
+		obj.mu.Lock()
+		obj.data = []string{}
+		obj.mu.Unlock()
+		guithread.Do(func() {
+			obj.
+				instance.
+				Refresh()
+			obj.instance.
+				ScrollToBottom()
+		})
+		return object.Nil,
+
+			nil
+	})
 }

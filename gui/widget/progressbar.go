@@ -1,13 +1,13 @@
 package widget
 
 import (
-	"context"
 	"fmt"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -73,44 +73,21 @@ func (obj *ProgressBar) Equals(other object.Object) bool {
 }
 
 func (obj *ProgressBar) Attrs() []object.AttrSpec {
-	return nil
+	return progressBarAttrs.
+
+		// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
+		Specs()
 }
 
-// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
+var progressBarAttrs = object.NewAttrRegistry[*ProgressBar](string(ProgressBarType))
+
 func (obj *ProgressBar) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
 func (obj *ProgressBar) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Value":
-		return object.NewFloat(obj.instance.Value), true
-	case "Min":
-		return object.NewFloat(obj.instance.Min), true
-	case "Max":
-		return object.NewFloat(obj.instance.Max), true
-	case "Hide":
-		return object.NewBuiltin("widget.ProgressBar.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.ProgressBar.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
+	return progressBarAttrs.GetAttr(obj, name)
+
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -151,4 +128,23 @@ func (obj *ProgressBar) setAttrUI(name string, value object.Object) error {
 		return nil
 	}
 	return fmt.Errorf("attribute error: %s object has no attribute %q", ProgressBarType, name)
+}
+func init() {
+	objattrs.Add(progressBarAttrs)
+	progressBarAttrs.
+		Define("Value").Getter(func(obj *ProgressBar) object.Object {
+		return object.NewFloat(obj.instance.Value)
+	})
+	progressBarAttrs.
+		Define("Min").Getter(func(
+		obj *ProgressBar) object.
+		Object {
+		return object.NewFloat(obj.instance.Min)
+	})
+	progressBarAttrs.
+		Define("Max").Getter(func(
+		obj *ProgressBar) object.
+		Object {
+		return object.NewFloat(obj.instance.Max)
+	})
 }

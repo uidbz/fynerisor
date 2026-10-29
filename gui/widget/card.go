@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -60,84 +61,21 @@ func (obj *Card) Equals(other object.Object) bool {
 }
 
 func (obj *Card) Attrs() []object.AttrSpec {
-	return nil
+	return cardAttrs.
+
+		// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
+		Specs()
 }
 
-// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
+var cardAttrs = object.NewAttrRegistry[*Card](string(CardType))
+
 func (obj *Card) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
 func (obj *Card) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Title":
-		return object.NewString(obj.instance.Title), true
-	case "Subtitle":
-		return object.NewString(obj.instance.Subtitle), true
-	case "SetTitle":
-		return object.NewBuiltin("widget.Card.SetTitle", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			title, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-			guithread.Do(func() {
-				obj.instance.SetTitle(title)
-			})
-			return object.Nil, nil
-		}), true
-	case "SetSubTitle":
-		return object.NewBuiltin("widget.Card.SetSubTitle", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			subtitle, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-			guithread.Do(func() {
-				obj.instance.SetSubTitle(subtitle)
-			})
-			return object.Nil, nil
-		}), true
-	case "SetContent":
-		return object.NewBuiltin("widget.Card.SetContent", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			contentObj, ok := args[0].(IsCanvasObject)
-			if !ok {
-				return nil, object.Errorf("argument error: expected CanvasObject, got %s", args[0].Type())
-			}
-			guithread.Do(func() {
-				obj.instance.SetContent(contentObj.CanvasObject())
-			})
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("widget.Card.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.Card.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
+	return cardAttrs.GetAttr(obj, name)
+
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -167,4 +105,67 @@ func (obj *Card) setAttrUI(name string, value object.Object) error {
 		return nil
 	}
 	return fmt.Errorf("attribute error: %s object has no attribute %q", CardType, name)
+}
+func init() {
+	objattrs.Add(cardAttrs)
+	cardAttrs.Define("Title").
+		Getter(func(obj *Card) object.Object {
+			return object.NewString(
+				obj.instance.Title)
+		})
+	cardAttrs.Define("Subtitle").Getter(
+		func(obj *Card) object.Object {
+			return object.NewString(obj.instance.Subtitle)
+		})
+	cardAttrs.Define("SetTitle").Args("arg1").Returns("nil").Impl(func(obj *Card, ctx context.
+		Context, args ...object.Object) (object.Object, error) {
+		title, err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		guithread.
+			Do(func() {
+				obj.instance.
+					SetTitle(title)
+			})
+		return object.Nil, nil
+	},
+	)
+	cardAttrs.Define("SetSubTitle").Args("arg1").
+		Returns("nil").Impl(func(obj *Card, ctx context.
+		Context, args ...object.Object) (object.
+		Object, error) {
+		subtitle, err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+
+		guithread.Do(func() {
+			obj.instance.
+				SetSubTitle(subtitle)
+		})
+		return object.
+			Nil, nil
+	})
+	cardAttrs.Define("SetContent").Args(
+		"arg1").
+		Returns("nil").Impl(func(obj *Card, ctx context.
+		Context, args ...object.Object) (object.Object, error) {
+		contentObj, ok := args[0].(IsCanvasObject)
+		if !ok {
+			return nil, object.Errorf(
+				"argument error: expected CanvasObject, got %s",
+
+				args[0].Type())
+		}
+		guithread.
+			Do(func() {
+				obj.instance.SetContent(contentObj.
+					CanvasObject(),
+				)
+			})
+		return object.Nil,
+
+			nil
+	})
 }

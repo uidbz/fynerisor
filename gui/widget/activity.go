@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -60,58 +61,21 @@ func (obj *Activity) Equals(other object.Object) bool {
 }
 
 func (obj *Activity) Attrs() []object.AttrSpec {
-	return nil
+	return activityAttrs.
+
+		// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
+		Specs()
 }
 
-// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
+var activityAttrs = object.NewAttrRegistry[*Activity](string(ActivityType))
+
 func (obj *Activity) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
 func (obj *Activity) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Start":
-		return object.NewBuiltin("widget.Activity.Start", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Start()
-			})
-			return object.Nil, nil
-		}), true
-	case "Stop":
-		return object.NewBuiltin("widget.Activity.Stop", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Stop()
-			})
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("widget.Activity.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.Activity.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
+	return activityAttrs.GetAttr(obj, name)
+
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -121,4 +85,24 @@ func (obj *Activity) SetAttr(name string, value object.Object) error {
 
 func (obj *Activity) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", ActivityType, name)
+}
+func init() {
+	objattrs.Add(activityAttrs)
+	activityAttrs.Define("Start").Args().
+		Returns("nil").Impl(func(obj *Activity, ctx context.
+		Context, args ...object.Object) (object.Object, error) {
+		guithread.Do(func() {
+			obj.instance.
+				Start()
+		})
+		return object.Nil, nil
+	})
+	activityAttrs.Define("Stop").Args().
+		Returns(
+			"nil").Impl(func(obj *Activity, ctx context.Context, args ...object.Object) (object.Object, error) {
+		guithread.Do(func() {
+			obj.instance.Stop()
+		})
+		return object.Nil, nil
+	})
 }

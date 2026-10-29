@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -128,10 +129,12 @@ func (obj *PopUp) Equals(other object.Object) bool {
 }
 
 func (obj *PopUp) Attrs() []object.AttrSpec {
-	return nil
+	return popUpAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		Specs()
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *PopUp) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -140,108 +143,80 @@ func (obj *PopUp) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", PopUpType, name)
 }
 
+var popUpAttrs = object.NewAttrRegistry[*PopUp](string(PopUpType))
+
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *PopUp) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
 func (obj *PopUp) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Show":
-		return object.NewBuiltin("widget.PopUp.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
+	return popUpAttrs.GetAttr(obj, name)
 
-			guithread.Do(func() {
-				obj.instance.Show()
+}
+func init() {
+	objattrs.Show(popUpAttrs)
+	objattrs.Hide(popUpAttrs)
+	objattrs.Refresh(popUpAttrs)
+	popUpAttrs.Define("ShowAtPosition").
+		Args("arg1",
+
+			"arg2").Returns("nil").Impl(func(obj *PopUp, ctx context.Context, args ...object.Object) (object.Object, error) {
+		x, err := object.AsFloat(args[0])
+		if err != nil {
+			return nil,
+				err
+
+		}
+		y, err := object.AsFloat(args[1])
+		if err != nil {
+			return nil, err
+		}
+		guithread.
+			Do(func() {
+				obj.instance.ShowAtPosition(fyne.NewPos(float32(x),
+					float32(y)))
 			})
-
-			return object.Nil, nil
-		}), true
-
-	case "Hide":
-		return object.NewBuiltin("widget.PopUp.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-
-			return object.Nil, nil
-		}), true
-
-	case "ShowAtPosition":
-		return object.NewBuiltin("widget.PopUp.ShowAtPosition", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-
-			x, err := object.AsFloat(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			y, err := object.AsFloat(args[1])
-			if err != nil {
-				return nil, err
-			}
-
-			guithread.Do(func() {
-				obj.instance.ShowAtPosition(fyne.NewPos(float32(x), float32(y)))
-			})
-
-			return object.Nil, nil
-		}), true
-
-	case "Move":
-		return object.NewBuiltin("widget.PopUp.Move", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-
-			x, err := object.AsFloat(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			y, err := object.AsFloat(args[1])
-			if err != nil {
-				return nil, err
-			}
-
-			guithread.Do(func() {
-				obj.instance.Move(fyne.NewPos(float32(x), float32(y)))
-			})
-
-			return object.Nil, nil
-		}), true
-
-	case "Resize":
-		return object.NewBuiltin("widget.PopUp.Resize", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-
+		return object.Nil, nil
+	})
+	popUpAttrs.Define("Move").
+		Args("arg1",
+			"arg2",
+		).Returns("nil").Impl(func(obj *PopUp, ctx context.
+		Context, args ...object.Object) (object.
+		Object, error) {
+		x, err := object.AsFloat(args[0])
+		if err != nil {
+			return nil, err
+		}
+		y,
+			err := object.AsFloat(args[1])
+		if err != nil {
+			return nil, err
+		}
+		guithread.Do(func() { obj.instance.Move(fyne.NewPos(float32(x), float32(y))) })
+		return object.Nil, nil
+	})
+	popUpAttrs.Define("Resize").Args("arg1",
+		"arg2",
+	).Returns("nil").
+		Impl(func(obj *PopUp, ctx context.Context, args ...object.Object) (object.
+			Object, error) {
 			w, err := object.AsFloat(args[0])
 			if err != nil {
 				return nil, err
 			}
+			h,
 
-			h, err := object.AsFloat(args[1])
+				err := object.AsFloat(args[1])
+
 			if err != nil {
 				return nil, err
 			}
-
-			guithread.Do(func() {
-				obj.instance.Resize(fyne.NewSize(float32(w), float32(h)))
-			})
-
+			guithread.
+				Do(func() {
+					obj.instance.Resize(fyne.NewSize(float32(w), float32(h)))
+				})
 			return object.Nil, nil
-		}), true
-	}
-
-	return nil, false
+		})
 }

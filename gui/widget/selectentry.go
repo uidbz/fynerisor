@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 	"github.com/uidbz/fynerisor/gui/vmexec"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -72,10 +73,12 @@ func (obj *SelectEntry) Equals(other object.Object) bool {
 }
 
 func (obj *SelectEntry) Attrs() []object.AttrSpec {
-	return nil
+	return selectEntryAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		Specs()
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *SelectEntry) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -103,103 +106,88 @@ func (obj *SelectEntry) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", SelectEntryType, name)
 }
 
+var selectEntryAttrs = object.NewAttrRegistry[*SelectEntry](string(SelectEntryType))
+
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *SelectEntry) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
 func (obj *SelectEntry) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Text":
-		return object.NewString(obj.instance.Text), true
+	return selectEntryAttrs.GetAttr(obj, name)
 
-	case "PlaceHolder":
-		return object.NewString(obj.instance.PlaceHolder), true
+	// Change event: coalesced, latest text wins (issue #51).
 
-	case "SetText":
-		return object.NewBuiltin("widget.SelectEntry.SetText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-
+}
+func init() {
+	objattrs.Add(selectEntryAttrs)
+	selectEntryAttrs.
+		Define("Text").Doc(
+		"The text.",
+	).Getter(func(obj *SelectEntry) object.Object {
+		return object.NewString(obj.instance.Text)
+	})
+	selectEntryAttrs.
+		Define("PlaceHolder").Getter(func(obj *SelectEntry) object.Object {
+		return object.NewString(obj.instance.PlaceHolder)
+	})
+	selectEntryAttrs.
+		Define("SetText").Doc("Set the text.").Args("arg1").Returns("nil").Impl(
+		func(obj *SelectEntry, ctx context.Context,
+			args ...object.Object) (object.Object, error) {
 			text, err := object.AsString(args[0])
 			if err != nil {
 				return nil, err
 			}
-
-			guithread.Do(func() {
-				obj.instance.SetText(text)
-			})
-
+			guithread.Do(
+				func() {
+					obj.instance.SetText(text)
+				},
+			)
 			return object.Nil, nil
-		}), true
+		})
+	selectEntryAttrs.
+		Define("SetOptions").Args(
+		"arg1",
+	).Returns("nil").Impl(func(obj *SelectEntry, ctx context.Context, args ...object.Object) (object.Object, error) {
+		list, err :=
 
-	case "SetOptions":
-		return object.NewBuiltin("widget.SelectEntry.SetOptions", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-
-			list, err := object.AsList(args[0])
+			object.AsList(args[0])
+		if err != nil {
+			return nil, err
+		}
+		options := make([]string, len(list.
+			Value()))
+		for i, item := range list.
+			Value() {
+			opt, err := object.AsString(item)
 			if err != nil {
 				return nil, err
 			}
+			options[i] = opt
+		}
+		guithread.Do(func() {
+			obj.instance.
+				SetOptions(options)
+		},
+		)
+		return object.Nil, nil
+	})
+	selectEntryAttrs.
+		Define("OnChanged").
+		Doc("Set the change handler; fires on the script VM goroutine.").Args("arg1").Returns("nil").Impl(func(obj *SelectEntry, ctx context.Context, args ...object.Object) (object.Object, error) {
+		cb, err := vmexec.NewCallback(ctx, "widget.SelectEntry.OnChanged",
 
-			options := make([]string, len(list.Value()))
-			for i, item := range list.Value() {
-				opt, err := object.AsString(item)
-				if err != nil {
-					return nil, err
-				}
-				options[i] = opt
-			}
-
-			guithread.Do(func() {
-				obj.instance.SetOptions(options)
-			})
-
-			return object.Nil, nil
-		}), true
-
-	case "OnChanged":
-		return object.NewBuiltin("widget.SelectEntry.OnChanged", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-
-			cb, err := vmexec.NewCallback(ctx, "widget.SelectEntry.OnChanged", args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			// Change event: coalesced, latest text wins (issue #51).
-			obj.instance.OnChanged = func(text string) {
+			args[0])
+		if err !=
+			nil {
+			return nil, err
+		}
+		obj.instance.OnChanged =
+			func(text string) {
 				cb.FireCoalesced(object.NewString(text))
 			}
-
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("widget.SelectEntry.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.SelectEntry.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-
-	return nil, false
+		return object.
+			Nil, nil
+	})
 }

@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 	"github.com/uidbz/fynerisor/gui/vmexec"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -98,10 +99,12 @@ func (obj *GridWrap) Equals(other object.Object) bool {
 }
 
 func (obj *GridWrap) Attrs() []object.AttrSpec {
-	return nil
+	return gridWrapAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		Specs()
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *GridWrap) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -110,29 +113,51 @@ func (obj *GridWrap) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", GridWrapType, name)
 }
 
+var gridWrapAttrs = object.NewAttrRegistry[*GridWrap](string(GridWrapType))
+
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *GridWrap) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
 func (obj *GridWrap) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Length":
-		return object.NewBuiltin("widget.GridWrap.Length", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
+	return gridWrapAttrs.GetAttr(obj, name)
 
-			cb, err := vmexec.NewCallback(ctx, "widget.GridWrap.Length", args[0])
+	// Getter: called synchronously by Fyne during layout.
+
+	// Getter: called synchronously by Fyne during layout.
+
+	// VM busy or run stopped: never pool a fake (issue #50).
+
+	// Getter-like: called synchronously by Fyne during render.
+
+	// VM still busy; a later refresh retries
+
+	// Event: queued on the script's VM goroutine.
+
+	// Event: queued on the script's VM goroutine.
+
+}
+func init() {
+	objattrs.Add(gridWrapAttrs)
+	gridWrapAttrs.Define("Length").Args(
+		"arg1").
+		Returns("nil").
+		Impl(func(obj *GridWrap, ctx context.Context,
+			args ...object.Object) (object.Object, error) {
+			cb, err := vmexec.NewCallback(ctx, "widget.GridWrap.Length",
+
+				args[0])
 			if err != nil {
 				return nil, err
 			}
-			cb.RefreshWhenBusy(obj.refresh)
-
-			// Getter: called synchronously by Fyne during layout.
+			cb.RefreshWhenBusy(obj.
+				refresh,
+			)
 			obj.instance.Length = func() int {
 				result, err := cb.Call()
 				if err != nil {
+
 					cb.Report(err)
 					return int(obj.lastLen.Load())
 				}
@@ -144,183 +169,118 @@ func (obj *GridWrap) getAttrUI(name string) (object.Object, bool) {
 				obj.lastLen.Store(count)
 				return int(obj.lastLen.Load())
 			}
+			return object.
+				Nil, nil
+		})
+	gridWrapAttrs.Define("CreateItem").Args("arg1").Returns("nil").Impl(func(obj *GridWrap, ctx context.Context, args ...object.Object) (object.Object,
+		error) {
+		cb, err := vmexec.NewCallback(ctx,
 
-			return object.Nil, nil
-		}), true
+			"widget.GridWrap.CreateItem", args[0])
+		if err !=
+			nil {
+			return nil, err
+		}
+		cb.RefreshWhenBusy(obj.refresh)
+		obj.createCb = cb
 
-	case "CreateItem":
-		return object.NewBuiltin("widget.GridWrap.CreateItem", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
+		obj.instance.CreateItem = func() fyne.CanvasObject {
+			inner, ok := callTemplate(cb)
+			if !ok {
+				return newTemplateSlot()
 			}
+			return inner
+		}
+		return object.Nil, nil
+	})
+	gridWrapAttrs.Define("UpdateItem").Args("arg1").Returns("nil").Impl(func(obj *GridWrap, ctx context.Context, args ...object.Object) (object.Object,
+		error) {
+		cb, err := vmexec.NewCallback(ctx,
 
-			cb, err := vmexec.NewCallback(ctx, "widget.GridWrap.CreateItem", args[0])
-			if err != nil {
-				return nil, err
-			}
-			cb.RefreshWhenBusy(obj.refresh)
-			obj.createCb = cb
+			"widget.GridWrap.UpdateItem", args[0])
+		if err !=
+			nil {
+			return nil, err
+		}
+		cb.RefreshWhenBusy(obj.refresh)
+		obj.instance.UpdateItem = func(id widget.GridWrapItemID, item fyne.CanvasObject) {
+			item, ok := resolveTemplateItem(item, func() (fyne.CanvasObject, bool) {
 
-			// Getter: called synchronously by Fyne during layout.
-			obj.instance.CreateItem = func() fyne.CanvasObject {
-				inner, ok := callTemplate(cb)
-				if !ok {
-					// VM busy or run stopped: never pool a fake (issue #50).
-					return newTemplateSlot()
-				}
-				return inner
-			}
-
-			return object.Nil, nil
-		}), true
-
-	case "UpdateItem":
-		return object.NewBuiltin("widget.GridWrap.UpdateItem", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-
-			cb, err := vmexec.NewCallback(ctx, "widget.GridWrap.UpdateItem", args[0])
-			if err != nil {
-				return nil, err
-			}
-			cb.RefreshWhenBusy(obj.refresh)
-
-			// Getter-like: called synchronously by Fyne during render.
-			obj.instance.UpdateItem = func(id widget.GridWrapItemID, item fyne.CanvasObject) {
-				item, ok := resolveTemplateItem(item, func() (fyne.CanvasObject, bool) {
-					return callTemplate(obj.createCb)
-				})
-				if !ok {
-					return // VM still busy; a later refresh retries
-				}
-				_, err := cb.Call(object.NewInt(int64(id)), wrapCanvasObject(item))
-				cb.Report(err)
-			}
-
-			return object.Nil, nil
-		}), true
-
-	case "OnSelected":
-		return object.NewBuiltin("widget.GridWrap.OnSelected", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-
-			cb, err := vmexec.NewCallback(ctx, "widget.GridWrap.OnSelected", args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			// Event: queued on the script's VM goroutine.
-			obj.instance.OnSelected = func(id widget.GridWrapItemID) {
-				cb.Fire(object.NewInt(int64(id)))
-			}
-
-			return object.Nil, nil
-		}), true
-
-	case "OnUnselected":
-		return object.NewBuiltin("widget.GridWrap.OnUnselected", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-
-			cb, err := vmexec.NewCallback(ctx, "widget.GridWrap.OnUnselected", args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			// Event: queued on the script's VM goroutine.
-			obj.instance.OnUnselected = func(id widget.GridWrapItemID) {
-				cb.Fire(object.NewInt(int64(id)))
-			}
-
-			return object.Nil, nil
-		}), true
-
-	case "Select":
-		return object.NewBuiltin("widget.GridWrap.Select", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-
-			id, err := object.AsInt(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			guithread.Do(func() {
-				obj.instance.Select(widget.GridWrapItemID(id))
+				return callTemplate(obj.createCb)
 			})
-
-			return object.Nil, nil
-		}), true
-
-	case "Unselect":
-		return object.NewBuiltin("widget.GridWrap.Unselect", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
+			if !ok {
+				return
 			}
+			_, err := cb.Call(object.NewInt(int64(id)), wrapCanvasObject(item))
+			cb.Report(err)
+		}
+		return object.Nil, nil
+	})
+	gridWrapAttrs.Define("OnSelected").Args("arg1").Returns("nil").Impl(func(obj *GridWrap, ctx context.Context, args ...object.Object) (object.Object,
+		error) {
+		cb, err := vmexec.NewCallback(ctx,
 
-			id, err := object.AsInt(args[0])
-			if err != nil {
-				return nil, err
-			}
+			"widget.GridWrap.OnSelected", args[0])
+		if err !=
+			nil {
+			return nil, err
+		}
+		obj.instance.OnSelected = func(id widget.GridWrapItemID) {
+			cb.Fire(object.NewInt(int64(id)))
+		}
+		return object.Nil, nil
+	})
+	gridWrapAttrs.Define("OnUnselected").
+		Args("arg1").Returns(
+		"nil",
+	).Impl(func(obj *GridWrap, ctx context.Context, args ...object.Object) (object.Object, error) {
+		cb, err := vmexec.NewCallback(
+			ctx,
+			"widget.GridWrap.OnUnselected", args[0])
+		if err != nil {
+			return nil, err
+		}
+		obj.instance.
+			OnUnselected = func(id widget.GridWrapItemID) {
+			cb.Fire(object.NewInt(int64(id)))
+		}
+		return object.Nil, nil
+	})
+	gridWrapAttrs.Define("Select").Doc("Select an index.").Args("arg1").Returns("nil").Impl(func(obj *GridWrap, ctx context.Context, args ...object.Object) (object.Object, error) {
+		id, err := object.
+			AsInt(args[0])
+		if err != nil {
+			return nil,
+				err
+		}
+		guithread.Do(func() {
+			obj.instance.
+				Select(widget.GridWrapItemID(id))
+		})
 
-			guithread.Do(func() {
+		return object.Nil, nil
+	})
+	gridWrapAttrs.Define("Unselect").Args("arg1").Returns("nil").Impl(func(obj *GridWrap, ctx context.Context, args ...object.Object) (object.Object, error) {
+		id, err := object.AsInt(args[0])
+		if err != nil {
+			return nil, err
+		}
+		guithread.Do(
+			func() {
 				obj.instance.Unselect(widget.GridWrapItemID(id))
 			})
+		return object.Nil,
 
-			return object.Nil, nil
-		}), true
-
-	case "UnselectAll":
-		return object.NewBuiltin("widget.GridWrap.UnselectAll", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-
+			nil
+	})
+	gridWrapAttrs.Define("UnselectAll").
+		Args().
+		Returns("nil").
+		Impl(func(obj *GridWrap, ctx context.Context,
+			args ...object.Object) (object.Object, error) {
 			guithread.Do(func() {
 				obj.instance.UnselectAll()
 			})
-
 			return object.Nil, nil
-		}), true
-
-	case "Refresh":
-		return object.NewBuiltin("widget.GridWrap.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-
-			guithread.Do(func() {
-				obj.instance.Refresh()
-			})
-
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("widget.GridWrap.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.GridWrap.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-
-	return nil, false
+		})
 }

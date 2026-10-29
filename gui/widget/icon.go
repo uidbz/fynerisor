@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -171,56 +172,21 @@ func (obj *Icon) Equals(other object.Object) bool {
 }
 
 func (obj *Icon) Attrs() []object.AttrSpec {
-	return nil
+	return iconAttrs.
+
+		// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
+		Specs()
 }
 
-// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
+var iconAttrs = object.NewAttrRegistry[*Icon](string(IconType))
+
 func (obj *Icon) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
 func (obj *Icon) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "SetResource":
-		return object.NewBuiltin("widget.Icon.SetResource", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			resourceName, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-			res := GetThemeResource(resourceName)
-			if res == nil {
-				return nil, object.Errorf("unknown icon resource: %s", resourceName)
-			}
-			guithread.Do(func() {
-				obj.instance.SetResource(res)
-			})
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("widget.Icon.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.Icon.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
+	return iconAttrs.GetAttr(obj, name)
+
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -230,4 +196,30 @@ func (obj *Icon) SetAttr(name string, value object.Object) error {
 
 func (obj *Icon) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", IconType, name)
+}
+func init() {
+	objattrs.Add(iconAttrs)
+	iconAttrs.Define("SetResource").Args("arg1").
+		Returns("nil").Impl(func(obj *Icon, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		resourceName,
+
+			err := object.AsString(args[0])
+		if err !=
+			nil {
+			return nil, err
+		}
+		res := GetThemeResource(resourceName)
+		if res == nil {
+			return nil, object.Errorf("unknown icon resource: %s",
+
+				resourceName)
+		}
+		guithread.Do(func() {
+			obj.instance.
+				SetResource(res)
+		})
+		return object.Nil, nil
+	})
 }

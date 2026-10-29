@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 	"github.com/uidbz/fynerisor/gui/vmexec"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -61,10 +62,12 @@ func (obj *Markdown) Equals(other object.Object) bool {
 }
 
 func (obj *Markdown) Attrs() []object.AttrSpec {
-	return nil
+	return markdownAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		Specs()
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Markdown) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -105,73 +108,18 @@ func (obj *Markdown) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", MarkdownType, name)
 }
 
+var markdownAttrs = object.NewAttrRegistry[*Markdown](string(MarkdownType))
+
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Markdown) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
 func (obj *Markdown) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Text":
-		return object.NewString(obj.src), true
-	case "SetText":
-		return object.NewBuiltin("widget.Markdown.SetText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			s, err := object.AsString(args[0])
-			if err != nil {
-				return nil, object.Errorf("type error: %v", err)
-			}
-			obj.src = s
-			guithread.Do(func() {
-				obj.instance.ParseMarkdown(s)
-			})
-			return object.Nil, nil
-		}), true
-	case "Wrapping":
-		return object.NewInt(int64(obj.instance.Wrapping)), true
-	case "Truncation":
-		return object.NewInt(int64(obj.instance.Truncation)), true
-	case "SetOnTapped":
-		return object.NewBuiltin("widget.Markdown.SetOnTapped", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			cb, err := vmexec.NewCallback(ctx, "widget.Markdown.SetOnTapped", args[0])
-			if err != nil {
-				return nil, err
-			}
+	return markdownAttrs.GetAttr(obj, name)
 
-			// Event: link taps are queued on the script's VM goroutine.
-			obj.callback = func(text, url string) {
-				cb.Fire(object.NewString(text), object.NewString(url))
-			}
+	// Event: link taps are queued on the script's VM goroutine.
 
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("widget.Markdown.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.Markdown.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
 }
 
 func NewMarkdown(markdown string) *Markdown {
@@ -187,4 +135,50 @@ func NewMarkdown(markdown string) *Markdown {
 		}
 	}
 	return richtext
+}
+func init() {
+	objattrs.Add(markdownAttrs)
+	markdownAttrs.Define("Text").Doc("The text.").Getter(func(obj *Markdown) object.Object {
+		return object.NewString(obj.src)
+	})
+	markdownAttrs.Define("SetText").Doc(
+		"Set the text.",
+	).Args("arg1").Returns("nil").Impl(func(obj *Markdown, ctx context.Context, args ...object.Object) (object.Object, error) {
+
+		s, err := object.AsString(args[0])
+		if err != nil {
+			return nil, object.Errorf("type error: %v",
+
+				err)
+		}
+		obj.src = s
+		guithread.Do(func() { obj.instance.ParseMarkdown(s) })
+		return object.Nil, nil
+	})
+	markdownAttrs.Define("Wrapping").Doc("Text wrapping mode (a constants.TextWrap* value).").
+		Getter(func(obj *Markdown) object.Object {
+			return object.NewInt(int64(obj.instance.Wrapping))
+		})
+	markdownAttrs.Define("Truncation").Getter(func(obj *Markdown) object.
+		Object {
+		return object.
+			NewInt(int64(obj.instance.Truncation))
+	})
+	markdownAttrs.Define("SetOnTapped").
+		Args("arg1").Returns("nil").
+		Impl(func(obj *Markdown,
+			ctx context.Context, args ...object.Object) (object.Object, error) {
+			cb, err := vmexec.
+				NewCallback(ctx, "widget.Markdown.SetOnTapped",
+					args[0])
+			if err != nil {
+				return nil, err
+			}
+
+			obj.callback = func(text, url string) {
+				cb.Fire(object.NewString(text), object.NewString(url))
+			}
+			return object.
+				Nil, nil
+		})
 }

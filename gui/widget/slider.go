@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 	"github.com/uidbz/fynerisor/gui/vmexec"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -83,63 +84,24 @@ func (obj *Slider) Equals(other object.Object) bool {
 }
 
 func (obj *Slider) Attrs() []object.AttrSpec {
-	return nil
+	return sliderAttrs.
+
+		// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
+		Specs()
 }
 
-// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
+var sliderAttrs = object.NewAttrRegistry[*Slider](string(SliderType))
+
 func (obj *Slider) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
 func (obj *Slider) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Value":
-		return object.NewFloat(obj.instance.Value), true
-	case "Min":
-		return object.NewFloat(obj.instance.Min), true
-	case "Max":
-		return object.NewFloat(obj.instance.Max), true
-	case "Step":
-		return object.NewFloat(obj.instance.Step), true
-	case "OnChanged":
-		return object.NewBuiltin("widget.Slider.OnChanged", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			cb, err := vmexec.NewCallback(ctx, "widget.Slider.OnChanged", args[0])
-			if err != nil {
-				return nil, err
-			}
+	return sliderAttrs.GetAttr(obj, name)
 
-			// Change event: coalesced, latest value wins — a fast drag
-			// produces far more updates than the VM can run (issue #51).
-			obj.instance.OnChanged = func(value float64) {
-				cb.FireCoalesced(object.NewFloat(value))
-			}
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("widget.Slider.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.Slider.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
+	// Change event: coalesced, latest value wins — a fast drag
+	// produces far more updates than the VM can run (issue #51).
+
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -187,4 +149,43 @@ func (obj *Slider) setAttrUI(name string, value object.Object) error {
 		return nil
 	}
 	return fmt.Errorf("attribute error: %s object has no attribute %q", SliderType, name)
+}
+func init() {
+	objattrs.Add(sliderAttrs)
+	sliderAttrs.Define("Value").Getter(func(obj *Slider) object.Object {
+		return object.NewFloat(obj.
+			instance.Value)
+	})
+	sliderAttrs.Define("Min").
+		Getter(func(obj *Slider) object.Object {
+			return object.NewFloat(obj.instance.
+				Min)
+		})
+	sliderAttrs.Define("Max").
+		Getter(func(obj *Slider) object.Object {
+			return object.NewFloat(obj.instance.
+				Max)
+		})
+	sliderAttrs.Define("Step").Getter(func(obj *Slider) object.Object {
+		return object.NewFloat(obj.
+			instance.Step)
+	})
+	sliderAttrs.Define("OnChanged").Doc(
+		"Set the change handler; fires on the script VM goroutine.",
+	).Args("arg1").Returns("nil").Impl(func(obj *Slider, ctx context.Context, args ...object.Object) (object.Object,
+
+		error) {
+		cb, err := vmexec.NewCallback(ctx, "widget.Slider.OnChanged",
+			args[0])
+		if err !=
+			nil {
+			return nil, err
+		}
+		obj.instance.
+			OnChanged = func(value float64) {
+			cb.FireCoalesced(object.NewFloat(value))
+		}
+		return object.Nil,
+			nil
+	})
 }

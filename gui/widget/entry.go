@@ -9,6 +9,7 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 	"github.com/uidbz/fynerisor/gui/vmexec"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -73,10 +74,12 @@ func (obj *Entry) Equals(other object.Object) bool {
 }
 
 func (obj *Entry) Attrs() []object.AttrSpec {
-	return nil
+	return entryAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		Specs()
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Entry) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -121,187 +124,26 @@ func (obj *Entry) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", EntryType, name)
 }
 
+var entryAttrs = object.NewAttrRegistry[*Entry](string(EntryType))
+
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Entry) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
 func (obj *Entry) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Text":
-		return object.NewString(obj.instance.Text), true
+	return entryAttrs.GetAttr(obj, name)
 
-	case "PlaceHolder":
-		return object.NewString(obj.instance.PlaceHolder), true
+	// Event: queued on the script's VM goroutine.
 
-	case "Disabled":
-		return object.NewBool(obj.instance.Disabled()), true
+	// Change event: coalesced on the run's queue — a burst of
+	// keystrokes while the VM is busy delivers the latest text and
+	// never fills the queue (issue #51). Order between distinct
+	// changes is kept; only superseded values are skipped.
 
-	case "SetText":
-		return object.NewBuiltin("widget.Entry.SetText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
-			}
+	// Getter: Fyne calls the validator synchronously on the UI
+	// thread. While the VM is busy keep the previous verdict.
 
-			val, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			guithread.Do(func() {
-				obj.instance.SetText(val)
-			})
-
-			return object.Nil, nil
-		}), true
-
-	case "SetPlaceHolder":
-		return object.NewBuiltin("widget.Entry.SetPlaceHolder", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-
-			val, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			obj.instance.PlaceHolder = val
-			guithread.Do(func() {
-				obj.instance.Refresh()
-			})
-
-			return object.Nil, nil
-		}), true
-
-	case "Append":
-		return object.NewBuiltin("widget.Entry.Append", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
-			}
-
-			val, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			obj.instance.Append(val)
-
-			return object.Nil, nil
-		}), true
-
-	case "OnSubmitted":
-		return object.NewBuiltin("widget.OnSubmitted", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			cb, err := vmexec.NewCallback(ctx, "widget.Entry.OnSubmitted", args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			// Event: queued on the script's VM goroutine.
-			obj.instance.OnSubmitted = func(text string) {
-				cb.Fire(object.NewString(text))
-			}
-
-			return object.Nil, nil
-		}), true
-
-	case "OnChanged":
-		return object.NewBuiltin("widget.Entry.OnChanged", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			cb, err := vmexec.NewCallback(ctx, "widget.Entry.OnChanged", args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			// Change event: coalesced on the run's queue — a burst of
-			// keystrokes while the VM is busy delivers the latest text and
-			// never fills the queue (issue #51). Order between distinct
-			// changes is kept; only superseded values are skipped.
-			obj.instance.OnChanged = func(text string) {
-				cb.FireCoalesced(object.NewString(text))
-			}
-
-			return object.Nil, nil
-		}), true
-
-	case "SetValidator":
-		return object.NewBuiltin("widget.Entry.SetValidator", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			cb, err := vmexec.NewCallback(ctx, "widget.Entry.SetValidator", args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			// Getter: Fyne calls the validator synchronously on the UI
-			// thread. While the VM is busy keep the previous verdict.
-			var last error
-			obj.instance.Validator = func(text string) error {
-				s := object.NewString(text)
-				result, err := cb.Call(s)
-				if err != nil {
-					if vmexec.Quiet(err) {
-						return last
-					}
-					last = err
-					return err
-				}
-				last = validatorVerdict(result)
-				return last
-			}
-
-			return object.Nil, nil
-		}), true
-
-	case "Disable":
-		return object.NewBuiltin("widget.Entry.Disable", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Disable()
-			})
-			return object.Nil, nil
-		}), true
-
-	case "Enable":
-		return object.NewBuiltin("widget.Entry.Enable", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Enable()
-			})
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("widget.Entry.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.Entry.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
 }
 
 func NewEntry(w WindowInterface) *Entry {
@@ -322,4 +164,137 @@ func NewEntryWithData(data interface{ Get() (string, error) }, w WindowInterface
 
 func NewMultiLineEntry(w WindowInterface) *Entry {
 	return &Entry{instance: widget.NewMultiLineEntry(), w: w}
+}
+func init() {
+	objattrs.Add(entryAttrs)
+	entryAttrs.Define("Text").
+		Doc("The text.").Getter(func(obj *Entry) object.
+		Object {
+		return object.NewString(obj.instance.Text)
+	})
+	entryAttrs.Define("PlaceHolder").Getter(func(obj *Entry) object.Object {
+		return object.NewString(obj.instance.
+			PlaceHolder)
+	})
+	entryAttrs.Define("Disabled").Doc("Whether the object is disabled.").Getter(func(obj *Entry) object.Object {
+		return object.NewBool(
+			obj.instance.Disabled())
+	})
+	entryAttrs.Define("SetText").Doc("Set the text.").Args("arg1").Returns("nil").Impl(func(obj *Entry, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		val, err := object.AsString(args[0])
+		if err !=
+
+			nil {
+			return nil, err
+		}
+		guithread.Do(func() {
+			obj.instance.SetText(val)
+		})
+		return object.
+				Nil,
+
+			nil
+	})
+	entryAttrs.Define("SetPlaceHolder").
+		Args("arg1").Returns("nil").Impl(func(obj *Entry, ctx context.Context, args ...object.Object) (
+		object.Object, error) {
+		val, err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		obj.instance.PlaceHolder = val
+		guithread.
+			Do(func() { obj.instance.Refresh() })
+
+		return object.Nil, nil
+	})
+	entryAttrs.Define("Append").Args("arg1").Returns("nil").Impl(func(obj *Entry, ctx context.Context, args ...object.Object) (object.Object, error) {
+		val, err := object.AsString(
+			args[0])
+		if err != nil {
+			return nil, err
+
+		}
+		obj.instance.Append(val)
+		return object.Nil,
+			nil
+	})
+	entryAttrs.Define("OnSubmitted").Args("arg1").
+		Returns(
+			"nil").Impl(func(obj *Entry, ctx context.Context, args ...object.Object) (object.
+		Object, error) {
+		cb, err := vmexec.NewCallback(ctx, "widget.Entry.OnSubmitted", args[0])
+		if err != nil {
+			return nil, err
+		}
+		obj.
+			instance.OnSubmitted = func(text string) {
+			cb.
+				Fire(object.NewString(text))
+		}
+
+		return object.Nil, nil
+	})
+	entryAttrs.Define("OnChanged").Doc("Set the change handler; fires on the script VM goroutine.").Args("arg1").Returns("nil").Impl(func(obj *Entry, ctx context.Context, args ...object.Object) (object.Object, error) {
+		cb,
+
+			err := vmexec.NewCallback(ctx, "widget.Entry.OnChanged",
+			args[0])
+		if err != nil {
+			return nil,
+
+				err
+		}
+		obj.instance.OnChanged = func(text string) {
+			cb.FireCoalesced(object.
+				NewString(text))
+		}
+		return object.Nil, nil
+	})
+	entryAttrs.Define("SetValidator").Args("arg1").
+		Returns("nil").Impl(func(obj *Entry, ctx context.Context,
+		args ...object.Object) (object.
+		Object, error) {
+		cb, err := vmexec.NewCallback(ctx, "widget.Entry.SetValidator",
+
+			args[0])
+		if err != nil {
+			return nil, err
+		}
+		var last error
+
+		obj.instance.
+			Validator = func(text string) error {
+			s := object.
+				NewString(text)
+			result, err := cb.Call(s)
+			if err != nil {
+				if vmexec.
+					Quiet(err) {
+					return last
+				}
+				last = err
+				return err
+			}
+			last = validatorVerdict(result)
+			return last
+		}
+		return object.
+			Nil, nil
+	})
+	entryAttrs.Define("Disable").Doc("Disable the object.").Args().Returns("nil").Impl(func(obj *Entry, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		guithread.
+			Do(func() { obj.instance.Disable() })
+		return object.Nil, nil
+	})
+	entryAttrs.Define("Enable").Doc("Re-enable the object.").Args().Returns("nil").Impl(func(obj *Entry, ctx context.Context, args ...object.
+		Object) (object.Object, error) {
+		guithread.
+			Do(func() { obj.instance.Enable() })
+		return object.Nil, nil
+	})
 }

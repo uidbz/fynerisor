@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 	"github.com/uidbz/fynerisor/gui/vmexec"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -70,90 +71,23 @@ func (obj *Hyperlink) Equals(other object.Object) bool {
 }
 
 func (obj *Hyperlink) Attrs() []object.AttrSpec {
-	return nil
+	return hyperlinkAttrs.
+
+		// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
+		Specs()
 }
 
-// GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
+var hyperlinkAttrs = object.NewAttrRegistry[*Hyperlink](string(HyperlinkType))
+
 func (obj *Hyperlink) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
 func (obj *Hyperlink) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Text":
-		return object.NewString(obj.instance.Text), true
-	case "URL":
-		return object.NewString(obj.instance.URL.String()), true
-	case "SetText":
-		return object.NewBuiltin("widget.Hyperlink.SetText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			text, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-			guithread.Do(func() {
-				obj.instance.SetText(text)
-			})
-			return object.Nil, nil
-		}), true
-	case "SetURL":
-		return object.NewBuiltin("widget.Hyperlink.SetURL", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			urlStr, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-			parsedURL, err := url.Parse(urlStr)
-			if err != nil {
-				return nil, object.Errorf("invalid URL: %v", err)
-			}
-			guithread.Do(func() {
-				obj.instance.SetURL(parsedURL)
-			})
-			return object.Nil, nil
-		}), true
-	case "OnTapped":
-		return object.NewBuiltin("widget.Hyperlink.OnTapped", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			cb, err := vmexec.NewCallback(ctx, "widget.Hyperlink.OnTapped", args[0])
-			if err != nil {
-				return nil, err
-			}
+	return hyperlinkAttrs.GetAttr(obj, name)
 
-			// Event: queued on the script's VM goroutine.
-			obj.instance.OnTapped = func() {
-				cb.Fire()
-			}
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("widget.Hyperlink.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.Hyperlink.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
+	// Event: queued on the script's VM goroutine.
+
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -187,4 +121,71 @@ func (obj *Hyperlink) setAttrUI(name string, value object.Object) error {
 		return nil
 	}
 	return fmt.Errorf("attribute error: %s object has no attribute %q", HyperlinkType, name)
+}
+func init() {
+	objattrs.Add(hyperlinkAttrs)
+	hyperlinkAttrs.
+		Define("Text").Doc("The text.").Getter(
+		func(obj *Hyperlink) object.Object {
+			return object.
+				NewString(obj.instance.Text)
+		})
+	hyperlinkAttrs.
+		Define("URL").Getter(
+		func(obj *Hyperlink) object.Object {
+			return object.NewString(obj.
+				instance.URL.String())
+		})
+	hyperlinkAttrs.
+		Define("SetText").Doc("Set the text.").
+		Args("arg1").Returns("nil").Impl(func(obj *Hyperlink, ctx context.Context, args ...object.
+		Object) (object.Object, error) {
+		text, err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		guithread.Do(func() {
+			obj.
+				instance.
+				SetText(text)
+		})
+		return object.
+			Nil, nil
+	})
+	hyperlinkAttrs.
+		Define("SetURL").Args("arg1").Returns("nil").Impl(func(obj *Hyperlink, ctx context.Context, args ...object.Object) (object.Object, error) {
+		urlStr, err := object.AsString(
+			args[0])
+		if err != nil {
+			return nil, err
+		}
+		parsedURL,
+			err := url.Parse(urlStr)
+		if err !=
+			nil {
+			return nil, object.Errorf("invalid URL: %v",
+
+				err)
+		}
+		guithread.Do(func() {
+			obj.instance.
+				SetURL(parsedURL)
+		})
+		return object.Nil, nil
+	})
+	hyperlinkAttrs.
+		Define("OnTapped").Doc("Set the tap handler; fires on the script VM goroutine.").Args("arg1").Returns("nil").Impl(func(obj *Hyperlink, ctx context.Context, args ...object.
+		Object) (object.Object, error) {
+		cb, err := vmexec.
+			NewCallback(ctx, "widget.Hyperlink.OnTapped",
+
+				args[0])
+		if err != nil {
+			return nil, err
+		}
+		obj.instance.OnTapped = func() {
+			cb.Fire()
+		}
+		return object.Nil, nil
+	})
 }

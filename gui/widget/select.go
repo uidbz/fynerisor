@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -54,10 +55,12 @@ func (obj *Select) Equals(other object.Object) bool {
 }
 
 func (obj *Select) Attrs() []object.AttrSpec {
-	return nil
+	return selectAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		Specs()
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Select) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -66,87 +69,68 @@ func (obj *Select) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", SelectType, name)
 }
 
+var selectAttrs = object.NewAttrRegistry[*Select](string(SelectType))
+
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Select) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
 func (obj *Select) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "SetSelectedIndex":
-		return object.NewBuiltin("widget.Select.SetSelectedIndex", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
-			}
+	return selectAttrs.GetAttr(obj, name)
 
-			index, err := object.AsInt(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			obj.instance.SetSelectedIndex(int(index))
-
-			return object.Nil, nil
-		}), true
-	case "SetOptions":
-		return object.NewBuiltin("widget.Select.SetOptions", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
-			}
-
-			options, err := object.AsStringSlice(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			obj.instance.SetOptions(options)
-
-			return object.Nil, nil
-		}), true
-
-	case "SetSelected":
-		return object.NewBuiltin("widget.Select.SetSelected", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=exactly 1", len(args))
-			}
-
-			selected, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			obj.instance.SetSelected(selected)
-
-			return object.Nil, nil
-		}), true
-	case "Selected":
-		return object.NewString(obj.instance.Selected), true
-	case "SelectedIndex":
-		return object.NewInt(int64(obj.instance.SelectedIndex())), true
-	case "Hide":
-		return object.NewBuiltin("widget.Select.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.Select.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
 }
 
 func NewSelect(options []string, changed func(string)) *Select {
 	return &Select{instance: widget.NewSelect(options, changed)}
+}
+func init() {
+	objattrs.Add(selectAttrs)
+	selectAttrs.Define("SetSelectedIndex").Args(
+		"arg1").Returns("nil").Impl(func(obj *Select,
+		ctx context.Context, args ...object.Object) (object.Object, error) {
+		index, err := object.AsInt(args[0])
+		if err != nil {
+			return nil, err
+
+		}
+		obj.instance.SetSelectedIndex(
+			int(index))
+		return object.Nil, nil
+	})
+	selectAttrs.Define("SetOptions").Args("arg1").Returns("nil").Impl(func(obj *Select, ctx context.
+		Context, args ...object.Object) (object.
+		Object, error) {
+		options, err := object.AsStringSlice(args[0])
+		if err != nil {
+			return nil,
+
+				err
+		}
+		obj.instance.SetOptions(options)
+		return object.Nil, nil
+	})
+	selectAttrs.Define("SetSelected").Args("arg1").Returns("nil").Impl(func(obj *Select, ctx context.Context, args ...object.Object) (object.
+		Object, error) {
+		selected, err := object.AsString(args[0])
+		if err != nil {
+			return nil,
+				err
+
+		}
+		obj.instance.SetSelected(selected)
+		return object.Nil, nil
+	})
+	selectAttrs.Define("Selected").Doc("The selected index.").Getter(func(obj *Select) object.
+		Object {
+		return object.NewString(obj.instance.
+			Selected)
+	})
+	selectAttrs.Define("SelectedIndex").
+		Getter(
+			func(obj *Select) object.
+				Object {
+				return object.
+					NewInt(int64(obj.instance.SelectedIndex()))
+			})
 }
