@@ -88,7 +88,7 @@ func (s *StdinObject) Inspect() string   { return "io.stdin" }
 func (s *StdinObject) String() string    { return "io.stdin" }
 func (s *StdinObject) Interface() any    { return s }
 func (s *StdinObject) IsTruthy() bool    { return true }
-func (s *StdinObject) Cost() int         { return 0 }
+
 func (s *StdinObject) MarshalJSON() ([]byte, error) {
 	return []byte(`"io.stdin"`), nil
 }
@@ -166,7 +166,7 @@ func (s *OutputStream) Inspect() string   { return "io." + s.name }
 func (s *OutputStream) String() string    { return "io." + s.name }
 func (s *OutputStream) Interface() any    { return s }
 func (s *OutputStream) IsTruthy() bool    { return true }
-func (s *OutputStream) Cost() int         { return 0 }
+
 func (s *OutputStream) MarshalJSON() ([]byte, error) {
 	return []byte(`"io.` + s.name + `"`), nil
 }

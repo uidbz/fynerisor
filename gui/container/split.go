@@ -46,10 +46,6 @@ func (obj *Split) IsTruthy() bool {
 	return true
 }
 
-func (obj *Split) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'container.split'")
-}
-
 func (obj *Split) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", SplitType, opType)
 }

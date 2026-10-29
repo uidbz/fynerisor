@@ -44,10 +44,6 @@ func (obj *ColorPickerDialog) IsTruthy() bool {
 	return true
 }
 
-func (obj *ColorPickerDialog) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'dialog.ColorPickerDialog'")
-}
-
 func (obj *ColorPickerDialog) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", ColorPickerDialogType, opType)
 }

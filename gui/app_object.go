@@ -21,8 +21,6 @@ func newAppObject(w *Window) *App {
 	return &App{appName: w.appName, win: w}
 }
 
-// newAppObjectForContext removed - not needed in GUI package
-
 func (a *App) Type() object.Type {
 	return AppType
 }
@@ -33,10 +31,6 @@ func (a *App) Inspect() string {
 }
 
 func (a *App) inspectUI() string {
-	return "app"
-}
-
-func (a *App) String() string {
 	return "app"
 }
 
@@ -55,10 +49,6 @@ func (a *App) IsTruthy() bool {
 
 func (a *App) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for app: %v", opType)
-}
-
-func (a *App) Cost() int {
-	return 0
 }
 
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).

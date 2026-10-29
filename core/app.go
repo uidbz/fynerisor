@@ -91,7 +91,3 @@ func newEprintBuiltin() object.Object {
 		return object.Nil, nil
 	})
 }
-
-func (a *appObject) Cost() int {
-	return 0
-}

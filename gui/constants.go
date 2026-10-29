@@ -72,14 +72,6 @@ func (obj *Constants) IsTruthy() bool {
 	return true
 }
 
-func (obj *Constants) Cost() int {
-	return 0
-}
-
-func (obj *Constants) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'constants'")
-}
-
 func (obj *Constants) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", ConstantsType, opType)
 }

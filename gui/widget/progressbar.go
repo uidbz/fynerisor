@@ -60,16 +60,8 @@ func (obj *ProgressBar) IsTruthy() bool {
 	return true
 }
 
-func (obj *ProgressBar) Cost() int {
-	return 0
-}
-
 func (obj *ProgressBar) CanvasObject() fyne.CanvasObject {
 	return obj.instance
-}
-
-func (obj *ProgressBar) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'widget.ProgressBar'")
 }
 
 func (obj *ProgressBar) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {

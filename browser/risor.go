@@ -2,7 +2,6 @@ package browser
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"fyne.io/fyne/v2"
@@ -48,19 +47,12 @@ func (rb *RisorBrowser) IsTruthy() bool {
 }
 
 // Cost returns the memory cost
-func (rb *RisorBrowser) Cost() int {
-	return 0
-}
 
 // MarshalJSON implements JSON marshaling
-func (rb *RisorBrowser) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'browser'")
-}
 
 // RunOperation implements binary operations
 func (rb *RisorBrowser) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	return object.Errorf("eval error: unsupported operation for browser: %v", opType),
-		errors.New("eval error: unsupported operation for browser")
+	return nil, object.Errorf("eval error: unsupported operation for browser: %v", opType)
 }
 
 // Equals checks equality

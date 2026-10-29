@@ -2,7 +2,6 @@ package risorchart
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"image/color"
 	"math"
@@ -80,15 +79,8 @@ func (r *LineChart) IsTruthy() bool {
 	return true
 }
 
-func (r *LineChart) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal '" + string(LineChartType) + "'")
-}
-
 func (r *LineChart) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(LineChartType))
-	obj := object.Errorf("eval error: unsupported operation for %s: %v", LineChartType, opType)
-
-	return obj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", LineChartType, opType)
 }
 
 func (r *LineChart) Equals(other object.Object) bool {

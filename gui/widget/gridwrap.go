@@ -89,14 +89,6 @@ func (obj *GridWrap) IsTruthy() bool {
 	return true
 }
 
-func (obj *GridWrap) Cost() int {
-	return 0
-}
-
-func (obj *GridWrap) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'widget.GridWrap'")
-}
-
 func (obj *GridWrap) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", GridWrapType, opType)
 }

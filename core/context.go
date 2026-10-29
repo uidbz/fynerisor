@@ -4,7 +4,6 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"sync"
@@ -107,18 +106,6 @@ func NewContext(opts ...Option) *Context {
 	return cb
 }
 
-// ImportScript is deprecated and has been removed in favor of runtime import().
-// Use the import() function directly in scripts for module-scoped imports:
-//
-//	let utils = import("utils.risor")
-//	utils.myFunction()
-//
-// This provides proper namespacing and prevents global scope pollution.
-// The old concatenation-based import system is no longer supported.
-func (cb *Context) ImportScript(source string) error {
-	return fmt.Errorf("ImportScript() is deprecated: use import() function in scripts instead")
-}
-
 // LoadScript sets the main script to be executed. Relative import() paths
 // in the script resolve against the process working directory; use
 // LoadScriptFrom when the script's own location is known (issue #8).
@@ -214,20 +201,6 @@ func (cb *Context) Stderr() io.Writer {
 		return cb.stderr
 	}
 	return os.Stderr
-}
-
-// EvalWithImports is deprecated. Use runtime import() function instead:
-//
-//	script := `
-//	    let utils = import("utils.risor")
-//	    require("@http")
-//	    let result = utils.myUtil(42)
-//	`
-//	result, err := ctx.Eval(script)
-//
-// The new import() provides proper module scoping with namespace isolation.
-func (cb *Context) EvalWithImports(script string, fetchFunc func(path string) (string, error)) (any, error) {
-	return nil, fmt.Errorf("EvalWithImports() is deprecated: use import() function in scripts for module-scoped imports")
 }
 
 // EnabledModules returns a map of enabled module names.

@@ -44,14 +44,6 @@ func (obj *Bool) IsTruthy() bool {
 	return true
 }
 
-func (obj *Bool) Cost() int {
-	return 0
-}
-
-func (obj *Bool) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'binding.Bool'")
-}
-
 func (obj *Bool) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", BoolType, opType)
 }

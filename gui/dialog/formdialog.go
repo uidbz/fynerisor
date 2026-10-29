@@ -44,10 +44,6 @@ func (obj *FormDialog) IsTruthy() bool {
 	return true
 }
 
-func (obj *FormDialog) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'dialog.FormDialog'")
-}
-
 func (obj *FormDialog) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", FormDialogType, opType)
 }

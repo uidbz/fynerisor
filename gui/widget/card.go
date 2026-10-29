@@ -47,16 +47,8 @@ func (obj *Card) IsTruthy() bool {
 	return true
 }
 
-func (obj *Card) Cost() int {
-	return 0
-}
-
 func (obj *Card) CanvasObject() fyne.CanvasObject {
 	return obj.instance
-}
-
-func (obj *Card) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'widget.Card'")
 }
 
 func (obj *Card) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {

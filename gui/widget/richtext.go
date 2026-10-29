@@ -94,14 +94,6 @@ func (obj *RichText) IsTruthy() bool {
 	return true
 }
 
-func (obj *RichText) Cost() int {
-	return 0
-}
-
-func (obj *RichText) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'widget.RichText'")
-}
-
 func (obj *RichText) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", RichTextType, opType)
 }

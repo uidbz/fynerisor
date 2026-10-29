@@ -153,7 +153,7 @@ func main() {
         })
         window.SetContent(btn)
     `,
-        gui.WithHostWindow(host), // dialogs, shortcuts, menus, window.Canvas
+        gui.WithHostWindow(host), // dialogs, shortcuts, menus
         gui.WithHTTP(),           // same options as NewWindow
     )
     view.Execute()
@@ -168,7 +168,7 @@ func main() {
 ```
 
 `WithHostWindow` is optional. Without it the script is fully self-contained, but
-window-level features (dialogs, shortcuts, `window.Canvas`, `window.Close`)
+window-level features (dialogs, shortcuts, `window.Close`)
 return script errors. Creating the view never replaces the host window's
 content.
 

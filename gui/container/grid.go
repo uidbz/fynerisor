@@ -48,10 +48,6 @@ func (obj *GridWithColumns) IsTruthy() bool {
 	return true
 }
 
-func (obj *GridWithColumns) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'container.gridwithcolumns'")
-}
-
 func (obj *GridWithColumns) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", GridWithColumnsType, opType)
 }
@@ -140,10 +136,6 @@ func (obj *GridWithRows) Interface() interface{} {
 
 func (obj *GridWithRows) IsTruthy() bool {
 	return true
-}
-
-func (obj *GridWithRows) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'container.gridwithrows'")
 }
 
 func (obj *GridWithRows) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {

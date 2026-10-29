@@ -47,10 +47,6 @@ func (obj *Text) IsTruthy() bool {
 	return true
 }
 
-func (obj *Text) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'canvas.text'")
-}
-
 func (obj *Text) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", TextType, opType)
 }

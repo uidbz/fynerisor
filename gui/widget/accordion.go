@@ -50,10 +50,6 @@ func (obj *Accordion) IsTruthy() bool {
 	return true
 }
 
-func (obj *Accordion) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal Accordion")
-}
-
 func (obj *Accordion) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for Accordion: %v", opType)
 }
@@ -254,10 +250,6 @@ func (obj *AccordionItem) Interface() interface{} {
 
 func (obj *AccordionItem) IsTruthy() bool {
 	return true
-}
-
-func (obj *AccordionItem) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal AccordionItem")
 }
 
 func (obj *AccordionItem) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {

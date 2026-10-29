@@ -48,10 +48,6 @@ func (obj *TextStyle) IsTruthy() bool {
 	return true
 }
 
-func (obj *TextStyle) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal TextStyle")
-}
-
 func (obj *TextStyle) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for TextStyle: %v", opType)
 }

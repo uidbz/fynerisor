@@ -180,14 +180,6 @@ func (sw *ShortcutWrapper) IsTruthy() bool {
 	return true
 }
 
-func (sw *ShortcutWrapper) Cost() int {
-	return 0
-}
-
-func (sw *ShortcutWrapper) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal shortcut")
-}
-
 func (sw *ShortcutWrapper) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for shortcut: %v", opType)
 }

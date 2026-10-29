@@ -46,10 +46,6 @@ func (obj *Scroll) IsTruthy() bool {
 	return true
 }
 
-func (obj *Scroll) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'container.scroll'")
-}
-
 func (obj *Scroll) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", ScrollType, opType)
 }

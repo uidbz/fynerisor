@@ -417,18 +417,6 @@ func (w *Window) GetContentContainer() *fyne.Container {
 	return w.content
 }
 
-// ImportScript is deprecated and has been removed in favor of runtime import().
-// Use the import() function directly in scripts for module-scoped imports:
-//
-//	let utils = import("utils.risor")
-//	utils.myFunction()
-//
-// This provides proper namespacing and prevents global scope pollution.
-// The old concatenation-based import system is no longer supported.
-func (w *Window) ImportScript(source string) error {
-	return fmt.Errorf("ImportScript() is deprecated: use import() function in scripts instead")
-}
-
 // Execute executes the loaded Risor script asynchronously and returns
 // immediately. The script runs on its own VM goroutine (a vmexec.Run): the
 // main body first, then every widget event, one at a time. Sets status to
@@ -711,14 +699,6 @@ func (w *Window) IsTruthy() bool {
 	return true
 }
 
-func (w *Window) Cost() int {
-	return 0
-}
-
-func (w *Window) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'w'")
-}
-
 func (w *Window) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", WindowType, opType)
 }
@@ -739,9 +719,9 @@ func (w *Window) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", WindowType, name)
 }
 
-type IsCanvasObject interface {
-	CanvasObject() fyne.CanvasObject
-}
+// IsCanvasObject is the shared interface for objects convertible to a
+// fyne.CanvasObject (deduplicated with gui/widget, issue #33).
+type IsCanvasObject = risorwidget.IsCanvasObject
 
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (w *Window) GetAttr(name string) (object.Object, bool) {
@@ -890,9 +870,6 @@ func (w *Window) getAttrUI(name string) (object.Object, bool) {
 
 			return object.Nil, nil
 		}), true
-
-	case "Canvas":
-		return w, true // Window itself implements Canvas() method
 
 	case "Size":
 		if w.FyneWindow != nil {

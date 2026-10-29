@@ -158,16 +158,8 @@ func (obj *Icon) IsTruthy() bool {
 	return true
 }
 
-func (obj *Icon) Cost() int {
-	return 0
-}
-
 func (obj *Icon) CanvasObject() fyne.CanvasObject {
 	return obj.instance
-}
-
-func (obj *Icon) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'widget.Icon'")
 }
 
 func (obj *Icon) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {

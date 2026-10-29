@@ -47,16 +47,8 @@ func (obj *Activity) IsTruthy() bool {
 	return true
 }
 
-func (obj *Activity) Cost() int {
-	return 0
-}
-
 func (obj *Activity) CanvasObject() fyne.CanvasObject {
 	return obj.instance
-}
-
-func (obj *Activity) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'widget.Activity'")
 }
 
 func (obj *Activity) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {

@@ -49,10 +49,6 @@ func (obj *Toolbar) IsTruthy() bool {
 	return true
 }
 
-func (obj *Toolbar) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal Toolbar")
-}
-
 func (obj *Toolbar) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for Toolbar: %v", opType)
 }
@@ -182,10 +178,6 @@ func (obj *ToolbarAction) IsTruthy() bool {
 	return true
 }
 
-func (obj *ToolbarAction) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal ToolbarAction")
-}
-
 func (obj *ToolbarAction) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for ToolbarAction: %v", opType)
 }
@@ -253,10 +245,6 @@ func (obj *ToolbarSeparator) IsTruthy() bool {
 	return true
 }
 
-func (obj *ToolbarSeparator) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal ToolbarSeparator")
-}
-
 func (obj *ToolbarSeparator) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for ToolbarSeparator: %v", opType)
 }
@@ -322,10 +310,6 @@ func (obj *ToolbarSpacer) Interface() interface{} {
 
 func (obj *ToolbarSpacer) IsTruthy() bool {
 	return true
-}
-
-func (obj *ToolbarSpacer) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal ToolbarSpacer")
 }
 
 func (obj *ToolbarSpacer) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {

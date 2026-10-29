@@ -2,7 +2,6 @@ package gui
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"fyne.io/fyne/v2"
@@ -46,13 +45,8 @@ func (obj *Clipboard) IsTruthy() bool {
 	return true
 }
 
-func (obj *Clipboard) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'clipboard'")
-}
-
 func (obj *Clipboard) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(ClipboardType))
-	return object.Errorf("eval error: unsupported operation for %s: %v", ClipboardType, opType), err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", ClipboardType, opType)
 }
 
 func (obj *Clipboard) Equals(other object.Object) bool {

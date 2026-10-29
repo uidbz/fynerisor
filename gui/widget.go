@@ -59,10 +59,6 @@ func (obj *Widget) IsTruthy() bool {
 	return true
 }
 
-func (obj *Widget) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'Widget'")
-}
-
 func (obj *Widget) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", WidgetType, opType)
 }

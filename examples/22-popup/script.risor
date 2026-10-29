@@ -26,7 +26,7 @@ let standardBtn = widget.NewButton("Show Standard PopUp", () => {
 			standardPopup.Hide()
 			statusLabel.SetText("Standard popup closed")
 		}),
-		window.Canvas
+		window
 	)
 	standardPopup.Show()
 	statusLabel.SetText("Standard popup shown (non-modal)")
@@ -40,7 +40,7 @@ let modalBtn = widget.NewButton("Show Modal PopUp", () => {
 			modalPopup.Hide()
 			statusLabel.SetText("Modal popup closed")
 		}),
-		window.Canvas
+		window
 	)
 	modalPopup.Show()
 	statusLabel.SetText("Modal popup shown (blocks background)")
@@ -55,7 +55,7 @@ let positionBtn = widget.NewButton("Show at Position", () => {
 			positionPopup.Hide()
 			statusLabel.SetText("Positioned popup closed")
 		}),
-		window.Canvas
+		window
 	)
 	// Show at specific screen coordinates
 	positionPopup.ShowAtPosition(100, 100)
@@ -77,7 +77,7 @@ let infoBtn = widget.NewButton("Show Info PopUp", () => {
 		})
 	)
 
-	infoPopup = widget.NewModalPopUp(content, window.Canvas)
+	infoPopup = widget.NewModalPopUp(content, window)
 	infoPopup.Show()
 	statusLabel.SetText("Info popup shown")
 })

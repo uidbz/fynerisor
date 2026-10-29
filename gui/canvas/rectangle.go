@@ -53,10 +53,6 @@ func (obj *Rectangle) IsTruthy() bool {
 	return true
 }
 
-func (obj *Rectangle) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'canvas.rectangle'")
-}
-
 func (obj *Rectangle) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", RectangleType, opType)
 }

@@ -45,10 +45,6 @@ func (obj *Select) IsTruthy() bool {
 	return true
 }
 
-func (obj *Select) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'widget.Select'")
-}
-
 func (obj *Select) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", SelectType, opType)
 }

@@ -79,14 +79,6 @@ func (obj *TextGrid) IsTruthy() bool {
 	return true
 }
 
-func (obj *TextGrid) Cost() int {
-	return 0
-}
-
-func (obj *TextGrid) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'widget.TextGrid'")
-}
-
 func (obj *TextGrid) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", TextGridType, opType)
 }

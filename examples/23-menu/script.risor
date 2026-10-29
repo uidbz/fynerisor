@@ -33,7 +33,7 @@ findItem.Checked = false
 let editMenu = fyne.NewMenu("Edit", copyItem, cutItem, pasteItem, sep, selectAllItem, findItem)
 
 // Create popup menu
-let popupMenu = widget.NewPopUpMenu(editMenu, window.Canvas)
+let popupMenu = widget.NewPopUpMenu(editMenu, window)
 
 // Button to show menu at position
 let showMenuBtn = widget.NewButton("Show Context Menu", () => {

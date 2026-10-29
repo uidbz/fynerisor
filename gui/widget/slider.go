@@ -70,16 +70,8 @@ func (obj *Slider) IsTruthy() bool {
 	return true
 }
 
-func (obj *Slider) Cost() int {
-	return 0
-}
-
 func (obj *Slider) CanvasObject() fyne.CanvasObject {
 	return obj.instance
-}
-
-func (obj *Slider) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'widget.Slider'")
 }
 
 func (obj *Slider) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {

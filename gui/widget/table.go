@@ -82,10 +82,6 @@ func (obj *Table) IsTruthy() bool {
 	return true
 }
 
-func (obj *Table) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'widget.Table'")
-}
-
 func (obj *Table) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", TableType, opType)
 }
@@ -508,10 +504,6 @@ func (g *ImageCellWrapper) IsTruthy() bool {
 	return true
 }
 
-func (g *ImageCellWrapper) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal canvas.Image")
-}
-
 func (g *ImageCellWrapper) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for canvas.Image")
 }
@@ -599,10 +591,6 @@ func (g *GenericCanvasObjectTable) CanvasObject() fyne.CanvasObject {
 
 func (g *GenericCanvasObjectTable) IsTruthy() bool {
 	return true
-}
-
-func (g *GenericCanvasObjectTable) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal canvas.Object")
 }
 
 func (g *GenericCanvasObjectTable) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {

@@ -29,7 +29,7 @@ let sep = fyne.NewMenuItemSeparator()
 let menu = fyne.NewMenu("Edit", item1, item2, sep)
 
 // Show as popup
-let popupMenu = widget.NewPopUpMenu(menu, window.Canvas)
+let popupMenu = widget.NewPopUpMenu(menu, window)
 popupMenu.ShowAtPosition(100, 100)
 ```
 

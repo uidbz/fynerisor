@@ -15,7 +15,7 @@ host.SetContent(container.NewBorder(header, nil, nil, nil, view))
 ```
 
 `WithHostWindow` is optional. It enables window-level script features
-(`dialog.*`, `window.AddShortcut`, `window.SetMainMenu`, `window.Canvas`,
+(`dialog.*`, `window.AddShortcut`, `window.SetMainMenu`,
 `window.Close` and `window.OnDropped`). Without it the view is fully
 self-contained, but those functions return script errors.
 

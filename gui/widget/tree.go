@@ -2,7 +2,6 @@ package widget
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 
@@ -88,14 +87,6 @@ func (t *Tree) Equals(other object.Object) bool {
 
 func (t *Tree) IsTruthy() bool {
 	return true
-}
-
-func (t *Tree) Cost() int {
-	return 0
-}
-
-func (t *Tree) MarshalJSON() ([]byte, error) {
-	return nil, errors.New("tree cannot be marshaled to JSON")
 }
 
 func (t *Tree) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {

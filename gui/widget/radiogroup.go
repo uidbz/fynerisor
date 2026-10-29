@@ -50,10 +50,6 @@ func (obj *RadioGroup) IsTruthy() bool {
 	return true
 }
 
-func (obj *RadioGroup) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal RadioGroup")
-}
-
 func (obj *RadioGroup) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for RadioGroup: %v", opType)
 }

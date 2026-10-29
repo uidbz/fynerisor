@@ -138,7 +138,7 @@ func WithAppName(name string) Option {
 //
 // Fyne has no way to discover the window containing a CanvasObject, so
 // window-level script features (dialogs, shortcuts, main menu, window.Close,
-// window.OnDropped and window.Canvas) need the host window explicitly. The
+// window.OnDropped) need the host window explicitly. The
 // object is still rendered only inside its own CanvasObject; NewCanvasObject
 // never replaces the host window's content.
 //

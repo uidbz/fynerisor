@@ -135,7 +135,7 @@ fynerisor enables building cross-platform desktop applications using Risor scrip
 - **Script-based UI**: Build and modify interfaces using Risor scripts
 - **Risor v2 Support**: Built for Risor v2 with modern syntax (arrow functions, template strings, .each())
 - **Standard Modules**: Time, HTTP, OS, Strings, Filepath modules included
-- **Code Organization**: ImportScript() for splitting code across files and URLs
+- **Code Organization**: runtime `import()` for splitting code across files and URLs
 - **Cross-platform**: Works on Windows, Linux, and macOS
 - **CLI Tool**: `fynerisor` with `run`/`check`/`analyze` subcommands, watch mode, stdin, headless core/GUI modes
 - **See [WIDGET_STATUS.md](WIDGET_STATUS.md)** for complete widget implementation status
@@ -242,7 +242,7 @@ a := app.New()
 host := a.NewWindow("My App")
 
 view := gui.NewCanvasObject(script,
-    gui.WithHostWindow(host), // optional: enables dialogs, shortcuts, menus, window.Canvas
+    gui.WithHostWindow(host), // optional: enables dialogs, shortcuts, menus
     gui.WithHTTP(),
 )
 view.Execute()
@@ -312,15 +312,11 @@ func main() {
 
 **With imports:**
 
+Scripts organize code with the runtime `import()` function; relative
+paths resolve against the script's own location when it is known
+(`LoadScriptFrom`). No fetch callback is needed:
+
 ```go
-import "os"
-
-// Fetch function to load imports
-fetchFunc := func(path string) (string, error) {
-	data, err := os.ReadFile(path)
-	return string(data), err
-}
-
 script := `
 	import("utils.risor")
 	require(["v0.6", "@http"])
@@ -328,7 +324,7 @@ script := `
 	let result = myUtilFunction(42)
 `
 
-result, err := ctx.EvalWithImports(script, fetchFunc)
+result, err := ctx.Eval(script)
 ```
 
 **Available options (same as Window):**

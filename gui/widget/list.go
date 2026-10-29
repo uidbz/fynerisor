@@ -73,14 +73,6 @@ func (obj *List) IsTruthy() bool {
 	return true
 }
 
-func (obj *List) Cost() int {
-	return 0
-}
-
-func (obj *List) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'widget.List'")
-}
-
 func (obj *List) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", ListType, opType)
 }
@@ -362,10 +354,7 @@ func (g *GenericCanvasObject) Type() object.Type      { return "canvas_object" }
 func (g *GenericCanvasObject) Inspect() string        { return "canvas_object" }
 func (g *GenericCanvasObject) Interface() interface{} { return g.obj }
 func (g *GenericCanvasObject) IsTruthy() bool         { return true }
-func (g *GenericCanvasObject) Cost() int              { return 0 }
-func (g *GenericCanvasObject) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("cannot marshal canvas_object")
-}
+
 func (g *GenericCanvasObject) RunOperation(op.BinaryOpType, object.Object) (object.Object, error) {
 	return object.Nil, fmt.Errorf("no operations")
 }

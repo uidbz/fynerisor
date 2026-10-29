@@ -17,7 +17,7 @@ import (
 // the host window's content.
 //
 // Use WithHostWindow to give the script access to window-level features
-// (dialogs, shortcuts, menus, window.Canvas and window.Close). Without it the
+// (dialogs, shortcuts, menus and window.Close). Without it the
 // object is fully self-contained but those features return script errors.
 //
 // Example:

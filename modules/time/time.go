@@ -110,10 +110,6 @@ func (t *TimeObject) IsTruthy() bool {
 	return true
 }
 
-func (t *TimeObject) Cost() int {
-	return 0
-}
-
 func (t *TimeObject) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + t.value.Format(time.RFC3339) + `"`), nil
 }

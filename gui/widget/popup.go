@@ -27,11 +27,11 @@ const PopUpType object.Type = "widget.PopUp"
 //	    widget.NewLabel("This is a popup!"),
 //	    widget.NewButton("Close", () => popup.Hide())
 //	)
-//	let popup = widget.NewPopUp(content, window.Canvas)
+//	let popup = widget.NewPopUp(content, window)
 //	popup.Show()
 //
 //	// Modal popup (blocks interaction with background)
-//	let modal = widget.NewModalPopUp(content, window.Canvas)
+//	let modal = widget.NewModalPopUp(content, window)
 //	modal.Show()
 //
 // Methods:
@@ -54,7 +54,7 @@ func NewPopUp(ctx context.Context, args ...object.Object) (object.Object, error)
 
 	canvasObj, ok := args[1].(interface{ Canvas() fyne.Canvas })
 	if !ok {
-		return nil, object.Errorf("argument error: expected canvas (use window.Canvas), got %s", args[1].Type())
+		return nil, object.Errorf("argument error: expected canvas (use window), got %s", args[1].Type())
 	}
 	canvas := canvasObj.Canvas()
 	if canvas == nil {
@@ -80,7 +80,7 @@ func NewModalPopUp(ctx context.Context, args ...object.Object) (object.Object, e
 
 	canvasObj, ok := args[1].(interface{ Canvas() fyne.Canvas })
 	if !ok {
-		return nil, object.Errorf("argument error: expected canvas (use window.Canvas), got %s", args[1].Type())
+		return nil, object.Errorf("argument error: expected canvas (use window), got %s", args[1].Type())
 	}
 	canvas := canvasObj.Canvas()
 	if canvas == nil {
@@ -117,14 +117,6 @@ func (obj *PopUp) Interface() interface{} {
 
 func (obj *PopUp) IsTruthy() bool {
 	return true
-}
-
-func (obj *PopUp) Cost() int {
-	return 0
-}
-
-func (obj *PopUp) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'widget.PopUp'")
 }
 
 func (obj *PopUp) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {

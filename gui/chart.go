@@ -57,10 +57,6 @@ func (obj *Chart) IsTruthy() bool {
 	return true
 }
 
-func (obj *Chart) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'chart'")
-}
-
 func (obj *Chart) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", ChartType, opType)
 }

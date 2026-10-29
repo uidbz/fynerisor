@@ -2,7 +2,6 @@ package risorchart
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"image/color"
 	"sort"
@@ -95,15 +94,8 @@ func (r *BoxPlot) IsTruthy() bool {
 	return true
 }
 
-func (r *BoxPlot) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal '" + string(BoxPlotType) + "'")
-}
-
 func (r *BoxPlot) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(BoxPlotType))
-	obj := object.Errorf("eval error: unsupported operation for %s: %v", BoxPlotType, opType)
-
-	return obj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", BoxPlotType, opType)
 }
 
 func (r *BoxPlot) Equals(other object.Object) bool {

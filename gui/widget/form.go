@@ -45,10 +45,6 @@ func (obj *Form) IsTruthy() bool {
 	return true
 }
 
-func (obj *Form) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'widget.Form'")
-}
-
 func (obj *Form) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", FormType, opType)
 }

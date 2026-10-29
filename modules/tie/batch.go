@@ -37,14 +37,6 @@ func (b *Batch) IsTruthy() bool {
 	return b.batch != nil
 }
 
-func (b *Batch) Cost() int {
-	return 8
-}
-
-func (b *Batch) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal tie.batch")
-}
-
 func (b *Batch) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for tie.batch: %v", opType)
 }

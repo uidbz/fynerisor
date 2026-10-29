@@ -29,8 +29,8 @@ func main() {
 		window.SetContent(container.NewVBox(label, button))
 	`
 
-	// WithHostWindow gives the script access to dialogs, shortcuts, menus,
-	// window.Canvas and window.Close. The view never replaces host content.
+	// WithHostWindow gives the script access to dialogs, shortcuts and menus.
+	// The view never replaces host content.
 	view := gui.NewCanvasObject(script, gui.WithHostWindow(host))
 	view.Execute()
 

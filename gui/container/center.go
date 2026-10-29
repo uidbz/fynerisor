@@ -46,10 +46,6 @@ func (obj *Center) IsTruthy() bool {
 	return true
 }
 
-func (obj *Center) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'container.center'")
-}
-
 func (obj *Center) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", CenterType, opType)
 }

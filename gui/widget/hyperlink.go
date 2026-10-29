@@ -57,16 +57,8 @@ func (obj *Hyperlink) IsTruthy() bool {
 	return true
 }
 
-func (obj *Hyperlink) Cost() int {
-	return 0
-}
-
 func (obj *Hyperlink) CanvasObject() fyne.CanvasObject {
 	return obj.instance
-}
-
-func (obj *Hyperlink) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'widget.Hyperlink'")
 }
 
 func (obj *Hyperlink) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {

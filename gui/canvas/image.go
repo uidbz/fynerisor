@@ -53,10 +53,6 @@ func (r *Image) IsTruthy() bool {
 	return true
 }
 
-func (r *Image) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'canvas.image'")
-}
-
 func (r *Image) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", ImageType, opType)
 }

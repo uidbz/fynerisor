@@ -46,10 +46,6 @@ func (i *IO) RunOperation(opType op.BinaryOpType, right object.Object) (object.O
 	return nil, object.Errorf("eval error: unsupported operation for io: %v", opType)
 }
 
-func (i *IO) Cost() int {
-	return 0
-}
-
 func (i *IO) GetAttr(name string) (object.Object, bool) {
 	switch name {
 	case "cp":

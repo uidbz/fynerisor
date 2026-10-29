@@ -62,14 +62,6 @@ func (obj *DateEntry) IsTruthy() bool {
 	return true
 }
 
-func (obj *DateEntry) Cost() int {
-	return 0
-}
-
-func (obj *DateEntry) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'widget.DateEntry'")
-}
-
 func (obj *DateEntry) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", DateEntryType, opType)
 }

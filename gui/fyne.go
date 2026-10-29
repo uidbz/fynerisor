@@ -41,14 +41,6 @@ func (obj *Fyne) IsTruthy() bool {
 	return true
 }
 
-func (obj *Fyne) Cost() int {
-	return 0
-}
-
-func (obj *Fyne) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'fyne'")
-}
-
 func (obj *Fyne) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", FyneType, opType)
 }
@@ -173,14 +165,6 @@ func (obj *Menu) IsTruthy() bool {
 	return true
 }
 
-func (obj *Menu) Cost() int {
-	return 0
-}
-
-func (obj *Menu) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'fyne.Menu'")
-}
-
 func (obj *Menu) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for Menu: %v", opType)
 }
@@ -255,14 +239,6 @@ func (obj *MainMenu) Interface() interface{} {
 
 func (obj *MainMenu) IsTruthy() bool {
 	return true
-}
-
-func (obj *MainMenu) Cost() int {
-	return 0
-}
-
-func (obj *MainMenu) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'fyne.MainMenu'")
 }
 
 func (obj *MainMenu) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {

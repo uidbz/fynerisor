@@ -111,10 +111,6 @@ func (r *Result) RunOperation(opType op.BinaryOpType, right object.Object) (obje
 	return nil, fmt.Errorf("type error: unsupported operation for exec.result: %v", opType)
 }
 
-func (r *Result) Cost() int {
-	return 0
-}
-
 func (r *Result) MarshalJSON() ([]byte, error) {
 	pid := 0
 	if r.cmd.Process != nil {

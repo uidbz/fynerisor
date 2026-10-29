@@ -25,7 +25,7 @@ const PopUpMenuType object.Type = "widget.PopUpMenu"
 //	let item1 = fyne.NewMenuItem("Copy", () => { print("Copy") })
 //	let item2 = fyne.NewMenuItem("Paste", () => { print("Paste") })
 //	let menu = fyne.NewMenu("Edit", item1, item2)
-//	let popupMenu = widget.NewPopUpMenu(menu, window.Canvas)
+//	let popupMenu = widget.NewPopUpMenu(menu, window)
 //	popupMenu.ShowAtPosition(100, 100)
 //
 // Methods:
@@ -49,7 +49,7 @@ func NewPopUpMenu(ctx context.Context, args ...object.Object) (object.Object, er
 
 	canvasObj, ok := args[1].(interface{ Canvas() fyne.Canvas })
 	if !ok {
-		return nil, object.Errorf("argument error: expected canvas (use window.Canvas), got %s", args[1].Type())
+		return nil, object.Errorf("argument error: expected canvas (use window), got %s", args[1].Type())
 	}
 	canvas := canvasObj.Canvas()
 	if canvas == nil {
@@ -86,14 +86,6 @@ func (obj *PopUpMenu) Interface() interface{} {
 
 func (obj *PopUpMenu) IsTruthy() bool {
 	return true
-}
-
-func (obj *PopUpMenu) Cost() int {
-	return 0
-}
-
-func (obj *PopUpMenu) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'widget.PopUpMenu'")
 }
 
 func (obj *PopUpMenu) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {

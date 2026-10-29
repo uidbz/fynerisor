@@ -67,12 +67,8 @@ func main() {
 		[result1, result2, greeting]
 	`
 
-	fetchFunc := func(path string) (string, error) {
-		data, err := os.ReadFile(path)
-		return string(data), err
-	}
-
-	result, err = ctx.EvalWithImports(mainScript, fetchFunc)
+	// Runtime import() resolves the path itself; no fetch callback needed.
+	result, err = ctx.Eval(mainScript)
 	if err != nil {
 		log.Fatal(err)
 	}

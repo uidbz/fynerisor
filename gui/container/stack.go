@@ -46,10 +46,6 @@ func (obj *Stack) IsTruthy() bool {
 	return true
 }
 
-func (obj *Stack) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'container.stack'")
-}
-
 func (obj *Stack) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", StackType, opType)
 }

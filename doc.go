@@ -76,7 +76,7 @@
 //	host.SetContent(container.NewBorder(header, nil, nil, nil, view))
 //
 // window.SetContent in the script renders inside view. WithHostWindow enables
-// dialogs, shortcuts, menus, window.Canvas and window.Close; without it those
+// dialogs, shortcuts, menus and window.Close; without it those
 // functions return script errors.
 //
 // # Headless Mode

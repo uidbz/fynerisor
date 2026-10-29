@@ -44,10 +44,6 @@ func (obj *FileDialog) IsTruthy() bool {
 	return true
 }
 
-func (obj *FileDialog) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'dialog.FileDialog'")
-}
-
 func (obj *FileDialog) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", FileDialogType, opType)
 }

@@ -80,6 +80,20 @@
   own object convention and the json/http conversions from earlier
   releases. Scripts that tested results with `.Type() == "error"`
   should switch to `try`/`catch`. (issue #30)
+- **Dead object methods removed.** `Cost() int` (43 impls) is not part
+  of the Risor v2 `object.Object` interface — all removed. `MarshalJSON`
+  stubs that only returned "unable to marshal" (~90 impls) removed; the
+  json path goes through `internal/convert`, which already reports
+  "no JSON representation". Real JSON forms are kept: `time.Time`
+  (RFC3339), `io` stream handles, `exec.Result`. Also removed:
+  `App.String`, the deprecated always-error stubs
+  `core.Context.ImportScript`, `core.Context.EvalWithImports`,
+  `gui.Window.ImportScript` (use the runtime `import()`), and the
+  script-visible `window.Canvas` attribute, which returned the window
+  itself — pass `window` where a popup parent is needed
+  (`widget.NewPopUp(content, window)`). `gui.IsCanvasObject` is now an
+  alias of `widget.IsCanvasObject` instead of a second definition.
+  (issue #33)
 
 ### Fixed
 

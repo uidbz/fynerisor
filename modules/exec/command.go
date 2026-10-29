@@ -201,14 +201,6 @@ func (c *Command) RunOperation(opType op.BinaryOpType, right object.Object) (obj
 	return nil, fmt.Errorf("type error: unsupported operation for exec.command: %v", opType)
 }
 
-func (c *Command) Cost() int {
-	return 8
-}
-
-func (c *Command) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal exec.command")
-}
-
 func (c *Command) Attrs() []object.AttrSpec {
 	return []object.AttrSpec{
 		{Name: "path", Doc: "Path to the executable"},

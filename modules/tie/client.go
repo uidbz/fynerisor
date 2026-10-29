@@ -38,14 +38,6 @@ func (c *Client) IsTruthy() bool {
 	return c.tc != nil
 }
 
-func (c *Client) Cost() int {
-	return 8
-}
-
-func (c *Client) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal tie.client")
-}
-
 func (c *Client) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for tie.client: %v", opType)
 }

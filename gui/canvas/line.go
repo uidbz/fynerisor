@@ -43,10 +43,6 @@ func (obj *Line) IsTruthy() bool {
 	return true
 }
 
-func (obj *Line) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'canvas.line'")
-}
-
 func (obj *Line) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for %s: %v", LineType, opType)
 }

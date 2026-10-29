@@ -47,16 +47,8 @@ func (obj *Separator) IsTruthy() bool {
 	return true
 }
 
-func (obj *Separator) Cost() int {
-	return 0
-}
-
 func (obj *Separator) CanvasObject() fyne.CanvasObject {
 	return obj.instance
-}
-
-func (obj *Separator) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal 'widget.Separator'")
 }
 
 func (obj *Separator) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {

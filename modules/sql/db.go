@@ -46,14 +46,6 @@ func (db *DB) IsTruthy() bool {
 	return db.conn != nil
 }
 
-func (db *DB) Cost() int {
-	return 8
-}
-
-func (db *DB) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal sql.conn")
-}
-
 func (db *DB) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
 	return nil, object.Errorf("eval error: unsupported operation for sql.conn: %v", opType)
 }

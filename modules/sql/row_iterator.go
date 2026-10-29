@@ -174,14 +174,6 @@ func (ri *RowIterator) Close() {
 	})
 }
 
-func (ri *RowIterator) Cost() int {
-	return 8
-}
-
-func (ri *RowIterator) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal sql.row_iterator")
-}
-
 // Next implements the iterator interface.
 // Advances the iterator and returns the current row and a bool indicating success.
 func (ri *RowIterator) Next(ctx context.Context) (object.Object, bool) {

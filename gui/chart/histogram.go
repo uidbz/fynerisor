@@ -2,7 +2,6 @@ package risorchart
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"image/color"
 
@@ -86,15 +85,8 @@ func (r *Histogram) IsTruthy() bool {
 	return true
 }
 
-func (r *Histogram) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("type error: unable to marshal '" + string(HistogramType) + "'")
-}
-
 func (r *Histogram) RunOperation(opType op.BinaryOpType, right object.Object) (object.Object, error) {
-	err := errors.New("eval error: unsupported operation for " + string(HistogramType))
-	obj := object.Errorf("eval error: unsupported operation for %s: %v", HistogramType, opType)
-
-	return obj, err
+	return nil, object.Errorf("eval error: unsupported operation for %s: %v", HistogramType, opType)
 }
 
 func (r *Histogram) Equals(other object.Object) bool {

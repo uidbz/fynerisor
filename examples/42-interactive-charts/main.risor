@@ -35,7 +35,7 @@ bar.OnSecondaryTap((i, label, value) => {
         }),
         widget.NewButton("Close", () => menuPop.Hide())
     )
-    menuPop = widget.NewPopUp(container.NewPadded(popContent), window.Canvas)
+    menuPop = widget.NewPopUp(container.NewPadded(popContent), window)
     menuPop.Show()
 })
 
