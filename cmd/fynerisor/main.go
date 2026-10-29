@@ -23,7 +23,6 @@ import (
 
 	"github.com/uidbz/fynerisor/core"
 	"github.com/uidbz/fynerisor/gui"
-	osmod "github.com/uidbz/fynerisor/modules/os"
 )
 
 var (
@@ -69,9 +68,6 @@ func main() {
 
 	scriptPath := args[0]
 	scriptArgs := args[1:]
-
-	// Make script arguments available to the os module (os.args())
-	osmod.SetScriptArgs(scriptArgs)
 
 	// Read script
 	var script string
@@ -151,6 +147,7 @@ func main() {
 			gui.WithIO(),
 			gui.WithJSON(),
 			gui.WithCSV(),
+			gui.WithScriptArgs(scriptArgs...),
 			gui.WithRisorOptions(customGlobals...),
 			gui.WithStatusCallback(func(status string) {
 				log.Printf("[STATUS] %s", status)
@@ -171,6 +168,7 @@ func main() {
 			gui.WithIO(),
 			gui.WithJSON(),
 			gui.WithCSV(),
+			gui.WithScriptArgs(scriptArgs...),
 			gui.WithRisorOptions(customGlobals...),
 			gui.WithOnStateChange(func(state gui.RunState, err error) {
 				if state == gui.StateFailed {

@@ -90,13 +90,13 @@ func NewBrowserApp(title string) *BrowserApp {
 		loader: NewScriptLoader(),
 	}
 
-	// Set version for require() checks
-	core.SetAppVersion(core.Version)
-
 	// Create fynerisor window
 	fyneWindow := b.app.NewWindow(title)
 	b.window = gui.NewWindow(fyneWindow,
 		gui.WithAppName("fynerisor-browser"),
+		// require() version checks see this window's version; no
+		// process-global setter (issue #44).
+		gui.WithAppVersion(core.Version),
 		// A page whose script fails gets the error page. The typed
 		// lifecycle is used instead of matching "ERROR: " in the status
 		// text, which pages could also set themselves (issue #39).

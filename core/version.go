@@ -29,6 +29,10 @@ func GetVersion() VersionInfo {
 // This version is used when scripts call require(["vX.Y.Z"]) to check
 // compatibility with the embedding application, not fynerisor itself.
 //
+// Deprecated: process-global — runtimes in one process overwrite each
+// other (issue #44). Use core.WithAppVersion or gui.WithAppVersion;
+// this setter only remains as the default for hosts that still call it.
+//
 // Example:
 //
 //	func main() {

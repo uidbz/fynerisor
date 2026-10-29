@@ -307,9 +307,22 @@ func WithOS() Option {
 //	    print(arg)
 //	}
 func WithScriptArgs(args ...string) Option {
-	return moduleOption{
-		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
-			os.SetScriptArgs(args)
+	return windowOption{
+		fn: func(w *Window) {
+			w.scriptArgs = args
+		},
+	}
+}
+
+// WithAppVersion sets the embedding application's version for this
+// window (issue #44). Scripts' require(["vX.Y"]) version checks and
+// app.version read it; two windows in one process each report their
+// own. core.SetAppVersion remains as the deprecated process-global
+// default.
+func WithAppVersion(version string) Option {
+	return windowOption{
+		fn: func(w *Window) {
+			w.appVersion = version
 		},
 	}
 }

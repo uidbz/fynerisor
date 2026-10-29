@@ -394,6 +394,14 @@
   only script output. The `tablewidget` diagnostics (the last
   `fmt.Println` sites in the library) gained an error sink wired from
   the widget factory.
+- **Script args and app version are per-runtime (issue #44).**
+  `WithScriptArgs` no longer writes a process-global: core and gui
+  carry the args in the runtime's eval context, so two runtimes in one
+  process each answer `os.args()` from their own configuration.
+  `WithAppVersion` (new) does the same for `require(["vX.Y"])` checks
+  and `app.version`. `core.SetAppVersion` and `os.SetScriptArgs` are
+  deprecated and remain only as the fallback default for hosts that
+  still call them.
 
 ## [0.8.2] - 2026-09-03
 

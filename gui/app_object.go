@@ -5,7 +5,6 @@ import (
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
-	"github.com/uidbz/fynerisor/core"
 	"github.com/uidbz/fynerisor/gui/guithread"
 )
 
@@ -72,8 +71,8 @@ func (a *App) getAttrUI(name string) (object.Object, bool) {
 	case "name":
 		return object.NewString(a.appName), true
 	case "version":
-		// Return app version if set, otherwise empty string
-		appVer := core.GetAppVersion()
+		// This window's app version (issue #44), empty if unset
+		appVer := a.win.appVersion
 		if appVer != "" {
 			return object.NewString(appVer), true
 		}

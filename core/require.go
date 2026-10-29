@@ -104,8 +104,8 @@ func processRequirementForContext(cb *Context, req string) (object.Object, error
 		// Use app version if set, otherwise use fynerisor version
 		versionToCheck := "v" + Version
 		versionName := "fynerisor"
-		if GetAppVersion() != "" {
-			versionToCheck = GetAppVersion()
+		if cb.appVersion != "" {
+			versionToCheck = cb.appVersion
 			if !strings.HasPrefix(versionToCheck, "v") {
 				versionToCheck = "v" + versionToCheck
 			}

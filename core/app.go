@@ -47,7 +47,7 @@ func (a *appObject) GetAttr(name string) (object.Object, bool) {
 	case "name":
 		return object.NewString(a.ctx.appName), true
 	case "version":
-		return object.NewString(GetAppVersion()), true
+		return object.NewString(a.ctx.appVersion), true
 	}
 	return nil, false
 }

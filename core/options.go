@@ -31,6 +31,16 @@ func (o moduleOption) applyToContext(cb *Context) {
 	o.fn(cb.env, &cb.userGlobals, cb.enabledModules)
 }
 
+// contextOption configures per-runtime state on the Context being
+// built (issue #44: no process globals).
+type contextOption struct {
+	fn func(cb *Context)
+}
+
+func (o contextOption) applyToContext(cb *Context) {
+	o.fn(cb)
+}
+
 type appNameOption struct {
 	name string
 }
@@ -171,9 +181,22 @@ func WithOS() Option {
 //	    print(arg)
 //	}
 func WithScriptArgs(args ...string) Option {
-	return moduleOption{
-		fn: func(env map[string]any, userGlobals *[]risor.Option, modules map[string]bool) {
-			os.SetScriptArgs(args)
+	return contextOption{
+		fn: func(cb *Context) {
+			cb.scriptArgs = args
+		},
+	}
+}
+
+// WithAppVersion sets the embedding application's version for this
+// context (issue #44). Scripts' require(["vX.Y"]) version checks and
+// app.version read it; two contexts in one process each report their
+// own. core.SetAppVersion remains as the deprecated process-global
+// default.
+func WithAppVersion(version string) Option {
+	return contextOption{
+		fn: func(cb *Context) {
+			cb.appVersion = version
 		},
 	}
 }

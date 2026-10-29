@@ -8,6 +8,8 @@ import (
 	"sync"
 
 	"github.com/deepnoodle-ai/risor/v2"
+
+	osmod "github.com/uidbz/fynerisor/modules/os"
 )
 
 // Context builds Risor execution contexts for non-GUI applications.
@@ -21,7 +23,9 @@ type Context struct {
 	env            map[string]any // Merged built-in globals (shared with imported module VMs)
 	userGlobals    []risor.Option // Opaque user-supplied globals (via WithGlobals)
 	enabledModules map[string]bool
-	appName        string // Name of the embedding application
+	appName        string   // Name of the embedding application
+	appVersion     string   // Embedding app version for require() checks; "" = deprecated global (issue #44)
+	scriptArgs     []string // This context's os.args(); carried in the eval context (issue #44)
 	runner         *ScriptRunner
 
 	// Module import system
@@ -59,6 +63,7 @@ func NewContext(opts ...Option) *Context {
 	cb := &Context{
 		enabledModules: make(map[string]bool),
 		appName:        "fynerisor", // default
+		appVersion:     GetAppVersion(),
 		moduleCache:    make(map[string]*ImportedModule),
 		importStack:    []ImportFrame{},
 	}
@@ -157,7 +162,17 @@ func (cb *Context) EvalContext(ctx context.Context, script string) (any, error) 
 		cb.runner.LoadScript(script)
 	}
 
-	return cb.runner.EvalContext(ctx)
+	return cb.runner.EvalContext(cb.runContext(ctx))
+}
+
+// runContext stamps this Context's per-runtime state onto the eval
+// context so builtins read it instead of process globals (issue #44):
+// the module VMs and every builtin share this context.
+func (cb *Context) runContext(ctx context.Context) context.Context {
+	if cb.scriptArgs != nil {
+		ctx = osmod.ContextWithArgs(ctx, cb.scriptArgs)
+	}
+	return ctx
 }
 
 // EvalWithImports is deprecated. Use runtime import() function instead:

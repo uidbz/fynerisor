@@ -16,6 +16,7 @@ import (
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 	"github.com/uidbz/fynerisor/core"
+	osmod "github.com/uidbz/fynerisor/modules/os"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -96,6 +97,8 @@ type Window struct {
 	userGlobals    []risor.Option  // Opaque user-supplied globals (via WithGlobals)
 	enabledModules map[string]bool // Track which modules are enabled
 	appName        string          // Name of the embedding application
+	appVersion     string          // require()/app.version version; default: deprecated global (issue #44)
+	scriptArgs     []string        // this window's os.args(), carried in the run ctx (issue #44)
 	droppedPaths   []string
 	cbMu           sync.Mutex // guards onDropped and dropOwner
 	dropOwner      *vmexec.Run
@@ -204,6 +207,7 @@ func newWindow(opts ...Option) *Window {
 	w := &Window{
 		enabledModules: make(map[string]bool),
 		appName:        "fynerisor", // default
+		appVersion:     core.GetAppVersion(),
 		shortcuts:      make(map[string]shortcutEntry),
 		defaultOut:     os.Stdout,
 		defaultErr:     os.Stderr,
@@ -443,6 +447,11 @@ func (w *Window) start(ctx context.Context) <-chan error {
 	// Each run gets its own module system state and environment snapshot,
 	// carried in its context.
 	parent := context.WithValue(ctx, importStateKey{}, newImportState(base, env, opts))
+	if w.scriptArgs != nil {
+		// os.args() answers from the run's context, not a process global
+		// (issue #44).
+		parent = osmod.ContextWithArgs(parent, w.scriptArgs)
+	}
 	r := vmexec.New(parent, vmexec.Config{
 		QueueSize: callbackQueueSize,
 		// Every error the runtime reports (callback raises, panics,

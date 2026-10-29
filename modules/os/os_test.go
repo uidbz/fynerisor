@@ -2,6 +2,7 @@ package os
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -225,5 +226,30 @@ func TestReadDirPath(t *testing.T) {
 	want := filepath.Join(dir, "a.txt")
 	if got, _ := object.AsString(pathObj); got != want {
 		t.Errorf("expected path %q, got %q", want, got)
+	}
+}
+
+// TestScriptArgsContextOverridesGlobal covers issue #44: args carried
+// by the eval context (per-runtime configuration) win over the
+// deprecated process global, and an explicitly empty list is distinct
+// from "not configured".
+func TestScriptArgsContextOverridesGlobal(t *testing.T) {
+	SetScriptArgs([]string{"global"})
+	defer SetScriptArgs(nil)
+
+	result, err := scriptArgsFunc(ContextWithArgs(context.Background(), []string{"mine"}))
+	if err != nil {
+		t.Fatalf("args returned Go error: %v", err)
+	}
+	if got := fmt.Sprintf("%v", result.Inspect()); got != `["mine"]` {
+		t.Errorf("context args = %s, want [\"mine\"] (global leaked)", got)
+	}
+
+	result, err = scriptArgsFunc(ContextWithArgs(context.Background(), []string{}))
+	if err != nil {
+		t.Fatalf("args returned Go error: %v", err)
+	}
+	if got := fmt.Sprintf("%v", result.Inspect()); got != `[]` {
+		t.Errorf("explicit empty args = %s, want [] (global leaked)", got)
 	}
 }

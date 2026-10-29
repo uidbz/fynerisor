@@ -69,8 +69,8 @@ func processRequirement(w *Window, req string) (object.Object, error) {
 		// Use app version if set, otherwise use fynerisor version
 		versionToCheck := "v" + core.Version
 		versionName := "fynerisor"
-		if core.GetAppVersion() != "" {
-			versionToCheck = core.GetAppVersion()
+		if w.appVersion != "" {
+			versionToCheck = w.appVersion
 			if !strings.HasPrefix(versionToCheck, "v") {
 				versionToCheck = "v" + versionToCheck
 			}

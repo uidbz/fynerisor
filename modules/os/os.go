@@ -14,13 +14,41 @@ import (
 )
 
 // scriptArgs holds the command-line arguments passed to the running script.
-// Hosts populate it via SetScriptArgs; the args builtin exposes it to scripts.
+// Deprecated: process-global; two runtimes in one process overwrite each
+// other. Hosts should use core.WithScriptArgs / gui.WithScriptArgs, which
+// bind args to the individual runtime via the eval context; this remains
+// only as the fallback default for hosts that still call it (issue #44).
 var scriptArgs []string
 
 // SetScriptArgs stores the script's command-line arguments so scripts can
 // access them through os.args(). It mirrors risor v1's SetScriptArgs.
+//
+// Deprecated: use the per-runtime WithScriptArgs options (core or gui);
+// the global is consulted only when a runtime carries no args of its own.
 func SetScriptArgs(args []string) {
 	scriptArgs = args
+}
+
+// argsKey tags the per-runtime script arguments in the eval context
+// (issue #44). Builtins receive that context, so two runtimes in one
+// process answer os.args() from their own configuration.
+type argsKey struct{}
+
+// ContextWithArgs returns ctx carrying the runtime's command-line
+// arguments; os.args() prefers them over the deprecated global.
+func ContextWithArgs(ctx context.Context, args []string) context.Context {
+	return context.WithValue(ctx, argsKey{}, args)
+}
+
+// ArgsFromContext returns the runtime arguments carried by ctx, and
+// whether the runtime carried its own (a nil-but-set list means "empty",
+// distinct from "unset").
+func ArgsFromContext(ctx context.Context) ([]string, bool) {
+	if ctx == nil {
+		return nil, false
+	}
+	args, ok := ctx.Value(argsKey{}).([]string)
+	return args, ok
 }
 
 // Module returns the os module for risor
@@ -385,9 +413,12 @@ func getwd(ctx context.Context, args ...object.Object) (object.Object, error) {
 // as populated by SetScriptArgs
 func scriptArgsFunc(ctx context.Context, args ...object.Object) (object.Object, error) {
 	if len(args) != 0 {
-		return object.Errorf("os.args: expected 0 arguments, got %d", len(args)), nil
+		return nil, object.Errorf("os.args: expected 0 arguments, got %d", len(args))
 	}
 
+	if runtimeArgs, ok := ArgsFromContext(ctx); ok {
+		return object.NewStringList(runtimeArgs), nil
+	}
 	return object.NewStringList(scriptArgs), nil
 }
 
