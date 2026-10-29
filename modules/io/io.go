@@ -108,6 +108,12 @@ func (i *IO) GetAttr(name string) (object.Object, bool) {
 			// Return as string
 			return object.NewString(string(data)), nil
 		}), true
+	case "stdin":
+		return NewStdin(), true
+	case "stdout":
+		return NewStdout(), true
+	case "stderr":
+		return NewStderr(), true
 	}
 	return nil, false
 }
@@ -120,5 +126,8 @@ func (i *IO) Attrs() []object.AttrSpec {
 	return []object.AttrSpec{
 		{Name: "cp", Doc: "Copy a file from src to dst"},
 		{Name: "read_all", Doc: "Read entire file and return contents as string"},
+		{Name: "stdin", Doc: "Standard input handle: read() and lines() (issue #42)"},
+		{Name: "stdout", Doc: "Standard output handle: write(text) and println(...) (issue #42)"},
+		{Name: "stderr", Doc: "Standard error handle: write(text) and println(...) (issue #42)"},
 	}
 }

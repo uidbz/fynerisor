@@ -402,6 +402,14 @@
   and `app.version`. `core.SetAppVersion` and `os.SetScriptArgs` are
   deprecated and remain only as the fallback default for hosts that
   still call them.
+- **Scripts get standard text streams (issue #42).** New `io.stdin`
+  (`read()`, `lines()`), `io.stdout`/`io.stderr` (`write`, `println`)
+  and an `eprint` builtin, all bound to the runtime's own streams;
+  `WithStdin` (gui) and `WithStdin`/`WithStdout`/`WithStderr` (core)
+  configure them. `print` writes to the runtime's stdout writer in
+  core too. The CLI gained `-e '<code>'` (inline script; stdin stays a
+  data stream), so `cat data.csv | fynerisor --headless -e '...' | jq`
+  is a clean filter.
 
 ## [0.8.2] - 2026-09-03
 

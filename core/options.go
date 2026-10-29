@@ -1,6 +1,8 @@
 package core
 
 import (
+	"io"
+
 	"github.com/deepnoodle-ai/risor/v2"
 	csvmod "github.com/uidbz/fynerisor/modules/csv"
 	"github.com/uidbz/fynerisor/modules/exec"
@@ -199,6 +201,29 @@ func WithAppVersion(version string) Option {
 			cb.appVersion = version
 		},
 	}
+}
+
+// WithStdin/WithStdout/WithStderr bind the script-visible text streams
+// (io.stdin, io.stdout, io.stderr, print, eprint) to this context
+// (issue #42). Each defaults to the corresponding process stream; two
+// contexts in one process never share or steal each other's streams.
+//
+// Example (a clean pipeline filter):
+//
+//	ctx := core.NewContext(
+//	    core.WithIO(), core.WithCSV(),
+//	    core.WithStdin(os.Stdin), core.WithStdout(os.Stdout),
+//	)
+func WithStdin(in io.Reader) Option {
+	return contextOption{fn: func(cb *Context) { cb.stdin = in }}
+}
+
+func WithStdout(out io.Writer) Option {
+	return contextOption{fn: func(cb *Context) { cb.stdout = out }}
+}
+
+func WithStderr(err io.Writer) Option {
+	return contextOption{fn: func(cb *Context) { cb.stderr = err }}
 }
 
 // WithStrings enables the strings module for string manipulation from Risor scripts.

@@ -6,6 +6,8 @@ import (
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
+
+	iomod "github.com/uidbz/fynerisor/modules/io"
 )
 
 // appObject represents the app global object in Risor scripts
@@ -63,15 +65,29 @@ func (a *appObject) Attrs() []object.AttrSpec {
 	}
 }
 
-// printBuiltin returns a print builtin function for core (no GUI dependency)
+// printBuiltin writes to the Context's stdout stream (issue #42); the
+// process stdout is only the default when the Context configured none.
 func newPrintBuiltin() object.Object {
 	return object.NewBuiltin("print", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-		// Use standard fmt.Println for headless mode
 		var values []interface{}
 		for _, arg := range args {
 			values = append(values, arg.Interface())
 		}
-		fmt.Println(values...)
+		fmt.Fprintln(iomod.StreamsFromContext(ctx).Stdout(), values...)
+		return object.Nil, nil
+	})
+}
+
+// newEprintBuiltin writes to the Context's stderr stream: a headless
+// script can be a clean pipeline filter with its diagnostics on the
+// side channel (issue #42).
+func newEprintBuiltin() object.Object {
+	return object.NewBuiltin("eprint", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+		var values []interface{}
+		for _, arg := range args {
+			values = append(values, arg.Interface())
+		}
+		fmt.Fprintln(iomod.StreamsFromContext(ctx).Stderr(), values...)
 		return object.Nil, nil
 	})
 }

@@ -50,6 +50,7 @@ Risor language bindings for the Fyne GUI framework.
   - [SetContent](#setcontent)
   - [OnDropped](#ondropped)
   - [SetStdout](#setstdout)
+  - [Text Streams in Scripts](#text-streams-in-scripts-issue-42)
   - [Properties](#properties)
 - [Callbacks](#callbacks)
 - [Passing Custom Data](#passing-custom-data)
@@ -884,6 +885,30 @@ view := gui.NewCanvasObject(script,
 `SetStderr()` at runtime. Diagnostics never go to the process stdout:
 in `fynerisor x.risor | jq` pipelines and capture widgets, script data
 and library noise stay separate (issues #24, #31).
+
+### Text Streams in Scripts (issue #42)
+
+Scripts get the three standard text streams, bound to *their* runtime:
+
+- `io.stdin` — `read()` (all input as a string) and `lines()` (list of lines)
+- `io.stdout` / `io.stderr` — `write(text)` and `println(values...)`
+- `print` → stdout, `eprint` → stderr
+
+Hosts bind them with `WithStdin`/`WithStdout`/`WithStderr` (core and
+gui). That makes a fynerisor script a Unix filter:
+
+```console
+$ cat data.csv | fynerisor --headless \
+    -e 'print(json.marshal(csv.parse(io.stdin.read())))' | jq .
+[
+  {"name": "widget", "qty": "3"},
+  {"name": "gadget", "qty": "7"}
+]
+```
+
+`fynerisor -e '<code>'` runs inline code and leaves stdin as a data
+stream; a script *file* likewise never consumes stdin (`fynerisor -`
+still means "script on stdin").
 
 ### Properties
 - `window.DroppedPaths` - List of dropped file paths

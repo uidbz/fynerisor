@@ -16,6 +16,7 @@ import (
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 	"github.com/uidbz/fynerisor/core"
+	iomod "github.com/uidbz/fynerisor/modules/io"
 	osmod "github.com/uidbz/fynerisor/modules/os"
 
 	"fyne.io/fyne/v2"
@@ -109,7 +110,8 @@ type Window struct {
 	// library diagnostics to Stderr(). No os.Stdout hijack, no pipes:
 	// two CanvasObjects capture their own output, and a host's
 	// fmt.Println is untouched.
-	stdoutMu       sync.Mutex // guards the five fields below
+	stdoutMu       sync.Mutex // guards the six fields below
+	defaultIn      io.Reader  // WithStdin; nil means os.Stdin
 	defaultOut     io.Writer  // WithStdout; nil means os.Stdout
 	defaultErr     io.Writer  // WithStderr; nil means os.Stderr
 	stdoutOverride io.Writer  // script SetStdout/CaptureStdout redirect
@@ -209,6 +211,7 @@ func newWindow(opts ...Option) *Window {
 		appName:        "fynerisor", // default
 		appVersion:     core.GetAppVersion(),
 		shortcuts:      make(map[string]shortcutEntry),
+		defaultIn:      os.Stdin,
 		defaultOut:     os.Stdout,
 		defaultErr:     os.Stderr,
 	}
@@ -247,6 +250,7 @@ func newWindow(opts ...Option) *Window {
 		"fyne":      fyneobj,
 		"binding":   bindingobj,
 		"print":     w.newPrintBuiltin(),
+		"eprint":    w.newEprintBuiltin(),
 		"require":   newRequireBuiltin(w),
 		"import":    w.newImportBuiltin(),
 		"go":        newGoBuiltin(),
@@ -315,6 +319,20 @@ func (w *Window) newPrintBuiltin() *object.Builtin {
 			values[i] = object.PrintableValue(arg)
 		}
 		fmt.Fprintln(w.Stdout(), values...)
+		return object.Nil, nil
+	})
+}
+
+// newEprintBuiltin implements eprint(): the same text stream contract
+// as print, but on the window's stderr writer — a script can be a
+// clean pipeline filter, diagnostics on the side channel (issue #42).
+func (w *Window) newEprintBuiltin() *object.Builtin {
+	return object.NewBuiltin("eprint", func(ctx context.Context, args ...object.Object) (object.Object, error) {
+		values := make([]any, len(args))
+		for i, arg := range args {
+			values[i] = object.PrintableValue(arg)
+		}
+		fmt.Fprintln(w.Stderr(), values...)
 		return object.Nil, nil
 	})
 }
@@ -452,6 +470,8 @@ func (w *Window) start(ctx context.Context) <-chan error {
 		// (issue #44).
 		parent = osmod.ContextWithArgs(parent, w.scriptArgs)
 	}
+	// io.stdin/stdout/stderr resolve to this window's streams (issue #42).
+	parent = iomod.ContextWithStreams(parent, w)
 	r := vmexec.New(parent, vmexec.Config{
 		QueueSize: callbackQueueSize,
 		// Every error the runtime reports (callback raises, panics,

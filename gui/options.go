@@ -173,6 +173,18 @@ func WithStdout(out io.Writer) Option {
 	}
 }
 
+// WithStdin sets where this window's io.stdin reads from (issue #42).
+// Replaces the os.Stdin default for this window only: `cat data.csv |
+// fynerisor report.risor` gives the script the piped data, and hosts
+// can feed any io.Reader instead.
+func WithStdin(in io.Reader) Option {
+	return windowOption{
+		fn: func(w *Window) {
+			w.defaultIn = in
+		},
+	}
+}
+
 // WithStderr sets where this window reports script-execution errors and
 // library diagnostics (issue #24). Replaces the os.Stderr default for
 // this window only.

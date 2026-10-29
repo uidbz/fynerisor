@@ -5,10 +5,13 @@ package core
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"sync"
 
 	"github.com/deepnoodle-ai/risor/v2"
 
+	iomod "github.com/uidbz/fynerisor/modules/io"
 	osmod "github.com/uidbz/fynerisor/modules/os"
 )
 
@@ -26,6 +29,9 @@ type Context struct {
 	appName        string   // Name of the embedding application
 	appVersion     string   // Embedding app version for require() checks; "" = deprecated global (issue #44)
 	scriptArgs     []string // This context's os.args(); carried in the eval context (issue #44)
+	stdin          io.Reader
+	stdout         io.Writer // print's sink; nil = process stdout (issue #42)
+	stderr         io.Writer // eprint's sink; nil = process stderr (issue #42)
 	runner         *ScriptRunner
 
 	// Module import system
@@ -73,6 +79,7 @@ func NewContext(opts ...Option) *Context {
 	globals := map[string]any{
 		"app":     app,
 		"print":   newPrintBuiltin(),
+		"eprint":  newEprintBuiltin(),
 		"require": newRequireBuiltinForContext(cb),
 		"import":  cb.newImportBuiltin(),
 	}
@@ -172,7 +179,32 @@ func (cb *Context) runContext(ctx context.Context) context.Context {
 	if cb.scriptArgs != nil {
 		ctx = osmod.ContextWithArgs(ctx, cb.scriptArgs)
 	}
+	ctx = iomod.ContextWithStreams(ctx, cb)
 	return ctx
+}
+
+// Stdin/Stdout/Stderr implement modules/io.StreamSource (issue #42):
+// io.stdin, io.stdout/io.stderr and print/eprint follow this Context's
+// configured streams, with the process streams as defaults.
+func (cb *Context) Stdin() io.Reader {
+	if cb.stdin != nil {
+		return cb.stdin
+	}
+	return os.Stdin
+}
+
+func (cb *Context) Stdout() io.Writer {
+	if cb.stdout != nil {
+		return cb.stdout
+	}
+	return os.Stdout
+}
+
+func (cb *Context) Stderr() io.Writer {
+	if cb.stderr != nil {
+		return cb.stderr
+	}
+	return os.Stderr
 }
 
 // EvalWithImports is deprecated. Use runtime import() function instead:

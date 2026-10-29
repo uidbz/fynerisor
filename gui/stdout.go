@@ -35,6 +35,18 @@ func (w *Window) Stdout() io.Writer {
 	return os.Stdout
 }
 
+// Stdin returns the reader io.stdin draws from (issue #42). A host can
+// feed script data with WithStdin (a file, a pipe, or a strings.Reader
+// in tests) instead of the process stdin.
+func (w *Window) Stdin() io.Reader {
+	w.stdoutMu.Lock()
+	defer w.stdoutMu.Unlock()
+	if w.defaultIn != nil {
+		return w.defaultIn
+	}
+	return os.Stdin
+}
+
 // Stderr returns the writer for script-execution errors and library
 // diagnostics belonging to this window.
 func (w *Window) Stderr() io.Writer {

@@ -33,6 +33,7 @@ var (
 	verbose    = flag.Bool("verbose", false, "Print verbose execution status")
 	headless   = flag.Bool("headless", false, "Run in headless mode (for testing)")
 	globals    = flag.String("globals", "", "Path to JSON file with custom globals")
+	execCode   = flag.String("e", "", "Execute inline code instead of a script file (stdin stays available to the script)")
 	themeFlag  = flag.String("theme", "", "Force theme: 'dark' or 'light' (default: system preference)")
 	versionPtr = flag.Bool("version", false, "Print version and exit")
 )
@@ -42,6 +43,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "fynerisor - Execute Risor scripts with Fyne GUI\n\n")
 		fmt.Fprintf(os.Stderr, "Usage:\n")
 		fmt.Fprintf(os.Stderr, "  fynerisor [options] <script.risor> [script-args...]\n")
+		fmt.Fprintf(os.Stderr, "  fynerisor [options] -e '<code>' [script-args...]\n")
 		fmt.Fprintf(os.Stderr, "  cat script.risor | fynerisor [options] -\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.PrintDefaults()
@@ -51,6 +53,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  fynerisor --watch app.risor\n")
 		fmt.Fprintf(os.Stderr, "  fynerisor --globals data.json app.risor arg1 arg2\n")
 		fmt.Fprintf(os.Stderr, "  cat app.risor | fynerisor --headless -\n")
+		fmt.Fprintf(os.Stderr, "  cat data.csv | fynerisor --headless -e 'print(io.stdin.read())'   # pipeline filter (issue #42)\n")
 	}
 
 	flag.Parse()
@@ -61,18 +64,29 @@ func main() {
 	}
 
 	args := flag.Args()
-	if len(args) == 0 {
+	if len(args) == 0 && *execCode == "" {
 		flag.Usage()
 		os.Exit(1)
 	}
 
-	scriptPath := args[0]
-	scriptArgs := args[1:]
+	var scriptPath string
+	var scriptArgs []string
+	if *execCode == "" {
+		scriptPath = args[0]
+		scriptArgs = args[1:]
+	}
 
 	// Read script
 	var script string
 	var err error
-	if scriptPath == "-" {
+	switch {
+	case *execCode != "":
+		// Inline code; stdin stays a data stream for the script (issue #42).
+		script = *execCode
+		if *title == "" {
+			*title = "fynerisor"
+		}
+	case scriptPath == "-":
 		// Read from stdin
 		data, err := io.ReadAll(os.Stdin)
 		if err != nil {
@@ -82,7 +96,7 @@ func main() {
 		if *title == "" {
 			*title = "fynerisor"
 		}
-	} else {
+	default:
 		script, err = readScript(scriptPath)
 		if err != nil {
 			log.Fatalf("Error reading script: %v", err)
@@ -213,7 +227,7 @@ func main() {
 	executeScript(fyneWindow, script, scriptPath)
 
 	// Watch mode
-	if *watch && scriptPath != "-" {
+	if *watch && scriptPath != "" && scriptPath != "-" {
 		go watchScript(scriptPath, fyneWindow)
 	}
 
