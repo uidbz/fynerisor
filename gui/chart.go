@@ -66,7 +66,7 @@ func (obj *Chart) Equals(other object.Object) bool {
 }
 
 func (obj *Chart) Attrs() []object.AttrSpec {
-	return nil
+	return chartAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -83,195 +83,13 @@ func (obj *Chart) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var chartAttrs = object.NewAttrRegistry[*Chart](string(ChartType))
+
 func (obj *Chart) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "NewBarChart":
-		return object.NewBuiltin("chart.NewBarChart", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 4 {
-				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=4", len(args))
-			}
-			title, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
+	return chartAttrs.GetAttr(obj, name)
 
-			ylabel, err := object.AsString(args[1])
-			if err != nil {
-				return nil, err
-			}
+	// Get list of datasets (each dataset is a list of numbers)
 
-			labels, err := object.AsStringSlice(args[2])
-			if err != nil {
-				return nil, err
-			}
-
-			values, err := asFloatSlice(args[3])
-			if err != nil {
-				return nil, err
-			}
-
-			chart, err := risorchart.NewBarChart(title, ylabel, labels, values)
-			if err != nil {
-				return nil, err
-			}
-
-			return chart, nil
-		}), true
-	case "NewLineChart":
-		return object.NewBuiltin("chart.NewLineChart", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 5 {
-				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=5", len(args))
-			}
-			title, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			xlabel, err := object.AsString(args[1])
-			if err != nil {
-				return nil, err
-			}
-
-			ylabel, err := object.AsString(args[2])
-			if err != nil {
-				return nil, err
-			}
-
-			xvalues, err := asFloatSlice(args[3])
-			if err != nil {
-				return nil, err
-			}
-
-			yvalues, err := asFloatSlice(args[4])
-			if err != nil {
-				return nil, err
-			}
-
-			chart, err := risorchart.NewLineChart(title, xlabel, ylabel, xvalues, yvalues)
-			if err != nil {
-				return nil, err
-			}
-
-			return chart, nil
-		}), true
-	case "NewScatterChart":
-		return object.NewBuiltin("chart.NewScatterChart", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 5 {
-				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=5", len(args))
-			}
-			title, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			xlabel, err := object.AsString(args[1])
-			if err != nil {
-				return nil, err
-			}
-
-			ylabel, err := object.AsString(args[2])
-			if err != nil {
-				return nil, err
-			}
-
-			xvalues, err := asFloatSlice(args[3])
-			if err != nil {
-				return nil, err
-			}
-
-			yvalues, err := asFloatSlice(args[4])
-			if err != nil {
-				return nil, err
-			}
-
-			chart, err := risorchart.NewScatterChart(title, xlabel, ylabel, xvalues, yvalues)
-			if err != nil {
-				return nil, err
-			}
-
-			return chart, nil
-		}), true
-	case "NewHistogram":
-		return object.NewBuiltin("chart.NewHistogram", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 5 {
-				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=5", len(args))
-			}
-			title, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			xlabel, err := object.AsString(args[1])
-			if err != nil {
-				return nil, err
-			}
-
-			ylabel, err := object.AsString(args[2])
-			if err != nil {
-				return nil, err
-			}
-
-			values, err := asFloatSlice(args[3])
-			if err != nil {
-				return nil, err
-			}
-
-			bins, err := object.AsInt(args[4])
-			if err != nil {
-				return nil, err
-			}
-
-			chart, err := risorchart.NewHistogram(title, xlabel, ylabel, values, int(bins))
-			if err != nil {
-				return nil, err
-			}
-
-			return chart, nil
-		}), true
-	case "NewBoxPlot":
-		return object.NewBuiltin("chart.NewBoxPlot", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 4 {
-				return nil, fmt.Errorf("wrong number of arguments. got=%d, want=4", len(args))
-			}
-			title, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			ylabel, err := object.AsString(args[1])
-			if err != nil {
-				return nil, err
-			}
-
-			labels, err := object.AsStringSlice(args[2])
-			if err != nil {
-				return nil, err
-			}
-
-			// Get list of datasets (each dataset is a list of numbers)
-			datasetsList, ok := args[3].(*object.List)
-			if !ok {
-				return nil, fmt.Errorf("type error: expected a list of lists for datasets")
-			}
-
-			datasets := make([][]float64, 0, len(datasetsList.Value()))
-			for _, item := range datasetsList.Value() {
-				dataset, err := asFloatSlice(item)
-				if err != nil {
-					return nil, err
-				}
-				datasets = append(datasets, dataset)
-			}
-
-			chart, err := risorchart.NewBoxPlot(title, ylabel, labels, datasets)
-			if err != nil {
-				return nil, err
-			}
-
-			return chart, nil
-		}), true
-	}
-	return nil, false
 }
 
 func asFloatSlice(obj object.Object) ([]float64, error) {
@@ -292,4 +110,200 @@ func asFloatSlice(obj object.Object) ([]float64, error) {
 
 func newChart() *Chart {
 	return &Chart{}
+}
+func init() {
+	chartAttrs.Define("NewBarChart").
+		Variadic("args").Returns("nil").Impl(func(obj *Chart, ctx context.Context, args ...object.Object) (object.
+		Object, error) {
+		if len(args) != 4 {
+			return nil, fmt.Errorf("wrong number of arguments. got=%d, want=4",
+
+				len(args))
+		}
+		title,
+
+			err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		ylabel, err := object.AsString(args[1])
+		if err != nil {
+			return nil, err
+		}
+		labels, err := object.AsStringSlice(args[2])
+		if err !=
+			nil {
+			return nil, err
+		}
+		values, err := asFloatSlice(args[3])
+		if err != nil {
+			return nil, err
+		}
+		chart, err := risorchart.NewBarChart(title, ylabel, labels, values)
+		if err != nil {
+			return nil, err
+		}
+		return chart, nil
+	})
+	chartAttrs.Define("NewLineChart").
+		Variadic("args").Returns("nil").Impl(func(obj *Chart, ctx context.Context, args ...object.Object) (
+		object.Object, error) {
+		if len(args) != 5 {
+			return nil, fmt.Errorf("wrong number of arguments. got=%d, want=5",
+
+				len(args))
+		}
+		title,
+
+			err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		xlabel, err := object.AsString(args[1])
+		if err != nil {
+			return nil, err
+		}
+		ylabel, err := object.AsString(args[2])
+		if err != nil {
+			return nil, err
+		}
+		xvalues, err := asFloatSlice(args[3])
+		if err != nil {
+			return nil, err
+		}
+		yvalues, err := asFloatSlice(args[4])
+		if err != nil {
+			return nil,
+				err
+		}
+		chart, err := risorchart.NewLineChart(title, xlabel, ylabel, xvalues,
+			yvalues)
+		if err != nil {
+			return nil, err
+		}
+		return chart, nil
+	})
+	chartAttrs.Define("NewScatterChart").Variadic("args").Returns("nil").Impl(func(obj *Chart, ctx context.Context, args ...object.Object) (object.Object, error) {
+		if len(args) != 5 {
+			return nil, fmt.Errorf("wrong number of arguments. got=%d, want=5",
+
+				len(args))
+		}
+
+		title, err := object.AsString(args[0])
+
+		if err != nil {
+			return nil, err
+		}
+		xlabel, err := object.AsString(args[1])
+		if err !=
+			nil {
+			return nil, err
+		}
+		ylabel, err := object.AsString(args[2])
+		if err !=
+			nil {
+			return nil, err
+		}
+		xvalues, err := asFloatSlice(args[3])
+		if err != nil {
+			return nil, err
+		}
+		yvalues, err := asFloatSlice(args[4])
+		if err != nil {
+			return nil, err
+		}
+		chart, err := risorchart.NewScatterChart(title, xlabel, ylabel, xvalues,
+			yvalues)
+		if err != nil {
+			return nil, err
+		}
+		return chart, nil
+	})
+	chartAttrs.Define("NewHistogram").
+		Variadic("args").Returns("nil").Impl(func(obj *Chart, ctx context.Context, args ...object.Object) (
+		object.Object, error) {
+		if len(args) != 5 {
+			return nil, fmt.Errorf("wrong number of arguments. got=%d, want=5",
+
+				len(args))
+		}
+		title,
+
+			err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		xlabel, err := object.AsString(args[1])
+		if err != nil {
+			return nil, err
+		}
+		ylabel, err := object.AsString(args[2])
+		if err != nil {
+			return nil, err
+		}
+		values, err := asFloatSlice(args[3])
+		if err != nil {
+			return nil, err
+		}
+		bins, err := object.AsInt(args[4])
+		if err != nil {
+			return nil,
+				err
+		}
+		chart, err := risorchart.NewHistogram(title, xlabel, ylabel, values, int(
+			bins))
+		if err != nil {
+			return nil, err
+		}
+		return chart,
+			nil
+	})
+	chartAttrs.Define("NewBoxPlot").Variadic("args").Returns("nil").Impl(func(obj *Chart,
+
+		ctx context.Context, args ...object.Object) (object.
+		Object, error) {
+		if len(args) != 4 {
+			return nil, fmt.Errorf("wrong number of arguments. got=%d, want=4",
+
+				len(args))
+		}
+		title,
+
+			err := object.AsString(args[0])
+		if err !=
+			nil {
+			return nil, err
+		}
+		ylabel, err := object.AsString(args[1])
+		if err != nil {
+			return nil, err
+		}
+		labels, err := object.AsStringSlice(args[2])
+		if err !=
+			nil {
+			return nil, err
+		}
+		datasetsList, ok := args[3].(*object.List)
+		if !ok {
+			return nil, fmt.Errorf("type error: expected a list of lists for datasets")
+		}
+		datasets := make([][]float64, 0, len(datasetsList.Value()))
+		for _, item := range datasetsList.
+			Value() {
+			dataset, err := asFloatSlice(item)
+			if err != nil {
+				return nil, err
+			}
+			datasets = append(datasets,
+				dataset)
+		}
+		chart,
+			err := risorchart.NewBoxPlot(title, ylabel, labels, datasets)
+		if err != nil {
+			return nil,
+				err
+		}
+		return chart, nil
+	})
 }

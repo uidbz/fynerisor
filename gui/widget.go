@@ -68,7 +68,14 @@ func (obj *Widget) Equals(other object.Object) bool {
 }
 
 func (obj *Widget) Attrs() []object.AttrSpec {
-	return nil
+	return append(widgetAttrs.Specs(),
+		object.AttrSpec{Name: "NewTextGrid", Doc: "Create a TextGrid widget", Returns: "widget.TextGrid"},
+		object.AttrSpec{Name: "NewRichText", Doc: "Create a RichText widget from text or segments", Args: []string{"text"}, Returns: "widget.RichText"},
+		object.AttrSpec{Name: "NewPopUp", Doc: "Create a PopUp wrapping a canvas object", Args: []string{"object"}, Returns: "widget.PopUp"},
+		object.AttrSpec{Name: "NewModalPopUp", Doc: "Create a modal PopUp wrapping a canvas object", Args: []string{"object"}, Returns: "widget.PopUp"},
+		object.AttrSpec{Name: "NewFileIcon", Doc: "Create a FileIcon widget", Returns: "widget.FileIcon"},
+		object.AttrSpec{Name: "NewPopUpMenu", Doc: "Create a PopUpMenu for a menu", Args: []string{"menu"}, Returns: "widget.PopUpMenu"},
+	)
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -85,590 +92,31 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var widgetAttrs = object.NewAttrRegistry[*Widget](string(WidgetType))
+
 func (obj *Widget) getAttrUI(name string) (object.Object, bool) {
+	if o, ok := widgetAttrs.GetAttr(obj, name); ok {
+		return o, true
+	}
 	switch name {
-	case "NewButton":
-		return object.NewBuiltin("widget.NewButton", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-			name, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-			cb, err := vmexec.NewCallback(ctx, "widget.NewButton", args[1])
-			if err != nil {
-				return nil, err
-			}
 
-			// Event: the tap handler is queued on the script's VM goroutine.
-			return risorwidget.NewButton(name, func() { cb.Fire() }), nil
-		}), true
+	// Event: the tap handler is queued on the script's VM goroutine.
 
-	case "NewCheck":
-		return object.NewBuiltin("widget.NewCheck", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-			label, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-			cb, err := vmexec.NewCallback(ctx, "widget.NewCheck", args[1])
-			if err != nil {
-				return nil, err
-			}
+	// Get the binding.Bool object
 
-			return risorwidget.NewCheck(label, func(changed bool) {
-				cb.Fire(object.NewBool(changed))
-			}), nil
-		}), true
+	// First argument: start date (optional)
 
-	case "NewCheckWithData":
-		return object.NewBuiltin("widget.NewCheckWithData", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-			label, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
+	// Try to extract time.Time from the TimeObject
 
-			// Get the binding.Bool object
-			bindingBool, ok := args[1].Interface().(interface{ Get() (bool, error) })
-			if !ok {
-				return nil, object.Errorf("type error: expected binding.Bool")
-			}
+	// Second argument: callback function (optional)
 
-			return risorwidget.NewCheckWithData(label, bindingBool), nil
-		}), true
+	// Get the binding.String object
 
-	case "NewCheckGroup":
-		return object.NewBuiltin("widget.NewCheckGroup", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-			options, err := object.AsStringSlice(args[0])
-			if err != nil {
-				return nil, err
-			}
-			cb, err := vmexec.NewCallback(ctx, "widget.NewCheckGroup", args[1])
-			if err != nil {
-				return nil, err
-			}
+	// Get the binding.String object
 
-			return risorwidget.NewCheckGroup(options, func(checked []string) {
-				cb.Fire(object.NewStringList(checked))
-			}), nil
-		}), true
+	// Get the binding.Float object
 
-	case "NewSelect":
-		return object.NewBuiltin("widget.NewSelect", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-			options, err := object.AsStringSlice(args[0])
-			if err != nil {
-				return nil, err
-			}
-			cb, err := vmexec.NewCallback(ctx, "widget.NewSelect", args[1])
-			if err != nil {
-				return nil, err
-			}
-
-			return risorwidget.NewSelect(options, func(selected string) {
-				cb.Fire(object.NewString(selected))
-			}), nil
-		}), true
-
-	case "NewSelectEntry":
-		return object.NewBuiltin("widget.NewSelectEntry", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			options, err := object.AsStringSlice(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			selectEntry := risorwidget.NewSelectEntry(obj.w, options, nil)
-			return selectEntry, nil
-		}), true
-
-	case "NewDateEntry":
-		return object.NewBuiltin("widget.NewDateEntry", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-
-			dateEntry := risorwidget.NewDateEntry(obj.w)
-			return dateEntry, nil
-		}), true
-
-	case "NewCalendar":
-		return object.NewBuiltin("widget.NewCalendar", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) > 2 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0, 1, or 2", len(args))
-			}
-
-			var startDate time.Time
-			var onChanged func(time.Time)
-
-			// First argument: start date (optional)
-			if len(args) >= 1 && args[0] != object.Nil && args[0].Type() != object.NIL {
-				// Try to extract time.Time from the TimeObject
-				if timeVal, ok := args[0].Interface().(time.Time); ok {
-					startDate = timeVal
-				} else {
-					return nil, object.Errorf("argument error: expected time.Time or nil, got %s", args[0].Type())
-				}
-			} else {
-				startDate = time.Now()
-			}
-
-			// Second argument: callback function (optional)
-			if len(args) == 2 {
-				cb, err := vmexec.NewCallback(ctx, "widget.NewCalendar", args[1])
-				if err != nil {
-					return nil, err
-				}
-				onChanged = func(selected time.Time) {
-					cb.Fire(timemodule.NewTimeObject(selected))
-				}
-			}
-
-			calendar := risorwidget.NewCalendar(obj.w, startDate, onChanged)
-			return calendar, nil
-		}), true
-
-	case "NewEntry":
-		return object.NewBuiltin("widget.NewEntry", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-
-			return risorwidget.NewEntry(obj.w), nil
-		}), true
-
-	case "NewEntryWithData":
-		return object.NewBuiltin("widget.NewEntryWithData", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-
-			// Get the binding.String object
-			bindingStr, ok := args[0].Interface().(interface{ Get() (string, error) })
-			if !ok {
-				return nil, object.Errorf("type error: expected binding.String")
-			}
-
-			return risorwidget.NewEntryWithData(bindingStr, obj.w), nil
-		}), true
-
-	case "NewMultiLineEntry":
-		return object.NewBuiltin("widget.NewMultiLineEntry", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-
-			return risorwidget.NewMultiLineEntry(obj.w), nil
-		}), true
-
-	case "NewForm":
-		return object.NewBuiltin("widget.NewForm", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) == 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=at least 1", len(args))
-			}
-
-			var objects []*fynewidget.FormItem
-
-			for i, x := range args {
-				if x.Type() == object.LIST {
-					items, err := object.AsList(x)
-					if err != nil {
-						return nil, object.Errorf("NewForm: Error: %s", err.Error())
-					}
-					for j, y := range items.Value() {
-						o, ok := y.Interface().(*fynewidget.FormItem)
-						if !ok {
-							return nil, object.Errorf("NewForm: Wrong type, expected FormItem within list at position: %d", j)
-						}
-						objects = append(objects, o)
-					}
-				} else {
-					o, ok := x.Interface().(*fynewidget.FormItem)
-					if !ok {
-						return nil, object.Errorf("NewForm: Wrong type, expected FormItem at argument: %d", i)
-					}
-					objects = append(objects, o)
-				}
-			}
-
-			return risorwidget.NewForm(objects...), nil
-		}), true
-
-	case "NewFormItem":
-		return object.NewBuiltin("widget.NewFormItem", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-			label, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-			o, ok := args[1].Interface().(fyne.CanvasObject)
-			if !ok {
-				return nil, object.Errorf("NewFormItem: Wrong type, expected CanvasObject at argument: %d", 1)
-			}
-
-			return risorwidget.NewFormItem(label, o), nil
-		}), true
-
-	case "NewLabel":
-		return object.NewBuiltin("widget.NewLabel", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			text, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			return risorwidget.NewLabel(text), nil
-		}), true
-
-	case "NewLabelWithData":
-		return object.NewBuiltin("widget.NewLabelWithData", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-
-			// Get the binding.String object
-			bindingStr, ok := args[0].Interface().(interface{ Get() (string, error) })
-			if !ok {
-				return nil, object.Errorf("type error: expected binding.String")
-			}
-
-			return risorwidget.NewLabelWithData(bindingStr), nil
-		}), true
-
-	case "NewLog":
-		return object.NewBuiltin("widget.NewLog", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			maxItems, err := object.AsInt(args[0])
-			if err != nil {
-				return nil, err
-			}
-			return risorwidget.NewLog(int(maxItems)), nil
-		}), true
-
-	case "NewMarkdown":
-		return object.NewBuiltin("widget.NewMarkdown", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			markdown, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			return risorwidget.NewMarkdown(markdown), nil
-		}), true
-
-	case "NewProgressBar":
-		return object.NewBuiltin("widget.NewProgressBar", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			return risorwidget.NewProgressBar(), nil
-		}), true
-
-	case "NewProgressBarWithData":
-		return object.NewBuiltin("widget.NewProgressBarWithData", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-
-			// Get the binding.Float object
-			bindingFloat, ok := args[0].Interface().(interface{ Get() (float64, error) })
-			if !ok {
-				return nil, object.Errorf("type error: expected binding.Float")
-			}
-
-			return risorwidget.NewProgressBarWithData(bindingFloat), nil
-		}), true
-
-	case "NewProgressBarInfinite":
-		return object.NewBuiltin("widget.NewProgressBarInfinite", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			return risorwidget.NewProgressBarInfinite(), nil
-		}), true
-
-	case "NewSeparator":
-		return object.NewBuiltin("widget.NewSeparator", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			return risorwidget.NewSeparator(), nil
-		}), true
-
-	case "NewActivity":
-		return object.NewBuiltin("widget.NewActivity", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			return risorwidget.NewActivity(), nil
-		}), true
-
-	case "NewSlider":
-		return object.NewBuiltin("widget.NewSlider", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-			min, err := object.AsFloat(args[0])
-			if err != nil {
-				return nil, err
-			}
-			max, err := object.AsFloat(args[1])
-			if err != nil {
-				return nil, err
-			}
-			return risorwidget.NewSlider(min, max, obj.w), nil
-		}), true
-
-	case "NewSliderWithData":
-		return object.NewBuiltin("widget.NewSliderWithData", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 3 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=3", len(args))
-			}
-			min, err := object.AsFloat(args[0])
-			if err != nil {
-				return nil, err
-			}
-			max, err := object.AsFloat(args[1])
-			if err != nil {
-				return nil, err
-			}
-
-			// Get the binding.Float object
-			bindingFloat, ok := args[2].Interface().(interface{ Get() (float64, error) })
-			if !ok {
-				return nil, object.Errorf("type error: expected binding.Float")
-			}
-
-			return risorwidget.NewSliderWithData(min, max, bindingFloat, obj.w), nil
-		}), true
-
-	case "NewIcon":
-		return object.NewBuiltin("widget.NewIcon", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			resourceName, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-			icon, err := risorwidget.NewIcon(resourceName)
-			if err != nil {
-				return nil, object.Errorf("error creating icon: %v", err)
-			}
-			return icon, nil
-		}), true
-
-	case "NewHyperlink":
-		return object.NewBuiltin("widget.NewHyperlink", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-			text, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-			urlStr, err := object.AsString(args[1])
-			if err != nil {
-				return nil, err
-			}
-			hyperlink, err := risorwidget.NewHyperlink(text, urlStr, obj.w)
-			if err != nil {
-				return nil, object.Errorf("error creating hyperlink: %v", err)
-			}
-			return hyperlink, nil
-		}), true
-
-	case "NewCard":
-		return object.NewBuiltin("widget.NewCard", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 3 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=3", len(args))
-			}
-			title, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-			subtitle, err := object.AsString(args[1])
-			if err != nil {
-				return nil, err
-			}
-			var content fyne.CanvasObject
-			if args[2] != object.Nil {
-				contentObj, ok := args[2].(IsCanvasObject)
-				if !ok {
-					return nil, object.Errorf("argument error: content must be a CanvasObject or nil, got %s", args[2].Type())
-				}
-				content = contentObj.CanvasObject()
-			}
-			return risorwidget.NewCard(title, subtitle, content), nil
-		}), true
-
-	case "NewTable":
-		return object.NewBuiltin("widget.NewTable", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-			title, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-			pageSize, err := object.AsInt(args[1])
-			if err != nil {
-				return nil, err
-			}
-
-			return risorwidget.NewTable(title, int(pageSize), obj.w), nil
-		}), true
-
-	case "NewRadioGroup":
-		return object.NewBuiltin("widget.NewRadioGroup", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-			options, err := object.AsStringSlice(args[0])
-			if err != nil {
-				return nil, err
-			}
-			cb, err := vmexec.NewCallback(ctx, "widget.NewRadioGroup", args[1])
-			if err != nil {
-				return nil, err
-			}
-
-			return risorwidget.NewRadioGroup(options, func(selected string) {
-				cb.Fire(object.NewString(selected))
-			}), nil
-		}), true
-
-	case "NewAccordion":
-		return object.NewBuiltin("widget.NewAccordion", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			var items []*fynewidget.AccordionItem
-			for i, arg := range args {
-				item, ok := arg.Interface().(*fynewidget.AccordionItem)
-				if !ok {
-					return nil, object.Errorf("argument error: expected AccordionItem at position %d, got %s", i, arg.Type())
-				}
-				items = append(items, item)
-			}
-			return risorwidget.NewAccordion(items...), nil
-		}), true
-
-	case "NewAccordionItem":
-		return object.NewBuiltin("widget.NewAccordionItem", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 3 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=3", len(args))
-			}
-			title, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-			detail, err := object.AsString(args[1])
-			if err != nil {
-				return nil, err
-			}
-			var content fyne.CanvasObject
-			if args[2] != object.Nil {
-				contentObj, ok := args[2].(IsCanvasObject)
-				if !ok {
-					return nil, object.Errorf("argument error: content must be a CanvasObject or nil, got %s", args[2].Type())
-				}
-				content = contentObj.CanvasObject()
-			}
-			return risorwidget.NewAccordionItem(title, detail, content), nil
-		}), true
-
-	case "NewToolbar":
-		return object.NewBuiltin("widget.NewToolbar", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			var items []fynewidget.ToolbarItem
-			for i, arg := range args {
-				item, ok := arg.Interface().(fynewidget.ToolbarItem)
-				if !ok {
-					return nil, object.Errorf("argument error: expected ToolbarItem at position %d, got %s", i, arg.Type())
-				}
-				items = append(items, item)
-			}
-			return risorwidget.NewToolbar(items...), nil
-		}), true
-
-	case "NewToolbarAction":
-		return object.NewBuiltin("widget.NewToolbarAction", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-			iconName, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-			icon := risorwidget.GetThemeResource(iconName)
-			if icon == nil {
-				return nil, object.Errorf("unknown icon resource: %s", iconName)
-			}
-			cb, err := vmexec.NewCallback(ctx, "widget.NewToolbarAction", args[1])
-			if err != nil {
-				return nil, err
-			}
-
-			return risorwidget.NewToolbarAction(icon, func() { cb.Fire() }), nil
-		}), true
-
-	case "NewToolbarSeparator":
-		return object.NewBuiltin("widget.NewToolbarSeparator", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			return risorwidget.NewToolbarSeparator(), nil
-		}), true
-
-	case "NewToolbarSpacer":
-		return object.NewBuiltin("widget.NewToolbarSpacer", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			return risorwidget.NewToolbarSpacer(), nil
-		}), true
-
-	case "NewList":
-		return object.NewBuiltin("widget.NewList", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			return risorwidget.NewList(obj.w), nil
-		}), true
-
-	case "NewTree":
-		return object.NewBuiltin("widget.NewTree", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			return risorwidget.NewTree(obj.w), nil
-		}), true
-
-	case "NewGridWrap":
-		return object.NewBuiltin("widget.NewGridWrap", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			return risorwidget.NewGridWrap(obj.w), nil
-		}), true
+	// Get the binding.Float object
 
 	case "NewTextGrid":
 		return object.NewBuiltin("widget.NewTextGrid", risorwidget.NewTextGrid), true
@@ -689,6 +137,7 @@ func (obj *Widget) getAttrUI(name string) (object.Object, bool) {
 		return object.NewBuiltin("widget.NewPopUpMenu", risorwidget.NewPopUpMenu), true
 	}
 	return nil, false
+
 }
 
 // callbackQueueSize bounds the queue of pending event callbacks. When it is
@@ -719,4 +168,738 @@ func (w *Window) Do(fn func()) {
 
 func NewWidget(w *Window) *Widget {
 	return &Widget{w: w}
+}
+func init() {
+	widgetAttrs.
+		Define("NewButton").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		if len(args) != 2 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=2",
+				len(
+					args))
+		}
+		name, err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		cb, err :=
+			vmexec.NewCallback(ctx, "widget.NewButton", args[1])
+
+		if err != nil {
+			return nil, err
+		}
+		return risorwidget.NewButton(name, func() { cb.Fire() }), nil
+	})
+	widgetAttrs.
+		Define("NewCheck").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		if len(args) != 2 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=2",
+				len(args))
+		}
+		label, err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		cb, err :=
+			vmexec.NewCallback(ctx, "widget.NewCheck", args[1])
+		if err != nil {
+			return nil, err
+		}
+		return risorwidget.NewCheck(label, func(changed bool) { cb.Fire(object.NewBool(changed)) }), nil
+	})
+	widgetAttrs.
+		Define("NewCheckWithData").Variadic("args").Returns("nil").Impl(func(obj *Widget,
+		ctx context.
+			Context, args ...object.Object) (object.Object, error) {
+		if len(args) != 2 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=2",
+				len(args))
+		}
+		label, err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		bindingBool,
+			ok := args[1].Interface().(interface {
+			Get() (
+				bool, error)
+		})
+		if !ok {
+			return nil, object.
+				Errorf("type error: expected binding.Bool")
+		}
+		return risorwidget.NewCheckWithData(
+			label, bindingBool), nil
+	})
+	widgetAttrs.
+		Define("NewCheckGroup").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+
+		if len(args) != 2 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=2",
+
+				len(args))
+		}
+		options, err := object.AsStringSlice(args[0])
+		if err != nil {
+			return nil, err
+		}
+		cb, err := vmexec.NewCallback(ctx, "widget.NewCheckGroup",
+
+			args[1])
+		if err != nil {
+			return nil,
+
+				err
+		}
+		return risorwidget.NewCheckGroup(options, func(checked []string) {
+			cb.Fire(object.
+				NewStringList(checked))
+		}), nil
+	})
+	widgetAttrs.
+		Define("NewSelect").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		if len(args) != 2 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=2",
+				len(
+					args))
+		}
+		options, err := object.AsStringSlice(args[0])
+		if err != nil {
+			return nil, err
+		}
+		cb,
+			err := vmexec.NewCallback(ctx, "widget.NewSelect",
+			args[1])
+		if err != nil {
+			return nil, err
+		}
+		return risorwidget.NewSelect(options, func(selected string) {
+			cb.Fire(object.NewString(selected))
+		}), nil
+	})
+	widgetAttrs.
+		Define("NewSelectEntry").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		if len(args) != 1 {
+			return nil, object.Errorf(
+				"wrong number of arguments. got=%d, want=1",
+				len(args))
+		}
+		options, err := object.AsStringSlice(args[0])
+		if err != nil {
+			return nil, err
+		}
+		selectEntry := risorwidget.NewSelectEntry(obj.w, options,
+
+			nil)
+		return selectEntry, nil
+	})
+	widgetAttrs.
+		Define("NewDateEntry").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		if len(args) != 0 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=0",
+				len(args))
+		}
+		dateEntry := risorwidget.NewDateEntry(obj.w)
+		return dateEntry, nil
+	})
+	widgetAttrs.
+		Define("NewCalendar").
+		Variadic(
+			"args").
+		Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		if len(args) > 2 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=0, 1, or 2",
+
+				len(args))
+		}
+		var startDate time.Time
+		var onChanged func(time.Time)
+		if len(args) >= 1 &&
+			args[0] != object.Nil && args[0].Type() != object.NIL {
+			if timeVal, ok := args[0].Interface().(time.Time); ok {
+				startDate = timeVal
+			} else {
+				return nil, object.Errorf("argument error: expected time.Time or nil, got %s",
+					args[0].Type())
+			}
+		} else {
+			startDate = time.
+				Now()
+		}
+		if len(args) == 2 {
+			cb, err := vmexec.NewCallback(ctx, "widget.NewCalendar",
+
+				args[1])
+			if err != nil {
+				return nil, err
+			}
+			onChanged = func(selected time.
+				Time) {
+				cb.Fire(timemodule.NewTimeObject(selected))
+			}
+		}
+		calendar :=
+			risorwidget.NewCalendar(obj.w, startDate, onChanged)
+		return calendar, nil
+	},
+	)
+	widgetAttrs.
+		Define("NewEntry").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		if len(args) != 0 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=0",
+				len(args))
+		}
+		return risorwidget.NewEntry(obj.
+			w), nil
+	})
+	widgetAttrs.
+		Define("NewEntryWithData").Variadic("args").Returns("nil").Impl(func(obj *Widget,
+		ctx context.
+			Context, args ...object.Object) (object.Object, error) {
+		if len(args) != 1 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=1",
+				len(args))
+		}
+		bindingStr, ok := args[0].Interface().(interface{ Get() (string, error) })
+		if !ok {
+			return nil, object.Errorf("type error: expected binding.String")
+		}
+		return risorwidget.NewEntryWithData(bindingStr, obj.w), nil
+	})
+	widgetAttrs.
+		Define("NewMultiLineEntry").Variadic("args").Returns("nil").Impl(func(obj *Widget,
+		ctx context.
+			Context, args ...object.Object) (object.Object, error) {
+		if len(args) != 0 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=0",
+				len(args))
+		}
+		return risorwidget.NewMultiLineEntry(obj.w), nil
+	})
+	widgetAttrs.
+		Define("NewForm").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.Object) (object.Object, error) {
+		if len(args) == 0 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=at least 1",
+
+				len(args))
+		}
+		var objects []*fynewidget.
+			FormItem
+		for i, x := range args {
+			if x.Type() ==
+				object.LIST {
+				items, err := object.AsList(x)
+				if err !=
+					nil {
+					return nil, object.Errorf("NewForm: Error: %s",
+
+						err.Error())
+				}
+				for j, y := range items.Value() {
+					o, ok := y.Interface().(*fynewidget.FormItem)
+					if !ok {
+						return nil, object.Errorf("NewForm: Wrong type, expected FormItem within list at position: %d",
+							j)
+					}
+					objects = append(objects, o)
+				}
+			} else {
+				o, ok := x.Interface().(*fynewidget.FormItem)
+				if !ok {
+					return nil, object.Errorf("NewForm: Wrong type, expected FormItem at argument: %d",
+						i)
+				}
+				objects = append(
+					objects, o)
+			}
+		}
+		return risorwidget.
+			NewForm(objects...), nil
+	})
+	widgetAttrs.
+		Define("NewFormItem").
+		Variadic(
+			"args").
+		Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		if len(args) != 2 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=2",
+				len(args))
+		}
+		label, err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		o, ok := args[1].Interface().(fyne.CanvasObject)
+		if !ok {
+			return nil, object.Errorf("NewFormItem: Wrong type, expected CanvasObject at argument: %d",
+
+				1)
+		}
+		return risorwidget.NewFormItem(label,
+			o), nil
+	})
+	widgetAttrs.
+		Define("NewLabel").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		if len(args) != 1 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=1",
+				len(args))
+		}
+		text, err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		return risorwidget.
+			NewLabel(text), nil
+	})
+	widgetAttrs.
+		Define("NewLabelWithData").Variadic("args").Returns("nil").Impl(func(obj *Widget,
+		ctx context.
+			Context, args ...object.Object) (object.Object, error) {
+		if len(args) != 1 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=1",
+				len(args))
+		}
+		bindingStr, ok := args[0].Interface().(interface{ Get() (string, error) })
+		if !ok {
+			return nil, object.Errorf("type error: expected binding.String")
+		}
+		return risorwidget.NewLabelWithData(bindingStr), nil
+	})
+	widgetAttrs.
+		Define("NewLog").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.Object) (object.Object, error) {
+		if len(
+			args) != 1 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=1",
+				len(args))
+		}
+		maxItems, err := object.AsInt(args[0])
+		if err != nil {
+			return nil, err
+		}
+		return risorwidget.
+			NewLog(int(maxItems)), nil
+	})
+	widgetAttrs.
+		Define("NewMarkdown").
+		Variadic(
+			"args").
+		Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		if len(args) != 1 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=1",
+				len(args))
+		}
+		markdown, err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		return risorwidget.NewMarkdown(markdown), nil
+	})
+	widgetAttrs.
+		Define("NewProgressBar").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		if len(args) != 0 {
+			return nil, object.Errorf(
+				"wrong number of arguments. got=%d, want=0",
+				len(args))
+		}
+		return risorwidget.NewProgressBar(), nil
+	})
+	widgetAttrs.
+		Define("NewProgressBarWithData").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.Context, args ...object.Object) (object.Object,
+
+		error) {
+		if len(args) != 1 {
+			return nil, object.
+				Errorf("wrong number of arguments. got=%d, want=1",
+					len(args))
+		}
+		bindingFloat, ok :=
+			args[0].Interface().(interface {
+				Get() (float64, error)
+			})
+		if !ok {
+			return nil, object.Errorf("type error: expected binding.Float")
+		}
+		return risorwidget.
+			NewProgressBarWithData(bindingFloat), nil
+	})
+	widgetAttrs.
+		Define("NewProgressBarInfinite").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.Context, args ...object.Object) (object.Object,
+
+		error) {
+		if len(args) != 0 {
+			return nil, object.
+				Errorf("wrong number of arguments. got=%d, want=0",
+					len(args))
+		}
+		return risorwidget.
+			NewProgressBarInfinite(), nil
+	})
+	widgetAttrs.
+		Define("NewSeparator").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		if len(args) != 0 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=0",
+				len(args))
+		}
+		return risorwidget.NewSeparator(), nil
+	})
+	widgetAttrs.
+		Define("NewActivity").
+		Variadic(
+			"args").
+		Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		if len(args) != 0 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=0",
+				len(args))
+		}
+		return risorwidget.NewActivity(), nil
+	})
+	widgetAttrs.
+		Define("NewSlider").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		if len(args) != 2 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=2",
+				len(
+					args))
+		}
+		min, err := object.AsFloat(args[0])
+		if err != nil {
+			return nil, err
+		}
+		max, err :=
+			object.AsFloat(args[1])
+		if err != nil {
+			return nil,
+				err
+
+		}
+		return risorwidget.NewSlider(min, max,
+
+			obj.w), nil
+	})
+	widgetAttrs.
+		Define("NewSliderWithData").Variadic("args").Returns("nil").Impl(func(obj *Widget,
+		ctx context.
+			Context, args ...object.Object) (object.Object, error) {
+		if len(args) != 3 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=3",
+				len(args))
+		}
+		min, err := object.AsFloat(args[0])
+		if err != nil {
+			return nil, err
+		}
+		max,
+			err := object.AsFloat(args[1])
+		if err != nil {
+			return nil, err
+		}
+		bindingFloat, ok := args[2].
+			Interface().(interface{ Get() (float64, error) })
+		if !ok {
+			return nil, object.Errorf("type error: expected binding.Float")
+		}
+		return risorwidget.NewSliderWithData(min, max,
+			bindingFloat, obj.w), nil
+	})
+	widgetAttrs.
+		Define("NewIcon").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.Object) (object.Object, error) {
+		if len(args) != 1 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=1",
+				len(args))
+		}
+		resourceName, err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		icon,
+			err := risorwidget.NewIcon(resourceName)
+		if err !=
+			nil {
+			return nil, object.Errorf("error creating icon: %v",
+
+				err)
+		}
+		return icon, nil
+	})
+	widgetAttrs.
+		Define("NewHyperlink").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		if len(args) != 2 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=2",
+				len(args))
+		}
+		text, err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		urlStr,
+			err := object.AsString(args[1])
+		if err != nil {
+			return nil, err
+		}
+		hyperlink, err := risorwidget.
+			NewHyperlink(text, urlStr, obj.w)
+		if err != nil {
+			return nil, object.Errorf("error creating hyperlink: %v",
+				err)
+		}
+		return hyperlink, nil
+	})
+	widgetAttrs.
+		Define("NewCard").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.Object) (object.Object, error) {
+		if len(args) != 3 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=3",
+				len(args))
+		}
+		title, err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		subtitle,
+			err := object.AsString(args[1])
+		if err != nil {
+			return nil, err
+		}
+		var content fyne.CanvasObject
+
+		if args[2] != object.Nil {
+			contentObj, ok := args[2].(IsCanvasObject)
+			if !ok {
+				return nil, object.Errorf("argument error: content must be a CanvasObject or nil, got %s",
+					args[2].Type())
+			}
+			content = contentObj.CanvasObject()
+		}
+		return risorwidget.
+			NewCard(title, subtitle, content), nil
+	})
+	widgetAttrs.
+		Define("NewTable").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		if len(args) != 2 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=2",
+				len(args))
+		}
+		title, err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		pageSize,
+			err := object.AsInt(args[1])
+		if err != nil {
+			return nil,
+
+				err
+		}
+		return risorwidget.NewTable(title,
+
+			int(pageSize), obj.w), nil
+	})
+	widgetAttrs.
+		Define("NewRadioGroup").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+
+		if len(args) != 2 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=2",
+
+				len(args))
+		}
+		options, err := object.AsStringSlice(args[0])
+		if err != nil {
+			return nil, err
+		}
+		cb, err := vmexec.NewCallback(ctx, "widget.NewRadioGroup",
+
+			args[1])
+		if err != nil {
+			return nil,
+
+				err
+		}
+		return risorwidget.NewRadioGroup(options, func(selected string) {
+			cb.Fire(object.
+				NewString(selected))
+		}), nil
+	})
+	widgetAttrs.
+		Define("NewAccordion").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		var items []*fynewidget.AccordionItem
+		for i, arg := range args {
+			item, ok := arg.Interface().(*fynewidget.AccordionItem)
+			if !ok {
+				return nil, object.Errorf("argument error: expected AccordionItem at position %d, got %s",
+					i, arg.Type())
+			}
+
+			items = append(items, item)
+		}
+		return risorwidget.
+			NewAccordion(items...), nil
+	})
+	widgetAttrs.
+		Define("NewAccordionItem").Variadic("args").Returns("nil").Impl(func(obj *Widget,
+		ctx context.
+			Context, args ...object.Object) (object.Object, error) {
+		if len(args) != 3 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=3",
+				len(args))
+		}
+		title, err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		detail,
+			err := object.AsString(args[1])
+		if err != nil {
+
+			return nil, err
+		}
+		var content fyne.CanvasObject
+
+		if args[2] != object.Nil {
+			contentObj, ok := args[2].(IsCanvasObject)
+			if !ok {
+				return nil, object.Errorf("argument error: content must be a CanvasObject or nil, got %s",
+					args[2].Type())
+			}
+			content = contentObj.CanvasObject()
+		}
+		return risorwidget.NewAccordionItem(title, detail, content), nil
+	})
+	widgetAttrs.
+		Define("NewToolbar").
+		Variadic("args").
+		Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		var items []fynewidget.ToolbarItem
+		for i, arg := range args {
+			item, ok := arg.Interface().(fynewidget.
+				ToolbarItem)
+			if !ok {
+				return nil, object.Errorf("argument error: expected ToolbarItem at position %d, got %s",
+					i, arg.Type())
+			}
+			items =
+				append(items, item)
+		}
+		return risorwidget.
+			NewToolbar(items...), nil
+	})
+	widgetAttrs.
+		Define("NewToolbarAction").Variadic("args").Returns("nil").Impl(func(obj *Widget,
+		ctx context.
+			Context, args ...object.Object) (object.Object, error) {
+		if len(args) != 2 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=2",
+				len(args))
+		}
+		iconName, err := object.
+			AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		icon := risorwidget.GetThemeResource(iconName)
+		if icon ==
+			nil {
+			return nil, object.Errorf("unknown icon resource: %s",
+
+				iconName)
+		}
+		cb, err := vmexec.NewCallback(ctx, "widget.NewToolbarAction",
+			args[1])
+		if err != nil {
+			return nil, err
+		}
+		return risorwidget.NewToolbarAction(icon, func() { cb.Fire() }), nil
+	})
+	widgetAttrs.
+		Define("NewToolbarSeparator").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.Object) (object.Object, error) {
+		if len(args) != 0 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=0",
+				len(args))
+		}
+		return risorwidget.NewToolbarSeparator(), nil
+	})
+	widgetAttrs.
+		Define("NewToolbarSpacer").Variadic("args").Returns("nil").Impl(func(obj *Widget,
+		ctx context.
+			Context, args ...object.Object) (object.Object, error) {
+		if len(args) != 0 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=0",
+				len(args))
+		}
+		return risorwidget.NewToolbarSpacer(), nil
+	})
+	widgetAttrs.
+		Define("NewList").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.Object) (object.Object, error) {
+		if len(args) != 0 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=0",
+				len(args))
+		}
+		return risorwidget.NewList(obj.w),
+			nil
+	})
+	widgetAttrs.
+		Define("NewTree").Variadic("args").Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.Object) (object.Object, error) {
+		if len(args) != 0 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=0",
+				len(args))
+		}
+		return risorwidget.NewTree(obj.w),
+			nil
+	})
+	widgetAttrs.
+		Define("NewGridWrap").
+		Variadic(
+			"args").
+		Returns("nil").Impl(func(obj *Widget, ctx context.
+		Context, args ...object.
+		Object) (object.Object, error) {
+		if len(args) != 0 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=0",
+				len(args))
+		}
+		return risorwidget.NewGridWrap(obj.w), nil
+	})
 }

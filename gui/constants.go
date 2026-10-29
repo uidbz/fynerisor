@@ -97,57 +97,15 @@ func (obj *Constants) GetAttr(name string) (object.Object, bool) {
 var constantsAttrs = object.NewAttrRegistry[*Constants](string(ConstantsType))
 
 func (obj *Constants) getAttrUI(name string) (object.Object, bool) {
-	return constantsAttrs.
-
-		// Button Importance
-		GetAttr(obj, name)
-
-	// Button Icon Placement
-
-	// Button Alignment
-
-	// Text Wrapping (fyne.TextWrap)
-
-	// fyne.TextWrapOff
-
-	// fyne.TextWrapBreak
-
-	// fyne.TextWrapWord
-
-	// Text Truncation (fyne.TextTruncation)
-
-	// fyne.TextTruncateOff
-
-	// fyne.TextTruncateClip
-
-	// fyne.TextTruncateEllipsis
-
-	// Scroll Direction (fyne.ScrollDirection)
-
-	// Orientation (fyne.Orientation)
-
-	// Text Alignment (fyne.TextAlign)
-
+	// Constant groups: Button Importance, Button Icon Placement,
+	// Button Alignment, Text Wrapping (fyne.TextWrap), Text Truncation
+	// (fyne.TextTruncation), Scroll Direction (fyne.ScrollDirection),
+	// Orientation (fyne.Orientation) and Text Alignment (fyne.TextAlign).
+	return constantsAttrs.GetAttr(obj, name)
 }
 
 func (obj *Constants) Attrs() []object.AttrSpec {
 	return constantsAttrs.Specs()
-	// Button Importance
-
-	// Button Icon Placement
-
-	// Button Alignment
-
-	// Text Wrapping
-
-	// Text Truncation
-
-	// Scroll Direction
-
-	// Orientation
-
-	// Text Alignment
-
 }
 
 func newConstantsObject() *Constants {

@@ -57,7 +57,7 @@ func (obj *Binding) Equals(other object.Object) bool {
 }
 
 func (obj *Binding) Attrs() []object.AttrSpec {
-	return nil
+	return bindingAttrs.Specs()
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -74,75 +74,97 @@ func (obj *Binding) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var bindingAttrs = object.NewAttrRegistry[*Binding](string(BindingType))
+
 func (obj *Binding) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "NewString":
-		return object.NewBuiltin("binding.NewString", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) > 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0 or 1", len(args))
-			}
-			if len(args) == 0 {
-				return risorbinding.NewString(), nil
-			}
-			// Optional initial value
-			val, err := object.AsString(args[0])
-			if err != nil {
-				return nil, object.Errorf("type error: %v", err)
-			}
-			return risorbinding.BindString(val), nil
-		}), true
+	return bindingAttrs.GetAttr(obj, name)
 
-	case "NewBool":
-		return object.NewBuiltin("binding.NewBool", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) > 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0 or 1", len(args))
-			}
-			if len(args) == 0 {
-				return risorbinding.NewBool(), nil
-			}
-			// Optional initial value
-			val, err := object.AsBool(args[0])
-			if err != nil {
-				return nil, object.Errorf("type error: %v", err)
-			}
-			return risorbinding.BindBool(val), nil
-		}), true
+	// Optional initial value
 
-	case "NewInt":
-		return object.NewBuiltin("binding.NewInt", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) > 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0 or 1", len(args))
-			}
-			if len(args) == 0 {
-				return risorbinding.NewInt(), nil
-			}
-			// Optional initial value
-			val, err := object.AsInt(args[0])
-			if err != nil {
-				return nil, object.Errorf("type error: %v", err)
-			}
-			return risorbinding.BindInt(int(val)), nil
-		}), true
+	// Optional initial value
 
-	case "NewFloat":
-		return object.NewBuiltin("binding.NewFloat", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) > 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0 or 1", len(args))
-			}
-			if len(args) == 0 {
-				return risorbinding.NewFloat(), nil
-			}
-			// Optional initial value
-			val, err := object.AsFloat(args[0])
-			if err != nil {
-				return nil, object.Errorf("type error: %v", err)
-			}
-			return risorbinding.BindFloat(val), nil
-		}), true
-	}
-	return nil, false
+	// Optional initial value
+
+	// Optional initial value
+
 }
 
 func NewBinding() *Binding {
 	return &Binding{}
+}
+func init() {
+	bindingAttrs.
+		Define("NewString").
+		Variadic("args").Returns("nil").Impl(func(obj *Binding, ctx context.Context, args ...object.Object) (object.Object, error) {
+		if len(args) > 1 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=0 or 1",
+
+				len(args))
+		}
+		if len(args) == 0 {
+			return risorbinding.NewString(), nil
+		}
+		val, err := object.AsString(args[0])
+		if err != nil {
+			return nil, object.Errorf("type error: %v", err)
+		}
+		return risorbinding.BindString(val), nil
+	})
+	bindingAttrs.
+		Define("NewBool").Variadic(
+		"args").Returns("nil").Impl(func(obj *Binding, ctx context.Context, args ...object.Object) (object.
+		Object, error) {
+		if len(args) > 1 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=0 or 1",
+
+				len(args))
+		}
+		if len(args) == 0 {
+			return risorbinding.NewBool(), nil
+		}
+		val, err := object.AsBool(args[0])
+		if err != nil {
+			return nil, object.Errorf("type error: %v",
+				err)
+		}
+		return risorbinding.BindBool(val), nil
+	})
+	bindingAttrs.
+		Define("NewInt").Variadic("args").Returns("nil").Impl(func(obj *Binding,
+
+		ctx context.Context, args ...object.Object) (object.
+		Object, error) {
+		if len(args) > 1 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=0 or 1",
+
+				len(args))
+		}
+		if len(args) == 0 {
+			return risorbinding.NewInt(), nil
+		}
+		val, err := object.AsInt(args[0])
+		if err != nil {
+			return nil, object.Errorf("type error: %v",
+				err)
+		}
+		return risorbinding.BindInt(int(val)), nil
+	})
+	bindingAttrs.
+		Define("NewFloat").Variadic("args").Returns("nil").Impl(func(obj *Binding, ctx context.Context, args ...object.Object) (
+		object.Object, error) {
+		if len(args) > 1 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=0 or 1",
+
+				len(args))
+		}
+		if len(args) == 0 {
+			return risorbinding.NewFloat(), nil
+		}
+		val, err := object.AsFloat(args[0])
+		if err != nil {
+			return nil, object.Errorf(
+				"type error: %v", err)
+		}
+		return risorbinding.BindFloat(val), nil
+	})
 }

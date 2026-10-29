@@ -63,7 +63,9 @@ func (obj *Canvas) Equals(other object.Object) bool {
 }
 
 func (obj *Canvas) Attrs() []object.AttrSpec {
-	return nil
+	return append(canvasAttrs.Specs(),
+		object.AttrSpec{Name: "NewImageFromURI", Doc: "Create an Image loading from a URI string; the fetch runs off the UI thread", Args: []string{"uri"}, Returns: "canvas.Image"},
+	)
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
@@ -99,71 +101,13 @@ func (obj *Canvas) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var canvasAttrs = object.NewAttrRegistry[*Canvas](string(CanvasType))
+
 func (obj *Canvas) getAttrUI(name string) (object.Object, bool) {
+	if o, ok := canvasAttrs.GetAttr(obj, name); ok {
+		return o, true
+	}
 	switch name {
-	case "NewLine":
-		return object.NewBuiltin("canvas.NewLine", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			color, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			line := canvas.NewLine(getNamedColor(color))
-
-			return risorcanvas.NewLine(line), nil
-		}), true
-
-	case "NewText":
-		return object.NewBuiltin("canvas.NewText", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-			text, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-			colorName, err := object.AsString(args[1])
-			if err != nil {
-				return nil, err
-			}
-
-			c, err := risorcanvas.ParseColor(colorName)
-			if err != nil {
-				return nil, err
-			}
-
-			txt := canvas.NewText(text, c)
-
-			return risorcanvas.NewText(txt), nil
-		}), true
-
-	case "NewRectangle":
-		return object.NewBuiltin("canvas.NewRectangle", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 2 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=2", len(args))
-			}
-			colorName, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-			cornerRadius, err := object.AsFloat(args[1])
-			if err != nil {
-				return nil, err
-			}
-
-			c, err := risorcanvas.ParseColor(colorName)
-			if err != nil {
-				return nil, err
-			}
-
-			rect := canvas.NewRectangle(c)
-			rect.CornerRadius = float32(cornerRadius)
-
-			return risorcanvas.NewRectangle(rect), nil
-		}), true
 
 	case "NewImageFromURI":
 		// OffUI: loading may hit the network or disk; the image is not on
@@ -186,8 +130,86 @@ func (obj *Canvas) getAttrUI(name string) (object.Object, bool) {
 		})), true
 	}
 	return nil, false
+
 }
 
 func NewFyneCanvas() *Canvas {
 	return &Canvas{}
+}
+func init() {
+	canvasAttrs.
+		Define("NewLine").Variadic("args").Returns("nil").Impl(func(obj *Canvas,
+		ctx context.Context, args ...object.Object) (object.
+		Object, error) {
+		if len(args) != 1 {
+			return nil,
+				object.Errorf("wrong number of arguments. got=%d, want=1",
+					len(args))
+		}
+		color, err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		line := canvas.NewLine(
+			getNamedColor(color))
+		return risorcanvas.NewLine(line), nil
+	})
+	canvasAttrs.
+		Define("NewText").Variadic("args").Returns("nil").Impl(func(obj *Canvas,
+		ctx context.Context, args ...object.Object) (object.
+		Object, error) {
+		if len(args) != 2 {
+			return nil,
+				object.Errorf("wrong number of arguments. got=%d, want=2",
+					len(args))
+		}
+		text, err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		colorName, err := object.
+			AsString(args[1])
+		if err != nil {
+			return nil, err
+		}
+		c, err := risorcanvas.ParseColor(colorName)
+		if err != nil {
+			return nil, err
+		}
+		txt := canvas.NewText(text, c)
+		return risorcanvas.NewText(txt), nil
+	},
+	)
+	canvasAttrs.
+		Define("NewRectangle").Variadic("args").Returns("nil").Impl(func(obj *Canvas, ctx context.
+		Context,
+
+		args ...object.Object) (object.
+		Object, error) {
+		if len(args) != 2 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=2",
+				len(args))
+		}
+		colorName, err :=
+			object.
+				AsString(args[0])
+		if err !=
+
+			nil {
+			return nil, err
+		}
+		cornerRadius,
+			err := object.AsFloat(args[1])
+		if err != nil {
+			return nil, err
+		}
+		c, err := risorcanvas.
+			ParseColor(colorName)
+		if err != nil {
+			return nil, err
+		}
+		rect := canvas.NewRectangle(c)
+		rect.CornerRadius = float32(cornerRadius)
+		return risorcanvas.NewRectangle(rect), nil
+	})
 }
