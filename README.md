@@ -458,6 +458,8 @@ Eventually I dream of making an other browser app, that incorporates the origina
 
 ## Documentation
 
+- [Full Guide](docs/README.md) - Complete guide: modules, options, architecture
+- [API Reference](docs/API.md) - Generated per-type attribute reference (authoritative; `fynerisor docs` regenerates)
 - [Examples](examples/README.md) - 37 working examples with detailed READMEs
 - [Examples Guide](docs/EXAMPLES.md) - Usage patterns and concepts
 - [Tie Module](docs/TIE_MODULE.md) - Triple store database guide
@@ -465,10 +467,11 @@ Eventually I dream of making an other browser app, that incorporates the origina
 - [Concurrency Guide](docs/CONCURRENCY.md) - Threading patterns
 - [Widget Status](docs/WIDGET_STATUS.md) - Supported Fyne widgets
 - [App Versioning](examples/27-app-versioning) - Custom application versioning
+- [Agent Skill](skill/SKILL.md) - Guidance pack for AI assistants (install by symlinking `skill/` into your skills dir)
 
 ## Requirements
 
-- Go 1.25+
+- Go 1.27+
 - Fyne v2.8+
 - Risor v2.2+
 

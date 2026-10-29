@@ -7,7 +7,7 @@ This file provides context and guidelines for AI assistants working on fynerisor
 Fynerisor provides Risor v2 language bindings for the Fyne GUI framework, enabling cross-platform desktop applications written in Risor scripts.
 
 **Current Version:** 0.9.0  
-**Language:** Go 1.25+  
+**Language:** Go 1.27+  
 **Dependencies:** Fyne v2.8+, Risor v2.x
 
 ## Architecture
@@ -315,13 +315,31 @@ When making breaking changes:
 2. Update CHANGELOG.md under Unreleased
 3. Consider if major version bump is needed
 4. Update all affected examples
-5. Update documentation (doc.go, llms.txt, README.md)
+5. Update documentation — route each fact to its owner (see Documentation Map)
+
+## Documentation Map (one fact, one place)
+
+Docs have drifted before by repeating themselves. When adding or changing
+documentation, each kind of fact has exactly ONE owner:
+
+| Kind of fact | Owner |
+|---|---|
+| Script-visible attribute lists (types, methods, args) | `docs/API.md` — **generated**, CI-pinned; change the Go `Define()`/Doc, then `go generate .` |
+| Full tutorials, module functions, options, CLI | `docs/README.md` |
+| Entry point + Go host embedding examples | `README.md` (keep short; link out, don't grow it back into a guide) |
+| Threading model prose | `docs/CONCURRENCY.md` |
+| Agent working guidance (syntax rules, gotchas, patterns) | `skill/` (SKILL.md + references/ — guidance only, points at docs/API.md, never duplicates API lists) |
+| Version/breaking changes | `CHANGELOG.md` |
+| LLM-reader index | `llms.txt` — links + one-liners only, no content dumps |
+| Package docs for godoc | `doc.go` |
 
 ## Key Files to Know
 
 - `CHANGELOG.md` - All version history (single source of truth)
 - `doc.go` - Package documentation (godoc)
-- `llms.txt` - AI assistant reference
+- `llms.txt` - LLM-reader index (links only; do not duplicate doc content into it)
+- `docs/API.md` - Generated script API reference (CI-pinned; `go generate .`)
+- `skill/` - The fynerisor agent skill (canonical home; installed via symlink)
 - `docs/CONCURRENCY.md` - Threading guidelines
 - `docs/EXAMPLES.md` - Example descriptions
 - `cmd/fynerisor/main.go` - CLI tool
