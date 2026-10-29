@@ -156,7 +156,7 @@ func (obj *RichText) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var richTextAttrs = object.NewAttrRegistry[*RichText](string(RichTextType))
+var richTextAttrs = objattrs.Register(string(RichTextType), object.NewAttrRegistry[*RichText](string(RichTextType)))
 
 func (obj *RichText) getAttrUI(name string) (object.Object, bool) {
 	// Note: Direct segment manipulation not implemented

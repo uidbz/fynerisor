@@ -93,7 +93,7 @@ func (obj *Accordion) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var accordionAttrs = object.NewAttrRegistry[*Accordion](string(AccordionType))
+var accordionAttrs = objattrs.Register(string(AccordionType), object.NewAttrRegistry[*Accordion](string(AccordionType)))
 
 func (obj *Accordion) getAttrUI(name string) (object.Object, bool) {
 	return accordionAttrs.GetAttr(obj, name)
@@ -181,7 +181,7 @@ func (obj *AccordionItem) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var accordionItemAttrs = object.NewAttrRegistry[*AccordionItem](string(AccordionItemType))
+var accordionItemAttrs = objattrs.Register(string(AccordionItemType), object.NewAttrRegistry[*AccordionItem](string(AccordionItemType)))
 
 func (obj *AccordionItem) getAttrUI(name string) (object.Object, bool) {
 	return accordionItemAttrs.GetAttr(obj, name)

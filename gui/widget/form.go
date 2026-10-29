@@ -66,7 +66,7 @@ func (obj *Form) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", FormType, name)
 }
 
-var formAttrs = object.NewAttrRegistry[*Form](string(FormType))
+var formAttrs = objattrs.Register(string(FormType), object.NewAttrRegistry[*Form](string(FormType)))
 
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Form) GetAttr(name string) (object.Object, bool) {

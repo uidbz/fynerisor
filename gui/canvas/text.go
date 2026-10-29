@@ -110,7 +110,7 @@ func (obj *Text) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var textAttrs = object.NewAttrRegistry[*Text](string(TextType))
+var textAttrs = objattrs.Register(string(TextType), object.NewAttrRegistry[*Text](string(TextType)))
 
 func (obj *Text) getAttrUI(name string) (object.Object, bool) {
 	return textAttrs.GetAttr(obj, name)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"fyne.io/fyne/v2"
 
@@ -63,7 +64,7 @@ func (obj *Fyne) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var fyneAttrs = object.NewAttrRegistry[*Fyne](string(FyneType))
+var fyneAttrs = objattrs.Register(string(FyneType), object.NewAttrRegistry[*Fyne](string(FyneType)))
 
 func (obj *Fyne) getAttrUI(name string) (object.Object, bool) {
 	if o, ok := fyneAttrs.GetAttr(obj, name); ok {
@@ -144,7 +145,7 @@ func (obj *Menu) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var menuAttrs = object.NewAttrRegistry[*Menu]("fyne.Menu")
+var menuAttrs = objattrs.Register("fyne.Menu", object.NewAttrRegistry[*Menu]("fyne.Menu"))
 
 func (obj *Menu) getAttrUI(name string) (object.Object, bool) {
 	return menuAttrs.GetAttr(obj, name)
@@ -208,7 +209,7 @@ func (obj *MainMenu) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var mainMenuAttrs = object.NewAttrRegistry[*MainMenu]("fyne.MainMenu")
+var mainMenuAttrs = objattrs.Register("fyne.MainMenu", object.NewAttrRegistry[*MainMenu]("fyne.MainMenu"))
 
 func (obj *MainMenu) getAttrUI(name string) (object.Object, bool) {
 	return mainMenuAttrs.GetAttr(obj, name)

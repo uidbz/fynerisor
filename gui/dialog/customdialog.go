@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/dialog"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -69,7 +70,7 @@ func (obj *CustomDialog) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var customDialogAttrs = object.NewAttrRegistry[*CustomDialog](string(CustomDialogType))
+var customDialogAttrs = objattrs.Register(string(CustomDialogType), object.NewAttrRegistry[*CustomDialog](string(CustomDialogType)))
 
 func (obj *CustomDialog) getAttrUI(name string) (object.Object, bool) {
 	return customDialogAttrs.GetAttr(obj, name)

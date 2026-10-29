@@ -72,7 +72,7 @@ func (obj *Center) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var centerAttrs = object.NewAttrRegistry[*Center](string(CenterType))
+var centerAttrs = objattrs.Register(string(CenterType), object.NewAttrRegistry[*Center](string(CenterType)))
 
 func (obj *Center) getAttrUI(name string) (object.Object, bool) {
 	return centerAttrs.GetAttr(obj, name)

@@ -75,7 +75,7 @@ func (obj *Hyperlink) Attrs() []object.AttrSpec {
 }
 
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
-var hyperlinkAttrs = object.NewAttrRegistry[*Hyperlink](string(HyperlinkType))
+var hyperlinkAttrs = objattrs.Register(string(HyperlinkType), object.NewAttrRegistry[*Hyperlink](string(HyperlinkType)))
 
 func (obj *Hyperlink) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)

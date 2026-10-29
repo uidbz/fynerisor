@@ -181,7 +181,7 @@ func (obj *Rectangle) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var rectangleAttrs = object.NewAttrRegistry[*Rectangle](string(RectangleType))
+var rectangleAttrs = objattrs.Register(string(RectangleType), object.NewAttrRegistry[*Rectangle](string(RectangleType)))
 
 func (obj *Rectangle) getAttrUI(name string) (object.Object, bool) {
 	return rectangleAttrs.GetAttr(obj, name)

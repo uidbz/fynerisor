@@ -79,7 +79,7 @@ func (obj *Toolbar) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var toolbarAttrs = object.NewAttrRegistry[*Toolbar](string(ToolbarType))
+var toolbarAttrs = objattrs.Register(string(ToolbarType), object.NewAttrRegistry[*Toolbar](string(ToolbarType)))
 
 func (obj *Toolbar) getAttrUI(name string) (object.Object, bool) {
 	return toolbarAttrs.GetAttr(obj, name)
@@ -149,7 +149,7 @@ func (obj *ToolbarAction) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var toolbarActionAttrs = object.NewAttrRegistry[*ToolbarAction](string(ToolbarActionType))
+var toolbarActionAttrs = objattrs.Register(string(ToolbarActionType), object.NewAttrRegistry[*ToolbarAction](string(ToolbarActionType)))
 
 func (obj *ToolbarAction) getAttrUI(name string) (object.Object, bool) {
 	return toolbarActionAttrs.GetAttr(obj, name)
@@ -218,7 +218,7 @@ func (obj *ToolbarSeparator) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var toolbarSeparatorAttrs = object.NewAttrRegistry[*ToolbarSeparator](string(ToolbarSeparatorType))
+var toolbarSeparatorAttrs = objattrs.Register(string(ToolbarSeparatorType), object.NewAttrRegistry[*ToolbarSeparator](string(ToolbarSeparatorType)))
 
 func (obj *ToolbarSeparator) getAttrUI(name string) (object.Object, bool) {
 	return toolbarSeparatorAttrs.GetAttr(obj, name)
@@ -287,7 +287,7 @@ func (obj *ToolbarSpacer) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var toolbarSpacerAttrs = object.NewAttrRegistry[*ToolbarSpacer](string(ToolbarSpacerType))
+var toolbarSpacerAttrs = objattrs.Register(string(ToolbarSpacerType), object.NewAttrRegistry[*ToolbarSpacer](string(ToolbarSpacerType)))
 
 func (obj *ToolbarSpacer) getAttrUI(name string) (object.Object, bool) {
 	return toolbarSpacerAttrs.GetAttr(obj, name)

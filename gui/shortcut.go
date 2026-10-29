@@ -3,6 +3,7 @@ package gui
 import (
 	"fmt"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 	"strings"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -196,7 +197,7 @@ func (sw *ShortcutWrapper) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, sw.getAttrUI)
 }
 
-var shortcutWrapperAttrs = object.NewAttrRegistry[*ShortcutWrapper]("shortcut")
+var shortcutWrapperAttrs = objattrs.Register("shortcut", object.NewAttrRegistry[*ShortcutWrapper]("shortcut"))
 
 func (sw *ShortcutWrapper) getAttrUI(name string) (object.Object, bool) {
 	return shortcutWrapperAttrs.GetAttr(sw, name)

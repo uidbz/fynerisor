@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -92,7 +93,7 @@ func (obj *Widget) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var widgetAttrs = object.NewAttrRegistry[*Widget](string(WidgetType))
+var widgetAttrs = objattrs.Register(string(WidgetType), object.NewAttrRegistry[*Widget](string(WidgetType)))
 
 func (obj *Widget) getAttrUI(name string) (object.Object, bool) {
 	if o, ok := widgetAttrs.GetAttr(obj, name); ok {

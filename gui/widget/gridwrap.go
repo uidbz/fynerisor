@@ -111,7 +111,7 @@ func (obj *GridWrap) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", GridWrapType, name)
 }
 
-var gridWrapAttrs = object.NewAttrRegistry[*GridWrap](string(GridWrapType))
+var gridWrapAttrs = objattrs.Register(string(GridWrapType), object.NewAttrRegistry[*GridWrap](string(GridWrapType)))
 
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *GridWrap) GetAttr(name string) (object.Object, bool) {

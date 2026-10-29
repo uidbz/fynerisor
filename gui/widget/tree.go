@@ -99,7 +99,7 @@ func (t *Tree) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, t.getAttrUI)
 }
 
-var treeAttrs = object.NewAttrRegistry[*Tree](string(TreeType))
+var treeAttrs = objattrs.Register(string(TreeType), object.NewAttrRegistry[*Tree](string(TreeType)))
 
 func (t *Tree) getAttrUI(name string) (object.Object, bool) {
 	// Getter: called synchronously by Fyne during layout.

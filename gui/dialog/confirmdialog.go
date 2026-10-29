@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -70,7 +71,7 @@ func (obj *ConfirmDialog) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var confirmDialogAttrs = object.NewAttrRegistry[*ConfirmDialog](string(ConfirmDialogType))
+var confirmDialogAttrs = objattrs.Register(string(ConfirmDialogType), object.NewAttrRegistry[*ConfirmDialog](string(ConfirmDialogType)))
 
 func (obj *ConfirmDialog) getAttrUI(name string) (object.Object, bool) {
 	return confirmDialogAttrs.GetAttr(obj, name)

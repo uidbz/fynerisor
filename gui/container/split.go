@@ -90,7 +90,7 @@ func (obj *Split) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var splitAttrs = object.NewAttrRegistry[*Split](string(SplitType))
+var splitAttrs = objattrs.Register(string(SplitType), object.NewAttrRegistry[*Split](string(SplitType)))
 
 func init() {
 	objattrs.Add(splitAttrs)

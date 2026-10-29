@@ -65,7 +65,7 @@ func (obj *Activity) Attrs() []object.AttrSpec {
 }
 
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
-var activityAttrs = object.NewAttrRegistry[*Activity](string(ActivityType))
+var activityAttrs = objattrs.Register(string(ActivityType), object.NewAttrRegistry[*Activity](string(ActivityType)))
 
 func (obj *Activity) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)

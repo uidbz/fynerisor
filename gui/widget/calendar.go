@@ -87,7 +87,7 @@ func (obj *Calendar) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", CalendarType, name)
 }
 
-var calendarAttrs = object.NewAttrRegistry[*Calendar](string(CalendarType))
+var calendarAttrs = objattrs.Register(string(CalendarType), object.NewAttrRegistry[*Calendar](string(CalendarType)))
 
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Calendar) GetAttr(name string) (object.Object, bool) {

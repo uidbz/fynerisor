@@ -72,7 +72,7 @@ func (obj *Stack) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var stackAttrs = object.NewAttrRegistry[*Stack](string(StackType))
+var stackAttrs = objattrs.Register(string(StackType), object.NewAttrRegistry[*Stack](string(StackType)))
 
 func (obj *Stack) getAttrUI(name string) (object.Object, bool) {
 	return stackAttrs.GetAttr(obj, name)

@@ -9,6 +9,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -119,7 +120,7 @@ func (d *Dialog) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, d.getAttrUI)
 }
 
-var dialogAttrs = object.NewAttrRegistry[*Dialog](string(DialogType))
+var dialogAttrs = objattrs.Register(string(DialogType), object.NewAttrRegistry[*Dialog](string(DialogType)))
 
 func (d *Dialog) getAttrUI(name string) (object.Object, bool) {
 	// Every dialog function needs a Fyne window to attach to. An embedded

@@ -68,7 +68,7 @@ func (obj *Check) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", CheckType, name)
 }
 
-var checkAttrs = object.NewAttrRegistry[*Check](string(CheckType))
+var checkAttrs = objattrs.Register(string(CheckType), object.NewAttrRegistry[*Check](string(CheckType)))
 
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Check) GetAttr(name string) (object.Object, bool) {

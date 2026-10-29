@@ -61,38 +61,31 @@ func (obj *Label) Attrs() []object.AttrSpec {
 
 // labelAttrs declares the widget.Label attribute surface (issue #38):
 // introspectable via Attrs(), with arity handled by the registry.
-var labelAttrs = object.NewAttrRegistry[*Label](string(LabelType))
+var labelAttrs = objattrs.Register(string(LabelType), object.NewAttrRegistry[*Label](string(LabelType)))
 
 func init() {
 	objattrs.Add(labelAttrs)
 
 	labelAttrs.Define("Text").
 		Doc("The label's text.").
-		Returns("string").
 		Getter(func(o *Label) object.Object { return object.NewString(o.instance.Text) })
 	labelAttrs.Define("Wrapping").
 		Doc("Text wrapping mode (a constants.TextWrap* value).").
-		Returns("int").
 		Getter(func(o *Label) object.Object { return object.NewInt(int64(o.instance.Wrapping)) })
 	labelAttrs.Define("Truncation").
 		Doc("Text truncation mode.").
-		Returns("int").
 		Getter(func(o *Label) object.Object { return object.NewInt(int64(o.instance.Truncation)) })
 	labelAttrs.Define("Alignment").
 		Doc("Text alignment.").
-		Returns("int").
 		Getter(func(o *Label) object.Object { return object.NewInt(int64(o.instance.Alignment)) })
 	labelAttrs.Define("Importance").
 		Doc("Visual importance level.").
-		Returns("int").
 		Getter(func(o *Label) object.Object { return object.NewInt(int64(o.instance.Importance)) })
 	labelAttrs.Define("Selectable").
 		Doc("Whether the text can be selected.").
-		Returns("bool").
 		Getter(func(o *Label) object.Object { return object.NewBool(o.instance.Selectable) })
 	labelAttrs.Define("TextStyle").
 		Doc("Text style object; set Bold/Italic/Monospace on it.").
-		Returns("TextStyle").
 		Getter(func(o *Label) object.Object { return NewTextStyle(&o.instance.TextStyle, o.instance) })
 
 	labelAttrs.Define("SetText").

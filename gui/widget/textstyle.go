@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -128,7 +129,7 @@ func (obj *TextStyle) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var textStyleAttrs = object.NewAttrRegistry[*TextStyle](string(TextStyleType))
+var textStyleAttrs = objattrs.Register(string(TextStyleType), object.NewAttrRegistry[*TextStyle](string(TextStyleType)))
 
 func (obj *TextStyle) getAttrUI(name string) (object.Object, bool) {
 	return textStyleAttrs.GetAttr(obj, name)

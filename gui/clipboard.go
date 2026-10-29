@@ -9,6 +9,7 @@ import (
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 )
 
 var _ object.Object = &Clipboard{}
@@ -71,7 +72,7 @@ func (obj *Clipboard) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var clipboardAttrs = object.NewAttrRegistry[*Clipboard](string(ClipboardType))
+var clipboardAttrs = objattrs.Register(string(ClipboardType), object.NewAttrRegistry[*Clipboard](string(ClipboardType)))
 
 func (obj *Clipboard) getAttrUI(name string) (object.Object, bool) {
 	return clipboardAttrs.GetAttr(obj, name)

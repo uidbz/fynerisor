@@ -67,7 +67,7 @@ func (obj *Select) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", SelectType, name)
 }
 
-var selectAttrs = object.NewAttrRegistry[*Select](string(SelectType))
+var selectAttrs = objattrs.Register(string(SelectType), object.NewAttrRegistry[*Select](string(SelectType)))
 
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Select) GetAttr(name string) (object.Object, bool) {

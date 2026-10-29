@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -74,7 +75,7 @@ func (obj *Binding) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var bindingAttrs = object.NewAttrRegistry[*Binding](string(BindingType))
+var bindingAttrs = objattrs.Register(string(BindingType), object.NewAttrRegistry[*Binding](string(BindingType)))
 
 func (obj *Binding) getAttrUI(name string) (object.Object, bool) {
 	return bindingAttrs.GetAttr(obj, name)

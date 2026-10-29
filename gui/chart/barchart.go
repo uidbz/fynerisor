@@ -234,7 +234,7 @@ func (g *BarChart) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, g.getAttrUI)
 }
 
-var barChartAttrs = object.NewAttrRegistry[*BarChart](string(BarChartType))
+var barChartAttrs = objattrs.Register(string(BarChartType), object.NewAttrRegistry[*BarChart](string(BarChartType)))
 
 func (g *BarChart) getAttrUI(name string) (object.Object, bool) {
 	if o, ok := barChartAttrs.GetAttr(g, name); ok {

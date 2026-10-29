@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 	"image/color"
 	"strings"
 
@@ -101,7 +102,7 @@ func (obj *Canvas) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var canvasAttrs = object.NewAttrRegistry[*Canvas](string(CanvasType))
+var canvasAttrs = objattrs.Register(string(CanvasType), object.NewAttrRegistry[*Canvas](string(CanvasType)))
 
 func (obj *Canvas) getAttrUI(name string) (object.Object, bool) {
 	if o, ok := canvasAttrs.GetAttr(obj, name); ok {

@@ -43,6 +43,8 @@ func dispatch(argv []string) int {
 			return runCheck(argv[1:])
 		case "analyze":
 			return runAnalyze(argv[1:])
+		case "docs":
+			return runDocs(argv[1:])
 		case "run":
 			return runRun(argv[1:])
 		case "help", "-h", "--help":
@@ -62,6 +64,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "  fynerisor run   [options] <script.risor> [script-args...]  run; --core runs headless without Fyne\n")
 	fmt.Fprintf(os.Stderr, "  fynerisor check <script.risor>...                       compile only; exit 1 on errors\n")
 	fmt.Fprintf(os.Stderr, "  fynerisor analyze [--json] <script.risor>               requirements and imports\n")
+	fmt.Fprintf(os.Stderr, "  fynerisor docs [--json] [-o file]                       generated API reference (issue #47)\n")
 	fmt.Fprintf(os.Stderr, "  cat script.risor | fynerisor [options] -\n\n")
 	fmt.Fprintf(os.Stderr, "Run options:\n")
 	flag.PrintDefaults()

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"fyne.io/fyne/v2/data/binding"
 
@@ -70,7 +71,7 @@ func (obj *Float) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var floatAttrs = object.NewAttrRegistry[*Float](string(FloatType))
+var floatAttrs = objattrs.Register(string(FloatType), object.NewAttrRegistry[*Float](string(FloatType)))
 
 func (obj *Float) getAttrUI(name string) (object.Object, bool) {
 	// Change event: coalesced on the run's queue — listeners

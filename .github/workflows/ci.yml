@@ -36,6 +36,13 @@ jobs:
       - name: go build
         run: go build ./...
 
+      # Issue #47: docs/API.md is generated from the compiled attr
+      # registries (#38); regenerate and fail on any drift.
+      - name: API docs drift
+        run: |
+          go run ./cmd/fynerisor docs -o docs/API.md
+          git diff --exit-code docs/API.md
+
       # The acceptance criterion of issue #45: the entire tree runs clean
       # under the race detector (the per-run vmexec model and the UI-thread
       # routing in docs/CONCURRENCY.md must hold).

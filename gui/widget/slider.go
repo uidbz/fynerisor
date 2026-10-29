@@ -88,7 +88,7 @@ func (obj *Slider) Attrs() []object.AttrSpec {
 }
 
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
-var sliderAttrs = object.NewAttrRegistry[*Slider](string(SliderType))
+var sliderAttrs = objattrs.Register(string(SliderType), object.NewAttrRegistry[*Slider](string(SliderType)))
 
 func (obj *Slider) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)

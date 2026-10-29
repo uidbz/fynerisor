@@ -3,6 +3,7 @@ package gui
 import (
 	"fmt"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"fyne.io/fyne/v2/widget"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -94,7 +95,7 @@ func (obj *Constants) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var constantsAttrs = object.NewAttrRegistry[*Constants](string(ConstantsType))
+var constantsAttrs = objattrs.Register(string(ConstantsType), object.NewAttrRegistry[*Constants](string(ConstantsType)))
 
 func (obj *Constants) getAttrUI(name string) (object.Object, bool) {
 	// Constant groups: Button Importance, Button Icon Placement,

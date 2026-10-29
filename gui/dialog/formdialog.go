@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -70,7 +71,7 @@ func (obj *FormDialog) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var formDialogAttrs = object.NewAttrRegistry[*FormDialog](string(FormDialogType))
+var formDialogAttrs = objattrs.Register(string(FormDialogType), object.NewAttrRegistry[*FormDialog](string(FormDialogType)))
 
 func (obj *FormDialog) getAttrUI(name string) (object.Object, bool) {
 	return formDialogAttrs.GetAttr(obj, name)

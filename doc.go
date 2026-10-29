@@ -19,6 +19,17 @@
 // Risor Compatibility: v2.2+ (arrow functions required)
 // Fyne Compatibility: v2.7+
 //
+// # API Reference
+//
+// The script-visible attribute surface of every wrapper type is generated
+// from the compiled registries into docs/API.md (issue #47):
+//
+//	fynerisor docs --markdown -o docs/API.md    // or: go generate .
+//
+// CI regenerates and diffs that file, so it cannot drift from the code.
+// The hand-written docs teach concepts and patterns; on signatures and
+// attribute names, docs/API.md is authoritative.
+//
 // # Features
 //
 //   - 48+ widget bindings (100% coverage - all priority levels complete)
@@ -290,3 +301,5 @@
 //
 // Scripts can then access: api.someMethod() and config.someProperty
 package fynerisor
+
+//go:generate go run ./cmd/fynerisor docs -o docs/API.md

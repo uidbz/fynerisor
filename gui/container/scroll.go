@@ -73,7 +73,7 @@ func (obj *Scroll) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var scrollAttrs = object.NewAttrRegistry[*Scroll](string(ScrollType))
+var scrollAttrs = objattrs.Register(string(ScrollType), object.NewAttrRegistry[*Scroll](string(ScrollType)))
 
 func (obj *Scroll) getAttrUI(name string) (object.Object, bool) {
 	return scrollAttrs.GetAttr(obj, name)

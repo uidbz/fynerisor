@@ -6,6 +6,7 @@ import (
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 )
 
 const AppType object.Type = "app"
@@ -56,7 +57,7 @@ func (a *App) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, a.getAttrUI)
 }
 
-var appAttrs = object.NewAttrRegistry[*App](string(AppType))
+var appAttrs = objattrs.Register(string(AppType), object.NewAttrRegistry[*App](string(AppType)))
 
 func (a *App) getAttrUI(name string) (object.Object, bool) {
 	return appAttrs.GetAttr(a, name)

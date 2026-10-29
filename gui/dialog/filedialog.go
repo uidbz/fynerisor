@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/storage"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -81,7 +82,7 @@ func (obj *FileDialog) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var fileDialogAttrs = object.NewAttrRegistry[*FileDialog](string(FileDialogType))
+var fileDialogAttrs = objattrs.Register(string(FileDialogType), object.NewAttrRegistry[*FileDialog](string(FileDialogType)))
 
 func (obj *FileDialog) getAttrUI(name string) (object.Object, bool) {
 	// Create a simple extension filter

@@ -74,7 +74,7 @@ func (obj *Log) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", LogType, name)
 }
 
-var logAttrs = object.NewAttrRegistry[*Log](string(LogType))
+var logAttrs = objattrs.Register(string(LogType), object.NewAttrRegistry[*Log](string(LogType)))
 
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Log) GetAttr(name string) (object.Object, bool) {

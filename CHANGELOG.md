@@ -207,6 +207,14 @@
 
 ### Added
 
+- **`fynerisor docs` generates the API reference (issue #47).**
+  `fynerisor docs --markdown -o docs/API.md` (also `--json`; also
+  `go generate .`) renders every script-visible type and attribute from
+  the compiled attribute registries (#38) into `docs/API.md`. CI
+  regenerates and diffs the file, so the reference cannot drift from the
+  code. README's duplicated API listing was replaced with an overview +
+  link; `docs/README.md`, `llms.txt` and `doc.go` point at the generated
+  file as authoritative for signatures.
 - **Typed script lifecycle.** `gui.RunState` (`StateIdle`, `StateRunning`,
   `StateReady`, `StateFailed`, `StateStopped`), `Window.State()`,
   `Window.Start(ctx) <-chan error`, `Window.Run(ctx) error` and

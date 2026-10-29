@@ -93,7 +93,7 @@ func (obj *Border) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var borderAttrs = object.NewAttrRegistry[*Border](string(BorderType))
+var borderAttrs = objattrs.Register(string(BorderType), object.NewAttrRegistry[*Border](string(BorderType)))
 
 func (obj *Border) getAttrUI(name string) (object.Object, bool) {
 	return borderAttrs.GetAttr(obj, name)

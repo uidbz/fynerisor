@@ -80,7 +80,7 @@ func (g *Image) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, g.getAttrUI)
 }
 
-var imageAttrs = object.NewAttrRegistry[*Image](string(ImageType))
+var imageAttrs = objattrs.Register(string(ImageType), object.NewAttrRegistry[*Image](string(ImageType)))
 
 func (g *Image) getAttrUI(name string) (object.Object, bool) {
 	return imageAttrs.GetAttr(g, name)

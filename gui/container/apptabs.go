@@ -73,7 +73,7 @@ func (obj *AppTabs) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var appTabsAttrs = object.NewAttrRegistry[*AppTabs](string(AppTabsType))
+var appTabsAttrs = objattrs.Register(string(AppTabsType), object.NewAttrRegistry[*AppTabs](string(AppTabsType)))
 
 func (obj *AppTabs) getAttrUI(name string) (object.Object, bool) {
 	// Event: Fyne invokes OnSelected on the GUI thread; the script

@@ -21,6 +21,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 	"github.com/uidbz/fynerisor/gui/vmexec"
 	risorwidget "github.com/uidbz/fynerisor/gui/widget"
 )
@@ -737,7 +738,7 @@ func (w *Window) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, w.getAttrUI)
 }
 
-var windowAttrs = object.NewAttrRegistry[*Window](string(WindowType))
+var windowAttrs = objattrs.Register(string(WindowType), object.NewAttrRegistry[*Window](string(WindowType)))
 
 func (w *Window) getAttrUI(name string) (object.Object, bool) {
 	if o, ok := windowAttrs.GetAttr(w, name); ok {

@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -77,7 +78,7 @@ func (obj *TabItem) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var tabItemAttrs = object.NewAttrRegistry[*TabItem](string(TabItemType))
+var tabItemAttrs = objattrs.Register(string(TabItemType), object.NewAttrRegistry[*TabItem](string(TabItemType)))
 
 func (obj *TabItem) getAttrUI(name string) (object.Object, bool) {
 	return tabItemAttrs.GetAttr(obj, name)

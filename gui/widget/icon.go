@@ -176,7 +176,7 @@ func (obj *Icon) Attrs() []object.AttrSpec {
 }
 
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
-var iconAttrs = object.NewAttrRegistry[*Icon](string(IconType))
+var iconAttrs = objattrs.Register(string(IconType), object.NewAttrRegistry[*Icon](string(IconType)))
 
 func (obj *Icon) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)

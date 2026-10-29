@@ -285,7 +285,7 @@ func (g *BoxPlot) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, g.getAttrUI)
 }
 
-var boxPlotAttrs = object.NewAttrRegistry[*BoxPlot](string(BoxPlotType))
+var boxPlotAttrs = objattrs.Register(string(BoxPlotType), object.NewAttrRegistry[*BoxPlot](string(BoxPlotType)))
 
 func (g *BoxPlot) getAttrUI(name string) (object.Object, bool) {
 	if o, ok := boxPlotAttrs.GetAttr(g, name); ok {

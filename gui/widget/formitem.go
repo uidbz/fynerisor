@@ -3,6 +3,7 @@ package widget
 import (
 	"fmt"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
@@ -66,7 +67,7 @@ func (obj *FormItem) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var formItemAttrs = object.NewAttrRegistry[*FormItem](string(FormItemType))
+var formItemAttrs = objattrs.Register(string(FormItemType), object.NewAttrRegistry[*FormItem](string(FormItemType)))
 
 func (obj *FormItem) getAttrUI(name string) (object.Object, bool) {
 	return formItemAttrs.GetAttr(obj, name)

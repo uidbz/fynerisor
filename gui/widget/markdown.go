@@ -106,7 +106,7 @@ func (obj *Markdown) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", MarkdownType, name)
 }
 
-var markdownAttrs = object.NewAttrRegistry[*Markdown](string(MarkdownType))
+var markdownAttrs = objattrs.Register(string(MarkdownType), object.NewAttrRegistry[*Markdown](string(MarkdownType)))
 
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Markdown) GetAttr(name string) (object.Object, bool) {

@@ -65,7 +65,7 @@ func (obj *Card) Attrs() []object.AttrSpec {
 }
 
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
-var cardAttrs = object.NewAttrRegistry[*Card](string(CardType))
+var cardAttrs = objattrs.Register(string(CardType), object.NewAttrRegistry[*Card](string(CardType)))
 
 func (obj *Card) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)

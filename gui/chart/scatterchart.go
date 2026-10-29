@@ -181,7 +181,7 @@ func (g *ScatterChart) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, g.getAttrUI)
 }
 
-var scatterChartAttrs = object.NewAttrRegistry[*ScatterChart](string(ScatterChartType))
+var scatterChartAttrs = objattrs.Register(string(ScatterChartType), object.NewAttrRegistry[*ScatterChart](string(ScatterChartType)))
 
 func (g *ScatterChart) getAttrUI(name string) (object.Object, bool) {
 	if o, ok := scatterChartAttrs.GetAttr(g, name); ok {

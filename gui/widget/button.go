@@ -60,22 +60,19 @@ func (obj *Button) Attrs() []object.AttrSpec {
 }
 
 // buttonAttrs declares the widget.Button surface (issue #38).
-var buttonAttrs = object.NewAttrRegistry[*Button](string(ButtonType))
+var buttonAttrs = objattrs.Register(string(ButtonType), object.NewAttrRegistry[*Button](string(ButtonType)))
 
 func init() {
 	objattrs.Add(buttonAttrs)
 
 	buttonAttrs.Define("Text").
 		Doc("The button's label.").
-		Returns("string").
 		Getter(func(obj *Button) object.Object { return object.NewString(obj.instance.Text) })
 	buttonAttrs.Define("Importance").
 		Doc("Visual importance level (a constants.Importance* value).").
-		Returns("int").
 		Getter(func(obj *Button) object.Object { return object.NewInt(int64(obj.instance.Importance)) })
 	buttonAttrs.Define("Disabled").
 		Doc("Whether the button is disabled.").
-		Returns("bool").
 		Getter(func(obj *Button) object.Object { return object.NewBool(obj.instance.Disabled()) })
 
 	buttonAttrs.Define("SetText").

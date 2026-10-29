@@ -120,7 +120,7 @@ func (obj *FileIcon) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var fileIconAttrs = object.NewAttrRegistry[*FileIcon](string(FileIconType))
+var fileIconAttrs = objattrs.Register(string(FileIconType), object.NewAttrRegistry[*FileIcon](string(FileIconType)))
 
 func init() {
 	objattrs.Add(fileIconAttrs)

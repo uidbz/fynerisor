@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"fyne.io/fyne/v2"
 
@@ -80,7 +81,7 @@ func (obj *Container) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var containerAttrs = object.NewAttrRegistry[*Container](string(ContainerType))
+var containerAttrs = objattrs.Register(string(ContainerType), object.NewAttrRegistry[*Container](string(ContainerType)))
 
 func (obj *Container) getAttrUI(name string) (object.Object, bool) {
 	return containerAttrs.GetAttr(obj, name)

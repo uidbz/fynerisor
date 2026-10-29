@@ -122,7 +122,7 @@ func (obj *Entry) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", EntryType, name)
 }
 
-var entryAttrs = object.NewAttrRegistry[*Entry](string(EntryType))
+var entryAttrs = objattrs.Register(string(EntryType), object.NewAttrRegistry[*Entry](string(EntryType)))
 
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *Entry) GetAttr(name string) (object.Object, bool) {

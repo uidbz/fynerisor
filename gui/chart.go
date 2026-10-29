@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -83,7 +84,7 @@ func (obj *Chart) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var chartAttrs = object.NewAttrRegistry[*Chart](string(ChartType))
+var chartAttrs = objattrs.Register(string(ChartType), object.NewAttrRegistry[*Chart](string(ChartType)))
 
 func (obj *Chart) getAttrUI(name string) (object.Object, bool) {
 	return chartAttrs.GetAttr(obj, name)

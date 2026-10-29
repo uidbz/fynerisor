@@ -72,7 +72,7 @@ func (obj *Padded) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var paddedAttrs = object.NewAttrRegistry[*Padded](string(PaddedType))
+var paddedAttrs = objattrs.Register(string(PaddedType), object.NewAttrRegistry[*Padded](string(PaddedType)))
 
 func (obj *Padded) getAttrUI(name string) (object.Object, bool) {
 	return paddedAttrs.GetAttr(obj, name)

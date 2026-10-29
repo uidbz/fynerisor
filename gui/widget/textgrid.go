@@ -142,7 +142,7 @@ func (obj *TextGrid) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", TextGridType, name)
 }
 
-var textGridAttrs = object.NewAttrRegistry[*TextGrid](string(TextGridType))
+var textGridAttrs = objattrs.Register(string(TextGridType), object.NewAttrRegistry[*TextGrid](string(TextGridType)))
 
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *TextGrid) GetAttr(name string) (object.Object, bool) {

@@ -6,6 +6,11 @@ Version: 0.9.0
 Risor: v2.x (arrow functions, no for loops, functional iteration)
 Fyne: v2.7+
 
+> The complete per-type attribute reference is GENERATED from the code and
+> lives in `docs/API.md` (`fynerisor docs --markdown`; regenerated in CI,
+> issue #47). Trust `docs/API.md` for exact attribute names, arguments and
+> return types; this document teaches concepts and patterns.
+
 ## Package Structure
 
 Fynerisor is split into two packages:

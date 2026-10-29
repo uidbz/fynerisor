@@ -109,7 +109,7 @@ func (obj *Table) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var tableAttrs = object.NewAttrRegistry[*Table](string(TableType))
+var tableAttrs = objattrs.Register(string(TableType), object.NewAttrRegistry[*Table](string(TableType)))
 
 func (obj *Table) getAttrUI(name string) (object.Object, bool) {
 	// Event: queued on the script's VM goroutine.
@@ -285,7 +285,7 @@ func (g *ImageCellWrapper) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, g.getAttrUI)
 }
 
-var imageCellWrapperAttrs = object.NewAttrRegistry[*ImageCellWrapper]("canvas.Image")
+var imageCellWrapperAttrs = objattrs.Register("canvas.Image", object.NewAttrRegistry[*ImageCellWrapper]("canvas.Image"))
 
 func (g *ImageCellWrapper) getAttrUI(name string) (object.Object, bool) {
 	// Update the existing image instead of creating a new one
@@ -348,7 +348,7 @@ func (g *GenericCanvasObjectTable) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, g.getAttrUI)
 }
 
-var genericCanvasObjectTableAttrs = object.NewAttrRegistry[*GenericCanvasObjectTable]("canvas.Object")
+var genericCanvasObjectTableAttrs = objattrs.Register("canvas.Object", object.NewAttrRegistry[*GenericCanvasObjectTable]("canvas.Object"))
 
 func (g *GenericCanvasObjectTable) getAttrUI(name string) (object.Object, bool) {
 	return genericCanvasObjectTableAttrs.GetAttr(g, name)

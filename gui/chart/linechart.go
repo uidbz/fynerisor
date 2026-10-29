@@ -189,7 +189,7 @@ func (g *LineChart) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, g.getAttrUI)
 }
 
-var lineChartAttrs = object.NewAttrRegistry[*LineChart](string(LineChartType))
+var lineChartAttrs = objattrs.Register(string(LineChartType), object.NewAttrRegistry[*LineChart](string(LineChartType)))
 
 func (g *LineChart) getAttrUI(name string) (object.Object, bool) {
 	if o, ok := lineChartAttrs.GetAttr(g, name); ok {

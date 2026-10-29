@@ -302,117 +302,24 @@ discouraging them. Options are shared between gui and core runtimes.
 
 ## Global Objects
 
-### window
+Scripts see a handful of singletons and factory namespaces. The complete,
+always-current attribute reference for every type lives in
+[docs/API.md](docs/API.md) — generated from the compiled attribute
+registries via `fynerisor docs --markdown`, with CI failing on any drift
+from the code:
 
-Core window functionality (GUI mode only):
+- `window` — the host window: content, status, shortcuts, menus, file-drop events.
+- `app` — application metadata (`app.name`, `app.version`) and `app.Quit()`.
+- `widget.*`, `container.*`, `canvas.*`, `dialog.*`, `chart.*`, `binding.*` — factories for widgets, layout containers, canvas objects, dialogs, interactive charts, and observable bindings.
+- `fyne.*`, `constants.*`, `clipboard` — menus and menu items, Fyne constants (wrapping, truncation, importance, alignments), clipboard copy/read.
 
-```js
-window.SetContent(widget)              // Update window content
-window.SetStatus(text)                 // Set status message
-window.AddShortcut("Ctrl+S", callback) // Register keyboard shortcut
-window.RemoveShortcut("Ctrl+S")        // Remove keyboard shortcut
-window.SetMainMenu(mainMenu)           // Set main menu bar (macOS only)
-window.OnDropped(callback)             // Handle file drops
-window.Do(callback)                    // Queue GUI update from background thread
-window.DroppedPaths                    // List of dropped file paths
-```
-
-### app
-
-Application metadata:
-
-```js
-app.name     // Application name (set via WithAppName)
-app.version  // Application version (set via core.SetAppVersion, see examples/27-app-versioning)
-```
-
-### widget
-
-Widget factory:
-
-```js
-widget.NewButton(text, callback)
-widget.NewLabel(text)
-widget.NewEntry()
-widget.NewTable(name, maxrows)
-widget.NewForm(items)
-widget.NewCheckGroup(items, callback)
-// ... and many more
-```
-
-### container
-
-Layout containers:
-
-```js
-container.NewVBox(widgets)
-container.NewHBox(widgets)
-container.NewBorder(top, bottom, left, right, center)
-container.NewScroll(content)
-container.NewHSplit(left, right)
-```
-
-### dialog
-
-Dialog windows:
-
-```js
-// Simple convenience functions
-dialog.ShowInformation(title, message)
-dialog.ShowError(message)
-dialog.ShowConfirm(title, message, callback)
-dialog.ShowFileOpen(callback)
-dialog.ShowFileSave(callback)
-dialog.ShowFolderOpen(callback)
-dialog.ShowColorPicker(title, message, callback)
-dialog.ShowForm(title, confirm, dismiss, items, callback)
-
-// Advanced constructors for more control
-let fd = dialog.NewFileOpen(callback)
-fd.SetFileName("default.txt")
-fd.SetFilter(".txt")
-fd.Show()
-```
-
-### canvas
-
-Canvas objects:
-
-```js
-canvas.NewLine(color)
-canvas.NewImageFromURI(url)
-canvas.NewImageFromFile(path)
-```
-
-### chart
-
-Interactive charts built from Fyne canvas primitives. Hover tooltips, element
-highlighting, click/right-click callbacks, wheel zoom, drag pan (double-click
-resets), feature toggles, live data updates, and SVG export — on every type:
-
-```js
-chart.NewBarChart(title, ylabel, categories, values)
-chart.NewLineChart(title, xlabel, ylabel, xvalues, yvalues)
-chart.NewScatterChart(title, xlabel, ylabel, xvalues, yvalues)
-chart.NewHistogram(title, xlabel, ylabel, values, binCount)  // togglable normal-curve overlay
-chart.NewBoxPlot(title, ylabel, groupLabels, valueGroups)    // Tukey boxes, whiskers, outliers
-```
-
-Every chart object also provides:
-
-```js
-chartObj.OnTap((i, label, value) => ...)        // left click
-chartObj.OnHover((i, label, value) => ...)      // hover enter
-chartObj.OnSecondaryTap((i, label, value) => ...) // right click (context menus)
-chartObj.ShowGrid(bool); chartObj.ShowValues(bool)
-chartObj.SetZoomEnabled(bool); chartObj.ResetZoom()
-chartObj.SaveImage("out.svg"[, width, height]); chartObj.WriteSVG()
-chartObj.SetTitle("new title")
-// plus per-type data methods: SetValue/SetData/SetPoints/SetBins/SetColor/...
-```
-
-See `examples/35-charts` for the basic types and `examples/42-interactive-charts`
-for the interactive features.
+Charts (every type) come with hover tooltips, element highlighting,
+tap/right-click callbacks, wheel zoom, drag pan (double-click resets),
+live data updates and SVG export; see `examples/35-charts` and
+`examples/42-interactive-charts`. Dialogs have one-shot `Show*()` helpers
+plus `New*()` constructors for full control (`SetFileName`, `SetFilter`,
+reusable `Show()`). Example: `dialog.NewFileOpen(cb)` returns a dialog
+object you can configure and `Show()` repeatedly.
 
 ## Concurrency
 

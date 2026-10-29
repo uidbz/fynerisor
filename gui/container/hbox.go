@@ -72,7 +72,7 @@ func (obj *HBox) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var hBoxAttrs = object.NewAttrRegistry[*HBox](string(HBoxType))
+var hBoxAttrs = objattrs.Register(string(HBoxType), object.NewAttrRegistry[*HBox](string(HBoxType)))
 
 func (obj *HBox) getAttrUI(name string) (object.Object, bool) {
 	return hBoxAttrs.GetAttr(obj, name)

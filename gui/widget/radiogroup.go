@@ -118,7 +118,7 @@ func (obj *RadioGroup) setAttrUI(name string, value object.Object) error {
 	}
 }
 
-var radioGroupAttrs = object.NewAttrRegistry[*RadioGroup](string(RadioGroupType))
+var radioGroupAttrs = objattrs.Register(string(RadioGroupType), object.NewAttrRegistry[*RadioGroup](string(RadioGroupType)))
 
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *RadioGroup) GetAttr(name string) (object.Object, bool) {

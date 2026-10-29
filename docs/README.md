@@ -2,6 +2,12 @@
 
 Risor language bindings for the Fyne GUI framework.
 
+> **Canonical attribute reference:** [API.md](API.md) — generated from the
+> compiled attribute registries (`fynerisor docs --markdown`, issue #47);
+> CI fails if it drifts from the code. The sections below are prose
+> tutorials and examples; when they disagree with API.md on signatures,
+> API.md is right.
+
 ## Table of Contents
 
 - [Overview](#overview)

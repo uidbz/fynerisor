@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -169,7 +170,7 @@ func (obj *MenuItem) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var menuItemAttrs = object.NewAttrRegistry[*MenuItem](string(MenuItemType))
+var menuItemAttrs = objattrs.Register(string(MenuItemType), object.NewAttrRegistry[*MenuItem](string(MenuItemType)))
 
 func init() {
 	menuItemAttrs.Define("Label").

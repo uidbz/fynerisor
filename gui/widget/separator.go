@@ -64,7 +64,7 @@ func (obj *Separator) Attrs() []object.AttrSpec {
 }
 
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
-var separatorAttrs = object.NewAttrRegistry[*Separator](string(SeparatorType))
+var separatorAttrs = objattrs.Register(string(SeparatorType), object.NewAttrRegistry[*Separator](string(SeparatorType)))
 
 func (obj *Separator) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)

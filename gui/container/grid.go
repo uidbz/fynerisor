@@ -74,7 +74,7 @@ func (obj *GridWithColumns) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var gridWithColumnsAttrs = object.NewAttrRegistry[*GridWithColumns](string(GridWithColumnsType))
+var gridWithColumnsAttrs = objattrs.Register(string(GridWithColumnsType), object.NewAttrRegistry[*GridWithColumns](string(GridWithColumnsType)))
 
 func (obj *GridWithColumns) getAttrUI(name string) (object.Object, bool) {
 	return gridWithColumnsAttrs.GetAttr(obj, name)
@@ -142,7 +142,7 @@ func (obj *GridWithRows) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var gridWithRowsAttrs = object.NewAttrRegistry[*GridWithRows](string(GridWithRowsType))
+var gridWithRowsAttrs = objattrs.Register(string(GridWithRowsType), object.NewAttrRegistry[*GridWithRows](string(GridWithRowsType)))
 
 func (obj *GridWithRows) getAttrUI(name string) (object.Object, bool) {
 	return gridWithRowsAttrs.GetAttr(obj, name)

@@ -3,6 +3,7 @@ package risorcanvas
 import (
 	"fmt"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"fyne.io/fyne/v2"
 
@@ -69,7 +70,7 @@ func (g *Line) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, g.getAttrUI)
 }
 
-var lineAttrs = object.NewAttrRegistry[*Line](string(LineType))
+var lineAttrs = objattrs.Register(string(LineType), object.NewAttrRegistry[*Line](string(LineType)))
 
 func (g *Line) getAttrUI(name string) (object.Object, bool) {
 	return lineAttrs.GetAttr(g, name)

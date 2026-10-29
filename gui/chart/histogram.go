@@ -228,7 +228,7 @@ func (g *Histogram) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, g.getAttrUI)
 }
 
-var histogramAttrs = object.NewAttrRegistry[*Histogram](string(HistogramType))
+var histogramAttrs = objattrs.Register(string(HistogramType), object.NewAttrRegistry[*Histogram](string(HistogramType)))
 
 func (g *Histogram) getAttrUI(name string) (object.Object, bool) {
 	if o, ok := histogramAttrs.GetAttr(g, name); ok {

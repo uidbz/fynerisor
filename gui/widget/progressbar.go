@@ -77,7 +77,7 @@ func (obj *ProgressBar) Attrs() []object.AttrSpec {
 }
 
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
-var progressBarAttrs = object.NewAttrRegistry[*ProgressBar](string(ProgressBarType))
+var progressBarAttrs = objattrs.Register(string(ProgressBarType), object.NewAttrRegistry[*ProgressBar](string(ProgressBarType)))
 
 func (obj *ProgressBar) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)

@@ -95,7 +95,7 @@ func (obj *DateEntry) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", DateEntryType, name)
 }
 
-var dateEntryAttrs = object.NewAttrRegistry[*DateEntry](string(DateEntryType))
+var dateEntryAttrs = objattrs.Register(string(DateEntryType), object.NewAttrRegistry[*DateEntry](string(DateEntryType)))
 
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *DateEntry) GetAttr(name string) (object.Object, bool) {

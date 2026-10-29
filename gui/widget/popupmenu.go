@@ -110,7 +110,7 @@ func (obj *PopUpMenu) setAttrUI(name string, value object.Object) error {
 	return fmt.Errorf("attribute error: %s object has no attribute %q", PopUpMenuType, name)
 }
 
-var popUpMenuAttrs = object.NewAttrRegistry[*PopUpMenu](string(PopUpMenuType))
+var popUpMenuAttrs = objattrs.Register(string(PopUpMenuType), object.NewAttrRegistry[*PopUpMenu](string(PopUpMenuType)))
 
 // GetAttr runs on Fyne's UI thread; see guithread.GetAttr (issue #49).
 func (obj *PopUpMenu) GetAttr(name string) (object.Object, bool) {

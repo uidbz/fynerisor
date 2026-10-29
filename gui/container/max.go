@@ -72,7 +72,7 @@ func (obj *Max) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
-var maxAttrs = object.NewAttrRegistry[*Max](string(MaxType))
+var maxAttrs = objattrs.Register(string(MaxType), object.NewAttrRegistry[*Max](string(MaxType)))
 
 func (obj *Max) getAttrUI(name string) (object.Object, bool) {
 	return maxAttrs.GetAttr(obj, name)
