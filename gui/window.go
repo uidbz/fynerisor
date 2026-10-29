@@ -929,7 +929,7 @@ func init() {
 		return object.Nil, nil
 	})
 	windowAttrs.
-		Define("Do").Doc("Schedule a callback to run on the run's VM goroutine after the current body/event; widget methods marshal their own UI work (guithread.Do).").Args("arg1").Returns("nil").Impl(func(w *Window, ctx context.
+		Define("Do").Doc("Deprecated alias of go(): queues the callback on the run's VM goroutine; the only difference is that errors from this callback also set the window status. Widget methods are safe to call from any script code, so GUI updates need no wrapper.").Args("arg1").Returns("nil").Impl(func(w *Window, ctx context.
 		Context, args ...object.Object) (object.Object, error) {
 		cb, err := vmexec.NewCallback(ctx,
 			"window.Do", args[0])

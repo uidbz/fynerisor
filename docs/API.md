@@ -1046,7 +1046,7 @@ with parentheses (`t.SetText(x)`).
 - `CaptureStdout(arg1)` — Deprecated alias of SetStdout.
 - `OnDropped(arg1)`
 - `SetStatus(arg1)` — Set the run status shown in the title bar. A stopped or replaced run must not overwrite the status of the run that replaced it (#16, #52).
-- `Do(arg1)` — Schedule a callback to run on the run's VM goroutine after the current body/event; widget methods marshal their own UI work (guithread.Do).
+- `Do(arg1)` — Deprecated alias of go(): queues the callback on the run's VM goroutine; the only difference is that errors from this callback also set the window status. Widget methods are safe to call from any script code, so GUI updates need no wrapper.
 - `Resize(arg1, arg2)`
 - `AddShortcut(arg1, arg2)` — Bind a shortcut string (e.g. "Ctrl+S") to a callback; events queue on the script's VM goroutine. Tracked for removal when the run ends.
 - `RemoveShortcut(arg1)` — Remove a shortcut previously added with AddShortcut.

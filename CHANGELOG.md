@@ -301,6 +301,12 @@
   `ShowGrid`/`ShowValues`/`SetZoomEnabled`/`ResetZoom`/`SetTitle`/
   `WriteSVG` — is now a generic `addInteractive` registrar over each
   chart type's attr registry). Chart types supply geometry + hit-testing only.
+- **`window.Do` (script attribute) is deprecated in favour of `go()`.**
+  Since #17 they are the same thing: both queue the callback on the run's
+  VM goroutine, in order, after the current body/event. The attr remains
+  for one release (its only nuance: callback errors also set the window
+  status). The Go-side `Window.Do(func())` host API is unaffected — it
+  stays the way host goroutines marshal work onto the VM goroutine.
 - **Introspection everywhere (issue #38).** `Attrs()` is populated for
   every wrapper type (it returned `nil` for 81 of 88), so scripts, tests
   and tooling can enumerate each object's attributes; this is the base

@@ -162,7 +162,10 @@ func (w *Window) queueCallback(what string, fn func()) {
 
 // Do queues fn on the current execution's callback queue so it runs on the
 // run's VM goroutine with exclusive access to the Risor VM. It never blocks
-// the caller (issue #10); see queueCallback.
+// the caller (issue #10); see queueCallback. This is the HOST API — a host
+// goroutine's way onto the VM goroutine; guithread.Do targets the UI thread
+// instead. (The script-visible window.Do attribute is a separate, deprecated
+// alias of go(): scripts already run on the VM goroutine.)
 func (w *Window) Do(fn func()) {
 	w.queueCallback("window.Do", fn)
 }
