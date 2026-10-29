@@ -49,10 +49,12 @@ func (obj *TabItem) Equals(other object.Object) bool {
 }
 
 func (obj *TabItem) Attrs() []object.AttrSpec {
-	return nil
+	return tabItemAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		Specs()
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *TabItem) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -77,14 +79,11 @@ func (obj *TabItem) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var tabItemAttrs = object.NewAttrRegistry[*TabItem](string(TabItemType))
+
 func (obj *TabItem) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Text":
-		return object.NewString(obj.instance.Text), true
-	case "Disabled":
-		return object.NewBool(obj.instance.Disabled()), true
-	}
-	return nil, false
+	return tabItemAttrs.GetAttr(obj, name)
+
 }
 
 func NewTabItem(text string, content fyne.CanvasObject) *TabItem {
@@ -97,4 +96,15 @@ func NewTabItemWithIcon(text string, icon fyne.Resource, content fyne.CanvasObje
 	return &TabItem{
 		instance: container.NewTabItemWithIcon(text, icon, content),
 	}
+}
+func init() {
+	tabItemAttrs.Define("Text").
+		Doc("The text.").Getter(func(obj *TabItem) object.Object {
+		return object.NewString(obj.instance.Text)
+	})
+	tabItemAttrs.Define("Disabled").Doc(
+		"Whether the object is disabled.",
+	).Getter(func(obj *TabItem) object.Object {
+		return object.NewBool(obj.instance.Disabled())
+	})
 }

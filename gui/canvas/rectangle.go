@@ -12,6 +12,7 @@ import (
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 )
 
 var _ object.Object = &Rectangle{}
@@ -62,7 +63,7 @@ func (obj *Rectangle) Equals(other object.Object) bool {
 }
 
 func (obj *Rectangle) Attrs() []object.AttrSpec {
-	return nil
+	return rectangleAttrs.Specs()
 }
 
 var rectNamedColors = map[string]color.Color{
@@ -180,20 +181,39 @@ func (obj *Rectangle) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var rectangleAttrs = object.NewAttrRegistry[*Rectangle](string(RectangleType))
+
 func (obj *Rectangle) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "FillColor":
-		return object.NewString(colorToHex(obj.instance.FillColor)), true
-	case "StrokeColor":
-		return object.NewString(colorToHex(obj.instance.StrokeColor)), true
-	case "StrokeWidth":
-		return object.NewFloat(float64(obj.instance.StrokeWidth)), true
-	case "CornerRadius":
-		return object.NewFloat(float64(obj.instance.CornerRadius)), true
-	}
-	return nil, false
+	return rectangleAttrs.GetAttr(obj, name)
+
 }
 
 func NewRectangle(instance *canvas.Rectangle) *Rectangle {
 	return &Rectangle{instance: instance}
+}
+func init() {
+	objattrs.Add(rectangleAttrs)
+	rectangleAttrs.Define("FillColor").Getter(func(obj *Rectangle) object.Object {
+		return object.NewString(colorToHex(obj.instance.
+			FillColor))
+	})
+	rectangleAttrs.Define("StrokeColor").
+		Getter(func(obj *Rectangle) object.Object {
+			return object.
+				NewString(colorToHex(obj.
+					instance.
+					StrokeColor))
+		})
+	rectangleAttrs.Define("StrokeWidth").
+		Getter(func(obj *Rectangle) object.Object {
+			return object.
+				NewFloat(float64(obj.instance.
+					StrokeWidth))
+		})
+	rectangleAttrs.Define("CornerRadius").
+		Getter(func(obj *Rectangle) object.Object {
+			return object.
+				NewFloat(float64(obj.instance.
+					CornerRadius))
+		})
 }

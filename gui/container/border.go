@@ -9,6 +9,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -75,10 +76,12 @@ func (obj *Border) Equals(other object.Object) bool {
 }
 
 func (obj *Border) Attrs() []object.AttrSpec {
-	return nil
+	return borderAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		Specs()
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Border) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -92,48 +95,11 @@ func (obj *Border) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var borderAttrs = object.NewAttrRegistry[*Border](string(BorderType))
+
 func (obj *Border) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "SetTop":
-		return borderSetter("SetTop", obj, func(b *Border, co fyne.CanvasObject) { b.top = co }), true
-	case "SetBottom":
-		return borderSetter("SetBottom", obj, func(b *Border, co fyne.CanvasObject) { b.bottom = co }), true
-	case "SetLeft":
-		return borderSetter("SetLeft", obj, func(b *Border, co fyne.CanvasObject) { b.left = co }), true
-	case "SetRight":
-		return borderSetter("SetRight", obj, func(b *Border, co fyne.CanvasObject) { b.right = co }), true
-	case "SetCenter":
-		return borderSetter("SetCenter", obj, func(b *Border, co fyne.CanvasObject) { b.center = co }), true
-	case "Refresh":
-		return object.NewBuiltin("container.Border.Refresh", func(_ context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() { obj.instance.Refresh() })
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("container.Border.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("container.Border.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
+	return borderAttrs.GetAttr(obj, name)
+
 }
 
 func NewBorder(top, bottom, left, right, center fyne.CanvasObject) *Border {
@@ -166,4 +132,58 @@ func borderSetter(name string, obj *Border, set func(*Border, fyne.CanvasObject)
 		})
 		return object.Nil, nil
 	})
+}
+func init() {
+	objattrs.Add(borderAttrs)
+	borderAttrs.Define(
+		"SetTop").
+		Getter(func(obj *Border) object.Object {
+			return borderSetter("SetTop", obj,
+
+				func(b *Border, co fyne.CanvasObject) {
+					b.top = co
+				})
+		})
+	borderAttrs.Define(
+		"SetBottom",
+	).Getter(
+		func(obj *Border) object.Object {
+			return borderSetter("SetBottom",
+
+				obj, func(b *Border, co fyne.CanvasObject) {
+					b.bottom = co
+				},
+			)
+		})
+	borderAttrs.Define(
+		"SetLeft",
+	).Getter(func(obj *Border) object.Object {
+		return borderSetter("SetLeft",
+			obj,
+			func(b *Border,
+				co fyne.CanvasObject) {
+				b.left = co
+			})
+	})
+	borderAttrs.Define(
+		"SetRight",
+	).Getter(func(obj *Border) object.Object {
+		return borderSetter("SetRight",
+
+			obj, func(b *Border, co fyne.CanvasObject) {
+				b.right = co
+			})
+	},
+	)
+	borderAttrs.Define(
+		"SetCenter",
+	).Getter(
+		func(obj *Border) object.Object {
+			return borderSetter("SetCenter",
+
+				obj, func(b *Border, co fyne.CanvasObject) {
+					b.center = co
+				},
+			)
+		})
 }

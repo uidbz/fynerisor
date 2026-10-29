@@ -8,6 +8,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -55,10 +56,12 @@ func (obj *Scroll) Equals(other object.Object) bool {
 }
 
 func (obj *Scroll) Attrs() []object.AttrSpec {
-	return nil
+	return scrollAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		Specs()
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Scroll) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -72,77 +75,56 @@ func (obj *Scroll) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var scrollAttrs = object.NewAttrRegistry[*Scroll](string(ScrollType))
+
 func (obj *Scroll) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "SetContent":
-		return object.NewBuiltin("container.Scroll.SetContent", func(_ context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			co, ok := canvasArg(args[0])
-			if !ok {
-				return nil, object.Errorf("SetContent: expected canvas object, got %s", args[0].Type())
-			}
-			guithread.Do(func() {
-				obj.instance.Content = co
-				obj.instance.Refresh()
-			})
-			return object.Nil, nil
-		}), true
-	case "Refresh":
-		return object.NewBuiltin("container.Scroll.Refresh", func(_ context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() { obj.instance.Refresh() })
-			return object.Nil, nil
-		}), true
-	case "Hide":
-		return object.NewBuiltin("container.Scroll.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("container.Scroll.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	case "ScrollToBottom":
-		return object.NewBuiltin("container.Scroll.ScrollToBottom", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.ScrollToBottom()
-			})
-			return object.Nil, nil
-		}), true
-	case "ScrollToTop":
-		return object.NewBuiltin("container.Scroll.ScrollToTop", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.ScrollToTop()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
+	return scrollAttrs.GetAttr(obj, name)
+
 }
 
 func NewScroll(content fyne.CanvasObject) *Scroll {
 	return &Scroll{
 		instance: container.NewScroll(content),
 	}
+}
+func init() {
+	objattrs.Add(scrollAttrs)
+	scrollAttrs.Define(
+		"SetContent",
+	).Args("arg1").
+		Returns("nil").Impl(func(obj *Scroll, ctx context.
+		Context, args ...object.Object) (object.Object, error) {
+		co, ok := canvasArg(args[0])
+		if !ok {
+			return nil, object.Errorf("SetContent: expected canvas object, got %s",
+
+				args[0].Type())
+		}
+		guithread.Do(func() {
+			obj.instance.
+				Content = co
+			obj.instance.
+				Refresh()
+		})
+		return object.
+			Nil, nil
+	})
+	scrollAttrs.Define(
+		"ScrollToBottom",
+	).Args().Returns("nil").Impl(func(obj *Scroll, ctx context.Context, args ...object.Object) (object.Object,
+
+		error) {
+		guithread.Do(func() {
+			obj.instance.ScrollToBottom()
+		})
+		return object.Nil, nil
+	})
+	scrollAttrs.Define(
+		"ScrollToTop",
+	).Args().Returns("nil").Impl(func(obj *Scroll, ctx context.Context, args ...object.Object) (object.Object, error) {
+		guithread.Do(func() {
+			obj.instance.ScrollToTop()
+		})
+		return object.Nil, nil
+	})
 }

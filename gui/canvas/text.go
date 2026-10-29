@@ -9,6 +9,7 @@ import (
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 )
 
 var _ object.Object = &Text{}
@@ -56,10 +57,12 @@ func (obj *Text) Equals(other object.Object) bool {
 }
 
 func (obj *Text) Attrs() []object.AttrSpec {
-	return nil
+	return textAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		Specs()
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *Text) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -109,18 +112,27 @@ func (obj *Text) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var textAttrs = object.NewAttrRegistry[*Text](string(TextType))
+
 func (obj *Text) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Text":
-		return object.NewString(obj.instance.Text), true
-	case "Color":
-		return object.NewString(colorToHex(obj.instance.Color)), true
-	case "Size":
-		return object.NewFloat(float64(obj.instance.TextSize)), true
-	}
-	return nil, false
+	return textAttrs.GetAttr(obj, name)
+
 }
 
 func NewText(instance *canvas.Text) *Text {
 	return &Text{instance: instance}
+}
+func init() {
+	objattrs.Add(textAttrs)
+	textAttrs.Define("Text").Doc("The text.").Getter(func(obj *Text) object.Object {
+		return object.NewString(obj.instance.Text)
+	})
+	textAttrs.Define("Color").Getter(func(
+		obj *Text) object.Object {
+		return object.NewString(colorToHex(obj.instance.Color))
+	})
+	textAttrs.Define("Size").Getter(func(
+		obj *Text) object.Object {
+		return object.NewFloat(float64(obj.instance.TextSize))
+	})
 }

@@ -14,6 +14,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/storage"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -62,10 +63,12 @@ func (r *Image) Equals(other object.Object) bool {
 }
 
 func (r *Image) Attrs() []object.AttrSpec {
-	return nil
+	return imageAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		Specs()
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (r *Image) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, r.setAttrUI)
 }
@@ -79,35 +82,11 @@ func (g *Image) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, g.getAttrUI)
 }
 
+var imageAttrs = object.NewAttrRegistry[*Image](string(ImageType))
+
 func (g *Image) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "SetImageFromURI":
-		return object.NewBuiltin("canvas.Image.SetImageFromURI", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			path, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
+	return imageAttrs.GetAttr(g, name)
 
-			uri, err := storage.ParseURI(path)
-			if err != nil {
-				return nil, object.NewError(err)
-			}
-
-			guithread.Do(func() {
-				g.instance = canvas.NewImageFromURI(uri)
-				g.instance.FillMode = canvas.ImageFillOriginal
-				g.container.Objects = []fyne.CanvasObject{g.instance}
-				g.container.Refresh()
-			})
-
-			return object.Nil, nil
-		}), true
-	}
-
-	return nil, false
 }
 
 func NewImage(instance *canvas.Image) *Image {
@@ -220,4 +199,33 @@ func (r *staticResource) Name() string {
 
 func (r *staticResource) Content() []byte {
 	return r.content
+}
+func init() {
+	objattrs.Add(imageAttrs)
+	imageAttrs.Define("SetImageFromURI").Args("arg1").Returns("nil").Impl(func(g *Image,
+		ctx context.Context, args ...object.
+			Object) (object.
+		Object, error) {
+		path, err := object.AsString(args[0])
+		if err != nil {
+			return nil, err
+		}
+		uri,
+
+			err := storage.ParseURI(path)
+		if err != nil {
+			return nil, object.NewError(err)
+		}
+		guithread.
+			Do(func() {
+				g.instance = canvas.
+					NewImageFromURI(uri)
+				g.instance.FillMode =
+					canvas.
+						ImageFillOriginal
+				g.container.Objects = []fyne.CanvasObject{g.instance}
+				g.container.Refresh()
+			})
+		return object.Nil, nil
+	})
 }

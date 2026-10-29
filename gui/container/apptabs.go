@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 	"github.com/uidbz/fynerisor/gui/vmexec"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
@@ -55,10 +56,12 @@ func (obj *AppTabs) Equals(other object.Object) bool {
 }
 
 func (obj *AppTabs) Attrs() []object.AttrSpec {
-	return nil
+	return appTabsAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		Specs()
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *AppTabs) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -72,204 +75,15 @@ func (obj *AppTabs) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var appTabsAttrs = object.NewAttrRegistry[*AppTabs](string(AppTabsType))
+
 func (obj *AppTabs) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Append":
-		return object.NewBuiltin("container.AppTabs.Append", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			tabItem, ok := args[0].(*TabItem)
-			if !ok {
-				return nil, object.Errorf("type error: expected TabItem, got %s", args[0].Type())
-			}
-			guithread.Do(func() {
-				obj.instance.Append(tabItem.instance)
-			})
-			return object.Nil, nil
-		}), true
+	return appTabsAttrs.GetAttr(obj, name)
 
-	case "Remove":
-		return object.NewBuiltin("container.AppTabs.Remove", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			tabItem, ok := args[0].(*TabItem)
-			if !ok {
-				return nil, object.Errorf("type error: expected TabItem, got %s", args[0].Type())
-			}
-			guithread.Do(func() {
-				obj.instance.Remove(tabItem.instance)
-			})
-			return object.Nil, nil
-		}), true
+	// Event: Fyne invokes OnSelected on the GUI thread; the script
+	// callback is queued on the script's VM goroutine (recovered,
+	// serialized with every other VM entry).
 
-	case "RemoveIndex":
-		return object.NewBuiltin("container.AppTabs.RemoveIndex", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			index, err := object.AsInt(args[0])
-			if err != nil {
-				return nil, object.Errorf("type error: %v", err)
-			}
-			guithread.Do(func() {
-				obj.instance.RemoveIndex(int(index))
-			})
-			return object.Nil, nil
-		}), true
-
-	case "Select":
-		return object.NewBuiltin("container.AppTabs.Select", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			tabItem, ok := args[0].(*TabItem)
-			if !ok {
-				return nil, object.Errorf("type error: expected TabItem, got %s", args[0].Type())
-			}
-			guithread.Do(func() {
-				obj.instance.Select(tabItem.instance)
-			})
-			return object.Nil, nil
-		}), true
-
-	case "SelectIndex":
-		return object.NewBuiltin("container.AppTabs.SelectIndex", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			index, err := object.AsInt(args[0])
-			if err != nil {
-				return nil, object.Errorf("type error: %v", err)
-			}
-			guithread.Do(func() {
-				obj.instance.SelectIndex(int(index))
-			})
-			return object.Nil, nil
-		}), true
-
-	case "OnSelected":
-		return object.NewBuiltin("container.AppTabs.OnSelected", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			cb, err := vmexec.NewCallback(ctx, "container.AppTabs.OnSelected", args[0])
-			if err != nil {
-				return nil, err
-			}
-			// Event: Fyne invokes OnSelected on the GUI thread; the script
-			// callback is queued on the script's VM goroutine (recovered,
-			// serialized with every other VM entry).
-			obj.instance.OnSelected = func(item *container.TabItem) {
-				cb.Fire(&TabItem{instance: item})
-			}
-			return object.Nil, nil
-		}), true
-
-	case "Selected":
-		return object.NewBuiltin("container.AppTabs.Selected", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			selected := obj.instance.Selected()
-			if selected == nil {
-				return object.Nil, nil
-			}
-			return &TabItem{instance: selected}, nil
-		}), true
-
-	case "SelectedIndex":
-		return object.NewBuiltin("container.AppTabs.SelectedIndex", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			return object.NewInt(int64(obj.instance.SelectedIndex())), nil
-		}), true
-
-	case "EnableIndex":
-		return object.NewBuiltin("container.AppTabs.EnableIndex", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			index, err := object.AsInt(args[0])
-			if err != nil {
-				return nil, object.Errorf("type error: %v", err)
-			}
-			guithread.Do(func() {
-				obj.instance.EnableIndex(int(index))
-			})
-			return object.Nil, nil
-		}), true
-
-	case "DisableIndex":
-		return object.NewBuiltin("container.AppTabs.DisableIndex", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			index, err := object.AsInt(args[0])
-			if err != nil {
-				return nil, object.Errorf("type error: %v", err)
-			}
-			guithread.Do(func() {
-				obj.instance.DisableIndex(int(index))
-			})
-			return object.Nil, nil
-		}), true
-
-	case "EnableItem":
-		return object.NewBuiltin("container.AppTabs.EnableItem", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			tabItem, ok := args[0].(*TabItem)
-			if !ok {
-				return nil, object.Errorf("type error: expected TabItem, got %s", args[0].Type())
-			}
-			guithread.Do(func() {
-				obj.instance.EnableItem(tabItem.instance)
-			})
-			return object.Nil, nil
-		}), true
-
-	case "DisableItem":
-		return object.NewBuiltin("container.AppTabs.DisableItem", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-			tabItem, ok := args[0].(*TabItem)
-			if !ok {
-				return nil, object.Errorf("type error: expected TabItem, got %s", args[0].Type())
-			}
-			guithread.Do(func() {
-				obj.instance.DisableItem(tabItem.instance)
-			})
-			return object.Nil, nil
-		}), true
-
-	case "Hide":
-		return object.NewBuiltin("container.AppTabs.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-
-	case "Show":
-		return object.NewBuiltin("container.AppTabs.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
-	return nil, false
 }
 
 func NewAppTabs(items ...*container.TabItem) *AppTabs {
@@ -286,4 +100,183 @@ func NewAppTabsFromItems(items ...*TabItem) *AppTabs {
 	return &AppTabs{
 		instance: container.NewAppTabs(tabItems...),
 	}
+}
+func init() {
+	objattrs.Add(appTabsAttrs)
+	appTabsAttrs.Define("Append").Args("arg1").Returns("nil").Impl(func(obj *AppTabs, ctx context.Context, args ...object.Object) (object.Object, error) {
+		tabItem, ok := args[0].(*TabItem)
+		if !ok {
+			return nil, object.Errorf("type error: expected TabItem, got %s",
+				args[0].Type(),
+			)
+		}
+		guithread.Do(func() {
+			obj.instance.
+				Append(tabItem.instance)
+		})
+		return object.Nil,
+
+			nil
+	})
+	appTabsAttrs.Define("Remove").Args("arg1").Returns("nil").Impl(func(obj *AppTabs, ctx context.Context, args ...object.Object) (object.Object, error) {
+		tabItem, ok := args[0].(*TabItem)
+		if !ok {
+			return nil, object.Errorf("type error: expected TabItem, got %s",
+				args[0].Type(),
+			)
+		}
+		guithread.Do(func() {
+			obj.instance.
+				Remove(tabItem.instance)
+		})
+		return object.Nil,
+
+			nil
+	})
+	appTabsAttrs.Define("RemoveIndex").Args("arg1").
+		Returns("nil").Impl(func(obj *AppTabs, ctx context.
+		Context, args ...object.Object) (object.
+		Object, error) {
+		index, err := object.AsInt(args[0])
+		if err != nil {
+			return nil, object.
+				Errorf("type error: %v", err)
+		}
+		guithread.Do(
+			func() {
+				obj.instance.RemoveIndex(
+					int(index))
+			})
+		return object.Nil, nil
+	})
+	appTabsAttrs.Define("Select").Doc("Select an index.").Args("arg1").
+		Returns("nil").Impl(func(obj *AppTabs, ctx context.Context, args ...object.
+		Object) (object.Object, error) {
+		tabItem,
+
+			ok := args[0].(*TabItem)
+		if !ok {
+			return nil,
+				object.Errorf("type error: expected TabItem, got %s",
+
+					args[0].Type())
+		}
+		guithread.
+			Do(func() {
+				obj.instance.Select(tabItem.instance)
+			})
+		return object.Nil,
+			nil
+	})
+	appTabsAttrs.Define("SelectIndex").Args("arg1").
+		Returns("nil").Impl(func(obj *AppTabs, ctx context.
+		Context, args ...object.Object) (object.
+		Object, error) {
+		index, err := object.AsInt(args[0])
+		if err != nil {
+			return nil, object.
+				Errorf("type error: %v", err)
+		}
+		guithread.Do(
+			func() {
+				obj.instance.SelectIndex(
+					int(index))
+			})
+		return object.Nil, nil
+	})
+	appTabsAttrs.Define("OnSelected").Args(
+		"arg1").
+		Returns("nil").Impl(func(obj *AppTabs, ctx context.
+		Context, args ...object.Object) (object.Object, error) {
+		cb, err := vmexec.NewCallback(ctx, "container.AppTabs.OnSelected", args[0])
+		if err != nil {
+			return nil, err
+		}
+		obj.instance.
+			OnSelected = func(item *container.
+			TabItem) {
+			cb.Fire(&TabItem{instance: item})
+		}
+
+		return object.Nil, nil
+	})
+	appTabsAttrs.Define("Selected").Doc("The selected index.").Args().
+		Returns("nil").Impl(func(obj *AppTabs, ctx context.Context, args ...object.
+		Object) (object.Object, error) {
+		selected := obj.instance.Selected()
+		if selected == nil {
+			return object.Nil, nil
+		}
+		return &TabItem{
+			instance: selected}, nil
+	})
+	appTabsAttrs.Define("SelectedIndex").Args().Returns("nil").Impl(func(obj *AppTabs, ctx context.
+		Context, args ...object.Object) (object.Object, error) {
+		return object.NewInt(int64(obj.
+			instance.SelectedIndex())), nil
+	})
+	appTabsAttrs.Define("EnableIndex").Args("arg1").
+		Returns("nil").Impl(func(obj *AppTabs, ctx context.
+		Context, args ...object.Object) (object.
+		Object, error) {
+		index, err := object.AsInt(args[0])
+		if err != nil {
+			return nil, object.
+				Errorf("type error: %v", err)
+		}
+		guithread.Do(
+			func() {
+				obj.instance.EnableIndex(
+					int(index))
+			})
+		return object.Nil, nil
+	})
+	appTabsAttrs.Define("DisableIndex").Args("arg1").Returns("nil").Impl(func(obj *AppTabs, ctx context.
+		Context, args ...object.Object) (object.
+		Object, error) {
+		index, err := object.AsInt(args[0])
+		if err != nil {
+			return nil, object.
+				Errorf("type error: %v", err)
+		}
+		guithread.
+			Do(
+				func() {
+					obj.instance.DisableIndex(int(index))
+				})
+		return object.Nil, nil
+	})
+	appTabsAttrs.Define("EnableItem").Args(
+		"arg1").
+		Returns("nil").Impl(func(obj *AppTabs, ctx context.
+		Context, args ...object.Object) (object.Object, error) {
+		tabItem, ok := args[0].(*TabItem)
+		if !ok {
+			return nil, object.Errorf("type error: expected TabItem, got %s",
+				args[0].
+					Type())
+		}
+		guithread.Do(func() {
+			obj.
+				instance.EnableItem(tabItem.instance)
+		})
+		return object.
+			Nil, nil
+	})
+	appTabsAttrs.Define("DisableItem").Args("arg1").
+		Returns("nil").Impl(func(obj *AppTabs, ctx context.
+		Context, args ...object.Object) (object.
+		Object, error) {
+		tabItem, ok := args[0].(*TabItem)
+		if !ok {
+			return nil, object.Errorf("type error: expected TabItem, got %s",
+				args[0].
+					Type())
+		}
+		guithread.Do(func() {
+			obj.
+				instance.DisableItem(tabItem.instance)
+		})
+		return object.Nil, nil
+	})
 }

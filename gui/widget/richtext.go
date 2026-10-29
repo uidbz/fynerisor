@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 	"github.com/uidbz/fynerisor/gui/guithread"
+	"github.com/uidbz/fynerisor/gui/objattrs"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
@@ -103,10 +104,12 @@ func (obj *RichText) Equals(other object.Object) bool {
 }
 
 func (obj *RichText) Attrs() []object.AttrSpec {
-	return nil
+	return richTextAttrs.
+
+		// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
+		Specs()
 }
 
-// SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).
 func (obj *RichText) SetAttr(name string, value object.Object) error {
 	return guithread.SetAttr(name, value, obj.setAttrUI)
 }
@@ -155,71 +158,45 @@ func (obj *RichText) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, obj.getAttrUI)
 }
 
+var richTextAttrs = object.NewAttrRegistry[*RichText](string(RichTextType))
+
 func (obj *RichText) getAttrUI(name string) (object.Object, bool) {
-	switch name {
-	case "Wrapping":
-		return object.NewInt(int64(obj.instance.Wrapping)), true
-	case "Truncation":
-		return object.NewInt(int64(obj.instance.Truncation)), true
-	case "Scroll":
-		return object.NewInt(int64(obj.instance.Scroll)), true
-
-	case "ParseMarkdown":
-		return object.NewBuiltin("widget.RichText.ParseMarkdown", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
-			}
-
-			text, err := object.AsString(args[0])
-			if err != nil {
-				return nil, err
-			}
-
-			guithread.Do(func() {
-				obj.instance.ParseMarkdown(text)
-			})
-
-			return object.Nil, nil
-		}), true
-
-	case "Refresh":
-		return object.NewBuiltin("widget.RichText.Refresh", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-
-			guithread.Do(func() {
-				obj.instance.Refresh()
-			})
-
-			return object.Nil, nil
-		}), true
+	return richTextAttrs.GetAttr(obj, name)
 
 	// Note: Direct segment manipulation not implemented
 	// Use ParseMarkdown() for rich text content instead
-	case "Segments":
-		return object.Errorf("attribute error: Segments manipulation not supported in Risor bindings. Use ParseMarkdown() instead."), false
-	case "Hide":
-		return object.NewBuiltin("widget.RichText.Hide", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Hide()
-			})
-			return object.Nil, nil
-		}), true
-	case "Show":
-		return object.NewBuiltin("widget.RichText.Show", func(ctx context.Context, args ...object.Object) (object.Object, error) {
-			if len(args) != 0 {
-				return nil, object.Errorf("wrong number of arguments. got=%d, want=0", len(args))
-			}
-			guithread.Do(func() {
-				obj.instance.Show()
-			})
-			return object.Nil, nil
-		}), true
-	}
 
-	return nil, false
+}
+func init() {
+	objattrs.Add(richTextAttrs)
+	richTextAttrs.Define("Wrapping").Doc("Text wrapping mode (a constants.TextWrap* value).").
+		Getter(func(obj *RichText) object.Object {
+			return object.NewInt(int64(obj.instance.Wrapping))
+		})
+	richTextAttrs.Define("Truncation").Getter(func(obj *RichText) object.
+		Object {
+		return object.
+			NewInt(int64(obj.instance.Truncation))
+	})
+	richTextAttrs.Define("Scroll").Getter(func(
+		obj *RichText) object.
+		Object {
+		return object.NewInt(int64(obj.instance.Scroll))
+	})
+	richTextAttrs.Define("ParseMarkdown").Args(
+		"arg1",
+	).Returns("nil").Impl(func(obj *RichText, ctx context.Context, args ...object.Object) (object.Object, error) {
+		text, err := object.AsString(args[0])
+		if err != nil {
+			return nil,
+
+				err
+		}
+		guithread.Do(func() {
+			obj.instance.
+				ParseMarkdown(text)
+		})
+		return object.Nil, nil
+
+	})
 }
