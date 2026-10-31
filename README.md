@@ -349,7 +349,11 @@ Go-side `Window.Do(func())` host API is a different thing.)
 
 For genuinely parallel work, use Go: a host global or module that runs
 its own goroutine and reports back through a callback — the callback is
-queued onto the VM goroutine, so touching widgets from it is safe.
+queued onto the VM goroutine, so touching widgets from it is safe. A host
+bridge that keeps the raw script closure can capture the run and dispatch it
+with `run.Call(callFunc, fn, args...)` (`gui/vmexec`): the helper installs the
+VM call function, so handlers can create widgets and register callbacks too.
+See [Host event bridges](docs/CONCURRENCY.md#host-event-bridges).
 
 ## Keyboard Shortcuts
 

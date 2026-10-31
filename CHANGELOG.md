@@ -213,6 +213,18 @@
 
 ### Added
 
+- **`MultiLineEntry.SetMinRowsVisible(count)`** (issue #53). The entry
+  wrapper now exposes Fyne's row-count setter, so scripted editors can choose
+  their height instead of accepting Fyne's default of three rows.
+- **`vmexec.Call` / `Run.Call` for host-dispatched script handlers
+  (issue #54).** The helper installs the VM call function into the handler's
+  context before invoking the closure, so a host event bridge (`window.Do` +
+  a captured `object.CallFunc`) no longer needs `object.WithCallFunc`, and
+  handlers can create widgets with callbacks without failing with "unable to
+  get call function". `Run.Call` also rejects handlers from stopped runs.
+  `vmexec.NewCallback` now makes the same context invariant explicit for
+  fynerisor's own widget callbacks. `docs/CONCURRENCY.md` has a worked bridge
+  example.
 - **`fynerisor docs` generates the API reference (issue #47).**
   `fynerisor docs --markdown -o docs/API.md` (also `--json`; also
   `go generate .`) renders every script-visible type and attribute from

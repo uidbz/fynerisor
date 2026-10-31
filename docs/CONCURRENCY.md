@@ -124,6 +124,8 @@ the issue #49 routing made it moot):
 
 Use `vmexec.NewCallback`. Never call the `object.CallFunc` from
 `object.GetCallFunc` yourself, and never start a goroutine that enters the VM.
+(The one exception is a host event bridge that must keep the raw closure; see
+[Host event bridges](#host-event-bridges).)
 
 ```go
 case "OnChanged":
@@ -179,6 +181,55 @@ Checklist:
       calling goroutine, so tests must get a happens-before edge with the VM
       goroutine before reading widget state: wait for `Status() == "Ready!"`,
       `State()`, `Run(ctx)`, or a recorder builtin called by the script.
+
+## Host event bridges
+
+A Go host sometimes exposes an event feed to the script: the script registers
+a handler, the host invokes it later from its own goroutine. The bridging
+builtin receives the handler inside a builtin call, so it can capture the VM
+call function. Use `vmexec.NewCallback` + `Fire` (the usual widget pattern) —
+or, when the host must keep the raw closure, `vmexec.Call`, which installs the
+call function itself:
+
+```go
+var (
+    handler *object.Closure
+    call    object.CallFunc
+    run     *vmexec.Run
+)
+
+// Registration builtin exposed to the script.
+api["on"] = object.NewBuiltin("api.on",
+    func(ctx context.Context, args ...object.Object) (object.Object, error) {
+        fn, ok := args[0].(*object.Closure)
+        if !ok {
+            return nil, object.Errorf("api.on: expected a function")
+        }
+        callFunc, ok := object.GetCallFunc(ctx)
+        if !ok {
+            return nil, object.Errorf("api.on: unable to get call function")
+        }
+        handler, call, run = fn, callFunc, vmexec.FromContext(ctx)
+        return object.Nil, nil
+    })
+
+// Dispatch from any host goroutine, on the VM goroutine.
+fw.Do(func() {
+    // Without the call function, widgets created inside handler that take a
+    // callback (widget.NewButton, ...) fail with "unable to get call function".
+    _, err := run.Call(call, handler, object.NewString(eventJSON))
+    if err != nil {
+        log.Printf("script handler: %v", err)
+    }
+})
+```
+
+`Run.Call` installs the call function, enters the run's reentrant guard and
+returns `ErrStopped` for a handler from a stopped/replaced run (the package
+function `vmexec.Call` does the same when its context carries a run). Prefer
+`NewCallback` + `Callback.Fire` when a queued, ordered event is enough: it
+needs no manual `GetCallFunc`, never blocks, and drops events once the run
+stops.
 
 ## Lifecycle
 

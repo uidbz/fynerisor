@@ -421,6 +421,7 @@ Multi-line text input area.
 
 ```js
 let textArea = widget.NewMultiLineEntry()
+textArea.SetMinRowsVisible(8)   // default is 3 rows
 ```
 
 ### Check

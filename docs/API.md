@@ -693,6 +693,7 @@ with parentheses (`t.SetText(x)`).
 - `Disabled` — Whether the object is disabled.
 - `SetText(arg1)` — Set the text.
 - `SetPlaceHolder(arg1)`
+- `SetMinRowsVisible(count)` — Set how many rows a multi-line entry shows without scrolling (Fyne default 3).
 - `Append(arg1)`
 - `OnSubmitted(arg1)`
 - `OnChanged(arg1)` — Set the change handler; fires on the script VM goroutine.
