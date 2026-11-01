@@ -410,7 +410,7 @@ func (w *Window) LoadScriptFrom(script, source string) {
 // before Execute (issue #6).
 func (w *Window) CompileScript() error {
 	script, _ := w.runner.Snapshot()
-	_, opts := w.runOptions()
+	_, opts := w.runOptions(nil)
 	_, err := risor.Compile(context.Background(), script, opts...)
 	return err
 }
@@ -442,15 +442,23 @@ func (w *Window) GetContentContainer() *fyne.Container {
 // Execute is Start(context.Background()) without waiting for the result;
 // see Start, Run and State for the typed lifecycle.
 func (w *Window) Execute() {
-	w.start(context.Background())
+	w.start(context.Background(), nil)
 }
 
-func (w *Window) start(ctx context.Context) <-chan error {
+// ExecuteWith executes the loaded script like Execute, adding globals that are
+// visible only to this run. It is how a host hands a page-specific object (for
+// example a scene page) to a script without mutating the window's persistent
+// globals, which would leak into the next navigation.
+func (w *Window) ExecuteWith(globals map[string]any) {
+	w.start(context.Background(), globals)
+}
+
+func (w *Window) start(ctx context.Context, extra map[string]any) <-chan error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	script, base := w.runner.Snapshot()
-	env, opts := w.runOptions()
+	env, opts := w.runOptions(extra)
 
 	// startMu serializes concurrent Execute calls (a host and a script's
 	// browser.Open, say): each stops the run it replaces, so there is never
@@ -543,11 +551,14 @@ func (w *Window) evalBody(ctx context.Context, script string, opts []risor.Optio
 // runOptions snapshots the script environment for one run: a copy of the
 // env map (so RegisterGlobal never mutates a map a running VM reads) plus
 // the opaque user options.
-func (w *Window) runOptions() (map[string]any, []risor.Option) {
+func (w *Window) runOptions(extra map[string]any) (map[string]any, []risor.Option) {
 	w.envMu.RLock()
-	defer w.envMu.RUnlock()
-	env := make(map[string]any, len(w.env))
+	env := make(map[string]any, len(w.env)+len(extra))
 	for k, v := range w.env {
+		env[k] = v
+	}
+	w.envMu.RUnlock()
+	for k, v := range extra {
 		env[k] = v
 	}
 	opts := append([]risor.Option{risor.WithEnv(env)}, w.userGlobals...)
@@ -642,6 +653,15 @@ func (w *Window) resetRunState() {
 			}
 		}
 	})
+}
+
+// Release stops the current run and removes the window state it installed
+// (shortcuts, script main menu, drop and stdout hooks). A host that replaces
+// the page content without immediately executing a new script — the designer
+// does — calls Release instead of Stop so stale input handlers disappear.
+func (w *Window) Release() {
+	w.Stop()
+	w.resetRunState()
 }
 
 // Stop cancels the currently executing script and stops processing queued

@@ -3,8 +3,6 @@ package risorcanvas
 import (
 	"fmt"
 	"image/color"
-	"strconv"
-	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -13,6 +11,7 @@ import (
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 	"github.com/uidbz/fynerisor/gui/guithread"
 	"github.com/uidbz/fynerisor/gui/objattrs"
+	"github.com/uidbz/fynerisor/internal/colors"
 )
 
 var _ object.Object = &Rectangle{}
@@ -66,55 +65,15 @@ func (obj *Rectangle) Attrs() []object.AttrSpec {
 	return rectangleAttrs.Specs()
 }
 
-var rectNamedColors = map[string]color.Color{
-	"transparent": color.NRGBA{0, 0, 0, 0},
-	"red":         color.NRGBA{255, 0, 0, 255},
-	"green":       color.NRGBA{0, 128, 0, 255},
-	"blue":        color.NRGBA{0, 0, 255, 255},
-	"black":       color.NRGBA{0, 0, 0, 255},
-	"white":       color.NRGBA{255, 255, 255, 255},
-	"yellow":      color.NRGBA{255, 255, 0, 255},
-	"cyan":        color.NRGBA{0, 255, 255, 255},
-	"magenta":     color.NRGBA{255, 0, 255, 255},
-	"gray":        color.NRGBA{128, 128, 128, 255},
-	"grey":        color.NRGBA{128, 128, 128, 255},
-	"orange":      color.NRGBA{255, 165, 0, 255},
-	"purple":      color.NRGBA{128, 0, 128, 255},
-}
-
 // ParseColor parses a named color or a hex string ("#RGB", "#RRGGBB" or
 // "#RRGGBBAA", with or without the leading '#').
-func ParseColor(s string) (color.Color, error) {
-	name := strings.ToLower(strings.TrimSpace(s))
-	if c, ok := rectNamedColors[name]; ok {
-		return c, nil
-	}
-	hex := strings.TrimPrefix(name, "#")
-	if len(hex) == 3 {
-		hex = strings.Repeat(string(hex[0]), 2) + strings.Repeat(string(hex[1]), 2) + strings.Repeat(string(hex[2]), 2) + "ff"
-	} else if len(hex) == 6 {
-		hex += "ff"
-	}
-	if len(hex) != 8 {
-		return nil, fmt.Errorf("invalid color %q: use a name or #RGB/#RRGGBB/#RRGGBBAA", s)
-	}
-	parts := make([]uint8, 4)
-	for i := 0; i < 4; i++ {
-		v, err := strconv.ParseUint(hex[i*2:i*2+2], 16, 8)
-		if err != nil {
-			return nil, fmt.Errorf("invalid color %q: %v", s, err)
-		}
-		parts[i] = uint8(v)
-	}
-	return color.NRGBA{R: parts[0], G: parts[1], B: parts[2], A: parts[3]}, nil
-}
+func ParseColor(s string) (color.Color, error) { return colors.Parse(s) }
 
 func colorToHex(c color.Color) string {
 	if c == nil {
 		return ""
 	}
-	r, g, b, a := c.RGBA()
-	return fmt.Sprintf("#%02x%02x%02x%02x", uint8(r>>8), uint8(g>>8), uint8(b>>8), uint8(a>>8))
+	return colors.Hex(c)
 }
 
 // SetAttr runs on Fyne's UI thread; see guithread.SetAttr (issue #49).

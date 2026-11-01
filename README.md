@@ -12,6 +12,7 @@ Fynerisor provides Risor script bindings for the Fyne GUI toolkit, allowing you 
 - 🌐 **HTTP, SQL, OS & More** - Built-in modules for web requests, databases, file I/O
 - 📦 **Script Imports** - Load reusable code with namespace isolation
 - 🧭 **Browser Package** - Reusable browser UI that loads Risor scripts from URLs
+- 🎬 **Scenes & Designer** - Declarative JSON pages with x/y hotspots and layout containers, a WYSIWYG designer, and in-place editing (F4) in the browser
 - 🔧 **Embeddable** - Easy integration into Go applications
 - 🧵 **Concurrency** - Background tasks with thread-safe GUI updates
 - 📱 **Cross-Platform** - Linux, Windows, macOS, Android
@@ -468,6 +469,8 @@ Eventually I dream of making an other browser app, that incorporates the origina
 - [Examples Guide](docs/EXAMPLES.md) - Usage patterns and concepts
 - [Tie Module](docs/TIE_MODULE.md) - Triple store database guide
 - [Changelog](CHANGELOG.md) - Version history
+- [Scene Documents](docs/SCENES.md) - Declarative pages: format, components, actions, scripting
+- [Scene Designer](docs/DESIGNER.md) - The editor: gestures, inspector, architecture, embedding
 - [Concurrency Guide](docs/CONCURRENCY.md) - Threading patterns
 - [Widget Status](docs/WIDGET_STATUS.md) - Supported Fyne widgets
 - [App Versioning](examples/27-app-versioning) - Custom application versioning

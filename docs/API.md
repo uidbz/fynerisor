@@ -524,6 +524,47 @@ with parentheses (`t.SetText(x)`).
 - `IsSeparator` — Whether the item is a separator line.
 - `Shortcut` — Formatted keyboard shortcut string, or nil.
 
+## scene
+
+- `Load(ref)` → scene.Page — Load a scene document relative to this page and return a page object: window.SetContent(scene.Load("living-room.scene.json")).
+- `Parse(json)` → scene.Doc — Parse a scene document from JSON.
+- `New()` → scene.Doc — Create a blank scene document with a free root.
+
+## scene.Doc
+
+- `Title`
+- `Encode()` → string — Canonical JSON for this document.
+- `Validate()` → list — Validation messages as a list of strings.
+- `Page()` → scene.Page — Build a live page from this document.
+
+## scene.Node
+
+- `ID`
+- `Type`
+- `Name`
+- `Props`
+- `Place`
+- `Children`
+- `Parent`
+- `Prop(name)` → any — Read a component property.
+- `Set(name, value)` — Set a component property at runtime (not saved to the document).
+- `SetPlace(place)` — Change a node's placement at runtime. Keys: x, y, w, h, minW, minH, slot, title, icon.
+- `SetName(name)` — Set the node's display name.
+- `Show()` — Show the node.
+- `Hide()` — Hide the node.
+- `On(event, callback)` — Register an event listener. Listeners run after declarative actions.
+- `Off(event)` — Remove listeners registered with On for an event.
+- `SetContent(object)` — Fill a slot node with a widget or container at runtime.
+
+## scene.Page
+
+- `Root`
+- `Title`
+- `Node(id)` → scene.Node — Return a node handle by ID: page.Node("door").SetPlace({x: 10, y: 20}).
+- `Find(filter)` → list — Return node handles matching a map filter: page.Find({type: "hotspot"}).
+- `Bind(handlers)` — Register named handlers for declarative call actions: page.Bind({toggleMusic: (evt) => {...}}).
+- `Values()` → map — Values of every input node by ID (entry, check, select, radio, slider), for forms.
+
 ## widget
 
 - `NewButton(args...)`
@@ -1052,4 +1093,51 @@ with parentheses (`t.SetText(x)`).
 - `RemoveShortcut(arg1)` — Remove a shortcut previously added with AddShortcut.
 - `SetMainMenu(arg1)` — Set the window's main menu. The owning run is tracked so the next run removes the old menu and its dead item callbacks.
 - `Size` — Current window size as a map with width and height keys.
+
+## Scene components
+
+Declarative components available in scene documents. Values are the
+authoritative defaults from the component specs; the designer inspector
+uses the same data. Components marked *external* are registered by the
+embedding application (tie-browser registers the `tie.*` family).
+
+| Type | Title | Kind | Category | Default props | Events | Slots |
+|---|---|---|---|---|---|---|
+| `accordion` | Accordion | tabs | Layout |  |  |  |
+| `activity` | Activity | leaf | Display |  |  |  |
+| `border` | Border | slots | Layout |  |  | top, bottom, left, right, center |
+| `button` | Button | leaf | Input | text (string = Button), icon (icon = ), importance (enum = medium), disabled (bool = false) | tapped |  |
+| `card` | Card | slots | Layout | title (string = ), subtitle (string = ) |  | content |
+| `center` | Center | ordered | Layout |  |  |  |
+| `check` | Check | leaf | Input | text (string = Check), checked (bool = false) | changed |  |
+| `circle` | Circle | leaf | Shapes | fill (color = #22c55e), stroke (color = #00000000), strokeWidth (number = 0) | tapped |  |
+| `embed` | Embedded scene | leaf | Navigation | src (sceneRef = ) |  |  |
+| `entry` | Entry | leaf | Input | text (string = ), placeholder (string = ), multiline (bool = false), password (bool = false) | changed, submitted |  |
+| `free` | Free canvas | free | Layout | designW (number = 1600), designH (number = 900), scale (enum = fit), background (asset = ), backgroundFill (enum = stretch), letterbox (color = #000000), clip (bool = false), scaleText (bool = true) |  |  |
+| `grid` | Grid | ordered | Layout | cols (number = 2) |  |  |
+| `gridwrap` | Grid wrap | ordered | Layout |  |  |  |
+| `hbox` | Horizontal box | ordered | Layout |  |  |  |
+| `hotspot` | Hotspot | leaf | Navigation | shape (enum = rect), fill (color = #ffffff00), hoverFill (color = #ffffff33), stroke (color = #ffffffaa), strokeWidth (number = 1), label (string = ), showInPlay (bool = false) | tapped, doubleTapped, secondaryTapped, hoverIn, hoverOut |  |
+| `hsplit` | Horizontal split | slots | Layout | offset (number = 0.5) |  | leading, trailing |
+| `hyperlink` | Hyperlink | leaf | Input | text (string = Link), url (url = https://fyne.io) | tapped |  |
+| `icon` | Icon | leaf | Display | name (icon = info) | tapped |  |
+| `image` | Image | leaf | Display | src (asset = ), fill (enum = cover), alt (string = ) | tapped, doubleTapped, hoverIn, hoverOut |  |
+| `label` | Label | leaf | Display | text (text = ), bold (bool = false), italic (bool = false), mono (bool = false), align (enum = left), wrap (enum = word), truncation (enum = off) |  |  |
+| `line` | Line | leaf | Shapes | color (color = #ffffff), width (number = 2) |  |  |
+| `link` | Scene link | leaf | Navigation | text (string = Open), to (sceneRef = ) | tapped |  |
+| `markdown` | Markdown | leaf | Display | text (text = ) |  |  |
+| `padded` | Padded | ordered | Layout |  |  |  |
+| `progress` | Progress | leaf | Display | value (number = 0.5) |  |  |
+| `radio` | Radio group | leaf | Input | options (options), selected (string = ) | changed |  |
+| `rect` | Rectangle | leaf | Shapes | fill (color = #3b82f6), stroke (color = #00000000), strokeWidth (number = 0), cornerRadius (number = 0) | tapped |  |
+| `scroll` | Scroll | slots | Layout |  |  | content |
+| `select` | Select | leaf | Input | options (options), selected (string = ) | changed |  |
+| `separator` | Separator | leaf | Display |  |  |  |
+| `slider` | Slider | leaf | Input | value (number = 0), min (number = 0), max (number = 100), step (number = 1) | changed |  |
+| `slot` | Script slot | leaf | Navigation | hint (string = Script fills this area) |  |  |
+| `stack` | Stack | ordered | Layout |  |  |  |
+| `tabs` | Tabs | tabs | Layout | location (enum = top) |  |  |
+| `text` | Canvas text | leaf | Display | text (text = ), size (number = 18), color (color = #ffffff), bold (bool = false), italic (bool = false), mono (bool = false), align (enum = left) |  |  |
+| `vbox` | Vertical box | ordered | Layout |  |  |  |
+| `vsplit` | Vertical split | slots | Layout | offset (number = 0.5) |  | leading, trailing |
 

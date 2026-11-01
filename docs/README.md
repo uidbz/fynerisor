@@ -17,6 +17,8 @@ Risor language bindings for the Fyne GUI framework.
 - [Quick Start](#quick-start)
 - [Non-GUI Usage](#non-gui-usage)
 - [Global Objects](#global-objects)
+- [Scenes and the designer](SCENES.md)
+- [Scene designer guide](DESIGNER.md)
 - [Widgets](#widgets)
   - [Button](#button)
   - [Label](#label)
@@ -82,7 +84,7 @@ fynerisor enables building cross-platform desktop applications using Risor scrip
 
 ## Version
 
-**Current Version**: 0.9.0  
+**Current Version**: 0.10.0
 **Risor Compatibility**: v2.2+ (arrow functions required)  
 **Fyne Compatibility**: v2.8+
 
@@ -1157,6 +1159,27 @@ See the [examples/](examples/) directory for complete working applications:
 - **09-toolbar**: Action toolbars with icons
 
 Each example includes a README with detailed explanations and usage patterns.
+
+## Scenes and the designer
+
+Scene documents (`*.scene.json`) describe a page as data: x/y hotspots and
+layout containers, properties, and declarative actions. The scene runtime
+renders them with Fyne, a sidecar Risor script adds behaviour by node ID, and
+the designer edits them in place. A data-only scene runs no code at all.
+
+- [SCENES.md](SCENES.md) — format, placement/scaling, components, actions,
+  scripting, assets, stores, tie-browser storage model and security.
+- [DESIGNER.md](DESIGNER.md) — gestures, inspector, outline, snapping, undo,
+  saving, the overlay architecture, embedding the editor and the current
+  roadmap.
+- [API.md](API.md#scene-components) — the generated component/property table
+  and the `scene`, `scene.Page`, `scene.Node`, `scene.Doc` script API.
+
+```sh
+fynerisor check page.scene.json
+fynerisor scene page.scene.json
+fynerisor-designer page.scene.json
+```
 
 ## Testing
 

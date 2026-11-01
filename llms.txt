@@ -4,7 +4,7 @@ Risor v2 language bindings for the Fyne GUI framework: cross-platform desktop
 apps written in Risor scripts, plus a headless (`core`) runtime for CLI and
 server use.
 
-Version: 0.9.0 · Risor v2.2+ · Fyne v2.8+ · Go 1.27 · module `github.com/uidbz/fynerisor`
+Version: 0.10.0 · Risor v2.2+ · Fyne v2.8+ · Go 1.27 · module `github.com/uidbz/fynerisor`
 
 > Start with the "Optional"-style rule: the per-type script API reference is
 > **generated** from the compiled code and CI-pinned. For any exact attribute,
@@ -18,6 +18,8 @@ Version: 0.9.0 · Risor v2.2+ · Fyne v2.8+ · Go 1.27 · module `github.com/uid
 - [docs/API.md](docs/API.md): **authoritative generated API reference** (all script-visible types and attributes; `fynerisor docs [--json]` regenerates; CI fails on drift).
 - [docs/CONCURRENCY.md](docs/CONCURRENCY.md): threading model — the VM goroutine, guithread marshalling, `go()` semantics, host-side `Window.Do`.
 - [docs/TIE_MODULE.md](docs/TIE_MODULE.md): the Tie triple-store module.
+- [docs/SCENES.md](docs/SCENES.md): declarative scene documents — placement/scaling, components, actions, sidecar scripting, stores, security, tie-browser model.
+- [docs/DESIGNER.md](docs/DESIGNER.md): the in-place scene designer — gestures, inspector, architecture, embedding, status/roadmap.
 - [docs/EXAMPLES.md](docs/EXAMPLES.md): worked example walkthroughs.
 - [docs/NAMING_CONVENTIONS.md](docs/NAMING_CONVENTIONS.md): naming rules for wrappers/attributes.
 - [CHANGELOG.md](CHANGELOG.md): per-version changes, breaking changes highlighted.
@@ -33,8 +35,11 @@ Version: 0.9.0 · Risor v2.2+ · Fyne v2.8+ · Go 1.27 · module `github.com/uid
 - [examples/](examples/): runnable example apps, each with a README (start with `examples/hello.risor` and `examples/01-hello-world`).
 - [core/](core/): headless runtime (no GUI deps; static-build friendly).
 - [gui/](gui/): Fyne GUI runtime, widget/container/canvas/chart/binding wrappers.
+- [scene/](scene/): headless scene document model, specs, validation, ops/history, stores.
+- [designer/](designer/): the WYSIWYG scene editor (Fyne).
 - [modules/](modules/): Risor modules — http, sql, os, io, json, csv, exec, tie, time, strings, filepath.
-- [cmd/fynerisor/](cmd/fynerisor/): CLI — `run`, `check` (compile-only), `analyze`, `docs`.
+- [cmd/fynerisor/](cmd/fynerisor/): CLI — `run`, `check` (scripts and scenes), `analyze`, `docs`, `scene`.
+- [cmd/fynerisor-designer/](cmd/fynerisor-designer/): standalone scene designer.
 
 ## Contributing
 

@@ -769,6 +769,9 @@ The `examples/` directory contains complete working applications. See
 - **34-keyboard-shortcuts** - Global keyboard shortcuts
 - **35-charts** - Bar, line, scatter, histogram, and box plot charts
 - **42-interactive-charts** - Interactive canvas-based charts: hover tooltips, tap/right-click callbacks, zoom/pan, live data toggles, SVG export
+- **43-embedded-canvas-object** - Embed a Risor script as a `CanvasObject` inside a host Fyne application
+- **44-scene-page** - Declarative scene page (x/y hotspots, containers, actions) with a sidecar script
+- **45-scene-designer** - Embed the WYSIWYG scene designer in a host application
 - **37-tie-gui** - Tie triple store browser GUI (`@tie`, requires tie-triplestore)
 - **41-table-header-levels** - Multi-row (hierarchical) table header via `table.HeaderLevels` (`@tie`, requires tie-triplestore)
 

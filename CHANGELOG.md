@@ -1,19 +1,46 @@
 # Changelog
 
-## [0.9.0] - 2026-10-19
+## [0.10.0] - 2026-11-01
 
-### Breaking
-- **tie dependency v0.7.3.** `tie.associated()` now flattens the flat
-  `[]tiedb.Row` reply internally; the Risor-visible list of
-  `{key, value1, value2}` maps is unchanged, but callers embedding the
-  Go client must target tie v0.7.3.
-- **SQL is opt-in in headless `core`.** `core.WithSQL()` was removed;
-  import `github.com/uidbz/fynerisor/core/db` and pass `db.WithSQL()`
-  to opt in. Binaries that never touch SQL now link zero database
-  drivers (verified against the lars static build). `gui.WithSQL()`
-  is unchanged.
+### Added — scenes and the scene designer
 
-## [Unreleased]
+- **Scene documents** (`scene/`): a canonical, versioned JSON page format
+  (`fynerisor.scene/1`) with a pure-Go document model, component specs and
+  registry, validation, invertible operations, undo/redo history and
+  file/HTTP/memory stores. Documents are limited to 2 MiB, 5000 nodes and depth
+  32; unknown component types keep their data and render as placeholders.
+- **Scene runtime** (`scene/render/`): component factories, incremental
+  `View.Apply`, a `FreeLayout` with `none|fit|fill|stretch` scaling and
+  WinForms-style anchors, action engine, async asset resolution, and the
+  standard component set (layout, display, shapes, inputs, hotspot, link,
+  embed placeholder, script slot). Unknown types degrade gracefully.
+- **Designer** (`designer/`): in-place WYSIWYG editor with one input-shielding
+  overlay, select/move/resize/marquee, container drop/reorder/reparenting,
+  grid and sibling-edge snapping with guides, palette, outline (hide/lock),
+  schema-driven inspector, event action editor, problems panel, clipboard
+  fragments, duplicate/delete/z-order, undo/redo with coalescing, save with
+  optimistic concurrency, and preview mode.
+- **Risor binding** (`gui/scene/`): opt-in `WithScene`, `scene.Load/Parse/New`,
+  `page.Node/Find/Bind/Values`, `node.On/Off/Set/SetPlace/SetContent`, and
+  delegation to the existing widget/canvas wrappers. `call` actions that fire
+  before `Bind` are buffered.
+- **Browser**: page kinds (`.risor` and `.scene.json`), `LoadPage`,
+  `RenderScene`, `EditorProvider`, `EnableEditor`, F4/pencil in-place editing,
+  `Window.ExecuteWith` (run-scoped globals) and `Window.Release`.
+- **CLI**: `fynerisor check` validates scene documents and compiles their
+  sidecar scripts; `fynerisor scene` renders one; new
+  `cmd/fynerisor-designer` standalone editor. `fynerisor docs` now includes
+  generated scene component tables and the scene script types.
+- **tie integration**: `scene/store/tie` stores a scene as a typed tie
+  directory (stable DirUID, `scene-doc` pointer, content-addressed
+  `scene.json` versions, conflict checks); `scene/render/tie` resolves
+  `tie:<hash>` assets through the filehost with thumbnail preference. Both are
+  integration-tested against the tie test environment (skipped when absent).
+- **Docs/examples**: `docs/SCENES.md`, `docs/DESIGNER.md`, examples 44 and 45,
+  and the generated API reference.
+
+tie-browser (M6) builds on the same interfaces in `uidbz/tie-gui`; its storage
+model and component plan are documented in `docs/SCENES.md`.
 
 ### Breaking
 
@@ -576,6 +603,19 @@
   `io.write(p, json.format(v))`, same for csv), and `io.cp` (now an alias
   of `io.copy`, which preserves the source mode). All still work as thin
   fallbacks this release.
+
+## [0.9.0] - 2026-10-19
+
+### Breaking
+- **tie dependency v0.7.3.** `tie.associated()` now flattens the flat
+  `[]tiedb.Row` reply internally; the Risor-visible list of
+  `{key, value1, value2}` maps is unchanged, but callers embedding the
+  Go client must target tie v0.7.3.
+- **SQL is opt-in in headless `core`.** `core.WithSQL()` was removed;
+  import `github.com/uidbz/fynerisor/core/db` and pass `db.WithSQL()`
+  to opt in. Binaries that never touch SQL now link zero database
+  drivers (verified against the lars static build). `gui.WithSQL()`
+  is unchanged.
 
 ## [0.8.2] - 2026-09-03
 
