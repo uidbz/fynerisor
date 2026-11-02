@@ -462,7 +462,7 @@ tie:/scenes/house/living-room/        DirUID D (dir-type "scene")
 
 ## Status
 
-Implemented in v0.11.1: document model/specs/registry, canonical codec with
+Implemented in v0.12.0: document model/specs/registry, canonical codec with
 limits, validation, invertible ops and undo/redo, file/http/memory/tie stores,
 `FreeLayout` with fit/fill/stretch and anchors, the standard component set,
 hotspot/action engine (including polygon hotspots), incremental rendering,
@@ -472,6 +472,7 @@ device/zoom previews, palette drag, story map and touch-sized handles, Risor
 binding, browser page kinds and F4 editing, CLI `check`/`scene`, standalone
 designer, tie store indexing/thumbnails, tie components and tie-browser.
 
-Roadmap: multi-document story map, native pwplay/mpv playback and tag/thumbnail
-pickers in tie-browser, Android/touch-first panel layout, thumbnail generation
-for file-hosted scenes, and further component polish.
+Roadmap: native pwplay/mpv playback in tie-browser, further component polish,
+and a decentralized asset/store backend. Multi-document story maps, media/scene
+asset pickers, touch-first editor layout and file/tie scene thumbnails are
+implemented.

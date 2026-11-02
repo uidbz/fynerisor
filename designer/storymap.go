@@ -1,6 +1,8 @@
 package designer
 
 import (
+	"context"
+	"fmt"
 	"image/color"
 
 	"fyne.io/fyne/v2"
@@ -9,7 +11,9 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"github.com/uidbz/fynerisor/scene"
+	"github.com/uidbz/fynerisor/scene/render"
 )
 
 type storyEdge struct {
@@ -18,8 +22,14 @@ type storyEdge struct {
 	Event string
 }
 
-// storyEdges collects every navigate action in the document, including nested
-// hotspots and non-tap events.
+type storyScene struct {
+	Ref   string
+	Title string
+	Depth int
+	Edges []storyEdge
+}
+
+// storyEdges collects every navigate action in a document.
 func storyEdges(doc *scene.Document) []storyEdge {
 	var out []storyEdge
 	if doc == nil {
@@ -42,7 +52,51 @@ func storyEdges(doc *scene.Document) []storyEdge {
 	return out
 }
 
-// ShowStoryMap opens a visual map of the current scene's outgoing links.
+// storyGraph loads the current scene and up to two levels of linked scenes.
+func (e *Editor) storyGraph(ctx context.Context) ([]storyScene, error) {
+	resolver := e.opts.Embed
+	if resolver == nil {
+		resolver = &render.StoreResolver{Store: e.opts.Store}
+	}
+	type queued struct {
+		ref, title string
+		depth      int
+		doc        *scene.Document
+	}
+	seen := map[string]bool{e.opts.Ref: true}
+	queue := []queued{{ref: e.opts.Ref, title: e.doc.Title, depth: 0, doc: e.doc}}
+	var out []storyScene
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		s := storyScene{Ref: cur.ref, Title: cur.title, Depth: cur.depth}
+		if s.Title == "" {
+			s.Title = cur.ref
+		}
+		for _, ed := range storyEdges(cur.doc) {
+			s.Edges = append(s.Edges, ed)
+			target, err := scene.ResolveRef(cur.ref, ed.To)
+			if err != nil || seen[target] || cur.depth >= 2 {
+				continue
+			}
+			seen[target] = true
+			doc, base, err := resolver.LoadEmbed(ctx, cur.ref, ed.To)
+			if err != nil {
+				queue = append(queue, queued{ref: target, title: target, depth: cur.depth + 1})
+				continue
+			}
+			title := ""
+			if doc != nil {
+				title = doc.Title
+			}
+			queue = append(queue, queued{ref: base, title: title, depth: cur.depth + 1, doc: doc})
+		}
+		out = append(out, s)
+	}
+	return out, nil
+}
+
+// ShowStoryMap opens a scene-level map of the document and its linked scenes.
 func (e *Editor) ShowStoryMap() {
 	if e.opts.Window == nil {
 		e.setStatus("Story map needs a host window")
@@ -53,57 +107,75 @@ func (e *Editor) ShowStoryMap() {
 		dialog.ShowInformation("Story map", "This scene has no navigate actions.", e.opts.Window)
 		return
 	}
-	targets := make(map[string]int)
-	var order []string
-	for _, ed := range edges {
-		if _, ok := targets[ed.To]; !ok {
-			targets[ed.To] = len(order)
-			order = append(order, ed.To)
-		}
-	}
-	sources := make(map[string]int)
-	var sourceOrder []string
-	for _, ed := range edges {
-		if _, ok := sources[ed.From]; !ok {
-			sources[ed.From] = len(sourceOrder)
-			sourceOrder = append(sourceOrder, ed.From)
-		}
-	}
-	const cardW, cardH, gap = 220, 44, 70
-	height := float32(len(order))*gap + 160
-	if h := float32(len(sourceOrder))*gap + 160; h > height {
-		height = h
-	}
-	width := float32(cardW*2 + 360)
-	board := container.NewWithoutLayout()
+	e.setStatus("Loading story map…")
+	go func() {
+		graph, err := e.storyGraph(context.Background())
+		guithread.Do(func() {
+			if err != nil {
+				e.setStatus("Story map: " + err.Error())
+				return
+			}
+			e.showGraph(graph)
+		})
+	}()
+}
 
-	sceneCard := e.card(e.doc.Title, 20, 20, cardW, cardH, true)
-	board.Add(sceneCard)
-	for i, from := range sourceOrder {
-		y := float32(110 + i*gap)
-		board.Add(e.card(from, 20, y, cardW, cardH, false))
+func (e *Editor) showGraph(graph []storyScene) {
+	const cardW, cardH, colGap, rowGap = 240, 70, 150, 90
+	byDepth := make(map[int][]storyScene)
+	maxDepth := 0
+	for _, s := range graph {
+		byDepth[s.Depth] = append(byDepth[s.Depth], s)
+		if s.Depth > maxDepth {
+			maxDepth = s.Depth
+		}
 	}
-	for i, to := range order {
-		y := float32(110 + i*gap)
-		board.Add(e.card(to, float32(cardW+220), y, cardW, cardH, false))
+	cardPos := make(map[string]fyne.Position)
+	width := float32(40 + (maxDepth+1)*cardW + maxDepth*colGap)
+	height := float32(80)
+	for d := 0; d <= maxDepth; d++ {
+		for i, s := range byDepth[d] {
+			x := float32(40 + d*(cardW+colGap))
+			y := float32(40 + i*(cardH+rowGap))
+			cardPos[s.Ref] = fyne.NewPos(x, y)
+			if y+cardH+40 > height {
+				height = y + cardH + 40
+			}
+		}
 	}
-	for _, ed := range edges {
-		sy := float32(110 + sources[ed.From]*gap + cardH/2)
-		ty := float32(110 + targets[ed.To]*gap + cardH/2)
-		line := canvas.NewLine(color.NRGBA{R: 59, G: 130, B: 246, A: 220})
-		line.StrokeWidth = 2
-		line.Position1 = fyne.NewPos(cardW+24, sy)
-		line.Position2 = fyne.NewPos(cardW+220-4, ty)
-		board.Add(line)
-		label := canvas.NewText(ed.Event, color.NRGBA{R: 148, G: 163, B: 184, A: 255})
-		label.TextSize = 11
-		label.Move(fyne.NewPos(cardW+40, (sy+ty)/2-8))
-		board.Add(label)
+	board := container.NewWithoutLayout()
+	for _, s := range graph {
+		pos := cardPos[s.Ref]
+		board.Add(e.card(s.Title, pos.X, pos.Y, cardW, cardH, s.Depth == 0))
 	}
-	board.Resize(fyne.NewSize(width, height))
-	d := dialog.NewCustom("Story map — "+e.doc.Title, "Close", container.NewScroll(container.NewGridWrap(fyne.NewSize(width, height), board)), e.opts.Window)
-	d.Resize(fyne.NewSize(900, 620))
+	blue := color.NRGBA{R: 59, G: 130, B: 246, A: 220}
+	for _, s := range graph {
+		from := cardPos[s.Ref]
+		for _, ed := range s.Edges {
+			target, err := scene.ResolveRef(s.Ref, ed.To)
+			if err != nil {
+				continue
+			}
+			to, ok := cardPos[target]
+			if !ok {
+				continue
+			}
+			line := canvas.NewLine(blue)
+			line.StrokeWidth = 2
+			line.Position1 = fyne.NewPos(from.X+cardW, from.Y+cardH/2)
+			line.Position2 = fyne.NewPos(to.X, to.Y+cardH/2)
+			board.Add(line)
+			label := canvas.NewText(ed.From+" · "+ed.Event, color.NRGBA{R: 148, G: 163, B: 184, A: 255})
+			label.TextSize = 11
+			label.Move(fyne.NewPos(from.X+cardW+8, (from.Y+cardH/2+to.Y+cardH/2)/2-8))
+			board.Add(label)
+		}
+	}
+	d := dialog.NewCustom("Story map — "+e.doc.Title, "Close",
+		container.NewScroll(container.NewGridWrap(fyne.NewSize(width, height), board)), e.opts.Window)
+	d.Resize(fyne.NewSize(960, 640))
 	d.Show()
+	e.setStatus(fmt.Sprintf("Story map: %d scene(s)", len(graph)))
 }
 
 func (e *Editor) card(text string, x, y, w, h float32, primary bool) fyne.CanvasObject {

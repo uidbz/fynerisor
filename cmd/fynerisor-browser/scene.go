@@ -1,17 +1,24 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"image"
+	"image/png"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/driver/software"
 
 	"github.com/uidbz/fynerisor/browser"
 	"github.com/uidbz/fynerisor/designer"
 	guiscene "github.com/uidbz/fynerisor/gui/scene"
 	"github.com/uidbz/fynerisor/scene"
+	"github.com/uidbz/fynerisor/scene/render"
 	renderbuiltin "github.com/uidbz/fynerisor/scene/render/builtin"
 )
 
@@ -138,6 +145,7 @@ func (p *BrowserEditorProvider) Open(page *browser.Page, br *browser.Browser) fy
 		Navigator: browserNav{br},
 		Opener:    browserOpener{},
 		Status:    br.SetStatus,
+		OnSaved:   func(doc *scene.Document) { p.app.saveSceneThumbnail(page.URL, doc) },
 		OnClose: func(reload bool) {
 			p.app.editor = nil
 			br.CloseEditor(reload)
@@ -168,4 +176,38 @@ func (p *BrowserEditorProvider) EditorClosed() {
 		p.app.editor.Abandon()
 	}
 	p.app.editor = nil
+}
+
+// saveSceneThumbnail renders a preview for a file-hosted scene next to it.
+func (b *BrowserApp) saveSceneThumbnail(ref string, doc *scene.Document) {
+	if !strings.HasPrefix(ref, "file:") {
+		return
+	}
+	path, err := scene.FilePath(ref)
+	if err != nil {
+		return
+	}
+	view := render.NewView(doc, render.Options{Registry: renderbuiltin.NewRegistry(), Mode: render.ModePlay, Base: ref})
+	c := software.NewCanvas()
+	c.SetContent(view)
+	size := fyne.NewSize(320, 200)
+	c.Resize(size)
+	view.Resize(size)
+	capture, ok := c.(interface{ Capture() image.Image })
+	if !ok {
+		view.Destroy()
+		return
+	}
+	img := capture.Capture()
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		view.Destroy()
+		return
+	}
+	view.Destroy()
+	data := buf.Bytes()
+	dest := filepath.Join(filepath.Dir(path), "thumbnail.png")
+	go func() {
+		_ = os.WriteFile(dest, data, 0o644)
+	}()
 }

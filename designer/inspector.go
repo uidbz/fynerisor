@@ -478,10 +478,13 @@ func (i *inspector) propRow(n *scene.Node, p scene.PropSpec) {
 		entry.OnChanged = func(s string) { i.setProp(p.Name, s) }
 		if (p.Kind == scene.PropAsset || p.Kind == scene.PropSceneRef) && i.ed.opts.AssetPick != nil {
 			pick := widget.NewButton("…", func() {
-				if ref, ok := i.ed.opts.AssetPick(entry.Text); ok {
+				i.ed.opts.AssetPick(p.Kind, entry.Text, func(ref string, ok bool) {
+					if !ok {
+						return
+					}
 					entry.SetText(ref)
 					i.setProp(p.Name, ref)
-				}
+				})
 			})
 			i.row(p.Title, container.NewBorder(nil, nil, nil, pick, entry))
 		} else {

@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.12.0] - 2026-11-02
+
+### Added — remaining designer/tie roadmap
+
+- **Async asset picker hook**: `designer.Options.AssetPick` now takes the
+  property kind and a completion callback, so hosts can open dialogs without
+  blocking the UI. tie-browser uses it for tag-query thumbnail grids (media)
+  and scene-path selection (scene refs).
+- **Multi-document story map**: the story map now loads linked scenes through
+  the host `Embed`/store resolver (two levels) and draws scene-level cards and
+  edges.
+- **Touch-first editor layout**: mobile drivers get a vertical split with
+  bottom Palette/Inspector/Outline/Problems tabs instead of side panels.
+- **File-hosted scene thumbnails**: fynerisor-browser writes `thumbnail.png`
+  beside a saved scene file using an offscreen Fyne render.
+- **Tie image caching/picker fixes**, polygon validation/API polish, and docs
+  for the completed roadmap.
+
+tie-browser now includes media/scene asset pickers. Native pwplay/mpv playback
+remains the main follow-up (the current opener uses the system handler).
 ## [0.11.1] - 2026-11-02
 
 ### Fixed / polished

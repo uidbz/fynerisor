@@ -211,7 +211,7 @@ scene pages, `Open` returns `ed.Object()`, and `BeforeLeave` delegates to
 
 ## Status
 
-Implemented in v0.11.1:
+Implemented in v0.12.0:
 
 - free/ordered/slot/tab containers, selection, move, resize, marquee, z-order;
 - reparenting, ordered reordering and palette drag-and-drop (click-to-place
@@ -229,16 +229,14 @@ Implemented in v0.11.1:
   prompt, 30-second autosaved drafts with restore;
 - preview mode, device frames (Desktop/Tablet/Phone), 50–200% zoom with
   scrolling and theme text scaling;
-- story map of outgoing scene links;
+- multi-document story map (loads linked scenes through the host resolver);
 - style overrides (foreground/background/text size/bold/italic) applied through
-  a Fyne theme override, host-resolved `embed`, and in-place browser editing
-  (F4) with page reload.
+  a Fyne theme override, host-resolved `embed`, file/tie scene thumbnails, and
+  in-place browser editing (F4) with page reload.
 
 Roadmap:
 
-- multi-document story map (the current map shows the open document's outgoing
-  links);
-- native media playback and tag/thumbnail asset pickers in tie-browser (the
-  current opener uses the system handler);
-- Android/touch-first panel layout;
-- preview thumbnails for file-hosted scenes (tie-browser generates them).
+- native media playback in tie-browser (the current opener uses the system
+  handler; pwplay/mpv integration is the next step);
+- further component and mobile polish (the editor now uses a bottom-tab layout
+  on touch drivers).

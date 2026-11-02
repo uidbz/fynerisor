@@ -14,7 +14,7 @@ This skill provides expert assistance with fynerisor development, including:
 - Event handling and callbacks
 - Modules (HTTP, SQL, OS, Time, Strings, Filepath, IO, JSON, CSV, Exec, Tie)
 
-Current: v0.11.1, Risor v2.2+, Fyne v2.8+, module path `github.com/uidbz/fynerisor`
+Current: v0.12.0, Risor v2.2+, Fyne v2.8+, module path `github.com/uidbz/fynerisor`
 (host code imports the `core` and `gui` packages — the root package is docs-only).
 
 ## When to Use This Skill

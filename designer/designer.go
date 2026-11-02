@@ -42,11 +42,13 @@ type Options struct {
 	Navigator render.Navigator // preview-mode navigation
 	Opener    render.Opener
 
-	Status    func(string)
-	OnClose   func(reload bool)
-	OnSaved   func(*scene.Document)
-	OnDirty   func(bool)
-	AssetPick func(current string) (string, bool) // optional asset browser
+	Status  func(string)
+	OnClose func(reload bool)
+	OnSaved func(*scene.Document)
+	OnDirty func(bool)
+	// AssetPick opens a host picker for asset/scene reference properties.
+	// It must call done exactly once (ok=false on cancel).
+	AssetPick func(kind scene.PropKind, current string, done func(ref string, ok bool))
 }
 
 // Editor is a scene designer instance. Object returns its UI.
@@ -374,6 +376,18 @@ func (e *Editor) buildUI() {
 	top := container.NewBorder(nil, nil, e.toolbar(), topRight, nil)
 	center := container.NewBorder(top, e.status, nil, nil, e.center)
 
+	if e.mobile() {
+		bottom := container.NewAppTabs(
+			container.NewTabItemWithIcon("Palette", theme.GridIcon(), e.palette.object()),
+			container.NewTabItemWithIcon("Inspector", theme.SettingsIcon(), e.inspector.object()),
+			container.NewTabItemWithIcon("Outline", theme.ListIcon(), e.outline.object()),
+			container.NewTabItemWithIcon("Problems", theme.WarningIcon(), e.problems.object()),
+		)
+		split := container.NewVSplit(center, bottom)
+		split.SetOffset(0.60)
+		e.content = split
+		return
+	}
 	rightSplit := container.NewHSplit(center, right)
 	rightSplit.SetOffset(0.72)
 	main := container.NewHSplit(left, rightSplit)
