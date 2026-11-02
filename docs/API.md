@@ -1117,7 +1117,7 @@ embedding application (tie-browser registers the `tie.*` family).
 | `grid` | Grid | ordered | Layout | cols (number = 2) |  |  |
 | `gridwrap` | Grid wrap | ordered | Layout |  |  |  |
 | `hbox` | Horizontal box | ordered | Layout |  |  |  |
-| `hotspot` | Hotspot | leaf | Navigation | shape (enum = rect), fill (color = #ffffff00), hoverFill (color = #ffffff33), stroke (color = #ffffffaa), strokeWidth (number = 1), label (string = ), showInPlay (bool = false) | tapped, doubleTapped, secondaryTapped, hoverIn, hoverOut |  |
+| `hotspot` | Hotspot | leaf | Navigation | shape (enum = rect), fill (color = #ffffff00), hoverFill (color = #ffffff33), stroke (color = #ffffffaa), strokeWidth (number = 1), points (points), label (string = ), showInPlay (bool = false) | tapped, doubleTapped, secondaryTapped, hoverIn, hoverOut |  |
 | `hsplit` | Horizontal split | slots | Layout | offset (number = 0.5) |  | leading, trailing |
 | `hyperlink` | Hyperlink | leaf | Input | text (string = Link), url (url = https://fyne.io) | tapped |  |
 | `icon` | Icon | leaf | Display | name (icon = info) | tapped |  |

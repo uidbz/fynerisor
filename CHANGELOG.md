@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.11.0] - 2026-11-02
+
+### Added — designer and tie-browser roadmap
+
+- **Inline text editing**: double-click a label/text/button node to edit its
+  `text` property in place (Enter/focus-loss commits, Esc cancels).
+- **Wrap/unwrap/convert**: put selected siblings into `vbox`, `hbox` or `free`
+  from the context menu, unwrap a container, and convert free containers to
+  layout containers (and back) while preserving the visual arrangement.
+- **Autosave and conflict resolution**: a 30-second draft (restorable from the
+  toolbar or on open), Overwrite/Reload on version conflicts, and explicit
+  unsaved-change prompts.
+- **Device and zoom previews**: Responsive/Desktop/Tablet/Phone frames,
+  50–200% zoom with scrolling, and theme text scaling for layout-root scenes.
+- **Palette drag-and-drop**, polygon hotspot point editing (draggable handles,
+  add/remove point, points inspector), story map of outgoing scene links, and
+  larger touch handle targets.
+- **Style overrides** applied through a Fyne theme override; host-resolved
+  `embed` scenes with a same-origin check; `render.StoreResolver`.
+- **tie components**: `scene/render/tie` registers `tie.image`, `tie.gallery`,
+  `tie.collection`, `tie.tags`, `tie.related`, `tie.document`, `tie.audio` and
+  `tie.video`; `scene/store/tie` now indexes `member-of`/`links-to`, marks the
+  dir-type `scene`, and stores save thumbnails.
+- **tie-browser**: `tie-gui/cmd/tie-browser` — tie scene storage, home scene,
+  F4 designer, source view, save/reload, indexing, thumbnails and a `tie.*`
+  component palette. Native pwplay/mpv playback and tag/thumbnail pickers remain
+  follow-ups.
+
 ## [0.10.0] - 2026-11-01
 
 ### Added — scenes and the scene designer

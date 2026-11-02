@@ -1,7 +1,9 @@
 package designer
 
 import (
+	"fmt"
 	"image/color"
+	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -58,6 +60,12 @@ type overlay struct {
 	suppressTap bool
 	focused     bool
 	objs        []fyne.CanvasObject
+
+	inline     *inlineEntry
+	inlineID   string
+	inlineRect render.Rect
+
+	lastPoints any
 }
 
 func newOverlay(e *Editor) *overlay {
@@ -69,6 +77,35 @@ func newOverlay(e *Editor) *overlay {
 func (o *overlay) CreateRenderer() fyne.WidgetRenderer {
 	o.refreshChrome()
 	return &overlayRenderer{o: o}
+}
+
+// Palette drag support: the palette item is outside the overlay, so it maps
+// absolute pointer positions into overlay-local ones and drives the same
+// creation gesture the canvas uses.
+
+func (o *overlay) beginPalette(pos fyne.Position) {
+	o.kind = gCreating
+	o.press, o.mouse = pos, pos
+	o.createRect = render.Rect{}
+	o.suppressTap = true
+	o.Refresh()
+}
+
+func (o *overlay) movePalette(pos fyne.Position) {
+	o.mouse = pos
+	o.createRect = rectBetween(o.press, pos)
+	o.Refresh()
+}
+
+func (o *overlay) dropPalette(pos fyne.Position) {
+	o.mouse = pos
+	o.createRect = rectBetween(o.press, pos)
+	o.commitCreate()
+	o.kind = gIdle
+	o.createRect = render.Rect{}
+	o.suppressTap = false
+	o.ed.view.RefreshRects()
+	o.Refresh()
 }
 
 // ---------------------------------------------------------------- gestures
@@ -147,6 +184,12 @@ func (o *overlay) MouseUp(*desktop.MouseEvent) {
 }
 
 func (o *overlay) Tapped(e *fyne.PointEvent) {
+	if o.inline != nil {
+		if !o.inlineRect.Contains(e.Position) {
+			o.commitInline()
+		}
+		return
+	}
 	o.ed.focusOverlay()
 	if o.suppressTap {
 		o.suppressTap = false
@@ -173,11 +216,104 @@ func (o *overlay) DoubleTapped(e *fyne.PointEvent) {
 		return
 	}
 	id := o.ed.hitTest(e.Position)
-	if id != "" {
-		o.ed.Select(id)
-		if o.ed.inspector != nil {
-			o.ed.inspector.focusFirst()
+	if id == "" {
+		return
+	}
+	o.ed.Select(id)
+	if n, ok := o.ed.doc.Find(id); ok {
+		if spec, ok := o.ed.opts.Registry.Spec(n.Type); ok {
+			if p, ok := spec.Prop("text"); ok && p.Kind != scene.PropPoints {
+				if text, ok := n.Prop("text"); ok {
+					o.startInline(id, fmt.Sprint(text))
+					return
+				}
+			}
 		}
+	}
+	if o.ed.inspector != nil {
+		o.ed.inspector.focusFirst()
+	}
+}
+
+// startInline places a real entry over a text node.
+func (o *overlay) startInline(id, text string) {
+	if o.inline != nil {
+		o.commitInline()
+	}
+	r, ok := o.ed.view.RectOf(id)
+	if !ok {
+		return
+	}
+	entry := &inlineEntry{Entry: widget.NewEntry()}
+	entry.SetText(text)
+	entry.OnSubmitted = func(s string) { o.commitInline() }
+	entry.OnChanged = func(string) {}
+	entry.SetPlaceHolder("Text")
+	entry.commit = func() { o.commitInline() }
+	entry.cancel = func() { o.cancelInline() }
+	o.inline = entry
+	o.inlineID = id
+	o.inlineRect = r.Inset(-2)
+	o.Refresh()
+	if c := o.ed.canvas(); c != nil {
+		c.Focus(entry)
+	}
+}
+
+func (o *overlay) commitInline() {
+	if o.inline == nil {
+		return
+	}
+	id, text := o.inlineID, o.inline.Text
+	o.inline, o.inlineID = nil, ""
+	o.refreshChrome()
+	n, ok := o.ed.doc.Find(id)
+	if !ok {
+		return
+	}
+	old, _ := n.Prop("text")
+	if fmt.Sprint(old) == text {
+		return
+	}
+	o.ed.applyEdit("edit text", "text:"+id, scene.SetPropOp(id, "text", old, text))
+	o.ed.inspector.refresh()
+}
+
+func (o *overlay) cancelInline() {
+	o.inline, o.inlineID = nil, ""
+	o.refreshChrome()
+}
+
+type inlineEntry struct {
+	*widget.Entry
+	commit func()
+	cancel func()
+}
+
+func (e *inlineEntry) FocusLost() {
+	if e.Entry != nil {
+		e.Entry.FocusLost()
+	}
+	if e.commit != nil {
+		e.commit()
+	}
+}
+
+func (e *inlineEntry) FocusGained() {
+	if e.Entry != nil {
+		e.Entry.FocusGained()
+	}
+}
+
+func (e *inlineEntry) TypedKey(ev *fyne.KeyEvent) {
+	if ev.Name == fyne.KeyEscape {
+		if e.cancel != nil {
+			e.cancel()
+		}
+		return
+	}
+	if e.Entry != nil {
+		e.Entry.TypedKey(ev)
 	}
 }
 
@@ -194,15 +330,32 @@ func (o *overlay) showContext(pos fyne.Position) {
 	if c == nil {
 		return
 	}
-	items := []*fyne.MenuItem{
+	items := []*fyne.MenuItem{}
+	if o.polygonSelected() {
+		if h := o.handleAt(pos); strings.HasPrefix(h, "pt") {
+			var idx int
+			fmt.Sscanf(h, "pt%d", &idx)
+			items = append(items, fyne.NewMenuItem("Remove point", func() { o.ed.removePolygonPoint(o.ed.primary, idx) }))
+		}
+		items = append(items, fyne.NewMenuItem("Add point here", func() { o.ed.addPolygonPoint(o.ed.primary, pos) }))
+		items = append(items, fyne.NewMenuItemSeparator())
+	}
+	items = append(items,
 		fyne.NewMenuItem("Duplicate", o.ed.duplicateSelection),
 		fyne.NewMenuItem("Delete", o.ed.deleteSelection),
 		fyne.NewMenuItemSeparator(),
 		fyne.NewMenuItem("Bring to front", o.ed.bringToFront),
 		fyne.NewMenuItem("Send to back", o.ed.sendToBack),
 		fyne.NewMenuItemSeparator(),
+		fyne.NewMenuItem("Wrap in vbox", func() { o.ed.wrapSelection("vbox") }),
+		fyne.NewMenuItem("Wrap in hbox", func() { o.ed.wrapSelection("hbox") }),
+		fyne.NewMenuItem("Wrap in free", func() { o.ed.wrapSelection("free") }),
+		fyne.NewMenuItem("Unwrap", o.ed.unwrapSelection),
+		fyne.NewMenuItem("Convert to free", func() { o.ed.convertSelection("free") }),
+		fyne.NewMenuItem("Convert to vbox", func() { o.ed.convertSelection("vbox") }),
+		fyne.NewMenuItemSeparator(),
 		fyne.NewMenuItem("Select parent", func() { o.ed.selectParent() }),
-	}
+	)
 	if o.ed.tool != "" {
 		items = append(items, fyne.NewMenuItem("Cancel placement", o.ed.DisarmTool))
 	}
@@ -235,7 +388,11 @@ func (o *overlay) Dragged(e *fyne.DragEvent) {
 	case gMoving:
 		o.dragMove()
 	case gResizing:
-		o.dragResize()
+		if strings.HasPrefix(o.handle, "pt") {
+			o.dragPoint()
+		} else {
+			o.dragResize()
+		}
 	case gMarquee:
 		o.marquee = rectBetween(o.press, o.mouse)
 		o.marqueeIDs = o.nodesIn(o.marquee)
@@ -266,6 +423,7 @@ func (o *overlay) DragEnd() {
 	o.createRect = render.Rect{}
 	o.dropRect = render.Rect{}
 	o.guides = nil
+	o.lastPoints = nil
 	o.ed.view.RefreshRects()
 	o.Refresh()
 }
@@ -331,6 +489,51 @@ func (o *overlay) dropTarget(current string) (string, render.DropSpot, bool) {
 		return "", render.DropSpot{}, false
 	}
 	return parent, spot, true
+}
+
+func (o *overlay) dragPoint() {
+	id := o.ed.primary
+	if !o.polygonSelected() {
+		return
+	}
+	r, ok := o.startRects[id]
+	if !ok || r.W <= 0 || r.H <= 0 {
+		return
+	}
+	idx := 0
+	if _, err := fmt.Sscanf(o.handle, "pt%d", &idx); err != nil {
+		return
+	}
+	n, ok := o.ed.doc.Find(id)
+	if !ok {
+		return
+	}
+	pts := polygonPointsOf(n)
+	if idx < 0 || idx >= len(pts) {
+		return
+	}
+	x := (o.mouse.X - r.X) / r.W
+	y := (o.mouse.Y - r.Y) / r.H
+	x = float32(maxf(float64(x), 0))
+	y = float32(maxf(float64(y), 0))
+	x = float32(minf(float64(x), 1))
+	y = float32(minf(float64(y), 1))
+	pts[idx] = map[string]any{"x": scene.Round(float64(x)), "y": scene.Round(float64(y))}
+	o.lastPoints = pts
+	o.ed.view.RuntimeSet(id, "points", pts)
+}
+
+func maxf(a, b float64) float64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+func minf(a, b float64) float64 {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func (o *overlay) dragResize() {
@@ -502,6 +705,10 @@ func (o *overlay) commitReparent() {
 }
 
 func (o *overlay) commitResize() {
+	if strings.HasPrefix(o.handle, "pt") {
+		o.commitPolygon()
+		return
+	}
 	id := o.ed.primary
 	p, ok := o.lastPlaces[id]
 	if !ok {
@@ -512,6 +719,20 @@ func (o *overlay) commitResize() {
 		return
 	}
 	o.ed.applyEdit("resize", "", scene.SetPlaceOp(id, old, p))
+	o.ed.inspector.refresh()
+}
+
+func (o *overlay) commitPolygon() {
+	id := o.ed.primary
+	if id == "" || o.lastPoints == nil {
+		return
+	}
+	n, ok := o.ed.doc.Find(id)
+	if !ok {
+		return
+	}
+	old, _ := n.Prop("points")
+	o.ed.applyEdit("polygon", "", scene.SetPropOp(id, "points", old, o.lastPoints))
 	o.ed.inspector.refresh()
 }
 
@@ -609,7 +830,19 @@ func handleRects(r render.Rect) map[string]render.Rect {
 
 func (o *overlay) handleAt(pos fyne.Position) string {
 	ids := o.ed.selectedIDs()
-	if len(ids) != 1 || !o.ed.parentFree(ids[0]) {
+	if len(ids) != 1 {
+		return ""
+	}
+	if o.polygonSelected() {
+		r, _ := o.ed.view.RectOf(ids[0])
+		for name, hr := range o.pointRects(r) {
+			if hr.Inset(-(o.ed.handlePad())).Contains(pos) {
+				return name
+			}
+		}
+		return ""
+	}
+	if !o.ed.parentFree(ids[0]) {
 		return ""
 	}
 	r, ok := o.ed.view.RectOf(ids[0])
@@ -617,11 +850,50 @@ func (o *overlay) handleAt(pos fyne.Position) string {
 		return ""
 	}
 	for _, name := range handleNames {
-		if handleRects(r)[name].Inset(-3).Contains(pos) {
+		if handleRects(r)[name].Inset(-o.ed.handlePad()).Contains(pos) {
 			return name
 		}
 	}
 	return ""
+}
+
+// polygonSelected reports whether the primary node is a polygon hotspot.
+func (o *overlay) polygonSelected() bool {
+	n, ok := o.ed.Primary()
+	if !ok || n.Type != "hotspot" || n.StringProp("shape", "") != "polygon" {
+		return false
+	}
+	pts, ok := n.Prop("points")
+	return ok && pts != nil
+}
+
+func (o *overlay) pointRects(r render.Rect) map[string]render.Rect {
+	n, ok := o.ed.Primary()
+	if !ok {
+		return nil
+	}
+	list, _ := n.Prop("points")
+	items, _ := list.([]any)
+	out := make(map[string]render.Rect, len(items))
+	size := float32(o.ed.handleSize())
+	for i, item := range items {
+		m, _ := item.(map[string]any)
+		x, _ := m["x"].(float64)
+		y, _ := m["y"].(float64)
+		cx := r.X + float32(x)*r.W
+		cy := r.Y + float32(y)*r.H
+		out[fmt.Sprintf("pt%d", i)] = render.NewRect(cx-size/2, cy-size/2, size, size)
+	}
+	return out
+}
+
+// polygonPoints returns the node's point list (copyable).
+func polygonPointsOf(n *scene.Node) []any {
+	v, _ := n.Prop("points")
+	list, _ := v.([]any)
+	out := make([]any, len(list))
+	copy(out, list)
+	return out
 }
 
 // ------------------------------------------------------------------ hover
@@ -790,7 +1062,14 @@ func (o *overlay) refreshChrome() {
 			addRect(r, blue, 1.5, color.NRGBA{})
 		}
 	}
-	if len(o.ed.sel) == 1 && o.ed.primary != "" && o.ed.parentFree(o.ed.primary) {
+	if len(o.ed.sel) == 1 && o.ed.primary != "" && o.polygonSelected() {
+		if r, ok := o.ed.view.RectOf(o.ed.primary); ok {
+			orange := color.NRGBA{R: 249, G: 115, B: 22, A: 255}
+			for _, hr := range o.pointRects(r) {
+				addRect(hr, orange, 1, color.NRGBA{R: 255, G: 255, B: 255, A: 255})
+			}
+		}
+	} else if len(o.ed.sel) == 1 && o.ed.primary != "" && o.ed.parentFree(o.ed.primary) {
 		if r, ok := o.ed.view.RectOf(o.ed.primary); ok && o.ed.doc.Root != nil && o.ed.primary != o.ed.doc.Root.ID {
 			for _, name := range handleNames {
 				hr := handleRects(r)[name]
@@ -811,6 +1090,11 @@ func (o *overlay) refreshChrome() {
 	}
 	if o.createRect.W > 0 || o.createRect.H > 0 {
 		addRect(o.createRect, green, 1, color.NRGBA{R: 34, G: 197, B: 94, A: 40})
+	}
+	if o.inline != nil {
+		o.inline.Move(o.inlineRect.Position())
+		o.inline.Resize(o.inlineRect.Size())
+		o.objs = append(o.objs, o.inline)
 	}
 	if len(o.guides) > 0 {
 		t, _, ok := o.ed.freeTransform(o.guideParent)

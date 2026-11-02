@@ -217,6 +217,25 @@ func checkPropValue(p PropSpec, v any) string {
 		if _, ok := v.(bool); !ok {
 			return fmt.Sprintf("property %q must be a bool, got %T", p.Name, v)
 		}
+	case PropPoints:
+		pts, ok := v.([]any)
+		if !ok {
+			return fmt.Sprintf("property %q must be a list of points", p.Name)
+		}
+		for i, item := range pts {
+			m, ok := item.(map[string]any)
+			if !ok {
+				return fmt.Sprintf("property %q point %d must be a {x,y} map", p.Name, i)
+			}
+			x, okx := toFloat(m["x"])
+			y, oky := toFloat(m["y"])
+			if !okx || !oky {
+				return fmt.Sprintf("property %q point %d needs numeric x and y", p.Name, i)
+			}
+			if x < 0 || x > 1 || y < 0 || y > 1 {
+				return fmt.Sprintf("property %q point %d is outside 0..1", p.Name, i)
+			}
+		}
 	case PropOptions, PropTags:
 		for _, s := range toStrings(v) {
 			if strings.TrimSpace(s) == "" {

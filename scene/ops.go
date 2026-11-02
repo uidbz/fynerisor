@@ -206,6 +206,12 @@ func (d *Document) checkSubtreeIDs(sub *Node) error {
 
 func setNodeField(n *Node, key string, value any) error {
 	switch key {
+	case "type":
+		s, ok := value.(string)
+		if !ok || s == "" {
+			return fmt.Errorf("type must be a non-empty string")
+		}
+		n.Type = s
 	case "name":
 		s, ok := value.(string)
 		if !ok {

@@ -211,23 +211,34 @@ scene pages, `Open` returns `ed.Object()`, and `BeforeLeave` delegates to
 
 ## Status
 
-Implemented in v0.10.0:
+Implemented in v0.11.0:
 
 - free/ordered/slot/tab containers, selection, move, resize, marquee, z-order;
-- reparenting and ordered reordering by drag; click-to-place palette;
-- grid and sibling-edge snapping with guides; arrow nudging;
-- schema-driven inspector, name/placement/props/events; outline with hide/lock;
-- problems panel and save blocking on errors;
+- reparenting, ordered reordering and palette drag-and-drop (click-to-place
+  remains for touch);
+- grid and sibling-edge snapping with guides; arrow nudging; larger touch
+  handles on mobile;
+- inline text editing on double-click (an entry over the node, commit on
+  Enter/focus loss, Esc cancels);
+- wrap/unwrap and free↔layout conversion from the context menu;
+- schema-driven inspector, name/placement/props/events, polygon point handles
+  with add/remove point, outline with hide/lock;
+- problems panel, save blocking on errors;
 - clipboard fragments, duplicate, delete, undo/redo/coalescing;
-- save with version conflicts, dirty state, unsaved-changes prompt; preview mode;
-- in-place browser edit (F4) with page reload.
+- save with version conflicts (Overwrite/Reload), dirty state, unsaved-changes
+  prompt, 30-second autosaved drafts with restore;
+- preview mode, device frames (Desktop/Tablet/Phone), 50–200% zoom with
+  scrolling and theme text scaling;
+- story map of outgoing scene links;
+- style overrides (foreground/background/text size/bold/italic) applied through
+  a Fyne theme override, host-resolved `embed`, and in-place browser editing
+  (F4) with page reload.
 
 Roadmap:
 
-- inline text editing (double-click places an entry over the label);
-- wrap/unwrap/convert commands and device-frame previews;
-- autosave drafts and a conflict resolution UI;
-- zoom/pan and text scaling for layout-root scenes;
-- palette drag-and-drop, polygon hotspot editing, story map;
-- applying `style` overrides; host-resolved `embed`; tie-browser store/components
-  and touch-friendly editing.
+- multi-document story map (the current map shows the open document's outgoing
+  links);
+- native media playback and tag/thumbnail asset pickers in tie-browser (the
+  current opener uses the system handler);
+- Android/touch-first panel layout;
+- preview thumbnails for file-hosted scenes (tie-browser generates them).

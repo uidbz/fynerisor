@@ -163,4 +163,9 @@ func (p *BrowserEditorProvider) BeforeLeave(done func(ok bool)) {
 
 // EditorClosed is called by the browser when it abandons an editor because the
 // user chose to navigate away.
-func (p *BrowserEditorProvider) EditorClosed() { p.app.editor = nil }
+func (p *BrowserEditorProvider) EditorClosed() {
+	if p.app.editor != nil {
+		p.app.editor.Abandon()
+	}
+	p.app.editor = nil
+}

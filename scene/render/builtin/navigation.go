@@ -2,6 +2,7 @@ package builtin
 
 import (
 	"image/color"
+	"sync/atomic"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -9,6 +10,7 @@ import (
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/widget"
 
+	"github.com/uidbz/fynerisor/gui/guithread"
 	"github.com/uidbz/fynerisor/scene"
 	"github.com/uidbz/fynerisor/scene/render"
 )
@@ -31,9 +33,11 @@ type hotspot struct {
 	strokeWidth float32
 	showInPlay  bool
 	hovered     bool
+	points      []fyne.Position
 
-	rect *canvas.Rectangle
-	text *canvas.Text
+	rect    *canvas.Rectangle
+	polygon *canvas.ArbitraryPolygon
+	text    *canvas.Text
 }
 
 func newHotspot(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
@@ -51,8 +55,10 @@ func (h *hotspot) apply(n *scene.Node) {
 	h.stroke = h.bc.ColorProp(n, "stroke", render.Color("#ffffffaa", nil))
 	h.strokeWidth = float32(h.bc.Num(n, "strokeWidth", 1))
 	h.showInPlay = h.bc.Bool(n, "showInPlay", false)
+	h.points = polygonPoints(n)
 	if h.rect == nil {
 		h.rect = canvas.NewRectangle(h.fill)
+		h.polygon = &canvas.ArbitraryPolygon{NormalizedPoints: true}
 		h.text = canvas.NewText(h.label, render.Color("theme:foreground", nil))
 		h.text.Alignment = fyne.TextAlignCenter
 	}
@@ -63,23 +69,26 @@ func (h *hotspot) refreshPaint() {
 	if h.rect == nil {
 		return
 	}
+	fill, stroke, strokeWidth := render.Color("#00000000", nil), render.Color("#00000000", nil), float32(0)
 	switch {
 	case h.hovered:
-		h.rect.FillColor = h.hoverFill
-		h.rect.StrokeColor = h.stroke
-		h.rect.StrokeWidth = h.strokeWidth
+		fill, stroke, strokeWidth = h.hoverFill, h.stroke, h.strokeWidth
 	case h.edit:
-		h.rect.FillColor = render.Color("#ffffff18", nil)
-		h.rect.StrokeColor = h.stroke
-		h.rect.StrokeWidth = h.strokeWidth
+		fill, stroke, strokeWidth = render.Color("#ffffff18", nil), h.stroke, h.strokeWidth
 	case h.showInPlay:
-		h.rect.FillColor = h.fill
-		h.rect.StrokeColor = h.stroke
-		h.rect.StrokeWidth = h.strokeWidth
-	default:
-		h.rect.FillColor = render.Color("#00000000", nil)
-		h.rect.StrokeColor = render.Color("#00000000", nil)
-		h.rect.StrokeWidth = 0
+		fill, stroke, strokeWidth = h.fill, h.stroke, h.strokeWidth
+	}
+	h.rect.FillColor = fill
+	h.rect.StrokeColor = stroke
+	h.rect.StrokeWidth = strokeWidth
+	h.rect.Hidden = h.shape == "polygon"
+	if h.polygon != nil {
+		h.polygon.Points = h.points
+		h.polygon.FillColor = fill
+		h.polygon.StrokeColor = stroke
+		h.polygon.StrokeWidth = strokeWidth
+		h.polygon.Hidden = h.shape != "polygon"
+		h.polygon.Refresh()
 	}
 	h.text.Text = h.label
 	if h.edit && h.label != "" {
@@ -100,19 +109,54 @@ func (h *hotspot) Update(n *scene.Node, _ scene.Fields) error {
 
 func (h *hotspot) Destroy() {}
 
+func (h *hotspot) hit(pos fyne.Position) bool {
+	if h.shape != "polygon" || len(h.points) < 3 {
+		return true
+	}
+	size := h.Size()
+	if size.Width <= 0 || size.Height <= 0 {
+		return true
+	}
+	px := float64(pos.X) / float64(size.Width)
+	py := float64(pos.Y) / float64(size.Height)
+	inside := false
+	j := len(h.points) - 1
+	for i := 0; i < len(h.points); i++ {
+		xi, yi := float64(h.points[i].X), float64(h.points[i].Y)
+		xj, yj := float64(h.points[j].X), float64(h.points[j].Y)
+		if (yi > py) != (yj > py) && px < (xj-xi)*(py-yi)/(yj-yi)+xi {
+			inside = !inside
+		}
+		j = i
+	}
+	return inside
+}
+
 func (h *hotspot) Tapped(e *fyne.PointEvent) {
+	if !h.hit(e.Position) {
+		return
+	}
 	h.bc.Emit(h.id, "tapped", map[string]any{"x": e.Position.X, "y": e.Position.Y})
 }
 
 func (h *hotspot) DoubleTapped(e *fyne.PointEvent) {
+	if !h.hit(e.Position) {
+		return
+	}
 	h.bc.Emit(h.id, "doubleTapped", map[string]any{"x": e.Position.X, "y": e.Position.Y})
 }
 
 func (h *hotspot) TappedSecondary(e *fyne.PointEvent) {
+	if !h.hit(e.Position) {
+		return
+	}
 	h.bc.Emit(h.id, "secondaryTapped", map[string]any{"x": e.Position.X, "y": e.Position.Y})
 }
 
 func (h *hotspot) MouseIn(e *desktop.MouseEvent) {
+	if !h.hit(e.Position) {
+		return
+	}
 	if !h.edit {
 		h.hovered = true
 		h.refreshPaint()
@@ -146,6 +190,10 @@ type hotspotRenderer struct {
 func (r *hotspotRenderer) Layout(size fyne.Size) {
 	r.h.rect.Move(fyne.NewPos(0, 0))
 	r.h.rect.Resize(size)
+	if r.h.polygon != nil {
+		r.h.polygon.Move(fyne.NewPos(0, 0))
+		r.h.polygon.Resize(size)
+	}
 	if r.h.shape == "ellipse" {
 		rad := size.Width
 		if size.Height < rad {
@@ -168,10 +216,33 @@ func (r *hotspotRenderer) Refresh() {
 }
 
 func (r *hotspotRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{r.h.rect, r.h.text}
+	return []fyne.CanvasObject{r.h.rect, r.h.polygon, r.h.text}
 }
 
 func (r *hotspotRenderer) Destroy() {}
+
+// polygonPoints reads the normalized polygon points property.
+func polygonPoints(n *scene.Node) []fyne.Position {
+	v, ok := n.Prop("points")
+	if !ok {
+		return nil
+	}
+	list, ok := v.([]any)
+	if !ok {
+		return nil
+	}
+	out := make([]fyne.Position, 0, len(list))
+	for _, item := range list {
+		m, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		x, _ := m["x"].(float64)
+		y, _ := m["y"].(float64)
+		out = append(out, fyne.NewPos(float32(x), float32(y)))
+	}
+	return out
+}
 
 // --------------------------------------------------------------------- link
 
@@ -189,26 +260,83 @@ func newLink(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
 
 // -------------------------------------------------------------------- embed
 
+type embedLive struct {
+	stack *fyne.Container
+	label *widget.Label
+	view  *render.View
+	bc    *render.BuildContext
+	ref   string
+	gen   atomic.Int64
+}
+
 func newEmbed(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
-	l := widget.NewLabel("")
-	apply := func(n *scene.Node) {
-		src := bc.Str(n, "src", "")
-		if src == "" {
-			l.SetText("Embedded scene\n(no source)")
-		} else {
-			l.SetText("Embedded scene\n" + src)
-		}
+	l := widget.NewLabel("Embedded scene")
+	l.Alignment = fyne.TextAlignCenter
+	stack := container.NewStack(l)
+	l2 := &embedLive{stack: stack, label: l, bc: bc}
+	l2.apply(n)
+	return l2, nil
+}
+
+func (l *embedLive) apply(n *scene.Node) {
+	src := l.bc.Str(n, "src", "")
+	if src == l.ref && (src == "" || l.view != nil) {
+		return
 	}
-	apply(n)
-	rect := canvas.NewRectangle(render.Color("#00000000", nil))
-	rect.StrokeColor = render.Color("#a05adc80", nil)
-	rect.StrokeWidth = 1
-	stack := container.NewStack(rect, container.NewCenter(l))
-	return newLeaf(stack, func(n *scene.Node, _ scene.Fields) error {
-		apply(n)
-		l.Refresh()
-		return nil
-	}), nil
+	l.ref = src
+	l.gen.Add(1)
+	if l.view != nil {
+		l.view.Destroy()
+		l.view = nil
+	}
+	if src == "" {
+		l.label.SetText("Embedded scene\n(no source)")
+		l.label.Show()
+		l.stack.Objects = []fyne.CanvasObject{l.label}
+		l.stack.Refresh()
+		return
+	}
+	l.label.SetText("Loading embedded scene…")
+	l.label.Show()
+	l.stack.Objects = []fyne.CanvasObject{l.label}
+	l.stack.Refresh()
+	if l.bc.Embed == nil {
+		l.label.SetText("Embedded scene\n(no resolver)")
+		return
+	}
+	gen := l.gen.Load()
+	go func() {
+		doc, base, err := l.bc.Embed.LoadEmbed(l.bc.Context, l.bc.Base, src)
+		guithread.Do(func() {
+			if l.gen.Load() != gen {
+				return
+			}
+			if err != nil {
+				l.label.SetText("Embedded scene\n" + err.Error())
+				l.label.Show()
+				l.stack.Objects = []fyne.CanvasObject{l.label}
+				l.stack.Refresh()
+				return
+			}
+			l.view = l.bc.View.Embedded(doc, base)
+			l.stack.Objects = []fyne.CanvasObject{l.view}
+			l.stack.Refresh()
+		})
+	}()
+}
+
+func (l *embedLive) Object() fyne.CanvasObject { return l.stack }
+
+func (l *embedLive) Update(n *scene.Node, _ scene.Fields) error {
+	l.apply(n)
+	return nil
+}
+
+func (l *embedLive) Destroy() {
+	l.gen.Add(1)
+	if l.view != nil {
+		l.view.Destroy()
+	}
 }
 
 // --------------------------------------------------------------------- slot

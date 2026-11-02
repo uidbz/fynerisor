@@ -30,6 +30,12 @@ import (
 	"github.com/uidbz/fynerisor/scene"
 )
 
+// OnIndexError receives best-effort indexing failures after a successful save.
+type Store struct {
+	Client       *client.TieClient
+	OnIndexError func(error)
+}
+
 // SceneDocRelation is the directory → current document hash pointer.
 const SceneDocRelation = "scene-doc"
 
@@ -38,11 +44,6 @@ const SceneScriptRelation = "scene-script"
 
 // SceneThumbnailRelation is the optional preview image hash.
 const SceneThumbnailRelation = "thumbnail"
-
-// Store implements scene.Store on a tie collection.
-type Store struct {
-	Client *client.TieClient
-}
 
 // New returns a store for tc.
 func New(tc *client.TieClient) *Store { return &Store{Client: tc} }
@@ -161,6 +162,9 @@ func (s *Store) Save(ctx context.Context, ref string, data []byte, baseVersion s
 	if _, err := s.Client.BatchContext(ctx, batch); err != nil {
 		return nil, fmt.Errorf("tiestore: update scene-doc: %w", err)
 	}
+	if err := s.Index(ctx, path, data); err != nil && s.OnIndexError != nil {
+		s.OnIndexError(err)
+	}
 	return &scene.Snapshot{Ref: path, Version: hash, Data: data, Writable: true}, nil
 }
 
@@ -195,4 +199,45 @@ func ScenePath(ref string) (string, error) {
 		}
 	}
 	return ref, nil
+}
+
+// SaveThumbnail stores a preview PNG for the scene and points the directory's
+// thumbnail relation at it. It is used by browsers after a successful save.
+func (s *Store) SaveThumbnail(ctx context.Context, ref string, png []byte) error {
+	if s.Client == nil {
+		return errors.New("tiestore: no tie client")
+	}
+	path, err := s.Resolve("", ref)
+	if err != nil {
+		return err
+	}
+	uid, err := s.Client.DirUIDFromPath(path)
+	if err != nil || uid == "" {
+		return fmt.Errorf("tiestore: thumbnail: no scene directory %s", path)
+	}
+	host, err := s.Client.ResolveHost("")
+	if err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp("", "fynerisor-thumb-*.png")
+	if err != nil {
+		return err
+	}
+	name := tmp.Name()
+	defer os.Remove(name)
+	if _, err := tmp.Write(png); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	hash, err := s.Client.WriteFile(host, uid, "thumbnail.png", name, nil)
+	if err != nil {
+		return err
+	}
+	batch := s.Client.NewBatch()
+	batch.Set(string(uid), SceneThumbnailRelation, []string{hash})
+	_, err = s.Client.BatchContext(ctx, batch)
+	return err
 }

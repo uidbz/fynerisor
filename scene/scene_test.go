@@ -431,3 +431,22 @@ func TestBuiltinRegistry(t *testing.T) {
 		}
 	}
 }
+
+func TestPolygonValidation(t *testing.T) {
+	reg := registry()
+	d := &scene.Document{Root: &scene.Node{ID: "root", Type: "free", Children: []*scene.Node{
+		{ID: "poly", Type: "hotspot", Place: scene.Place{W: 100, H: 100},
+			Props: map[string]any{"shape": "polygon", "points": []any{
+				map[string]any{"x": 0.0, "y": 0.0},
+				map[string]any{"x": 1.0, "y": 0.0},
+				map[string]any{"x": 0.5, "y": 1.0},
+			}}},
+	}}}
+	if issues := scene.Validate(d, reg); scene.Errors(issues) != 0 {
+		t.Fatalf("valid polygon: %v", issues)
+	}
+	d.Root.Children[0].SetProp("points", []any{map[string]any{"x": 2.0, "y": 0.0}})
+	if issues := scene.Validate(d, reg); scene.Errors(issues) == 0 {
+		t.Fatal("out-of-range point was accepted")
+	}
+}

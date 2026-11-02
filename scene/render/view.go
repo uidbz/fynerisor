@@ -16,6 +16,7 @@ import (
 type Options struct {
 	Registry  *Registry
 	Assets    AssetResolver
+	Embed     EmbedResolver
 	Mode      Mode
 	Base      string
 	Context   context.Context
@@ -62,6 +63,9 @@ func NewView(doc *scene.Document, opts Options) *View {
 	if opts.Assets == nil {
 		opts.Assets = NewLocalAssets()
 	}
+	if opts.Embed == nil {
+		opts.Embed = &StoreResolver{}
+	}
 	v := &View{
 		doc:       doc,
 		reg:       opts.Registry,
@@ -85,8 +89,39 @@ func (v *View) CanvasObject() fyne.CanvasObject { return v }
 // Doc returns the displayed document.
 func (v *View) Doc() *scene.Document { return v.doc }
 
+// LoadDocument replaces the document in the same view widget (used after a
+// conflict reload or draft restore). Script listeners are cleared because the
+// old node IDs no longer refer to the visible tree.
+func (v *View) LoadDocument(doc *scene.Document) {
+	v.doc = doc
+	v.runtimePl = make(map[string]scene.Place)
+	v.mu.Lock()
+	v.listeners = make(map[string]map[string][]func(map[string]any))
+	v.mu.Unlock()
+	v.rebuild()
+	v.rects = nil
+	v.Refresh()
+}
+
 // Registry returns the render registry.
 func (v *View) Registry() *Registry { return v.reg }
+
+// Embedded builds a nested view for an embed node, sharing the registry,
+// assets, resolver and action targets but using the embedded document's base.
+func (v *View) Embedded(doc *scene.Document, base string) *View {
+	return NewView(doc, Options{
+		Registry:  v.reg,
+		Assets:    v.opts.Assets,
+		Embed:     v.opts.Embed,
+		Mode:      v.opts.Mode,
+		Base:      base,
+		Context:   v.ctx,
+		Navigator: v.opts.Navigator,
+		Opener:    v.opts.Opener,
+		Caller:    v.opts.Caller,
+		Status:    v.opts.Status,
+	})
+}
 
 // Mode returns the current rendering mode.
 func (v *View) Mode() Mode { return v.opts.Mode }
@@ -184,10 +219,17 @@ func (v *View) RuntimePlace(id string, p scene.Place) bool {
 	return true
 }
 
-// Unwrap removes the size-hint wrapper from an object.
+// Unwrap removes size-hint and theme-override wrappers from an object.
 func Unwrap(o fyne.CanvasObject) fyne.CanvasObject {
-	if h, ok := o.(*hintObject); ok {
-		return h.CanvasObject
+	for i := 0; i < 8; i++ {
+		switch x := o.(type) {
+		case *hintObject:
+			o = x.CanvasObject
+		case *container.ThemeOverride:
+			o = x.Content
+		default:
+			return o
+		}
 	}
 	return o
 }
@@ -364,7 +406,7 @@ func (v *View) Apply(changes []scene.Change) error {
 	for _, ch := range changes {
 		switch ch.Kind {
 		case scene.OpSetProp, scene.OpSetField:
-			if ch.Fields["style"] {
+			if ch.Fields["style"] || ch.Fields["type"] {
 				if err := v.rebuildNode(ch.Node); err != nil {
 					return err
 				}
@@ -499,6 +541,7 @@ func (v *View) build(n *scene.Node, parent string) (Live, error) {
 		Mode:    v.opts.Mode,
 		Base:    v.opts.Base,
 		Assets:  v.opts.Assets,
+		Embed:   v.opts.Embed,
 		Status:  v.opts.Status,
 		View:    v,
 		emit:    v.EmitEvent,
@@ -507,9 +550,6 @@ func (v *View) build(n *scene.Node, parent string) (Live, error) {
 	if err != nil {
 		return nil, err
 	}
-	live = wrapHint(live)
-	v.lives[n.ID] = live
-	v.parents[n.ID] = parent
 	if cont, ok := live.(ContainerLive); ok {
 		for i, ch := range n.Children {
 			child, err := v.build(ch, n.ID)
@@ -521,6 +561,10 @@ func (v *View) build(n *scene.Node, parent string) (Live, error) {
 			}
 		}
 	}
+	live = wrapStyle(live, n.Style)
+	live = wrapHint(live)
+	v.lives[n.ID] = live
+	v.parents[n.ID] = parent
 	if n.Hidden {
 		live.Object().Hide()
 	}

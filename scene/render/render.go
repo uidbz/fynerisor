@@ -106,6 +106,13 @@ type AssetResolver interface {
 	Open(ctx context.Context, ref string) (fyne.Resource, error)
 }
 
+// EmbedResolver loads another scene document for an embed node. It runs off
+// the UI thread. The returned base is the embedded document's own URL/path,
+// used for relative links and assets inside it.
+type EmbedResolver interface {
+	LoadEmbed(ctx context.Context, base, ref string) (*scene.Document, string, error)
+}
+
 // Navigator receives declarative navigation actions.
 type Navigator interface {
 	Navigate(ref string)
@@ -131,6 +138,7 @@ type BuildContext struct {
 	Mode    Mode
 	Base    string
 	Assets  AssetResolver
+	Embed   EmbedResolver
 	Status  func(string)
 	View    *View
 	emit    func(id, event string, payload map[string]any)

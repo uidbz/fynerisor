@@ -217,13 +217,16 @@ Notes:
 
 - `hotspot` is the point-and-click primitive. It emits `tapped`,
   `doubleTapped`, `secondaryTapped`, `hoverIn`, `hoverOut`, shows a pointer
-  cursor, and is invisible in play mode unless `showInPlay` is set.
+  cursor, and is invisible in play mode unless `showInPlay` is set. With
+  `shape: polygon`, `points` is a list of normalized `{x,y}` vertices (0..1);
+  the designer shows draggable point handles and add/remove commands.
 - `link` is a button that navigates to its `to` prop when it has no `tapped`
   action. It is the terse form of a scene link.
 - `slot` is a runtime hole. In edit mode it shows its `hint`; in play mode it is
   empty until the page script calls `node.SetContent(widget)`.
-- `embed` reserves the composition point for a sub-scene/prefab. The current
-  renderer shows a placeholder; host-resolved embeds are on the roadmap.
+- `embed` hosts a nested scene document. The host supplies a
+  `render.EmbedResolver`; the default `StoreResolver` loads file/http docs
+  (with a remote-page origin check), and tie-browser passes the tie store.
 - Images, shapes and icons have an invisible event surface when they carry
   actions; entering or leaving a shape emits hover events.
 
@@ -438,9 +441,13 @@ tie:/scenes/house/living-room/        DirUID D (dir-type "scene")
 - The same design works for a decentralized backend: the document graph is
   content-addressed; a name→hash pointer (`scene-doc`) is the mutable part.
 - `scene/store/tie` implements `scene.Store` for this layout (load pointer and
-  blob, atomic new file, conflict check, pointer update last), and
-  `scene/render/tie` implements the asset resolver. The remaining tie-browser
-  work is the tie component family and the app shell in `uidbz/tie-gui`.
+  blob, atomic new file, conflict check, pointer update last), best-effort
+  `member-of`/`links-to` indexing and the `thumbnail.png` relation.
+- `scene/render/tie` implements the asset resolver and the `tie.*` component
+  family (`tie.image`, `tie.gallery`, `tie.collection`, `tie.tags`,
+  `tie.related`, `tie.document`, `tie.audio`, `tie.video`).
+- `tie-gui/cmd/tie-browser` is the app shell: home scene creation, F4 editor,
+  source view, save/reload and system media opening.
 
 ## Security
 
@@ -455,16 +462,16 @@ tie:/scenes/house/living-room/        DirUID D (dir-type "scene")
 
 ## Status
 
-Implemented in v0.10.0: document model/specs/registry, canonical codec with
-limits, validation, invertible ops and undo/redo, file/http/memory stores,
+Implemented in v0.11.0: document model/specs/registry, canonical codec with
+limits, validation, invertible ops and undo/redo, file/http/memory/tie stores,
 `FreeLayout` with fit/fill/stretch and anchors, the standard component set,
-hotspot/action engine, incremental rendering, designer overlay/palette/outline/
-inspector/problems, clipboard, save/conflict, Risor binding, browser page kinds
-and the F4 edit flow, CLI `check`/`scene`, standalone designer, and documentation.
+hotspot/action engine (including polygon hotspots), incremental rendering,
+style overrides, host-resolved embeds, designer overlay/palette/outline/
+inspector/problems with inline text, wrap/convert, autosave/drafts,
+device/zoom previews, palette drag, story map and touch-sized handles, Risor
+binding, browser page kinds and F4 editing, CLI `check`/`scene`, standalone
+designer, tie store indexing/thumbnails, tie components and tie-browser.
 
-Roadmap: theme style application, inline text editing, wrap/convert commands,
-autosave, zoom/pan and device previews, palette drag-and-drop, polygon hotspots,
-host-resolved `embed`, story map, the tie component family (`tie.gallery`,
-`tie.collection`, media players) and touch editing. The tie store and asset
-resolver are already implemented and integration-tested against the tie test
-environment.
+Roadmap: multi-document story map, native pwplay/mpv playback and tag/thumbnail
+pickers in tie-browser, Android/touch-first panel layout, thumbnail generation
+for file-hosted scenes, and further component polish.

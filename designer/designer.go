@@ -10,6 +10,7 @@ package designer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"sort"
@@ -32,6 +33,7 @@ import (
 type Options struct {
 	Registry *render.Registry
 	Assets   render.AssetResolver
+	Embed    render.EmbedResolver
 	Store    scene.Store
 	Ref      string // document reference for Store.Save/asset resolution
 	Version  string // base version for optimistic concurrency
@@ -42,6 +44,7 @@ type Options struct {
 
 	Status    func(string)
 	OnClose   func(reload bool)
+	OnSaved   func(*scene.Document)
 	OnDirty   func(bool)
 	AssetPick func(current string) (string, bool) // optional asset browser
 }
@@ -60,6 +63,8 @@ type Editor struct {
 
 	snapGrid float64
 	preview  bool
+	device   string
+	zoom     float64
 
 	overlay   *overlay
 	inspector *inspector
@@ -68,6 +73,7 @@ type Editor struct {
 	problems  *problemsView
 
 	stage   *fyne.Container
+	center  *fyne.Container
 	content fyne.CanvasObject
 	status  *widget.Label
 
@@ -76,6 +82,7 @@ type Editor struct {
 	closing  bool
 	onDirty  func(bool)
 	lastDirt bool
+	autosave chan struct{}
 }
 
 // New builds an editor for doc.
@@ -91,6 +98,7 @@ func New(doc *scene.Document, opts Options) *Editor {
 		opts:     opts,
 		sel:      make(map[string]bool),
 		snapGrid: 8,
+		zoom:     1,
 		version:  opts.Version,
 		onDirty:  opts.OnDirty,
 	}
@@ -98,6 +106,7 @@ func New(doc *scene.Document, opts Options) *Editor {
 	e.view = render.NewView(doc, render.Options{
 		Registry:  opts.Registry,
 		Assets:    opts.Assets,
+		Embed:     opts.Embed,
 		Mode:      render.ModeEdit,
 		Base:      opts.Ref,
 		Navigator: opts.Navigator,
@@ -108,6 +117,10 @@ func New(doc *scene.Document, opts Options) *Editor {
 	e.overlay = newOverlay(e)
 	e.buildUI()
 	e.refreshUI()
+	if opts.Window != nil && opts.Ref != "" {
+		e.startAutosave()
+		e.offerDraft()
+	}
 	return e
 }
 
@@ -141,6 +154,56 @@ func (e *Editor) Issues() []scene.Issue { return e.issue }
 
 // Selection returns the selected node IDs in document order.
 func (e *Editor) Selection() []string { return e.selectedIDs() }
+
+// paletteDrag drives a palette drag into the canvas. start/current are
+// absolute screen positions from the palette item.
+func (e *Editor) paletteDrag(typ string, start, current fyne.Position) {
+	app := fyne.CurrentApp()
+	if app == nil || app.Driver() == nil || e.overlay == nil {
+		return
+	}
+	oa := app.Driver().AbsolutePositionForObject(e.overlay)
+	os := e.overlay.Size()
+	local := func(p fyne.Position) fyne.Position { return p.Subtract(oa) }
+	s, c := local(start), local(current)
+	if s.X < 0 || s.Y < 0 || s.X > os.Width || s.Y > os.Height {
+		s = c // the drag entered the canvas at the current point
+	}
+	if e.tool != typ {
+		e.tool = typ
+		e.overlay.beginPalette(s)
+	}
+	e.overlay.movePalette(c)
+}
+
+// paletteDrop finishes a palette drag.
+func (e *Editor) paletteDrop(typ string, start, current fyne.Position) {
+	app := fyne.CurrentApp()
+	if app == nil || app.Driver() == nil || e.overlay == nil {
+		return
+	}
+	oa := app.Driver().AbsolutePositionForObject(e.overlay)
+	os := e.overlay.Size()
+	s, c := start.Subtract(oa), current.Subtract(oa)
+	if c.X < 0 || c.Y < 0 || c.X > os.Width || c.Y > os.Height {
+		// Dropped outside the canvas: cancel rather than create at a bogus
+		// coordinate.
+		e.overlay.kind = gIdle
+		e.overlay.createRect = render.Rect{}
+		e.overlay.Refresh()
+		e.DisarmTool()
+		return
+	}
+	if s.X < 0 || s.Y < 0 || s.X > os.Width || s.Y > os.Height {
+		s = c
+	}
+	if e.tool != typ {
+		e.tool = typ
+		e.overlay.beginPalette(s)
+	}
+	e.overlay.dropPalette(c)
+	e.DisarmTool()
+}
 
 // ArmTool selects a palette component for the next canvas gesture.
 func (e *Editor) ArmTool(typ string) {
@@ -284,15 +347,79 @@ func (e *Editor) buildUI() {
 	)
 
 	e.stage = container.NewStack(e.view, e.overlay)
+	e.center = container.NewStack(e.stage)
 	done := widget.NewButton("Done", func() { e.RequestClose() })
-	top := container.NewBorder(nil, nil, e.toolbar(), done, nil)
-	center := container.NewBorder(top, e.status, nil, nil, e.stage)
+	device := widget.NewSelect([]string{"Responsive", "Desktop", "Tablet", "Phone"}, func(s string) {
+		switch s {
+		case "Desktop":
+			e.device = "desktop"
+		case "Tablet":
+			e.device = "tablet"
+		case "Phone":
+			e.device = "phone"
+		default:
+			e.device = ""
+		}
+		e.rebuildStage()
+	})
+	device.SetSelected("Responsive")
+	zoom := widget.NewSelect([]string{"50%", "75%", "100%", "125%", "150%", "200%"}, func(s string) {
+		var v float64 = 1
+		fmt.Sscanf(s, "%f%%", &v)
+		e.zoom = v / 100
+		e.rebuildStage()
+	})
+	zoom.SetSelected("100%")
+	topRight := container.NewHBox(device, zoom, done)
+	top := container.NewBorder(nil, nil, e.toolbar(), topRight, nil)
+	center := container.NewBorder(top, e.status, nil, nil, e.center)
 
 	rightSplit := container.NewHSplit(center, right)
 	rightSplit.SetOffset(0.72)
 	main := container.NewHSplit(left, rightSplit)
 	main.SetOffset(0.18)
 	e.content = main
+}
+
+// deviceSize returns the preview viewport for the selected device.
+func (e *Editor) deviceSize() fyne.Size {
+	switch e.device {
+	case "desktop":
+		return fyne.NewSize(1280, 800)
+	case "tablet":
+		return fyne.NewSize(1024, 768)
+	case "phone":
+		return fyne.NewSize(412, 915)
+	}
+	return fyne.Size{}
+}
+
+// rebuildStage re-creates the canvas host for device/zoom previews.
+func (e *Editor) rebuildStage() {
+	viewObj := fyne.CanvasObject(e.view)
+	if e.zoom != 1 {
+		viewObj = container.NewThemeOverride(e.view, newZoomTheme(e.zoom))
+	}
+	e.stage.Objects = []fyne.CanvasObject{viewObj, e.overlay}
+	e.stage.Refresh()
+
+	var content fyne.CanvasObject = e.stage
+	if e.device != "" || e.zoom != 1 {
+		size := e.deviceSize()
+		if size.Width == 0 || size.Height == 0 {
+			size = e.stage.Size()
+			if size.Width == 0 || size.Height == 0 {
+				size = fyne.NewSize(900, 600)
+			}
+		}
+		scaled := fyne.NewSize(size.Width*float32(e.zoom), size.Height*float32(e.zoom))
+		content = container.NewScroll(container.NewCenter(container.NewGridWrap(scaled, e.stage)))
+	}
+	e.center.Objects = []fyne.CanvasObject{content}
+	e.center.Refresh()
+	e.view.RefreshRects()
+	e.overlay.Refresh()
+	e.setStatus("Preview view updated")
 }
 
 func (e *Editor) toolbar() fyne.CanvasObject {
@@ -308,6 +435,8 @@ func (e *Editor) toolbar() fyne.CanvasObject {
 		widget.NewToolbarAction(theme.MoveUpIcon(), func() { e.reorderSelection(-1) }),
 		widget.NewToolbarAction(theme.MoveDownIcon(), func() { e.reorderSelection(1) }),
 		widget.NewToolbarSeparator(),
+		widget.NewToolbarAction(theme.HistoryIcon(), e.RestoreDraft),
+		widget.NewToolbarAction(theme.ViewFullScreenIcon(), e.ShowStoryMap),
 		widget.NewToolbarAction(theme.MediaPlayIcon(), func() { e.SetPreview(!e.preview) }),
 		widget.NewToolbarAction(theme.GridIcon(), func() {
 			if e.snapGrid > 0 {
@@ -325,7 +454,9 @@ func (e *Editor) toolbar() fyne.CanvasObject {
 // Save encodes, validates and saves the document asynchronously.
 func (e *Editor) Save() { e.save(nil) }
 
-func (e *Editor) save(after func(bool)) {
+func (e *Editor) save(after func(bool)) { e.saveWith(e.version, after) }
+
+func (e *Editor) saveWith(baseVersion string, after func(bool)) {
 	if e.saving {
 		e.setStatus("Save already in progress")
 		if after != nil {
@@ -357,7 +488,7 @@ func (e *Editor) save(after func(bool)) {
 		}
 		return
 	}
-	ref, version := e.opts.Ref, e.version
+	ref, version := e.opts.Ref, baseVersion
 	e.saving = true
 	e.setStatus("Saving…")
 	go func() {
@@ -367,6 +498,10 @@ func (e *Editor) save(after func(bool)) {
 		guithread.Do(func() {
 			e.saving = false
 			if err != nil {
+				if errors.Is(err, scene.ErrConflict) && e.opts.Window != nil {
+					e.resolveConflict(after)
+					return
+				}
 				e.setStatus("Save failed: " + err.Error())
 				if after != nil {
 					after(false)
@@ -375,7 +510,11 @@ func (e *Editor) save(after func(bool)) {
 			}
 			e.version = snap.Version
 			e.hist.MarkSaved()
+			removeDraft(e.opts.Ref)
 			e.refreshDirty()
+			if e.opts.OnSaved != nil {
+				e.opts.OnSaved(e.doc)
+			}
 			e.setStatus(fmt.Sprintf("Saved %s", ref))
 			if after != nil {
 				after(true)
@@ -439,10 +578,30 @@ func (e *Editor) close(reload bool) {
 		return
 	}
 	e.closing = true
+	if e.autosave != nil {
+		close(e.autosave)
+		e.autosave = nil
+	}
+	removeDraft(e.opts.Ref)
 	e.view.Destroy()
 	if e.opts.OnClose != nil {
 		e.opts.OnClose(reload)
 	}
+}
+
+// Abandon releases the editor without calling OnClose. Hosts use it when a
+// navigation discards an editor (the page is about to be replaced).
+func (e *Editor) Abandon() {
+	if e.closing {
+		return
+	}
+	e.closing = true
+	if e.autosave != nil {
+		close(e.autosave)
+		e.autosave = nil
+	}
+	removeDraft(e.opts.Ref)
+	e.view.Destroy()
 }
 
 // SetPreview toggles between editing and playing the page.
@@ -952,7 +1111,176 @@ func abs(v float64) float64 {
 	return v
 }
 
+// startAutosave writes a draft every 30 seconds while the editor is dirty.
+func (e *Editor) startAutosave() {
+	e.autosave = make(chan struct{})
+	go func(stop <-chan struct{}) {
+		t := time.NewTicker(30 * time.Second)
+		defer t.Stop()
+		for {
+			select {
+			case <-t.C:
+				guithread.Do(e.autosaveDraft)
+			case <-stop:
+				return
+			}
+		}
+	}(e.autosave)
+}
+
+func (e *Editor) autosaveDraft() {
+	if e.closing || e.saving || !e.hist.Dirty() || e.opts.Ref == "" {
+		return
+	}
+	data, err := scene.Encode(e.doc)
+	if err != nil {
+		return
+	}
+	d := draftFile{Ref: e.opts.Ref, Version: e.version, SavedAt: time.Now(), Data: data}
+	if err := writeDraft(d); err == nil {
+		e.setStatus("Draft saved")
+	}
+}
+
+// RestoreDraft loads the autosaved draft for this document, if any.
+func (e *Editor) RestoreDraft() {
+	d, err := readDraft(e.opts.Ref)
+	if err != nil {
+		e.setStatus("No draft to restore")
+		return
+	}
+	doc, err := scene.Decode(d.Data)
+	if err != nil {
+		e.setStatus("Draft is invalid: " + err.Error())
+		return
+	}
+	e.replaceDocument(doc, d.Version, false)
+	e.setStatus(fmt.Sprintf("Restored draft from %s", d.SavedAt.Format("15:04")))
+}
+
+func (e *Editor) offerDraft() {
+	d, err := readDraft(e.opts.Ref)
+	if err != nil || e.opts.Window == nil {
+		return
+	}
+	w := e.opts.Window
+	dialog.NewConfirm("Unsaved draft",
+		fmt.Sprintf("A draft from %s exists. Restore it?", d.SavedAt.Format("2006-01-02 15:04")),
+		func(ok bool) {
+			if ok {
+				e.RestoreDraft()
+			} else {
+				removeDraft(e.opts.Ref)
+			}
+		}, w).Show()
+}
+
+// replaceDocument swaps the edited document and view contents, used by draft
+// restore and conflict reload.
+func (e *Editor) replaceDocument(doc *scene.Document, version string, saved bool) {
+	e.doc = doc
+	e.version = version
+	e.sel = make(map[string]bool)
+	e.primary = ""
+	e.hist = scene.NewHistory(200)
+	if saved {
+		e.hist.MarkSaved()
+	}
+	e.view.LoadDocument(doc)
+	e.view.RefreshRects()
+	e.refreshUI()
+	e.overlay.Refresh()
+}
+
+// resolveConflict offers overwrite or reload after ErrConflict.
+func (e *Editor) resolveConflict(after func(bool)) {
+	w := e.opts.Window
+	if w == nil {
+		e.setStatus("Save conflict: the document changed on disk")
+		if after != nil {
+			after(false)
+		}
+		return
+	}
+	d := dialog.NewConfirm("Version conflict",
+		"The document changed elsewhere. Overwrite it with your version? Choose Reload to discard your changes and load the stored version.",
+		func(overwrite bool) {
+			if overwrite {
+				e.saveWith("", after)
+				return
+			}
+			e.reloadFromStore(after)
+		}, w)
+	d.SetConfirmText("Overwrite")
+	d.SetDismissText("Reload")
+	d.Show()
+}
+
+func (e *Editor) reloadFromStore(after func(bool)) {
+	if e.opts.Store == nil {
+		e.setStatus("No store to reload from")
+		if after != nil {
+			after(false)
+		}
+		return
+	}
+	ref := e.opts.Ref
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		snap, err := e.opts.Store.Load(ctx, ref)
+		guithread.Do(func() {
+			if err != nil {
+				e.setStatus("Reload failed: " + err.Error())
+				if after != nil {
+					after(false)
+				}
+				return
+			}
+			doc, err := scene.Decode(snap.Data)
+			if err != nil {
+				e.setStatus("Reload failed: " + err.Error())
+				if after != nil {
+					after(false)
+				}
+				return
+			}
+			removeDraft(ref)
+			e.replaceDocument(doc, snap.Version, true)
+			e.setStatus("Reloaded " + ref)
+			if after != nil {
+				after(true)
+			}
+		})
+	}()
+}
+
 // ------------------------------------------------------------------ helpers
+
+// mobile reports whether Fyne is running on a touch device.
+func (e *Editor) mobile() bool {
+	app := fyne.CurrentApp()
+	if app == nil || app.Driver() == nil {
+		return false
+	}
+	return app.Driver().Device().IsMobile()
+}
+
+// handleSize is the drawn handle size; touch devices get larger targets.
+func (e *Editor) handleSize() float64 {
+	if e.mobile() {
+		return 16
+	}
+	return 8
+}
+
+// handlePad enlarges the hit area around handles without changing their look.
+func (e *Editor) handlePad() float32 {
+	if e.mobile() {
+		return 8
+	}
+	return 3
+}
 
 // validNodeID converts text into an unused node ID.
 func (e *Editor) validNodeID(id, except string) string {

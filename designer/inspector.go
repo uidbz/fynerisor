@@ -1,6 +1,7 @@
 package designer
 
 import (
+	"encoding/json"
 	"fmt"
 	"image/color"
 	"sort"
@@ -361,6 +362,32 @@ func (i *inspector) propRow(n *scene.Node, p scene.PropSpec) {
 		sel := widget.NewSelect(ids, func(s string) { i.setProp(p.Name, s) })
 		sel.SetSelected(stringOf(val))
 		i.row(p.Title, sel)
+	case scene.PropPoints:
+		entry := widget.NewMultiLineEntry()
+		if val != nil {
+			if data, err := json.MarshalIndent(val, "", "  "); err == nil {
+				entry.SetText(string(data))
+			}
+		}
+		entry.SetMinRowsVisible(4)
+		entry.OnChanged = func(s string) {
+			if i.loading {
+				return
+			}
+			var pts []struct {
+				X float64 `json:"x"`
+				Y float64 `json:"y"`
+			}
+			if err := json.Unmarshal([]byte(s), &pts); err != nil {
+				return
+			}
+			out := make([]any, 0, len(pts))
+			for _, p := range pts {
+				out = append(out, map[string]any{"x": scene.Round(p.X), "y": scene.Round(p.Y)})
+			}
+			i.setProp(p.Name, out)
+		}
+		i.row(p.Title, entry)
 	case scene.PropText:
 		entry := widget.NewMultiLineEntry()
 		entry.SetText(stringOf(val))

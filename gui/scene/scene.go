@@ -36,6 +36,8 @@ type Config struct {
 	Registry *render.Registry
 	// Assets resolves scene assets. Nil uses file/http LocalAssets.
 	Assets render.AssetResolver
+	// Embed resolves embedded scene documents. Nil uses file/http stores.
+	Embed render.EmbedResolver
 	// Store loads (and, for editors, saves) scene documents. Nil picks a
 	// FileStore or HTTPStore from the reference scheme.
 	Store scenedoc.Store
@@ -223,6 +225,7 @@ func newPage(ctx context.Context, doc *scenedoc.Document, cfg Config, base, vers
 		view = render.NewView(doc, render.Options{
 			Registry:  cfg.Registry,
 			Assets:    cfg.Assets,
+			Embed:     cfg.Embed,
 			Mode:      render.ModePlay,
 			Base:      base,
 			Navigator: cfg.Navigator,
