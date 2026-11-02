@@ -211,7 +211,7 @@ scene pages, `Open` returns `ed.Object()`, and `BeforeLeave` delegates to
 
 ## Status
 
-Implemented in v0.11.0:
+Implemented in v0.11.1:
 
 - free/ordered/slot/tab containers, selection, move, resize, marquee, z-order;
 - reparenting, ordered reordering and palette drag-and-drop (click-to-place

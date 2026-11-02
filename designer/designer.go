@@ -1260,7 +1260,7 @@ func (e *Editor) reloadFromStore(after func(bool)) {
 // mobile reports whether Fyne is running on a touch device.
 func (e *Editor) mobile() bool {
 	app := fyne.CurrentApp()
-	if app == nil || app.Driver() == nil {
+	if app == nil || app.Driver() == nil || app.Driver().Device() == nil {
 		return false
 	}
 	return app.Driver().Device().IsMobile()

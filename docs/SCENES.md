@@ -462,7 +462,7 @@ tie:/scenes/house/living-room/        DirUID D (dir-type "scene")
 
 ## Status
 
-Implemented in v0.11.0: document model/specs/registry, canonical codec with
+Implemented in v0.11.1: document model/specs/registry, canonical codec with
 limits, validation, invertible ops and undo/redo, file/http/memory/tie stores,
 `FreeLayout` with fit/fill/stretch and anchors, the standard component set,
 hotspot/action engine (including polygon hotspots), incremental rendering,

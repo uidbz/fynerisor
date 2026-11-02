@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.11.1] - 2026-11-02
+
+### Fixed / polished
+
+- Polygon hotspot validation now caps points at the renderer's 16-vertex limit
+  and warns when a polygon has fewer than three points.
+- tie asset thumbnails are cached under the full content hash, so gallery cells
+  no longer reload the same thumbnail on every refresh.
+- Mobile device detection is nil-safe on test/embedded drivers.
+- The designer inspector exposes `style` overrides (foreground, background,
+  text size, bold, italic); changes rebuild only that node's subtree.
+- Added tie component registration tests and a tie-browser home-scene
+  integration test.
+
 ## [0.11.0] - 2026-11-02
 
 ### Added — designer and tie-browser roadmap

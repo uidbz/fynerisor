@@ -104,9 +104,87 @@ func (i *inspector) refresh() {
 
 	i.placement(primary)
 	i.props(primary)
+	i.style(primary)
 	i.events(primary)
 	i.box.Add(widget.NewLabel(""))
 	i.box.Refresh()
+}
+
+func (i *inspector) style(n *scene.Node) {
+	i.section("Style override")
+	st := scene.Style{}
+	if n.Style != nil {
+		st = *n.Style
+	}
+	apply := func() {
+		if i.loading {
+			return
+		}
+		cur, ok := i.ed.doc.Find(n.ID)
+		if !ok {
+			return
+		}
+		next := st
+		if next.IsZero() {
+			i.ed.applyEdit("style", "style:"+n.ID, scene.SetFieldOp(n.ID, "style", cur.Style, (*scene.Style)(nil)))
+			return
+		}
+		i.ed.applyEdit("style", "style:"+n.ID, scene.SetFieldOp(n.ID, "style", cur.Style, &next))
+	}
+	fg := widget.NewEntry()
+	fg.SetPlaceHolder("foreground color")
+	fg.SetText(st.Fg)
+	fg.OnChanged = func(s string) {
+		if i.loading {
+			return
+		}
+		st.Fg = s
+		apply()
+	}
+	i.row("Foreground", fg)
+	bg := widget.NewEntry()
+	bg.SetPlaceHolder("background color")
+	bg.SetText(st.Bg)
+	bg.OnChanged = func(s string) {
+		if i.loading {
+			return
+		}
+		st.Bg = s
+		apply()
+	}
+	i.row("Background", bg)
+	size := widget.NewEntry()
+	size.SetText(formatNum(st.TextSize))
+	size.OnChanged = func(s string) {
+		if i.loading {
+			return
+		}
+		v, err := strconv.ParseFloat(strings.TrimSpace(s), 64)
+		if err != nil {
+			return
+		}
+		st.TextSize = v
+		apply()
+	}
+	i.row("Text size", size)
+	bold := widget.NewCheck("Bold", func(b bool) {
+		if i.loading {
+			return
+		}
+		st.Bold = b
+		apply()
+	})
+	bold.SetChecked(st.Bold)
+	i.row("", bold)
+	italic := widget.NewCheck("Italic", func(b bool) {
+		if i.loading {
+			return
+		}
+		st.Italic = b
+		apply()
+	})
+	italic.SetChecked(st.Italic)
+	i.row("", italic)
 }
 
 func (i *inspector) targetIDs() []string {

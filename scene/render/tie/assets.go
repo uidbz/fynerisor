@@ -92,16 +92,9 @@ func (a *Assets) Open(ctx context.Context, ref string) (fyne.Resource, error) {
 	if err != nil {
 		return nil, err
 	}
-	res := fyne.NewStaticResource(downloadHash[:minInt(8, len(downloadHash))]+".bin", data)
+	res := fyne.NewStaticResource(downloadHash+".bin", data)
 	a.mu.Lock()
 	a.cache[hash] = res
 	a.mu.Unlock()
 	return res, nil
-}
-
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

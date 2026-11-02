@@ -128,6 +128,15 @@ func Validate(d *Document, schema Schema) []Issue {
 			}
 		}
 
+		if n.StringProp("shape", "") == "polygon" {
+			if raw, ok := n.Prop("points"); ok {
+				if pts, ok := raw.([]any); ok && len(pts) < 3 {
+					add(Warning, n.ID, "props.points", "a polygon hotspot needs at least 3 points")
+				}
+			} else {
+				add(Warning, n.ID, "props.points", "shape is polygon but points is empty")
+			}
+		}
 		checkProps(n, spec, d, add)
 		checkEvents(n, spec, d, add)
 		checkSlots(n, spec, add)
@@ -221,6 +230,9 @@ func checkPropValue(p PropSpec, v any) string {
 		pts, ok := v.([]any)
 		if !ok {
 			return fmt.Sprintf("property %q must be a list of points", p.Name)
+		}
+		if len(pts) > 16 {
+			return fmt.Sprintf("property %q has %d points; the renderer supports at most 16", p.Name, len(pts))
 		}
 		for i, item := range pts {
 			m, ok := item.(map[string]any)
