@@ -1,5 +1,28 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- **The tie module grew a compute plane: `tie.runner`.** A handle on a
+  tie-runner daemon: `r.run(image, inputHash)` submits a containerized
+  job and returns a `tie.job` handle (`status()`, `wait()`,
+  `cancel(deployKey)`, ...), `r.pipeline({...})` submits a step graph
+  the runner sequences itself (`steps()`, `wait()`,
+  `resume(deployKey, fromStep)`), plus `jobs()/queue()/active()`,
+  `services()/start_service()/stop_service()`, `images()`, `version()`,
+  `filehost()` and `upload(path)` for staging input trees. The
+  bindings drive tie's `runclient` library — the same one the
+  `tie-run` CLI speaks through — and status records carry the wire
+  field names from tie's `docs/runner-api.md`, so script, CLI and
+  protocol spec cannot drift. See `docs/TIE_MODULE.md`
+  ("Runner (Compute Plane)").
+
+### Changed
+
+- tie dependency is v0.8.4, the first release carrying `runclient`
+  and the runner engine the new `tie.runner` bindings drive.
+
 ## [0.13.0] - 2026-11-03
 
 ### Fixed — scenes were invisible and dead to input

@@ -14,6 +14,7 @@ The **tie module** provides Risor bindings for [Tie](https://github.com/uidbz/ti
 - [Utility Operations](#utility-operations)
 - [Tables](#tables)
 - [Backup and Restore](#backup-and-restore)
+- [Runner (Compute Plane)](#runner-compute-plane)
 - [Data Model](#data-model)
 - [Complete Examples](#complete-examples)
 - [Error Handling](#error-handling)
@@ -28,6 +29,8 @@ The tie module allows Risor scripts to:
 - Execute **batch operations** for efficient bulk writes
 - **Stream large datasets** with memory-efficient callbacks
 - **Backup and restore** entire collections
+- **Run jobs, pipelines and services** on a tie-runner (the compute
+  plane): `tie.runner`
 
 **Triple Store Model:**
 ```
@@ -56,6 +59,9 @@ go run ./cmd/tie-triplestore
 ```
 
 The server listens on `http://localhost:1161` by default.
+
+The runner side (`tie.runner`) instead needs a running **tie-runner**
+daemon (built from the same repo; `tie-runner-config.toml` beside it).
 
 ## Enabling the Module
 
@@ -694,6 +700,101 @@ db.drop()
 db.restore(triples)
 print("Restored", len(triples), "triples")
 ```
+
+## Runner (Compute Plane)
+
+Everything above is tie's **data plane** — triples and content-addressed
+bytes. The module can also drive tie's **compute plane**: `tie-runner`, the
+daemon that runs containerized jobs over content-addressed trees, chains
+them into pipelines, and hosts deployed services. The bindings drive
+`runclient`, the same client library the `tie-run` CLI uses, and the
+records scripts receive use the wire field names documented in
+[tie's runner-api.md](https://github.com/uidbz/tie/blob/master/docs/runner-api.md)
+— so script, CLI and protocol spec cannot drift apart.
+
+```js
+let r = tie.runner("https://runner.example:1163")
+
+// One job: upload a local input dir, run a deployed image against it,
+// wait for the output tree's content address.
+let hash = r.upload("./input")
+let j = r.run("tool:v2", hash)              // or r.run("tool:v2", hash, "GPUv1")
+let final = j.wait()                        // blocks; the job is the runner's either way
+print(final["Status"], final["OutputHash"])
+
+// A pipeline: the runner sequences the steps itself. Each step's input
+// is a selection over earlier steps' outputs — composition moves
+// manifests, never bytes.
+let p = r.pipeline({
+  "name": "chain",
+  "seeds": { "raw": hash },
+  "steps": [
+    { "name": "one", "image": "tool:v2", "inputs": [{ "from": "raw" }] },
+    { "name": "two", "image": "tool:v2", "inputs": [
+        { "from": "one", "glob": "*.tsv", "as": "x.tsv" } ] },
+  ],
+})
+let fin = p.wait()
+fin["steps"].each(s => print(s["name"], s["status"], s["output_hash"]))
+```
+
+### `tie.runner(url, opts?)`
+
+A handle on one runner. The options map takes `user` — the Basic-Auth
+user management calls carry; it must match the runner's `AuthUser`
+config (default `tie`).
+
+| Attribute | What it does |
+|---|---|
+| `url` | the runner's base URL |
+| `run(image, inputHash[, jobtype])` | submit a job → `tie.job`; `jobtype` defaults to `CPUv1` |
+| `job(id)` | re-adopt a job by id (across script runs) |
+| `jobs([sinceHours])` | job history, default last 24 h — list of wire records |
+| `queue()` / `active()` | queued / running jobs |
+| `cancel(jobId, deployKey)` | cancel a job |
+| `pipeline(requestMap)` | submit a step graph → `tie.pipeline` (keys below) |
+| `services()` | deployed services and running tasks |
+| `start_service(name, deployKey)` / `stop_service(name, deployKey)` | control a deployed service |
+| `images()` | images deployed on this runner (public view; no deploy keys) |
+| `version()` | build stamp, capabilities, free capacity |
+| `filehost()` | the `{url, store}` the runner points jobs at |
+| `upload(path)` | put a local file/dir on the runner's filehost → its content hash |
+
+### `tie.job`
+
+A handle on a runner-owned job. Every read re-fetches, so a handle held
+across a script pause always sees live state. Attribute: `id`. Methods:
+`status()` (full wire record), `status_str()`, `done()`, `percent()`,
+`output_hash()`, `error_msg()`, `log()`, `wait([timeoutSeconds])`,
+`cancel(deployKey)`.
+
+`wait()` blocks until the job reaches a terminal state and returns the
+final record. The job belongs to the runner, not the script: dropping
+the handle, ending the script, or passing a `timeoutSeconds` that fires
+(an error is raised) all leave the job running.
+
+### `tie.pipeline`
+
+Attribute: `id`. Methods: `status()` (record with per-step state),
+`steps()`, `done()`, `wait()`, `cancel(deployKey)`, and
+`resume(deployKey[, fromStep])` → a new `tie.pipeline` for an
+interrupted or failed run.
+
+The pipeline request map mirrors the frozen wire shape:
+
+| Key | Meaning |
+|---|---|
+| `name` | optional label |
+| `seeds` | optional `{name: treeHash}` — named input trees steps can reference |
+| `steps` | ordered list; a step may consume any predecessor's output |
+| `steps[].name` / `image` / `jobtype` | step name, deployed handler image, job type (default `CPUv1`) |
+| `steps[].apphash` | optional injected-app tree hash |
+| `steps[].settings` | JSON string passed to the handler verbatim |
+| `steps[].inputs` | selections: `{from: stepOrSeedName}` or `{hash: treeHash}`, optionally with `paths`, `glob`, `as`, `optional` |
+
+`cancel` and `resume` are gated by the handler image's **deploy key** —
+the credential the deploy handed out (the `tie-run deploy` output shows
+it). Listing images deliberately never exposes keys.
 
 ## Data Model
 
