@@ -19,6 +19,7 @@ import (
 
 	"github.com/uidbz/fynerisor/browser"
 	"github.com/uidbz/fynerisor/core"
+	"github.com/uidbz/fynerisor/designer"
 	"github.com/uidbz/fynerisor/gui"
 )
 
@@ -79,8 +80,9 @@ type BrowserApp struct {
 	window         *gui.Window
 	browser        *browser.Browser
 	loader         *ScriptLoader
-	source         string // Current script source for source view
+	source         string // Current script/scene source for source view
 	lastErrorShown string // Track last error to prevent duplicate error dialogs
+	editor         *designer.Editor
 }
 
 // NewBrowserApp creates a new browser application
@@ -144,6 +146,8 @@ func NewBrowserApp(title string) *BrowserApp {
 		MenuProvider: &BrowserMenuProvider{app: b},
 		AuthProvider: &BrowserAuthProvider{app: b},
 		LoadContent:  b.loadScript,
+		LoadPage:     b.loadPage,
+		RenderScene:  b.renderScene,
 		OnNavigate: func(url string) error {
 			log.Printf("Navigating to: %s", url)
 			b.lastErrorShown = "" // fresh page: fresh error reporting (issue #28)
@@ -159,8 +163,9 @@ func NewBrowserApp(title string) *BrowserApp {
 	browserObj := browser.NewRisorBrowser(b.browser, b.app)
 	b.window.RegisterGlobal("browser", browserObj)
 
-	// Enable source view
+	// Enable source view and the in-place editor (F4 / pencil).
 	b.browser.EnableSourceView(b, nil)
+	b.browser.EnableEditor(&BrowserEditorProvider{app: b})
 
 	return b
 }
@@ -287,6 +292,12 @@ type BrowserMenuProvider struct {
 
 func (p *BrowserMenuProvider) GetMenuItems() []browser.MenuItem {
 	return []browser.MenuItem{
+		{
+			Label: "Edit Page",
+			Action: func() {
+				p.app.browser.ToggleEdit()
+			},
+		},
 		{
 			Label: "View Source",
 			Action: func() {

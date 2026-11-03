@@ -87,7 +87,7 @@ func (w *Window) setState(r *vmexec.Run, s RunState, err error) {
 // cancellation error if the run was stopped or replaced first. Widget
 // events keep being handled after that until the run is stopped.
 func (w *Window) Start(ctx context.Context) <-chan error {
-	return w.start(ctx)
+	return w.start(ctx, nil)
 }
 
 // Run executes the loaded script and blocks until its main body has ended

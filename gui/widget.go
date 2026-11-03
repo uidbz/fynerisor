@@ -166,6 +166,10 @@ func (w *Window) queueCallback(what string, fn func()) {
 // goroutine's way onto the VM goroutine; guithread.Do targets the UI thread
 // instead. (Scripts run on the VM goroutine already and use go(); the old
 // script-visible window.Do attribute was removed — issue #17 semantics.)
+//
+// To invoke a script function a host received from a builtin, call
+// vmexec.Call from inside fn: it installs the VM call function, so the
+// handler can create widgets and register callbacks (issue #54).
 func (w *Window) Do(fn func()) {
 	w.queueCallback("window.Do", fn)
 }

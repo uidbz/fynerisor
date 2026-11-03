@@ -45,6 +45,8 @@ func dispatch(argv []string) int {
 			return runAnalyze(argv[1:])
 		case "docs":
 			return runDocs(argv[1:])
+		case "scene":
+			return runScene(argv[1:])
 		case "run":
 			return runRun(argv[1:])
 		case "help", "-h", "--help":
@@ -65,6 +67,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "  fynerisor check <script.risor>...                       compile only; exit 1 on errors\n")
 	fmt.Fprintf(os.Stderr, "  fynerisor analyze [--json] <script.risor>               requirements and imports\n")
 	fmt.Fprintf(os.Stderr, "  fynerisor docs [--json] [-o file]                       generated API reference (issue #47)\n")
+	fmt.Fprintf(os.Stderr, "  fynerisor scene [options] <page.scene.json>              show a scene document (designer: fynerisor-designer)\n")
 	fmt.Fprintf(os.Stderr, "  cat script.risor | fynerisor [options] -\n\n")
 	fmt.Fprintf(os.Stderr, "Run options:\n")
 	flag.PrintDefaults()
@@ -117,6 +120,9 @@ func runRun(argv []string) int {
 	if len(args) == 0 && *execCode == "" {
 		usage()
 		return 2
+	}
+	if *execCode == "" && len(args) > 0 && strings.HasSuffix(args[0], ".scene.json") {
+		return showScene(args[0], *title, *width, *height, *headless, *verbose)
 	}
 
 	var scriptPath string
@@ -383,6 +389,12 @@ func runCheck(argv []string) int {
 
 	rc := 0
 	for _, path := range files {
+		if strings.HasSuffix(path, ".scene.json") {
+			if checkSceneFile(path) != 0 {
+				rc = 1
+			}
+			continue
+		}
 		var script string
 		if path == "-" {
 			data, err := io.ReadAll(os.Stdin)

@@ -48,6 +48,12 @@ func NewCallback(ctx context.Context, name string, fn object.Object) (*Callback,
 	if !ok {
 		return nil, fmt.Errorf("%s: unable to get call function", name)
 	}
+	// Keep the call function in the context the closure is invoked with, so
+	// code inside the handler can create widgets that take callbacks
+	// (issue #54). NewCallback only gets here from a builtin context, where
+	// Risor already installed it; making it explicit keeps the invariant
+	// with the callback.
+	ctx = object.WithCallFunc(ctx, call)
 	return &Callback{run: FromContext(ctx), ctx: ctx, call: call, fn: closure, name: name}, nil
 }
 

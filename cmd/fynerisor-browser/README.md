@@ -246,6 +246,24 @@ Then load it:
 fynerisor-browser file:///path/to/hello.risor
 ```
 
+## Scene pages and the designer
+
+A URL ending in `.scene.json` is a declarative [scene page](../../docs/SCENES.md).
+The browser renders it with `scene/render` and runs the optional sidecar script
+with a `page` object and a page-scoped `scene` namespace. Data-only scenes run
+no code at all.
+
+Press **F4** or the pencil button to edit a writable scene file in place. The
+page script stops while the designer is open; **Done** saves (validating first)
+and reloads the page. The designer is documented in
+[docs/DESIGNER.md](../../docs/DESIGNER.md).
+
+```bash
+fynerisor-browser file:///path/to/page.scene.json
+# or edit without loading the page first:
+go run ./cmd/fynerisor-designer page.scene.json
+```
+
 ## See Also
 
 - [fynerisor](https://github.com/uidbz/fynerisor) - Risor v2 bindings for Fyne

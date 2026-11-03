@@ -273,3 +273,43 @@ value := b.GetParam("myarg")   // first value, or "" if absent
 - **Current()** - Get current URL
 
 History automatically tracks visited pages and supports back/forward navigation with proper stack management.
+
+## Scene pages and in-place editing
+
+The browser understands two page kinds (see `docs/SCENES.md`):
+
+- `KindRisor` — the classic script page, executed in a `gui.Window` run.
+- `KindScene` — a `*.scene.json` document rendered by `scene/render`.
+
+Supply `Config.LoadPage` to load either kind (it runs off the UI thread and
+returns bytes, a version and writability); the default wraps `LoadContent` and
+detects scenes by URL suffix or the `fynerisor.scene/` format marker.
+
+```go
+b := browser.New(window, browser.Config{
+    LoadContent: loadScript,             // classic pages (fallback)
+    LoadPage:    loadPage,               // *browser.Page, both kinds
+    RenderScene: func(b *browser.Browser, p *browser.Page) error {
+        // decode p.Body, build a render.View, run the sidecar script
+        return nil
+    },
+})
+```
+
+`EnableEditor` adds the toolbar pencil and the **F4** shortcut. While an
+editor is open the browser stops the page's script (`Window.Release`), swaps
+the content area to the editor object, asks the provider before navigating
+away, and reloads the page after the editor closes. A provider only needs:
+
+```go
+type EditorProvider interface {
+    CanEdit(p *Page) bool
+    Open(p *Page, b *Browser) fyne.CanvasObject
+    BeforeLeave(done func(ok bool))
+}
+```
+
+`cmd/fynerisor-browser` implements this for writable scene files. The editor
+itself lives in `github.com/uidbz/fynerisor/designer`; `docs/DESIGNER.md`
+explains gestures, save/conflict semantics and how to embed it in another
+host.

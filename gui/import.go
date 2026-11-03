@@ -41,7 +41,7 @@ func (w *Window) importStateFor(ctx context.Context) *importState {
 		return st
 	}
 	_, base := w.runner.Snapshot()
-	env, _ := w.runOptions()
+	env, _ := w.runOptions(nil)
 	return newImportState(base, env)
 }
 

@@ -14,7 +14,7 @@ This skill provides expert assistance with fynerisor development, including:
 - Event handling and callbacks
 - Modules (HTTP, SQL, OS, Time, Strings, Filepath, IO, JSON, CSV, Exec, Tie)
 
-Current: v0.9.0, Risor v2.2+, Fyne v2.8+, module path `github.com/uidbz/fynerisor`
+Current: v0.12.0, Risor v2.2+, Fyne v2.8+, module path `github.com/uidbz/fynerisor`
 (host code imports the `core` and `gui` packages — the root package is docs-only).
 
 ## When to Use This Skill
@@ -43,6 +43,8 @@ you where to look rather than duplicating them:
 | Concurrency model deep dive | `docs/CONCURRENCY.md` |
 | Runnable examples | `examples/` (per-example READMEs) + `docs/EXAMPLES.md` |
 | Tie triple store | `docs/TIE_MODULE.md` |
+| Scene document format, components, actions, scripting | `docs/SCENES.md` + generated `docs/API.md#scene-components` |
+| Scene designer (gestures, inspector, embedding, limitations) | `docs/DESIGNER.md` |
 | What changed between versions | `CHANGELOG.md` |
 
 Refer to `references/fynerisor-reference.md` for distilled operational
@@ -54,6 +56,39 @@ When in doubt about an attribute or function name, check `docs/API.md` (or
 run `fynerisor docs --json`) instead of guessing from memory.
 
 ## Key Concepts to Emphasize
+
+### Scene documents (`*.scene.json`)
+
+Scenes are declarative JSON pages: x/y hotspots over a background, Fyne layout
+containers, properties and actions. A sidecar `.risor` script adds behaviour by
+node ID. Hosts opt in with `guiscene.WithScene(...)` (package `gui/scene`,
+like `gui/db`) or by handing a page-scoped `scene` object to
+`Window.ExecuteWith`.
+
+- A data-only scene runs **no code**; scripts are opt-in. The designer stops the
+  page script while editing (`Window.Release`) and the browser reloads after save.
+- `page.Node(id)` is a composite handle: scene attributes (`SetPlace`, `On`,
+  `Prop`, `Set`) win, unknown attributes delegate to the fynerisor widget/canvas
+  wrapper (`page.Node("title").SetText("x")`).
+- Event maps always contain every key (`id, name, type, event, x, y, item,
+  value`) because Risor errors on missing map keys.
+- `page.Bind({name: fn})` registers `call` action handlers. Calls that fire
+  before `Bind` are buffered by the page and flushed.
+- Free canvases use `render.FreeLayout`: `fit|fill|stretch|none` with anchors.
+  Background and hotspots share the same transform, so never position hotpots
+  by hand outside the design coordinates.
+- Components with actions (images, shapes, icons) sit in a stack under a
+  transparent event surface; `hotspot` is the dedicated point-and-click widget.
+- Runtime `node.Set`/`SetPlace` changes are **not** written to the document.
+  Use the designer or edit the JSON for persistent changes.
+- The designer must run on Fyne's UI thread. Every edit is a `scene.Tx` of
+  invertible ops; `View.Apply` consumes the resulting `[]scene.Change`.
+- CLI: `fynerisor check x.scene.json` (validates props/actions and compiles the
+  sidecar), `fynerisor scene x.scene.json`, `fynerisor-designer x.scene.json`.
+  The browser's F4/pencil enters the same editor for writable scene pages.
+- Current limits: `style` overrides are stored but not applied yet; `embed` is a
+  placeholder; inline text editing/zoom/autosave are roadmap items. See
+  `docs/DESIGNER.md` "Status".
 
 ### Risor v2 Syntax
 - No C-style for loops - use `.each()`, `.map()`, `.filter()`

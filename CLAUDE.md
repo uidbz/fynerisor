@@ -6,7 +6,7 @@ This file provides context and guidelines for AI assistants working on fynerisor
 
 Fynerisor provides Risor v2 language bindings for the Fyne GUI framework, enabling cross-platform desktop applications written in Risor scripts.
 
-**Current Version:** 0.9.0  
+**Current Version:** 0.13.0
 **Language:** Go 1.27+  
 **Dependencies:** Fyne v2.8+, Risor v2.x
 
@@ -24,8 +24,15 @@ fynerisor/
 │   ├── chart/      # Chart wrappers
 │   ├── binding/    # Data binding wrappers
 │   └── dialog/     # Dialog wrappers
+├── scene/          # Scene document model, specs, validation, ops/stores (no Fyne)
+│   ├── builtin/    # Standard component specs (pure data)
+│   └── render/     # Fyne runtime: Registry, View, FreeLayout, actions
+│       └── builtin/ # Fyne component factories
+├── designer/       # WYSIWYG scene editor (overlay, inspector, outline, palette)
+├── gui/scene/      # Opt-in Risor binding for scenes (like gui/db)
 ├── modules/        # Optional Risor modules (http, sql, os, etc.)
 ├── cmd/fynerisor/  # CLI tool
+├── cmd/fynerisor-designer/
 ├── examples/       # Example applications
 └── docs/           # Documentation
 ```
@@ -341,6 +348,8 @@ documentation, each kind of fact has exactly ONE owner:
 - `docs/API.md` - Generated script API reference (CI-pinned; `go generate .`)
 - `skill/` - The fynerisor agent skill (canonical home; installed via symlink)
 - `docs/CONCURRENCY.md` - Threading guidelines
+- `docs/SCENES.md` - Scene document format and runtime
+- `docs/DESIGNER.md` - Scene designer guide and architecture
 - `docs/EXAMPLES.md` - Example descriptions
 - `cmd/fynerisor/main.go` - CLI tool
 

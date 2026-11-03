@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
+
+	"github.com/uidbz/fynerisor/scene"
 )
 
 // isURL checks if a string is an absolute URL (http://, https://, or file://)
@@ -96,6 +98,20 @@ func fileURLToPath(fileURL string) string {
 		p = p[1:]
 	}
 	return filepath.FromSlash(p)
+}
+
+// resolveRef resolves a target against the current URL, using the scene
+// resolver for tie: pages. net/url drops the host-omission flag on custom
+// schemes, so the generic path turned tie:/scenes/home + kitchen into
+// tie:///scenes/kitchen (which no tie path resolver accepts).
+func resolveRef(current, target string) string {
+	if strings.HasPrefix(target, "tie:") || strings.HasPrefix(current, "tie:") {
+		if resolved, err := scene.ResolveRef(current, target); err == nil {
+			return resolved
+		}
+		return target
+	}
+	return correctRelativeURL(current, target)
 }
 
 // correctRelativeURL resolves a relative URL against a current URL

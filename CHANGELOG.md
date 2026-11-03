@@ -1,19 +1,241 @@
 # Changelog
 
-## [0.9.0] - 2026-10-19
-
-### Breaking
-- **tie dependency v0.7.3.** `tie.associated()` now flattens the flat
-  `[]tiedb.Row` reply internally; the Risor-visible list of
-  `{key, value1, value2}` maps is unchanged, but callers embedding the
-  Go client must target tie v0.7.3.
-- **SQL is opt-in in headless `core`.** `core.WithSQL()` was removed;
-  import `github.com/uidbz/fynerisor/core/db` and pass `db.WithSQL()`
-  to opt in. Binaries that never touch SQL now link zero database
-  drivers (verified against the lars static build). `gui.WithSQL()`
-  is unchanged.
-
 ## [Unreleased]
+
+### Added
+
+- **The tie module grew a compute plane: `tie.runner`.** A handle on a
+  tie-runner daemon: `r.run(image, inputHash)` submits a containerized
+  job and returns a `tie.job` handle (`status()`, `wait()`,
+  `cancel(deployKey)`, ...), `r.pipeline({...})` submits a step graph
+  the runner sequences itself (`steps()`, `wait()`,
+  `resume(deployKey, fromStep)`), plus `jobs()/queue()/active()`,
+  `services()/start_service()/stop_service()`, `images()`, `version()`,
+  `filehost()` and `upload(path)` for staging input trees. The
+  bindings drive tie's `runclient` library — the same one the
+  `tie-run` CLI speaks through — and status records carry the wire
+  field names from tie's `docs/runner-api.md`, so script, CLI and
+  protocol spec cannot drift. See `docs/TIE_MODULE.md`
+  ("Runner (Compute Plane)").
+
+### Changed
+
+- tie dependency is v0.8.4, the first release carrying `runclient`
+  and the runner engine the new `tie.runner` bindings drive.
+
+## [0.13.0] - 2026-11-03
+
+### Fixed — scenes were invisible and dead to input
+
+- **The size-hint wrapper hid every node.** `hintObject` embedded the
+  `fyne.CanvasObject` interface; Fyne's render/hit-test walkers only descend
+  into `*fyne.Container` and `fyne.Widget`, and painters only draw concrete
+  canvas types. Nothing below the wrapper was painted, hit-tested, registered
+  with the canvas, or positioned absolutely — a blank page and an editor with
+  selection boxes but no widgets. It is now a real widget with a renderer.
+- **`text` components were invisible** for the same reason (`scaledText`).
+- **Error scenes** rebuilt their padded container on every `Object()` call
+  (unstable identity); it is built once.
+- **A `border` with unoccupied slots panicked** on the first refresh (nil
+  entries in the layout's object list).
+- Added pixel and hit-test regression tests (`scene/render/paint_test.go`).
+
+### Fixed — fluid drag and resize
+
+- **No cascading refreshes on hot paths.** Drag previews, placements, inserts
+  and `View.Apply` no longer call `Container.Refresh()`, which recursively
+  refreshed every child and re-decoded every image (including the background)
+  on every pointer event. `FreeLayout.LayoutObject` places one child;
+  `canvas.Refresh` repaints without refreshing the tree.
+- **The selection box follows the drag** instead of sitting at the committed
+  position until release; it also refreshes on stage layout changes.
+- **Panel rebuilds are deferred** until a gesture ends (mouse-down no longer
+  rebuilds the inspector before the first drag event).
+- **The overlay is no longer `DoubleTappable`**, so single taps are not delayed
+  by the driver's 300 ms double-tap window; double-click is detected locally.
+- **Resize uses edge maths**: the opposite edge stays fixed, snapping applies
+  to the moving edge, the minimum size stops the edge, Shift keeps the aspect
+  ratio and Alt disables snapping.
+- **Palette drag drops under the pointer** at the default component size
+  (it used the chip's top-left corner and a rubber-band rectangle).
+- **Reparenting requires Alt**, so a drag over another container no longer
+  moves the node by accident.
+- Nudge key-repeat coalesces into one undo step; the inline text editor is a
+  proper `editorEntry` (no duplicate renderer).
+
+### Fixed — saving reliability
+
+- **Ctrl/Cmd+S works from inspector fields.** The driver gives shortcuts to the
+  focused widget, and `Entry` swallowed unknown ones; `editorEntry` forwards
+  save/close (and F4) to the editor. Canvas shortcuts are installed while the
+  editor is open.
+- **Edits made during an async save stay dirty.** Saves checkpoint the history
+  and mark exactly that state saved; a byte comparison covers undo/redo during
+  the save.
+- **Overlapping saves are queued**, not dropped; Done during a save waits for
+  it (and saves once more if the document changed).
+- **Leaving edit mode** (pencil/F4/Ctrl+E) goes through the save prompt, and
+  the provider is always told when the editor closes (autosave stops).
+- **No-op saves are skipped**, and there is a persistent save indicator via
+  `Options.OnSaveState`/`OnSaveDone`.
+- **Inspector fixes**: action fields no longer rebuild the inspector on every
+  keystroke; the slot select no longer fires a no-op edit from `SetSelected`;
+  event edits look nodes up by ID (the document is cloned on every Apply).
+- **Dialogs**: Save/Discard/Cancel on close, Cancel on conflicts, a second
+  confirmation before Reload discards edits, and "Later" keeps a draft.
+- **Blocked saves are actionable**: the Problems tab comes forward and the
+  first invalid node is selected.
+
+### Fixed — tie store
+
+- **Transport errors no longer look like a missing document.** `documentHash`
+  returned `("", nil)` on any Get error, causing spurious save conflicts (whose
+  Reload choice discarded edits) and making the browser overwrite the home
+  scene with the starter page. Only `ErrNotFound` means "no document"; the
+  dead `scene.json` child fallback (JSON is `unknown-file`, invisible to
+  `ReadTieDir`) is gone.
+- **Sidecar scripts load from inside the scene directory** (`LoadScript`,
+  `SaveScript`); the old sibling resolution pointed at the parent directory and
+  rendered scripted scenes blank.
+- **Indexing**: asset-kind props only (when a schema is set), errors reach
+  `OnIndexError`, and saves sync the collection.
+- Thumbnails are serialized per store (concurrent saves cannot race on
+  `thumbnail.png`). The client is behind a narrow interface so the error paths
+  are unit-tested.
+
+### Fixed — browser shell
+
+- **F4 never fired**: the GLFW driver only builds custom shortcuts for keys
+  with a modifier. Ctrl/Cmd+E is now the binding; F4 is handled as a plain key
+  when nothing is focused and forwarded by the editor overlay/fields.
+- **Errors show an in-page panel** with Retry (and Edit when the page is
+  editable) instead of a blank page and a transient status line.
+- **`tie:` relative URLs resolve like file paths** (`tie:/scenes/kitchen`), not
+  as `tie:///…`.
+- **Back/Forward ask the editor before moving the history cursor.**
+- Pages expose `Dispose`, so a replaced scene view releases its async loads.
+
+### Fixed — tie components and visuals
+
+- Gallery honours the `tile` prop, guards recycled cells against stale loads,
+  and shows query errors/empty results.
+- `tie.audio`/`tie.video` have default play/open actions; `tie.related` output
+  is sorted; the asset cache is bounded and names resources from the original
+  filename (SVG decoding).
+- `free` has a `backgroundColor` design-area fill (empty keeps the old
+  letterbox look), and the designer draws high-contrast outlines for hotspots
+  and slots in edit mode.
+
+### Changed
+
+- `browser.Page` gains `Script`, `ScriptErr` and `Dispose`.
+- `designer.Options` gains `OnSaveState` and `OnSaveDone`.
+- `scene/store/tie.Store.Client` is a narrow `Client` interface; `Store.Schema`
+  restricts indexed asset props.
+
+## [0.12.0] - 2026-11-02
+
+### Added — remaining designer/tie roadmap
+
+- **Async asset picker hook**: `designer.Options.AssetPick` now takes the
+  property kind and a completion callback, so hosts can open dialogs without
+  blocking the UI. tie-browser uses it for tag-query thumbnail grids (media)
+  and scene-path selection (scene refs).
+- **Multi-document story map**: the story map now loads linked scenes through
+  the host `Embed`/store resolver (two levels) and draws scene-level cards and
+  edges.
+- **Touch-first editor layout**: mobile drivers get a vertical split with
+  bottom Palette/Inspector/Outline/Problems tabs instead of side panels.
+- **File-hosted scene thumbnails**: fynerisor-browser writes `thumbnail.png`
+  beside a saved scene file using an offscreen Fyne render.
+- **Tie image caching/picker fixes**, polygon validation/API polish, and docs
+  for the completed roadmap.
+
+tie-browser now includes media/scene asset pickers. Native pwplay/mpv playback
+remains the main follow-up (the current opener uses the system handler).
+## [0.11.1] - 2026-11-02
+
+### Fixed / polished
+
+- Polygon hotspot validation now caps points at the renderer's 16-vertex limit
+  and warns when a polygon has fewer than three points.
+- tie asset thumbnails are cached under the full content hash, so gallery cells
+  no longer reload the same thumbnail on every refresh.
+- Mobile device detection is nil-safe on test/embedded drivers.
+- The designer inspector exposes `style` overrides (foreground, background,
+  text size, bold, italic); changes rebuild only that node's subtree.
+- Added tie component registration tests and a tie-browser home-scene
+  integration test.
+
+## [0.11.0] - 2026-11-02
+
+### Added — designer and tie-browser roadmap
+
+- **Inline text editing**: double-click a label/text/button node to edit its
+  `text` property in place (Enter/focus-loss commits, Esc cancels).
+- **Wrap/unwrap/convert**: put selected siblings into `vbox`, `hbox` or `free`
+  from the context menu, unwrap a container, and convert free containers to
+  layout containers (and back) while preserving the visual arrangement.
+- **Autosave and conflict resolution**: a 30-second draft (restorable from the
+  toolbar or on open), Overwrite/Reload on version conflicts, and explicit
+  unsaved-change prompts.
+- **Device and zoom previews**: Responsive/Desktop/Tablet/Phone frames,
+  50–200% zoom with scrolling, and theme text scaling for layout-root scenes.
+- **Palette drag-and-drop**, polygon hotspot point editing (draggable handles,
+  add/remove point, points inspector), story map of outgoing scene links, and
+  larger touch handle targets.
+- **Style overrides** applied through a Fyne theme override; host-resolved
+  `embed` scenes with a same-origin check; `render.StoreResolver`.
+- **tie components**: `scene/render/tie` registers `tie.image`, `tie.gallery`,
+  `tie.collection`, `tie.tags`, `tie.related`, `tie.document`, `tie.audio` and
+  `tie.video`; `scene/store/tie` now indexes `member-of`/`links-to`, marks the
+  dir-type `scene`, and stores save thumbnails.
+- **tie-browser**: `tie-gui/cmd/tie-browser` — tie scene storage, home scene,
+  F4 designer, source view, save/reload, indexing, thumbnails and a `tie.*`
+  component palette. Native pwplay/mpv playback and tag/thumbnail pickers remain
+  follow-ups.
+
+## [0.10.0] - 2026-11-01
+
+### Added — scenes and the scene designer
+
+- **Scene documents** (`scene/`): a canonical, versioned JSON page format
+  (`fynerisor.scene/1`) with a pure-Go document model, component specs and
+  registry, validation, invertible operations, undo/redo history and
+  file/HTTP/memory stores. Documents are limited to 2 MiB, 5000 nodes and depth
+  32; unknown component types keep their data and render as placeholders.
+- **Scene runtime** (`scene/render/`): component factories, incremental
+  `View.Apply`, a `FreeLayout` with `none|fit|fill|stretch` scaling and
+  WinForms-style anchors, action engine, async asset resolution, and the
+  standard component set (layout, display, shapes, inputs, hotspot, link,
+  embed placeholder, script slot). Unknown types degrade gracefully.
+- **Designer** (`designer/`): in-place WYSIWYG editor with one input-shielding
+  overlay, select/move/resize/marquee, container drop/reorder/reparenting,
+  grid and sibling-edge snapping with guides, palette, outline (hide/lock),
+  schema-driven inspector, event action editor, problems panel, clipboard
+  fragments, duplicate/delete/z-order, undo/redo with coalescing, save with
+  optimistic concurrency, and preview mode.
+- **Risor binding** (`gui/scene/`): opt-in `WithScene`, `scene.Load/Parse/New`,
+  `page.Node/Find/Bind/Values`, `node.On/Off/Set/SetPlace/SetContent`, and
+  delegation to the existing widget/canvas wrappers. `call` actions that fire
+  before `Bind` are buffered.
+- **Browser**: page kinds (`.risor` and `.scene.json`), `LoadPage`,
+  `RenderScene`, `EditorProvider`, `EnableEditor`, F4/pencil in-place editing,
+  `Window.ExecuteWith` (run-scoped globals) and `Window.Release`.
+- **CLI**: `fynerisor check` validates scene documents and compiles their
+  sidecar scripts; `fynerisor scene` renders one; new
+  `cmd/fynerisor-designer` standalone editor. `fynerisor docs` now includes
+  generated scene component tables and the scene script types.
+- **tie integration**: `scene/store/tie` stores a scene as a typed tie
+  directory (stable DirUID, `scene-doc` pointer, content-addressed
+  `scene.json` versions, conflict checks); `scene/render/tie` resolves
+  `tie:<hash>` assets through the filehost with thumbnail preference. Both are
+  integration-tested against the tie test environment (skipped when absent).
+- **Docs/examples**: `docs/SCENES.md`, `docs/DESIGNER.md`, examples 44 and 45,
+  and the generated API reference.
+
+tie-browser (M6) builds on the same interfaces in `uidbz/tie-gui`; its storage
+model and component plan are documented in `docs/SCENES.md`.
 
 ### Breaking
 
@@ -213,19 +435,18 @@
 
 ### Added
 
-- **The tie module grew a compute plane: `tie.runner`.** A handle on a
-  tie-runner daemon: `r.run(image, inputHash)` submits a containerized
-  job and returns a `tie.job` handle (`status()`, `wait()`,
-  `cancel(deployKey)`, ...), `r.pipeline({...})` submits a step graph
-  the runner sequences itself (`steps()`, `wait()`,
-  `resume(deployKey, fromStep)`), plus `jobs()/queue()/active()`,
-  `services()/start_service()/stop_service()`, `images()`, `version()`,
-  `filehost()` and `upload(path)` for staging input trees. The
-  bindings drive tie's `runclient` library — the same one the
-  `tie-run` CLI speaks through — and status records carry the wire
-  field names from tie's `docs/runner-api.md`, so script, CLI and
-  protocol spec cannot drift. See `docs/TIE_MODULE.md`
-  ("Runner (Compute Plane)").
+- **`MultiLineEntry.SetMinRowsVisible(count)`** (issue #53). The entry
+  wrapper now exposes Fyne's row-count setter, so scripted editors can choose
+  their height instead of accepting Fyne's default of three rows.
+- **`vmexec.Call` / `Run.Call` for host-dispatched script handlers
+  (issue #54).** The helper installs the VM call function into the handler's
+  context before invoking the closure, so a host event bridge (`window.Do` +
+  a captured `object.CallFunc`) no longer needs `object.WithCallFunc`, and
+  handlers can create widgets with callbacks without failing with "unable to
+  get call function". `Run.Call` also rejects handlers from stopped runs.
+  `vmexec.NewCallback` now makes the same context invariant explicit for
+  fynerisor's own widget callbacks. `docs/CONCURRENCY.md` has a worked bridge
+  example.
 - **`fynerisor docs` generates the API reference (issue #47).**
   `fynerisor docs --markdown -o docs/API.md` (also `--json`; also
   `go generate .`) renders every script-visible type and attribute from
@@ -311,8 +532,6 @@
 
 ### Changed
 
-- **tie dependency is v0.8.0**, the first release carrying `runclient`
-  and the runner engine the new `tie.runner` bindings drive.
 - **Chart engine internals (`gui/chart/`).** New shared engine: `scale.go`
   (linear scales with clamped zoom/pan and nice-tick generation), `scene.go`
   (serializable primitive scene + clip-aware painter + SVG writer),
@@ -579,6 +798,19 @@
   `io.write(p, json.format(v))`, same for csv), and `io.cp` (now an alias
   of `io.copy`, which preserves the source mode). All still work as thin
   fallbacks this release.
+
+## [0.9.0] - 2026-10-19
+
+### Breaking
+- **tie dependency v0.7.3.** `tie.associated()` now flattens the flat
+  `[]tiedb.Row` reply internally; the Risor-visible list of
+  `{key, value1, value2}` maps is unchanged, but callers embedding the
+  Go client must target tie v0.7.3.
+- **SQL is opt-in in headless `core`.** `core.WithSQL()` was removed;
+  import `github.com/uidbz/fynerisor/core/db` and pass `db.WithSQL()`
+  to opt in. Binaries that never touch SQL now link zero database
+  drivers (verified against the lars static build). `gui.WithSQL()`
+  is unchanged.
 
 ## [0.8.2] - 2026-09-03
 

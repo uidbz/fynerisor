@@ -12,6 +12,7 @@ Fynerisor provides Risor script bindings for the Fyne GUI toolkit, allowing you 
 - 🌐 **HTTP, SQL, OS & More** - Built-in modules for web requests, databases, file I/O
 - 📦 **Script Imports** - Load reusable code with namespace isolation
 - 🧭 **Browser Package** - Reusable browser UI that loads Risor scripts from URLs
+- 🎬 **Scenes & Designer** - Declarative JSON pages with x/y hotspots and layout containers, a WYSIWYG designer, and in-place editing (F4) in the browser
 - 🔧 **Embeddable** - Easy integration into Go applications
 - 🧵 **Concurrency** - Background tasks with thread-safe GUI updates
 - 📱 **Cross-Platform** - Linux, Windows, macOS, Android
@@ -349,7 +350,11 @@ Go-side `Window.Do(func())` host API is a different thing.)
 
 For genuinely parallel work, use Go: a host global or module that runs
 its own goroutine and reports back through a callback — the callback is
-queued onto the VM goroutine, so touching widgets from it is safe.
+queued onto the VM goroutine, so touching widgets from it is safe. A host
+bridge that keeps the raw script closure can capture the run and dispatch it
+with `run.Call(callFunc, fn, args...)` (`gui/vmexec`): the helper installs the
+VM call function, so handlers can create widgets and register callbacks too.
+See [Host event bridges](docs/CONCURRENCY.md#host-event-bridges).
 
 ## Keyboard Shortcuts
 
@@ -464,6 +469,8 @@ Eventually I dream of making an other browser app, that incorporates the origina
 - [Examples Guide](docs/EXAMPLES.md) - Usage patterns and concepts
 - [Tie Module](docs/TIE_MODULE.md) - Triple store database guide
 - [Changelog](CHANGELOG.md) - Version history
+- [Scene Documents](docs/SCENES.md) - Declarative pages: format, components, actions, scripting
+- [Scene Designer](docs/DESIGNER.md) - The editor: gestures, inspector, architecture, embedding
 - [Concurrency Guide](docs/CONCURRENCY.md) - Threading patterns
 - [Widget Status](docs/WIDGET_STATUS.md) - Supported Fyne widgets
 - [App Versioning](examples/27-app-versioning) - Custom application versioning

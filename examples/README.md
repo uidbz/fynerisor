@@ -67,6 +67,8 @@ Each example has its own README with detailed explanation. Browse the directorie
 - **41-table-header-levels** - Two-row (hierarchical) table header from a tie table (requires tie-triplestore)
 - **42-interactive-charts** - Hover tooltips, tap/right-click callbacks, zoom/pan, live toggles, and SVG export on canvas-based charts
 - **43-embedded-canvas-object** - Embed a Risor script as a `CanvasObject` inside a host Fyne application
+- **44-scene-page** - Declarative scene page (x/y hotspots, containers, actions) with a sidecar script
+- **45-scene-designer** - Embed the WYSIWYG scene designer in a host application
 
 ## Example Structure
 

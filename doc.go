@@ -10,12 +10,16 @@
 //
 //   - core: Headless Risor execution with no GUI dependencies (enables static compilation)
 //   - gui: Full GUI capabilities with Fyne (requires dynamic linking for OpenGL/X11)
+//   - scene: Headless scene-document model, component specs, validation, ops and stores
+//   - scene/render: the Fyne runtime that renders scenes
+//   - designer: the WYSIWYG scene editor
 //
-// Always import the specific package you need: core for headless, gui for desktop applications.
+// Always import the specific package you need: core for headless, gui for
+// desktop applications, scene/designer for declarative pages and their editor.
 //
 // # Version
 //
-// Current Version: 0.9.0
+// Current Version: 0.13.0
 // Risor Compatibility: v2.2+ (arrow functions required)
 // Fyne Compatibility: v2.7+
 //

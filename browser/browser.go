@@ -29,10 +29,19 @@ type Config struct {
 	MenuProvider MenuProvider
 	AuthProvider AuthProvider
 
-	// Required callback. It runs off the UI thread on a navigation
-	// goroutine and must honor ctx: a superseded navigation is cancelled
-	// so slow fetches die instead of piling up (issue #28).
+	// LoadContent loads a classic Risor page. It runs off the UI thread on a
+	// navigation goroutine and must honor ctx: a superseded navigation is
+	// cancelled so slow fetches die instead of piling up (issue #28).
+	// LoadPage supersedes it when set.
 	LoadContent func(ctx context.Context, url, username, password string) (string, error)
+
+	// LoadPage loads a page of either kind (script or scene). When set it is
+	// used instead of LoadContent.
+	LoadPage LoadPageFunc
+
+	// RenderScene displays scene pages. Without it a scene page reports an
+	// error instead of rendering.
+	RenderScene RenderSceneFunc
 
 	// Optional callbacks
 	OnNavigate         func(url string) error
@@ -50,16 +59,23 @@ type Browser struct {
 	history          *History
 	url              binding.String
 	status           binding.String
+	saveState        binding.String
 	config           Config
 	content          *fyne.Container
 	topBar           fyne.CanvasObject
 	statusBar        *widget.Label
+	saveLabel        *widget.Label
 	sideMenu         *fyne.Container
 	homeURL          string
 	params           url.Values
 	sourceProvider   SourceViewProvider
 	onOpenInBrowser  func(url string)
 	sourceViewActive bool
+
+	currentPage *Page
+	editor      EditorProvider
+	editing     bool
+	editorObj   fyne.CanvasObject
 
 	// Navigation state (issue #28): fetches run on goroutines tagged with
 	// a generation id; ctx cancels the superseded one, and results apply
@@ -72,12 +88,13 @@ type Browser struct {
 // New creates a new Browser instance
 func New(window *gui.Window, config Config) *Browser {
 	b := &Browser{
-		window:  window,
-		config:  config,
-		url:     binding.NewString(),
-		status:  binding.NewString(),
-		homeURL: config.HomeURL,
-		params:  url.Values{},
+		window:    window,
+		config:    config,
+		url:       binding.NewString(),
+		status:    binding.NewString(),
+		saveState: binding.NewString(),
+		homeURL:   config.HomeURL,
+		params:    url.Values{},
 	}
 
 	// Create history with callbacks
@@ -104,7 +121,10 @@ func (b *Browser) buildUI() {
 				b.navigate(b.homeURL, true)
 			}
 		}),
+		widget.NewToolbarSeparator(),
+		widget.NewToolbarAction(theme.DocumentCreateIcon(), b.ToggleEdit),
 	)
+	b.installEditShortcut()
 
 	// Address bar
 	addressBar := widget.NewEntryWithData(b.url)
@@ -127,12 +147,15 @@ func (b *Browser) buildUI() {
 	// Top bar layout
 	b.topBar = container.NewBorder(nil, nil, toolbar, burgerButton, addressBar)
 
-	// Status bar
+	// Status bar, with a persistent save-state indicator on the right.
 	b.statusBar = widget.NewLabelWithData(b.status)
+	b.saveLabel = widget.NewLabelWithData(b.saveState)
+	b.saveLabel.Importance = widget.LowImportance
+	statusRow := container.NewBorder(nil, nil, nil, b.saveLabel, b.statusBar)
 
 	// Main layout
 	mainLayout := container.NewBorder(nil, nil, nil, b.sideMenu,
-		container.NewBorder(b.topBar, b.statusBar, nil, nil, b.content))
+		container.NewBorder(b.topBar, statusRow, nil, nil, b.content))
 
 	b.window.FyneWindow.SetContent(mainLayout)
 }
@@ -176,13 +199,66 @@ func (b *Browser) Navigate(url string) {
 	b.navigate(url, true)
 }
 
-// navigate is the internal navigation method. The fetch runs on its own
+// Back navigates to the previous history entry. While editing it asks the
+// editor first: moving the history cursor before the editor agrees left the
+// cursor pointing at a page that was never shown when the user cancelled.
+func (b *Browser) Back() {
+	if b.editing && b.editor != nil {
+		b.editor.BeforeLeave(func(ok bool) {
+			if !ok {
+				b.SetStatus("Navigation cancelled")
+				return
+			}
+			b.exitEditor()
+			b.history.Back()
+		})
+		return
+	}
+	b.history.Back()
+}
+
+// Forward navigates to the next history entry.
+func (b *Browser) Forward() {
+	if b.editing && b.editor != nil {
+		b.editor.BeforeLeave(func(ok bool) {
+			if !ok {
+				b.SetStatus("Navigation cancelled")
+				return
+			}
+			b.exitEditor()
+			b.history.Forward()
+		})
+		return
+	}
+	b.history.Forward()
+}
+
+// navigate is the internal navigation method. While an editor is open it asks
+// the editor whether unsaved work may be discarded; the navigation is
+// cancelled when the editor says no.
+func (b *Browser) navigate(url string, recordVisit bool) {
+	if b.editing && b.editor != nil {
+		b.editor.BeforeLeave(func(ok bool) {
+			if !ok {
+				b.SetStatus("Navigation cancelled")
+				return
+			}
+			b.exitEditor()
+			b.navigateNow(url, recordVisit)
+		})
+		return
+	}
+	b.navigateNow(url, recordVisit)
+}
+
+// navigateNow is the internal navigation method. The fetch runs on its own
 // goroutine so the UI thread never blocks on the network (issue #28);
 // starting a navigation cancels the previous one, and results apply
 // only while their generation is still current.
-func (b *Browser) navigate(url string, recordVisit bool) {
-	// Correct relative URLs
-	url = CorrectRelativeURL(b.history.Current(), url)
+func (b *Browser) navigateNow(url string, recordVisit bool) {
+	// Correct relative URLs (tie: pages resolve like file paths, not like
+	// directory URLs, so links can point at sibling scenes).
+	url = resolveRef(b.history.Current(), url)
 	log.Println("browser: navigating to", url)
 
 	// Parse query parameters from the URL and expose them to scripts
@@ -211,7 +287,7 @@ func (b *Browser) navigate(url string, recordVisit bool) {
 	b.navMu.Unlock()
 
 	go func() {
-		content, err := b.config.LoadContent(ctx, url, "", "")
+		page, err := b.loadPageContent(ctx, url, "", "")
 		if errors.Is(err, ErrUnauthorized) {
 			b.ifCurrent(id, func() { b.showAuthDialog(ctx, id, url) })
 			return
@@ -221,11 +297,11 @@ func (b *Browser) navigate(url string, recordVisit bool) {
 				if b.config.OnNavigateError != nil {
 					b.config.OnNavigateError(url, err)
 				}
-				b.SetStatus("Error: " + err.Error())
+				b.showErrorPage(url, err)
 			})
 			return
 		}
-		b.ifCurrent(id, func() { b.loadPage(url, content, recordVisit) })
+		b.ifCurrent(id, func() { b.loadPageObject(url, page, recordVisit) })
 	}()
 }
 
@@ -245,12 +321,25 @@ func (b *Browser) ifCurrent(gen uint64, fn func()) {
 // place that clears, loads, executes, refreshes source view, records
 // the visit and reports completion — navigate and the auth retry share
 // it now, issue #28). Runs on the UI thread.
-func (b *Browser) loadPage(url, content string, recordVisit bool) {
-	// Clear and load the script, recording the page URL as its base so
-	// relative imports resolve against the page, same-origin only (issue #8).
+func (b *Browser) loadPageObject(url string, page *Page, recordVisit bool) {
+	b.disposePage()
+	b.currentPage = page
 	b.window.Clear()
-	b.window.LoadScriptFrom(content, url)
-	b.window.Execute()
+	if page.Kind == KindScene {
+		if b.config.RenderScene == nil {
+			b.showErrorPage(url, errors.New("no scene renderer configured"))
+		} else if err := b.config.RenderScene(b, page); err != nil {
+			if b.config.OnNavigateError != nil {
+				b.config.OnNavigateError(url, err)
+			}
+			b.showErrorPage(url, err)
+		}
+	} else {
+		// Record the page URL as the script base so relative imports resolve
+		// against the page, same-origin only (issue #8).
+		b.window.LoadScriptFrom(string(page.Body), url)
+		b.window.Execute()
+	}
 
 	// If source view is active, refresh it with new content
 	if b.sourceViewActive && b.sourceProvider != nil {
@@ -296,14 +385,14 @@ func (b *Browser) showAuthDialog(ctx context.Context, gen uint64, url string) {
 				return
 			}
 			go func() {
-				content, err := b.config.LoadContent(ctx, url, username, password)
+				page, err := b.loadPageContent(ctx, url, username, password)
 				if err != nil {
 					b.ifCurrent(gen, func() {
 						b.SetStatus("Authentication failed: " + err.Error())
 					})
 					return
 				}
-				b.ifCurrent(gen, func() { b.loadPage(url, content, true) })
+				b.ifCurrent(gen, func() { b.loadPageObject(url, page, true) })
 			}()
 		})
 }
@@ -340,6 +429,46 @@ func (b *Browser) SetStatus(text string) {
 	if b.config.OnStatusChange != nil {
 		b.config.OnStatusChange(text)
 	}
+}
+
+// SetSaveState updates the persistent save-state indicator in the status bar
+// ("" hides it). Editors use it so "Saving…" and "Save failed" do not scroll
+// away with the transient status line.
+func (b *Browser) SetSaveState(text string) {
+	guithread.Do(func() {
+		b.saveState.Set(text)
+	})
+}
+
+// disposePage releases the live objects of the page being replaced (scene
+// views own async loads and galleries that must stop with the page).
+func (b *Browser) disposePage() {
+	if b.currentPage != nil && b.currentPage.Dispose != nil {
+		b.currentPage.Dispose()
+		b.currentPage.Dispose = nil
+	}
+}
+
+// showErrorPage replaces the content with an actionable error panel instead of
+// leaving the previous page (or a blank area) on screen.
+func (b *Browser) showErrorPage(url string, err error) {
+	b.disposePage()
+	b.window.Release()
+	msg := widget.NewLabel(err.Error())
+	msg.Wrapping = fyne.TextWrapWord
+	retry := widget.NewButton("Retry", func() { b.navigate(url, false) })
+	buttons := []fyne.CanvasObject{retry}
+	if b.currentPage != nil && b.editor != nil && b.editor.CanEdit(b.currentPage) {
+		buttons = append(buttons, widget.NewButton("Edit page", b.ToggleEdit))
+	}
+	panel := container.NewVBox(
+		widget.NewLabelWithStyle("Could not load this page", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		msg,
+		container.NewHBox(buttons...),
+	)
+	b.content.Objects = []fyne.CanvasObject{container.NewPadded(container.NewCenter(panel))}
+	b.content.Refresh()
+	b.SetStatus("Error: " + err.Error())
 }
 
 // ShowAndRun shows the window and starts the app

@@ -206,6 +206,21 @@ func init() {
 
 		return object.Nil, nil
 	})
+	entryAttrs.Define("SetMinRowsVisible").
+		Doc("Set how many rows a multi-line entry shows without scrolling (Fyne default 3).").
+		Args("count").Returns("nil").Impl(func(obj *Entry, ctx context.Context, args ...object.Object) (object.Object, error) {
+		if len(args) != 1 {
+			return nil, object.Errorf("wrong number of arguments. got=%d, want=1", len(args))
+		}
+		count, err := object.AsInt(args[0])
+		if err != nil {
+			return nil, object.Errorf("type error: expected int, got %s", args[0].Type())
+		}
+		guithread.Do(func() {
+			obj.instance.SetMinRowsVisible(int(count))
+		})
+		return object.Nil, nil
+	})
 	entryAttrs.Define("Append").Args("arg1").Returns("nil").Impl(func(obj *Entry, ctx context.Context, args ...object.Object) (object.Object, error) {
 		val, err := object.AsString(
 			args[0])

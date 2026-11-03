@@ -5,9 +5,12 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/uidbz/fynerisor/gui/objattrs"
+	_ "github.com/uidbz/fynerisor/gui/scene" // register scene attr types in the docs
+	scenebuiltin "github.com/uidbz/fynerisor/scene/builtin"
 )
 
 // fynerisor docs (issue #47): generate the API reference from the live
@@ -90,5 +93,32 @@ func renderMarkdown(specs []objattrs.TypeSpecs) string {
 		}
 		b.WriteString("\n")
 	}
+	b.WriteString("## Scene components\n\n")
+	b.WriteString("Declarative components available in scene documents. Values are the\n")
+	b.WriteString("authoritative defaults from the component specs; the designer inspector\n")
+	b.WriteString("uses the same data. Components marked *external* are registered by the\n")
+	b.WriteString("embedding application (tie-browser registers the `tie.*` family).\n\n")
+	b.WriteString("| Type | Title | Kind | Category | Default props | Events | Slots |\n")
+	b.WriteString("|---|---|---|---|---|---|---|\n")
+	specsScene := scenebuiltin.Specs()
+	sort.Slice(specsScene, func(i, j int) bool { return specsScene[i].Type < specsScene[j].Type })
+	for _, spec := range specsScene {
+		var props []string
+		for _, p := range spec.Props {
+			def := ""
+			if p.Default != nil {
+				def = fmt.Sprintf(" = %v", p.Default)
+			}
+			props = append(props, fmt.Sprintf("%s (%s%s)", p.Name, p.Kind, def))
+		}
+		var evs []string
+		for _, e := range spec.Events {
+			evs = append(evs, e.Name)
+		}
+		fmt.Fprintf(&b, "| `%s` | %s | %s | %s | %s | %s | %s |\n",
+			spec.Type, spec.Title, spec.Kind, spec.Category,
+			strings.Join(props, ", "), strings.Join(evs, ", "), strings.Join(spec.Slots, ", "))
+	}
+	b.WriteString("\n")
 	return b.String()
 }
