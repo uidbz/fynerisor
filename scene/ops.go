@@ -358,8 +358,16 @@ type History struct {
 	past, future []Tx
 	limit        int
 	savedPos     int
+	rev          int // bumped by every push/undo/redo; see Checkpoint
 	mergeKey     string
 	mergeAt      time.Time
+}
+
+// Checkpoint records the current history position so an asynchronous save can
+// mark exactly the state it wrote, not whatever the user typed meanwhile.
+type Checkpoint struct {
+	pos int
+	rev int
 }
 
 // NewHistory returns a history with the given limit (default 200).
@@ -376,6 +384,7 @@ func (h *History) Push(tx Tx) {
 	if len(tx.Ops) == 0 {
 		return
 	}
+	h.rev++
 	if len(h.future) > 0 {
 		h.future = nil
 		h.savedPos = -1 // the saved state is no longer on this branch
@@ -415,6 +424,7 @@ func (h *History) Undo(d *Document) ([]Change, bool, error) {
 	if err != nil {
 		return nil, false, err
 	}
+	h.rev++
 	h.past = h.past[:len(h.past)-1]
 	h.future = append(h.future, tx)
 	h.mergeKey = ""
@@ -431,6 +441,7 @@ func (h *History) Redo(d *Document) ([]Change, bool, error) {
 	if err != nil {
 		return nil, false, err
 	}
+	h.rev++
 	h.future = h.future[:len(h.future)-1]
 	h.past = append(h.past, tx)
 	h.mergeKey = ""
@@ -439,6 +450,29 @@ func (h *History) Redo(d *Document) ([]Change, bool, error) {
 
 // Dirty reports whether the document differs from the last saved state.
 func (h *History) Dirty() bool { return h.savedPos < 0 || len(h.past) != h.savedPos }
+
+// Checkpoint records the position and generation of the current history. Take
+// it when a save starts, and pass it to MarkSavedAt when the save completes:
+// edits made while the save is in flight then keep the document dirty instead
+// of being silently reported as saved.
+func (h *History) Checkpoint() Checkpoint {
+	// A save boundary must also break coalescing, so keystrokes after the
+	// save cannot merge into the transaction that was written.
+	h.mergeKey = ""
+	return Checkpoint{pos: len(h.past), rev: h.rev}
+}
+
+// MarkSavedAt marks the checkpointed state saved. It reports false when the
+// history changed since the checkpoint (undo/redo, or a merge into an earlier
+// transaction); the caller may then compare the encoded bytes to decide.
+func (h *History) MarkSavedAt(cp Checkpoint) bool {
+	if cp.rev != h.rev {
+		return false
+	}
+	h.savedPos = cp.pos
+	h.mergeKey = ""
+	return true
+}
 
 // MarkSaved records the current position as saved. It also clears the merge
 // key so typing after a save cannot merge into the saved transaction and make

@@ -36,23 +36,24 @@ func newLabel(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
 // --------------------------------------------------------------- canvas text
 
 type scaledText struct {
+	widget.BaseWidget
 	obj   *canvas.Text
 	base  float32
 	scale float64
 }
 
-// CanvasObject delegation (the embedded field cannot be named Text because
-// canvas.Text already has a Text string field).
+func newScaledText() *scaledText {
+	t := &scaledText{obj: canvas.NewText("", render.Color("#ffffff", nil)), scale: 1}
+	t.ExtendBaseWidget(t)
+	return t
+}
 
-func (t *scaledText) MinSize() fyne.Size      { return t.obj.MinSize() }
-func (t *scaledText) Move(p fyne.Position)    { t.obj.Move(p) }
-func (t *scaledText) Resize(s fyne.Size)      { t.obj.Resize(s) }
-func (t *scaledText) Position() fyne.Position { return t.obj.Position() }
-func (t *scaledText) Size() fyne.Size         { return t.obj.Size() }
-func (t *scaledText) Visible() bool           { return t.obj.Visible() }
-func (t *scaledText) Show()                   { t.obj.Show() }
-func (t *scaledText) Hide()                   { t.obj.Hide() }
-func (t *scaledText) Refresh()                { t.obj.Refresh() }
+// CreateRenderer exposes the canvas text as the widget's only object. Like
+// hintObject, this must be a real widget: the Fyne walkers and painters do not
+// descend into plain CanvasObject wrappers.
+func (t *scaledText) CreateRenderer() fyne.WidgetRenderer {
+	return widget.NewSimpleRenderer(t.obj)
+}
 
 func (t *scaledText) SetScale(sx, sy float64) {
 	s := sx
@@ -62,13 +63,16 @@ func (t *scaledText) SetScale(sx, sy float64) {
 	if s <= 0 {
 		s = 1
 	}
+	if s == t.scale {
+		return // a layout pass must not re-shape unchanged text
+	}
 	t.scale = s
 	t.obj.TextSize = t.base * float32(s)
 	t.obj.Refresh()
 }
 
 func newText(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
-	t := &scaledText{obj: canvas.NewText("", render.Color("#ffffff", nil)), scale: 1}
+	t := newScaledText()
 	apply := func(n *scene.Node) {
 		t.obj.Text = bc.Str(n, "text", "")
 		t.base = float32(bc.Num(n, "size", 18))

@@ -1,5 +1,115 @@
 # Changelog
 
+## [0.13.0] - 2026-11-03
+
+### Fixed — scenes were invisible and dead to input
+
+- **The size-hint wrapper hid every node.** `hintObject` embedded the
+  `fyne.CanvasObject` interface; Fyne's render/hit-test walkers only descend
+  into `*fyne.Container` and `fyne.Widget`, and painters only draw concrete
+  canvas types. Nothing below the wrapper was painted, hit-tested, registered
+  with the canvas, or positioned absolutely — a blank page and an editor with
+  selection boxes but no widgets. It is now a real widget with a renderer.
+- **`text` components were invisible** for the same reason (`scaledText`).
+- **Error scenes** rebuilt their padded container on every `Object()` call
+  (unstable identity); it is built once.
+- **A `border` with unoccupied slots panicked** on the first refresh (nil
+  entries in the layout's object list).
+- Added pixel and hit-test regression tests (`scene/render/paint_test.go`).
+
+### Fixed — fluid drag and resize
+
+- **No cascading refreshes on hot paths.** Drag previews, placements, inserts
+  and `View.Apply` no longer call `Container.Refresh()`, which recursively
+  refreshed every child and re-decoded every image (including the background)
+  on every pointer event. `FreeLayout.LayoutObject` places one child;
+  `canvas.Refresh` repaints without refreshing the tree.
+- **The selection box follows the drag** instead of sitting at the committed
+  position until release; it also refreshes on stage layout changes.
+- **Panel rebuilds are deferred** until a gesture ends (mouse-down no longer
+  rebuilds the inspector before the first drag event).
+- **The overlay is no longer `DoubleTappable`**, so single taps are not delayed
+  by the driver's 300 ms double-tap window; double-click is detected locally.
+- **Resize uses edge maths**: the opposite edge stays fixed, snapping applies
+  to the moving edge, the minimum size stops the edge, Shift keeps the aspect
+  ratio and Alt disables snapping.
+- **Palette drag drops under the pointer** at the default component size
+  (it used the chip's top-left corner and a rubber-band rectangle).
+- **Reparenting requires Alt**, so a drag over another container no longer
+  moves the node by accident.
+- Nudge key-repeat coalesces into one undo step; the inline text editor is a
+  proper `editorEntry` (no duplicate renderer).
+
+### Fixed — saving reliability
+
+- **Ctrl/Cmd+S works from inspector fields.** The driver gives shortcuts to the
+  focused widget, and `Entry` swallowed unknown ones; `editorEntry` forwards
+  save/close (and F4) to the editor. Canvas shortcuts are installed while the
+  editor is open.
+- **Edits made during an async save stay dirty.** Saves checkpoint the history
+  and mark exactly that state saved; a byte comparison covers undo/redo during
+  the save.
+- **Overlapping saves are queued**, not dropped; Done during a save waits for
+  it (and saves once more if the document changed).
+- **Leaving edit mode** (pencil/F4/Ctrl+E) goes through the save prompt, and
+  the provider is always told when the editor closes (autosave stops).
+- **No-op saves are skipped**, and there is a persistent save indicator via
+  `Options.OnSaveState`/`OnSaveDone`.
+- **Inspector fixes**: action fields no longer rebuild the inspector on every
+  keystroke; the slot select no longer fires a no-op edit from `SetSelected`;
+  event edits look nodes up by ID (the document is cloned on every Apply).
+- **Dialogs**: Save/Discard/Cancel on close, Cancel on conflicts, a second
+  confirmation before Reload discards edits, and "Later" keeps a draft.
+- **Blocked saves are actionable**: the Problems tab comes forward and the
+  first invalid node is selected.
+
+### Fixed — tie store
+
+- **Transport errors no longer look like a missing document.** `documentHash`
+  returned `("", nil)` on any Get error, causing spurious save conflicts (whose
+  Reload choice discarded edits) and making the browser overwrite the home
+  scene with the starter page. Only `ErrNotFound` means "no document"; the
+  dead `scene.json` child fallback (JSON is `unknown-file`, invisible to
+  `ReadTieDir`) is gone.
+- **Sidecar scripts load from inside the scene directory** (`LoadScript`,
+  `SaveScript`); the old sibling resolution pointed at the parent directory and
+  rendered scripted scenes blank.
+- **Indexing**: asset-kind props only (when a schema is set), errors reach
+  `OnIndexError`, and saves sync the collection.
+- Thumbnails are serialized per store (concurrent saves cannot race on
+  `thumbnail.png`). The client is behind a narrow interface so the error paths
+  are unit-tested.
+
+### Fixed — browser shell
+
+- **F4 never fired**: the GLFW driver only builds custom shortcuts for keys
+  with a modifier. Ctrl/Cmd+E is now the binding; F4 is handled as a plain key
+  when nothing is focused and forwarded by the editor overlay/fields.
+- **Errors show an in-page panel** with Retry (and Edit when the page is
+  editable) instead of a blank page and a transient status line.
+- **`tie:` relative URLs resolve like file paths** (`tie:/scenes/kitchen`), not
+  as `tie:///…`.
+- **Back/Forward ask the editor before moving the history cursor.**
+- Pages expose `Dispose`, so a replaced scene view releases its async loads.
+
+### Fixed — tie components and visuals
+
+- Gallery honours the `tile` prop, guards recycled cells against stale loads,
+  and shows query errors/empty results.
+- `tie.audio`/`tie.video` have default play/open actions; `tie.related` output
+  is sorted; the asset cache is bounded and names resources from the original
+  filename (SVG decoding).
+- `free` has a `backgroundColor` design-area fill (empty keeps the old
+  letterbox look), and the designer draws high-contrast outlines for hotspots
+  and slots in edit mode.
+
+### Changed
+
+- `browser.Page` gains `Script`, `ScriptErr` and `Dispose`.
+- `designer.Options` gains `OnSaveState` and `OnSaveDone`.
+- `scene/store/tie.Store.Client` is a narrow `Client` interface; `Store.Schema`
+  restricts indexed asset props.
+
 ## [0.12.0] - 2026-11-02
 
 ### Added — remaining designer/tie roadmap

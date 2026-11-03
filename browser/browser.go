@@ -59,10 +59,12 @@ type Browser struct {
 	history          *History
 	url              binding.String
 	status           binding.String
+	saveState        binding.String
 	config           Config
 	content          *fyne.Container
 	topBar           fyne.CanvasObject
 	statusBar        *widget.Label
+	saveLabel        *widget.Label
 	sideMenu         *fyne.Container
 	homeURL          string
 	params           url.Values
@@ -86,12 +88,13 @@ type Browser struct {
 // New creates a new Browser instance
 func New(window *gui.Window, config Config) *Browser {
 	b := &Browser{
-		window:  window,
-		config:  config,
-		url:     binding.NewString(),
-		status:  binding.NewString(),
-		homeURL: config.HomeURL,
-		params:  url.Values{},
+		window:    window,
+		config:    config,
+		url:       binding.NewString(),
+		status:    binding.NewString(),
+		saveState: binding.NewString(),
+		homeURL:   config.HomeURL,
+		params:    url.Values{},
 	}
 
 	// Create history with callbacks
@@ -144,12 +147,15 @@ func (b *Browser) buildUI() {
 	// Top bar layout
 	b.topBar = container.NewBorder(nil, nil, toolbar, burgerButton, addressBar)
 
-	// Status bar
+	// Status bar, with a persistent save-state indicator on the right.
 	b.statusBar = widget.NewLabelWithData(b.status)
+	b.saveLabel = widget.NewLabelWithData(b.saveState)
+	b.saveLabel.Importance = widget.LowImportance
+	statusRow := container.NewBorder(nil, nil, nil, b.saveLabel, b.statusBar)
 
 	// Main layout
 	mainLayout := container.NewBorder(nil, nil, nil, b.sideMenu,
-		container.NewBorder(b.topBar, b.statusBar, nil, nil, b.content))
+		container.NewBorder(b.topBar, statusRow, nil, nil, b.content))
 
 	b.window.FyneWindow.SetContent(mainLayout)
 }
@@ -193,11 +199,39 @@ func (b *Browser) Navigate(url string) {
 	b.navigate(url, true)
 }
 
-// Back navigates to the previous history entry.
-func (b *Browser) Back() { b.history.Back() }
+// Back navigates to the previous history entry. While editing it asks the
+// editor first: moving the history cursor before the editor agrees left the
+// cursor pointing at a page that was never shown when the user cancelled.
+func (b *Browser) Back() {
+	if b.editing && b.editor != nil {
+		b.editor.BeforeLeave(func(ok bool) {
+			if !ok {
+				b.SetStatus("Navigation cancelled")
+				return
+			}
+			b.exitEditor()
+			b.history.Back()
+		})
+		return
+	}
+	b.history.Back()
+}
 
 // Forward navigates to the next history entry.
-func (b *Browser) Forward() { b.history.Forward() }
+func (b *Browser) Forward() {
+	if b.editing && b.editor != nil {
+		b.editor.BeforeLeave(func(ok bool) {
+			if !ok {
+				b.SetStatus("Navigation cancelled")
+				return
+			}
+			b.exitEditor()
+			b.history.Forward()
+		})
+		return
+	}
+	b.history.Forward()
+}
 
 // navigate is the internal navigation method. While an editor is open it asks
 // the editor whether unsaved work may be discarded; the navigation is
@@ -222,8 +256,9 @@ func (b *Browser) navigate(url string, recordVisit bool) {
 // starting a navigation cancels the previous one, and results apply
 // only while their generation is still current.
 func (b *Browser) navigateNow(url string, recordVisit bool) {
-	// Correct relative URLs
-	url = CorrectRelativeURL(b.history.Current(), url)
+	// Correct relative URLs (tie: pages resolve like file paths, not like
+	// directory URLs, so links can point at sibling scenes).
+	url = resolveRef(b.history.Current(), url)
 	log.Println("browser: navigating to", url)
 
 	// Parse query parameters from the URL and expose them to scripts
@@ -262,7 +297,7 @@ func (b *Browser) navigateNow(url string, recordVisit bool) {
 				if b.config.OnNavigateError != nil {
 					b.config.OnNavigateError(url, err)
 				}
-				b.SetStatus("Error: " + err.Error())
+				b.showErrorPage(url, err)
 			})
 			return
 		}
@@ -287,16 +322,17 @@ func (b *Browser) ifCurrent(gen uint64, fn func()) {
 // the visit and reports completion — navigate and the auth retry share
 // it now, issue #28). Runs on the UI thread.
 func (b *Browser) loadPageObject(url string, page *Page, recordVisit bool) {
+	b.disposePage()
 	b.currentPage = page
 	b.window.Clear()
 	if page.Kind == KindScene {
 		if b.config.RenderScene == nil {
-			b.SetStatus("No scene renderer configured")
+			b.showErrorPage(url, errors.New("no scene renderer configured"))
 		} else if err := b.config.RenderScene(b, page); err != nil {
-			b.SetStatus("Scene error: " + err.Error())
 			if b.config.OnNavigateError != nil {
 				b.config.OnNavigateError(url, err)
 			}
+			b.showErrorPage(url, err)
 		}
 	} else {
 		// Record the page URL as the script base so relative imports resolve
@@ -393,6 +429,46 @@ func (b *Browser) SetStatus(text string) {
 	if b.config.OnStatusChange != nil {
 		b.config.OnStatusChange(text)
 	}
+}
+
+// SetSaveState updates the persistent save-state indicator in the status bar
+// ("" hides it). Editors use it so "Saving…" and "Save failed" do not scroll
+// away with the transient status line.
+func (b *Browser) SetSaveState(text string) {
+	guithread.Do(func() {
+		b.saveState.Set(text)
+	})
+}
+
+// disposePage releases the live objects of the page being replaced (scene
+// views own async loads and galleries that must stop with the page).
+func (b *Browser) disposePage() {
+	if b.currentPage != nil && b.currentPage.Dispose != nil {
+		b.currentPage.Dispose()
+		b.currentPage.Dispose = nil
+	}
+}
+
+// showErrorPage replaces the content with an actionable error panel instead of
+// leaving the previous page (or a blank area) on screen.
+func (b *Browser) showErrorPage(url string, err error) {
+	b.disposePage()
+	b.window.Release()
+	msg := widget.NewLabel(err.Error())
+	msg.Wrapping = fyne.TextWrapWord
+	retry := widget.NewButton("Retry", func() { b.navigate(url, false) })
+	buttons := []fyne.CanvasObject{retry}
+	if b.currentPage != nil && b.editor != nil && b.editor.CanEdit(b.currentPage) {
+		buttons = append(buttons, widget.NewButton("Edit page", b.ToggleEdit))
+	}
+	panel := container.NewVBox(
+		widget.NewLabelWithStyle("Could not load this page", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		msg,
+		container.NewHBox(buttons...),
+	)
+	b.content.Objects = []fyne.CanvasObject{container.NewPadded(container.NewCenter(panel))}
+	b.content.Refresh()
+	b.SetStatus("Error: " + err.Error())
 }
 
 // ShowAndRun shows the window and starts the app

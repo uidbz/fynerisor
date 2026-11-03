@@ -96,7 +96,6 @@ type paletteItem struct {
 	text *canvas.Text
 
 	dragging bool
-	start    fyne.Position
 	last     fyne.Position
 }
 
@@ -119,18 +118,13 @@ func (p *paletteItem) CreateRenderer() fyne.WidgetRenderer {
 func (p *paletteItem) Tapped(*fyne.PointEvent) { p.ed.ArmTool(p.typ) }
 
 func (p *paletteItem) Dragged(e *fyne.DragEvent) {
-	app := fyne.CurrentApp()
-	if app == nil || app.Driver() == nil {
-		return
-	}
-	abs := app.Driver().AbsolutePositionForObject(p)
 	if !p.dragging {
 		p.dragging = true
-		p.start = abs
-		p.last = abs
 	}
-	p.last = p.last.Add(fyne.NewPos(e.Dragged.DX, e.Dragged.DY))
-	p.ed.paletteDrag(p.typ, p.start, p.last)
+	// AbsolutePosition is the pointer: the item's own top-left plus deltas is
+	// offset by however far into the chip the drag started.
+	p.last = e.AbsolutePosition
+	p.ed.paletteDrag(p.typ, p.last)
 }
 
 func (p *paletteItem) DragEnd() {
@@ -138,11 +132,7 @@ func (p *paletteItem) DragEnd() {
 		return
 	}
 	p.dragging = false
-	app := fyne.CurrentApp()
-	if app == nil || app.Driver() == nil {
-		return
-	}
-	p.ed.paletteDrop(p.typ, p.start, p.last)
+	p.ed.paletteDrop(p.typ, p.last)
 }
 
 type paletteRenderer struct {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/color"
 	"strings"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -44,11 +45,19 @@ type overlay struct {
 	handle string
 	hit    string
 
-	start       map[string]scene.Place
-	startRects  map[string]render.Rect
-	lastPlaces  map[string]scene.Place
-	guideParent string
-	guides      []guide
+	start        map[string]scene.Place
+	startRects   map[string]render.Rect
+	lastPlaces   map[string]scene.Place
+	previewRects map[string]render.Rect
+	guideParent  string
+	guides       []guide
+
+	// lastTapAt/lastTapPos drive our own double-tap detection. The overlay
+	// deliberately does not implement fyne.DoubleTappable: the driver then
+	// delays every single Tapped by the 300 ms double-tap window, which made
+	// click-to-place and selection feel laggy.
+	lastTapAt  time.Time
+	lastTapPos fyne.Position
 
 	marquee    render.Rect
 	marqueeIDs []string
@@ -61,7 +70,7 @@ type overlay struct {
 	focused     bool
 	objs        []fyne.CanvasObject
 
-	inline     *inlineEntry
+	inline     *editorEntry
 	inlineID   string
 	inlineRect render.Rect
 
@@ -69,7 +78,10 @@ type overlay struct {
 }
 
 func newOverlay(e *Editor) *overlay {
-	o := &overlay{ed: e, start: map[string]scene.Place{}, startRects: map[string]render.Rect{}, lastPlaces: map[string]scene.Place{}}
+	o := &overlay{
+		ed: e, start: map[string]scene.Place{}, startRects: map[string]render.Rect{},
+		lastPlaces: map[string]scene.Place{}, previewRects: map[string]render.Rect{},
+	}
 	o.ExtendBaseWidget(o)
 	return o
 }
@@ -86,26 +98,53 @@ func (o *overlay) CreateRenderer() fyne.WidgetRenderer {
 func (o *overlay) beginPalette(pos fyne.Position) {
 	o.kind = gCreating
 	o.press, o.mouse = pos, pos
-	o.createRect = render.Rect{}
+	o.createRect = o.paletteRect(pos)
 	o.suppressTap = true
 	o.Refresh()
 }
 
 func (o *overlay) movePalette(pos fyne.Position) {
 	o.mouse = pos
-	o.createRect = rectBetween(o.press, pos)
+	o.createRect = o.paletteRect(pos)
 	o.Refresh()
 }
 
 func (o *overlay) dropPalette(pos fyne.Position) {
 	o.mouse = pos
-	o.createRect = rectBetween(o.press, pos)
-	o.commitCreate()
+	o.createRect = o.paletteRect(pos)
+	// Drop the component at its default size under the pointer, not as a
+	// rubber-band rectangle from wherever the drag entered the canvas.
+	parent := o.ed.view.ContainerAt(pos)
+	if parent == "" && o.ed.doc.Root != nil {
+		parent = o.ed.doc.Root.ID
+	}
+	if parent != "" {
+		o.createAt(parent, o.ed.defaultPlaceAt(pos, parent), pos)
+	}
 	o.kind = gIdle
 	o.createRect = render.Rect{}
 	o.suppressTap = false
 	o.ed.view.RefreshRects()
 	o.Refresh()
+}
+
+// paletteRect is the ghost shown while dragging a palette item: the component's
+// default size, centred under the pointer.
+func (o *overlay) paletteRect(pos fyne.Position) render.Rect {
+	parent := o.ed.view.ContainerAt(pos)
+	if parent == "" && o.ed.doc.Root != nil {
+		parent = o.ed.doc.Root.ID
+	}
+	if parent == "" || o.ed.view.ContainerKind(parent) != scene.Free {
+		return render.NewRect(pos.X, pos.Y, 8, 8)
+	}
+	p := o.ed.defaultPlaceAt(pos, parent)
+	t, _, ok := o.ed.freeTransform(parent)
+	if !ok {
+		return render.NewRect(pos.X, pos.Y, 8, 8)
+	}
+	local := t.ToLocal(p.X, p.Y)
+	return render.NewRect(local.X, local.Y, float32(p.W*t.SX), float32(p.H*t.SY))
 }
 
 // ---------------------------------------------------------------- gestures
@@ -116,6 +155,7 @@ func (o *overlay) begin(pos fyne.Position) {
 	o.start = map[string]scene.Place{}
 	o.startRects = map[string]render.Rect{}
 	o.lastPlaces = map[string]scene.Place{}
+	o.previewRects = map[string]render.Rect{}
 	o.guides = nil
 	o.kind = gPressed
 	o.suppressTap = false
@@ -139,7 +179,7 @@ func (o *overlay) begin(pos fyne.Position) {
 		o.suppressTap = true
 		return
 	}
-	mods := currentMods()
+	mods := o.mods()
 	if mods&(fyne.KeyModifierShift|fyne.KeyModifierControl|fyne.KeyModifierSuper) != 0 {
 		o.ed.ToggleSelect(id)
 		o.suppressTap = true
@@ -166,9 +206,11 @@ func (o *overlay) captureStarts() {
 }
 
 func (o *overlay) MouseDown(e *desktop.MouseEvent) {
+	o.ed.beginGesture()
 	o.begin(e.Position)
 	if e.Button == desktop.MouseButtonSecondary {
 		o.showContext(e.Position)
+		o.ed.endGesture()
 		return
 	}
 	o.Refresh()
@@ -181,6 +223,7 @@ func (o *overlay) MouseUp(*desktop.MouseEvent) {
 		o.suppressTap = false
 		o.Refresh()
 	}
+	o.ed.endGesture()
 }
 
 func (o *overlay) Tapped(e *fyne.PointEvent) {
@@ -195,6 +238,14 @@ func (o *overlay) Tapped(e *fyne.PointEvent) {
 		o.suppressTap = false
 		return
 	}
+	// Our own double-tap detection: the overlay must not implement
+	// fyne.DoubleTappable, or every single tap waits out the driver's
+	// double-tap window.
+	now := time.Now()
+	double := now.Sub(o.lastTapAt) < 400*time.Millisecond &&
+		abs(float64(e.Position.X-o.lastTapPos.X)) < 6 &&
+		abs(float64(e.Position.Y-o.lastTapPos.Y)) < 6
+	o.lastTapAt, o.lastTapPos = now, e.Position
 	if o.ed.tool != "" {
 		o.createClick(e.Position)
 		return
@@ -204,21 +255,19 @@ func (o *overlay) Tapped(e *fyne.PointEvent) {
 		o.ed.ClearSelection()
 		return
 	}
-	if currentMods()&(fyne.KeyModifierShift|fyne.KeyModifierControl|fyne.KeyModifierSuper) != 0 {
+	if double {
+		o.doubleTap(id)
+		return
+	}
+	if o.mods()&(fyne.KeyModifierShift|fyne.KeyModifierControl|fyne.KeyModifierSuper) != 0 {
 		o.ed.ToggleSelect(id)
 		return
 	}
 	o.ed.Select(id)
 }
 
-func (o *overlay) DoubleTapped(e *fyne.PointEvent) {
-	if o.ed.tool != "" {
-		return
-	}
-	id := o.ed.hitTest(e.Position)
-	if id == "" {
-		return
-	}
+// doubleTap opens inline text editing (or focuses the first inspector field).
+func (o *overlay) doubleTap(id string) {
 	o.ed.Select(id)
 	if n, ok := o.ed.doc.Find(id); ok {
 		if spec, ok := o.ed.opts.Registry.Spec(n.Type); ok {
@@ -244,13 +293,13 @@ func (o *overlay) startInline(id, text string) {
 	if !ok {
 		return
 	}
-	entry := &inlineEntry{Entry: widget.NewEntry()}
+	entry := newEditorEntry(o.ed)
 	entry.SetText(text)
 	entry.OnSubmitted = func(s string) { o.commitInline() }
 	entry.OnChanged = func(string) {}
 	entry.SetPlaceHolder("Text")
-	entry.commit = func() { o.commitInline() }
-	entry.cancel = func() { o.cancelInline() }
+	entry.onCommit = func() { o.commitInline() }
+	entry.onCancel = func() { o.cancelInline() }
 	o.inline = entry
 	o.inlineID = id
 	o.inlineRect = r.Inset(-2)
@@ -282,39 +331,6 @@ func (o *overlay) commitInline() {
 func (o *overlay) cancelInline() {
 	o.inline, o.inlineID = nil, ""
 	o.refreshChrome()
-}
-
-type inlineEntry struct {
-	*widget.Entry
-	commit func()
-	cancel func()
-}
-
-func (e *inlineEntry) FocusLost() {
-	if e.Entry != nil {
-		e.Entry.FocusLost()
-	}
-	if e.commit != nil {
-		e.commit()
-	}
-}
-
-func (e *inlineEntry) FocusGained() {
-	if e.Entry != nil {
-		e.Entry.FocusGained()
-	}
-}
-
-func (e *inlineEntry) TypedKey(ev *fyne.KeyEvent) {
-	if ev.Name == fyne.KeyEscape {
-		if e.cancel != nil {
-			e.cancel()
-		}
-		return
-	}
-	if e.Entry != nil {
-		e.Entry.TypedKey(ev)
-	}
 }
 
 func (o *overlay) TappedSecondary(e *fyne.PointEvent) {
@@ -424,8 +440,10 @@ func (o *overlay) DragEnd() {
 	o.dropRect = render.Rect{}
 	o.guides = nil
 	o.lastPoints = nil
+	o.previewRects = map[string]render.Rect{}
 	o.ed.view.RefreshRects()
 	o.Refresh()
+	o.ed.endGesture()
 }
 
 func (o *overlay) dragMove() {
@@ -470,6 +488,15 @@ func (o *overlay) dragMove() {
 		q.Y += dy + corrY
 		o.lastPlaces[id] = q
 		o.ed.view.PreviewPlace(id, q)
+		// Track the outline/handle rectangle from the preview, so the chrome
+		// follows the pointer instead of sitting at the committed position.
+		if sr, ok := o.startRects[id]; ok {
+			o.previewRects[id] = render.NewRect(
+				sr.X+float32((q.X-sp.X)*t.SX),
+				sr.Y+float32((q.Y-sp.Y)*t.SY),
+				sr.W, sr.H,
+			)
+		}
 	}
 	if target, spot, ok := o.dropTarget(parent); ok {
 		o.dropParent, o.dropRect = target, spot.Rect
@@ -481,6 +508,11 @@ func (o *overlay) dragMove() {
 // dropTarget reports a different container under the pointer that can accept
 // the dragged node.
 func (o *overlay) dropTarget(current string) (string, render.DropSpot, bool) {
+	// Reparenting is explicit: hold Alt. Without it a drag that happens to
+	// pass over another container silently moves the node into it.
+	if o.mods()&fyne.KeyModifierAlt == 0 {
+		return "", render.DropSpot{}, false
+	}
 	parent, spot, ok := o.ed.view.DropSpotAt(o.mouse)
 	if !ok || parent == "" || parent == current {
 		return "", render.DropSpot{}, false
@@ -536,6 +568,10 @@ func minf(a, b float64) float64 {
 	return b
 }
 
+// dragResize resizes by moving edges, keeping the opposite edge fixed. Snapping
+// applies to the moving edges only (snapping x and width independently made the
+// anchored edge jitter), and the minimum size stops the moving edge instead of
+// sliding the whole box.
 func (o *overlay) dragResize() {
 	id := o.ed.primary
 	start, ok := o.start[id]
@@ -551,56 +587,83 @@ func (o *overlay) dragResize() {
 	if t.SY != 0 {
 		dy /= t.SY
 	}
-	p := start
-	switch o.handle {
-	case "nw":
-		p.X += dx
-		p.Y += dy
-		p.W -= dx
-		p.H -= dy
-	case "n":
-		p.Y += dy
-		p.H -= dy
-	case "ne":
-		p.Y += dy
-		p.W += dx
-		p.H -= dy
-	case "e":
-		p.W += dx
-	case "se":
-		p.W += dx
-		p.H += dy
-	case "s":
-		p.H += dy
-	case "sw":
-		p.X += dx
-		p.W -= dx
-		p.H += dy
-	case "w":
-		p.X += dx
-		p.W -= dx
+	mods := o.mods()
+	// Alt temporarily disables snapping (same convention as move).
+	snap := o.ed.snapGrid > 0 && mods&fyne.KeyModifierAlt == 0
+
+	left, top := start.X, start.Y
+	right, bottom := start.X+start.W, start.Y+start.H
+	moveW := strings.Contains(o.handle, "w")
+	moveE := strings.Contains(o.handle, "e")
+	moveN := strings.Contains(o.handle, "n")
+	moveS := strings.Contains(o.handle, "s")
+	if moveW {
+		left += dx
 	}
-	if p.W < 8 {
-		p.W = 8
+	if moveE {
+		right += dx
 	}
-	if p.H < 8 {
-		p.H = 8
+	if moveN {
+		top += dy
 	}
-	if currentMods()&fyne.KeyModifierShift != 0 && start.W > 0 && start.H > 0 && (o.handle == "nw" || o.handle == "ne" || o.handle == "se" || o.handle == "sw") {
+	if moveS {
+		bottom += dy
+	}
+
+	const minSize = 8.0
+	if mods&fyne.KeyModifierShift != 0 && start.W > 0 && start.H > 0 && moveW != moveE && moveN != moveS {
+		// Aspect lock around the opposite corner.
 		ratio := start.H / start.W
-		p.H = p.W * ratio
-		if o.handle == "nw" || o.handle == "ne" {
-			p.Y = start.Y + start.H - p.H
+		w := right - left
+		h := w * ratio
+		if moveN {
+			top = bottom - h
+		} else {
+			bottom = top + h
 		}
 	}
-	if o.ed.snapGrid > 0 {
-		p.X = roundTo(p.X, o.ed.snapGrid)
-		p.Y = roundTo(p.Y, o.ed.snapGrid)
-		p.W = roundTo(p.W, o.ed.snapGrid)
-		p.H = roundTo(p.H, o.ed.snapGrid)
+
+	if snap {
+		if moveW {
+			left = roundTo(left, o.ed.snapGrid)
+		}
+		if moveE {
+			right = roundTo(right, o.ed.snapGrid)
+		}
+		if moveN {
+			top = roundTo(top, o.ed.snapGrid)
+		}
+		if moveS {
+			bottom = roundTo(bottom, o.ed.snapGrid)
+		}
 	}
+
+	if right-left < minSize {
+		if moveW {
+			left = right - minSize
+		} else {
+			right = left + minSize
+		}
+	}
+	if bottom-top < minSize {
+		if moveN {
+			top = bottom - minSize
+		} else {
+			bottom = top + minSize
+		}
+	}
+
+	p := scene.Place{X: left, Y: top, W: right - left, H: bottom - top}
 	o.lastPlaces[id] = p
 	o.ed.view.PreviewPlace(id, p)
+	if sr, ok := o.startRects[id]; ok {
+		o.previewRects[id] = render.NewRect(
+			sr.X+float32((p.X-start.X)*t.SX),
+			sr.Y+float32((p.Y-start.Y)*t.SY),
+			float32(p.W*t.SX),
+			float32(p.H*t.SY),
+		)
+	}
 }
 
 func (o *overlay) commitMove() {
@@ -953,6 +1016,9 @@ func (o *overlay) FocusLost()   { o.focused = false; o.Refresh() }
 
 func (o *overlay) TypedKey(e *fyne.KeyEvent) {
 	switch e.Name {
+	case fyne.KeyF4:
+		o.ed.RequestClose()
+		return
 	case fyne.KeyEscape:
 		if o.ed.tool != "" {
 			o.ed.DisarmTool()
@@ -1018,7 +1084,7 @@ func (o *overlay) nudge(dx, dy float64) {
 		if o.ed.snapGrid > 0 {
 			step = o.ed.snapGrid
 		}
-		if currentMods()&fyne.KeyModifierShift != 0 {
+		if o.mods()&fyne.KeyModifierShift != 0 {
 			step *= 8
 		}
 		p.X += dx * step
@@ -1026,7 +1092,8 @@ func (o *overlay) nudge(dx, dy float64) {
 		ops = append(ops, scene.SetPlaceOp(id, n.Place, p))
 	}
 	if len(ops) > 0 {
-		o.ed.applyEdit("nudge", "", ops...)
+		// Key repeat must not create one undo step per pixel.
+		o.ed.applyEdit("nudge", "nudge:"+strings.Join(o.ed.selectedIDs(), ","), ops...)
 		o.ed.inspector.refresh()
 	}
 }
@@ -1035,12 +1102,36 @@ func (o *overlay) nudge(dx, dy float64) {
 
 type overlayRenderer struct{ o *overlay }
 
-func (r *overlayRenderer) Layout(fyne.Size)   {}
+func (r *overlayRenderer) Layout(fyne.Size)   { r.o.refreshChrome() }
 func (r *overlayRenderer) MinSize() fyne.Size { return fyne.NewSize(1, 1) }
 func (r *overlayRenderer) Refresh()           { r.o.refreshChrome() }
 func (r *overlayRenderer) Destroy()           {}
 func (r *overlayRenderer) Objects() []fyne.CanvasObject {
 	return r.o.objs
+}
+
+// chromeRect returns the rectangle to draw chrome for id: the live preview
+// during a gesture, a translated rect for a selected descendant of a dragged
+// node, or the view's committed rect.
+func (o *overlay) chromeRect(id string) (render.Rect, bool) {
+	if r, ok := o.previewRects[id]; ok {
+		return r, true
+	}
+	for p := o.ed.view.ParentID(id); p != ""; p = o.ed.view.ParentID(p) {
+		pr, ok := o.previewRects[p]
+		if !ok {
+			continue
+		}
+		sr, ok := o.startRects[p]
+		if !ok {
+			continue
+		}
+		if r, ok := o.startRects[id]; ok {
+			dx, dy := pr.X-sr.X, pr.Y-sr.Y
+			return render.NewRect(r.X+dx, r.Y+dy, r.W, r.H), true
+		}
+	}
+	return o.ed.view.RectOf(id)
 }
 
 func (o *overlay) refreshChrome() {
@@ -1058,19 +1149,19 @@ func (o *overlay) refreshChrome() {
 	gray := color.NRGBA{R: 160, G: 160, B: 160, A: 200}
 
 	for _, id := range o.ed.selectedIDs() {
-		if r, ok := o.ed.view.RectOf(id); ok {
+		if r, ok := o.chromeRect(id); ok {
 			addRect(r, blue, 1.5, color.NRGBA{})
 		}
 	}
 	if len(o.ed.sel) == 1 && o.ed.primary != "" && o.polygonSelected() {
-		if r, ok := o.ed.view.RectOf(o.ed.primary); ok {
+		if r, ok := o.chromeRect(o.ed.primary); ok {
 			orange := color.NRGBA{R: 249, G: 115, B: 22, A: 255}
 			for _, hr := range o.pointRects(r) {
 				addRect(hr, orange, 1, color.NRGBA{R: 255, G: 255, B: 255, A: 255})
 			}
 		}
 	} else if len(o.ed.sel) == 1 && o.ed.primary != "" && o.ed.parentFree(o.ed.primary) {
-		if r, ok := o.ed.view.RectOf(o.ed.primary); ok && o.ed.doc.Root != nil && o.ed.primary != o.ed.doc.Root.ID {
+		if r, ok := o.chromeRect(o.ed.primary); ok && o.ed.doc.Root != nil && o.ed.primary != o.ed.doc.Root.ID {
 			for _, name := range handleNames {
 				hr := handleRects(r)[name]
 				addRect(hr, blue, 1, color.NRGBA{R: 255, G: 255, B: 255, A: 255})
@@ -1078,10 +1169,25 @@ func (o *overlay) refreshChrome() {
 		}
 	}
 	if o.hover != "" && !o.ed.sel[o.hover] {
-		if r, ok := o.ed.view.RectOf(o.hover); ok {
+		if r, ok := o.chromeRect(o.hover); ok {
 			addRect(r, gray, 1, color.NRGBA{})
 		}
 	}
+	// Edit-mode outlines for invisible interactive regions. A hotspot's own
+	// edit fill is white-ish and vanishes on a light page, so the overlay
+	// draws its own outline independent of the page theme.
+	o.ed.doc.Walk(func(n *scene.Node) bool {
+		if n.Type != "hotspot" && n.Type != "slot" {
+			return true
+		}
+		if o.ed.sel[n.ID] || o.hover == n.ID || n.Hidden || !o.ed.view.IsVisible(n.ID) {
+			return true
+		}
+		if r, ok := o.ed.view.RectOf(n.ID); ok && r.W > 1 && r.H > 1 {
+			addRect(r, gray, 1, color.NRGBA{})
+		}
+		return true
+	})
 	if o.dropRect.W > 0 || o.dropRect.H > 0 {
 		addRect(o.dropRect, green, 1, color.NRGBA{R: 34, G: 197, B: 94, A: 64})
 	}
@@ -1121,6 +1227,14 @@ func rectBetween(a, b fyne.Position) render.Rect {
 	return render.NewRect(x1, y1, x2-x1, y2-y1)
 }
 
+// mods returns the modifier state, honouring the test override.
+func (o *overlay) mods() fyne.KeyModifier {
+	if o.ed.modsOverride != 0 {
+		return o.ed.modsOverride
+	}
+	return currentMods()
+}
+
 func currentMods() fyne.KeyModifier {
 	app := fyne.CurrentApp()
 	if app == nil || app.Driver() == nil {
@@ -1133,7 +1247,6 @@ func currentMods() fyne.KeyModifier {
 }
 
 var _ fyne.Tappable = (*overlay)(nil)
-var _ fyne.DoubleTappable = (*overlay)(nil)
 var _ fyne.SecondaryTappable = (*overlay)(nil)
 var _ fyne.Draggable = (*overlay)(nil)
 var _ desktop.Mouseable = (*overlay)(nil)

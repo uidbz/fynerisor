@@ -197,6 +197,9 @@ func checkPropValue(p PropSpec, v any) string {
 		if !ok {
 			return fmt.Sprintf("property %q must be a color string, got %T", p.Name, v)
 		}
+		if s == "" {
+			return "" // unset/inherit is valid
+		}
 		if !ValidColor(s) {
 			return fmt.Sprintf("property %q has invalid color %q", p.Name, s)
 		}

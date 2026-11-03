@@ -1,6 +1,7 @@
 package builtin
 
 import (
+	"image/color"
 	"sync/atomic"
 
 	"fyne.io/fyne/v2"
@@ -21,6 +22,7 @@ type freeLive struct {
 	clip         *container.Clip
 	clipped      bool
 	letterbox    *canvas.Rectangle
+	bgFill       *canvas.Rectangle
 	bg           *canvas.Image
 	fl           *render.FreeLayout
 	children     []render.Live
@@ -32,14 +34,16 @@ type freeLive struct {
 func newFree(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
 	fl := render.NewFreeLayout(fyne.NewSize(1600, 900), "fit")
 	layer := &fyne.Container{Layout: fl}
+	bgFill := canvas.NewRectangle(color.Transparent)
+	bgFill.Hide()
 	bg := canvas.NewImageFromResource(nil)
 	bg.FillMode = canvas.ImageFillStretch
 	bg.Hide()
-	layer.Objects = []fyne.CanvasObject{bg}
+	layer.Objects = []fyne.CanvasObject{bgFill, bg}
 	letterbox := canvas.NewRectangle(render.Color("#000000", nil))
 	stack := container.NewStack(letterbox, layer)
 	l := &freeLive{
-		stack: stack, layer: layer, letterbox: letterbox, bg: bg, fl: fl, bc: bc,
+		stack: stack, layer: layer, letterbox: letterbox, bgFill: bgFill, bg: bg, fl: fl, bc: bc,
 	}
 	if bc.Bool(n, "clip", false) {
 		l.clip = container.NewClip(stack)
@@ -70,6 +74,15 @@ func (l *freeLive) apply(n *scene.Node) error {
 	design := fyne.NewSize(designW, designH)
 	l.fl.SetDesign(design, l.bc.Str(n, "scale", render.ScaleFit))
 	l.letterbox.FillColor = l.bc.ColorProp(n, "letterbox", render.Color("#000000", nil))
+	// The design-area background is separate from the letterbox. An empty
+	// value keeps the historic look (the letterbox shows through).
+	l.fl.SetPlace(l.bgFill, scene.Place{W: float64(designW), H: float64(designH)})
+	if bg := l.bc.Str(n, "backgroundColor", ""); bg == "" {
+		l.bgFill.Hide()
+	} else {
+		l.bgFill.FillColor = l.bc.ColorProp(n, "backgroundColor", color.Transparent)
+		l.bgFill.Show()
+	}
 	l.bg.FillMode = render.FillMode(l.bc.Str(n, "backgroundFill", "stretch"))
 	l.fl.SetPlace(l.bg, scene.Place{W: float64(designW), H: float64(designH)})
 
@@ -96,11 +109,14 @@ func (l *freeLive) apply(n *scene.Node) error {
 			})
 		}
 	}
-	l.stack.Refresh()
 	// Design/scale changes must re-run the free layout even when the container
-	// size itself did not change.
+	// size itself did not change. Repaint only: a Container.Refresh would
+	// recursively refresh (and re-decode) every child on every property edit.
 	l.fl.Layout(l.layer.Objects, l.layer.Size())
-	l.layer.Refresh()
+	canvas.Refresh(l.letterbox)
+	canvas.Refresh(l.bgFill)
+	canvas.Refresh(l.bg)
+	canvas.Refresh(l.layer)
 	return nil
 }
 
@@ -161,13 +177,16 @@ func (l *freeLive) Reorder(child render.Live, index int) error {
 func (l *freeLive) SetPlace(child render.Live, p scene.Place) error {
 	l.fl.SetPlace(child.Object(), p)
 	render.SetSizeHint(child.Object(), p.MinW, p.MinH)
-	l.layer.Refresh()
+	l.fl.LayoutObject(child.Object(), l.layer.Size())
+	canvas.Refresh(child.Object())
 	return nil
 }
 
 func (l *freeLive) Preview(child render.Live, p scene.Place) {
-	l.fl.SetPreview(child.Object(), p)
-	l.layer.Refresh()
+	obj := child.Object()
+	l.fl.SetPreview(obj, p)
+	l.fl.LayoutObject(obj, l.layer.Size())
+	canvas.Refresh(obj)
 }
 
 func (l *freeLive) DropSpot(local fyne.Position) (render.DropSpot, bool) {
@@ -177,7 +196,7 @@ func (l *freeLive) DropSpot(local fyne.Position) (render.DropSpot, bool) {
 // CancelPreview removes a drag preview.
 func (l *freeLive) CancelPreview(render.Live) {
 	l.fl.ClearPreviews()
-	l.layer.Refresh()
+	canvas.Refresh(l.layer)
 }
 
 func (l *freeLive) Transform(size fyne.Size) render.Transform {
@@ -185,13 +204,15 @@ func (l *freeLive) Transform(size fyne.Size) render.Transform {
 }
 
 func (l *freeLive) sync() {
-	objs := make([]fyne.CanvasObject, 1+len(l.children))
-	objs[0] = l.bg
+	objs := make([]fyne.CanvasObject, 2+len(l.children))
+	objs[0] = l.bgFill
+	objs[1] = l.bg
 	for i, c := range l.children {
-		objs[i+1] = c.Object()
+		objs[i+2] = c.Object()
 	}
 	l.layer.Objects = objs
-	l.layer.Refresh()
+	l.fl.Layout(objs, l.layer.Size())
+	canvas.Refresh(l.layer)
 }
 
 func (l *freeLive) Destroy() { l.bgGen.Add(1) }
@@ -340,7 +361,10 @@ func (l *orderedLive) sync() {
 		objs[i] = c.Object()
 	}
 	l.box.Objects = objs
-	l.box.Refresh()
+	if l.box.Layout != nil {
+		l.box.Layout.Layout(objs, l.box.Size())
+	}
+	canvas.Refresh(l.box)
 }
 
 // ------------------------------------------------------------------- border
@@ -439,15 +463,27 @@ func (l *borderLive) Transform(fyne.Size) render.Transform { return render.Trans
 
 func (l *borderLive) Destroy() {}
 
+func (l *borderLive) slotObject(name string) fyne.CanvasObject {
+	if c, ok := l.slot[name]; ok && c != nil {
+		return c.Object()
+	}
+	return nil
+}
+
 func (l *borderLive) sync() {
-	objs := make([]fyne.CanvasObject, 5)
-	for i, name := range borderSlots {
-		if c, ok := l.slot[name]; ok {
-			objs[i] = c.Object()
+	// Only occupied slots go into Objects: Fyne's border layout dereferences
+	// every entry, and an unoccupied slot used to be a nil in a 5-element
+	// slice (a panic on the first refresh).
+	objs := make([]fyne.CanvasObject, 0, len(l.slot))
+	for _, name := range borderSlots {
+		if o := l.slotObject(name); o != nil {
+			objs = append(objs, o)
 		}
 	}
 	l.box.Objects = objs
-	l.box.Layout = layout.NewBorderLayout(objs[0], objs[1], objs[2], objs[3])
+	l.box.Layout = layout.NewBorderLayout(
+		l.slotObject("top"), l.slotObject("bottom"),
+		l.slotObject("left"), l.slotObject("right"))
 	l.box.Refresh()
 }
 

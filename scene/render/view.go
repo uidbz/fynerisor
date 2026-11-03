@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 
@@ -224,7 +225,7 @@ func Unwrap(o fyne.CanvasObject) fyne.CanvasObject {
 	for i := 0; i < 8; i++ {
 		switch x := o.(type) {
 		case *hintObject:
-			o = x.CanvasObject
+			o = x.content
 		case *container.ThemeOverride:
 			o = x.Content
 		default:
@@ -493,7 +494,10 @@ func (v *View) Apply(changes []scene.Change) error {
 		}
 	}
 	v.rects = nil
-	v.Refresh()
+	// Repaint the view itself. View.Refresh() would cascade into every child,
+	// and a canvas.Image refresh decodes its resource again — on every drag
+	// commit, nudge and inspector keystroke.
+	canvas.Refresh(v)
 	return nil
 }
 
@@ -598,7 +602,7 @@ func (v *View) rebuildNode(id string) error {
 		return err
 	}
 	v.rects = nil
-	v.Refresh()
+	canvas.Refresh(v)
 	return nil
 }
 
@@ -690,15 +694,20 @@ func (v *View) absoluteRect(id string, fallback Rect, viewAbs fyne.Position) Rec
 	return NewRect(pos.X-viewAbs.X, pos.Y-viewAbs.Y, size.Width, size.Height)
 }
 
-type errorLive struct{ label *widget.Label }
+type errorLive struct {
+	label *widget.Label
+	box   fyne.CanvasObject
+}
 
 func newErrorLive(msg string) Live {
 	l := widget.NewLabel("Scene error:\n" + msg)
 	l.Wrapping = fyne.TextWrapWord
-	return &errorLive{label: l}
+	// Build the box once: Object() is called by the renderer on every layout
+	// and paint, and a fresh object each time breaks identity and caching.
+	return &errorLive{label: l, box: container.NewPadded(l)}
 }
 
-func (e *errorLive) Object() fyne.CanvasObject { return container.NewPadded(e.label) }
+func (e *errorLive) Object() fyne.CanvasObject { return e.box }
 func (e *errorLive) Update(n *scene.Node, _ scene.Fields) error {
 	e.label.SetText("Scene error:\n" + n.Type)
 	return nil

@@ -31,7 +31,7 @@ func (s *Store) Index(ctx context.Context, ref string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	desiredMembers := mediaRefs(doc)
+	desiredMembers := mediaRefs(doc, s.Schema)
 	currentRows, err := s.Client.CollectionMembers(string(uid))
 	if err != nil {
 		currentRows = nil
@@ -71,8 +71,13 @@ func (s *Store) Index(ctx context.Context, ref string, data []byte) error {
 	return nil
 }
 
-// mediaRefs collects content hashes referenced by props or action values.
-func mediaRefs(doc *scene.Document) map[string]bool {
+// mediaRefs collects content hashes referenced by asset props or action
+// values. When schema is set, only props declared as asset references count:
+// otherwise a collection or directory UID in a string prop was recorded as a
+// member of the scene.
+func mediaRefs(doc *scene.Document, schema interface {
+	Spec(string) (scene.ComponentSpec, bool)
+}) map[string]bool {
 	out := make(map[string]bool)
 	add := func(s string) {
 		s = strings.TrimPrefix(strings.TrimSpace(s), "tie:")
@@ -96,7 +101,17 @@ func mediaRefs(doc *scene.Document) map[string]bool {
 		}
 	}
 	doc.Walk(func(n *scene.Node) bool {
-		for _, v := range n.Props {
+		for key, v := range n.Props {
+			if schema != nil {
+				spec, ok := schema.Spec(n.Type)
+				if !ok {
+					continue
+				}
+				p, ok := spec.Prop(key)
+				if !ok || p.Kind != scene.PropAsset {
+					continue
+				}
+			}
 			walkValue(v)
 		}
 		for _, acts := range n.On {

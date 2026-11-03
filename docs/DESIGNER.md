@@ -126,17 +126,28 @@ adds one. The full verb list is in [SCENES.md](SCENES.md#actions).
 - Ctrl+D — duplicate the selection with a +10 offset.
 - Ctrl+Z / Ctrl+Y — undo/redo. Consecutive changes to the same field or drag are
   coalesced into one step (one second window).
-- Ctrl+S — validate, encode canonically and save. The title shows `•` while
+- Ctrl/Cmd+S — validate, encode canonically and save. It works from the
+  canvas **and from any inspector field**: `editorEntry` forwards the editor
+  bindings before the Entry handles its own shortcuts. Saving is asynchronous;
+  a save already in flight queues one follow-up save instead of dropping the
+  request, and the history is checkpointed so edits made during the save stay
   dirty.
-- Saving is asynchronous; conflict detection uses the store's version. On
-  `ErrConflict` the status reports the conflict (Reload/Overwrite/Save-as-copy
-  UI is on the roadmap).
-- Leaving with unsaved changes asks Save/Discard. The browser additionally
-  asks before a navigation would replace an open editor (`BeforeLeave`).
-
-Keyboard shortcuts work while the overlay has focus (click the canvas once).
-Ctrl+S is also available from a main menu shortcut; a focused inspector entry
-forwards it to the editor.
+- Ctrl/Cmd+E (or F4) toggles edit mode; while editing it goes through the same
+  save prompt as Done. (F4 is not a canvas shortcut in the GLFW driver, which
+  only builds custom shortcuts for keys with a modifier; the overlay and
+  editor fields handle it as a plain key.)
+- Done asks Save / Discard / Cancel when there are unsaved changes. Cancel is
+  the dismiss button, so a programmatic Hide cannot discard work. A save in
+  flight is waited for before closing.
+- `Options.OnSaveState` reports Dirty/Saving/Saved/Failed for a persistent
+  host indicator; `Options.OnSaveDone` fires after a save and its UI updates.
+- Conflict detection uses the store's version. On `ErrConflict` the editor
+  offers Overwrite or Reload/Cancel, and Reload asks a second time before
+  discarding local edits.
+- Leaving with unsaved changes asks Discard/Stay. The browser additionally
+  asks before a navigation would replace an open editor (`BeforeLeave`), and
+  tells the provider when an editor is closed by other means so autosave
+  stops.
 
 ## Architecture
 
@@ -163,7 +174,12 @@ experiments drift and catch toolbar offsets.
 
 **Previews.** During a drag the overlay asks the parent's `ContainerLive` to
 preview a placement. The model is not touched until release; a layout pass in
-the middle of a drag (window resize) therefore cannot snap the node back.
+the middle of a drag (window resize) therefore cannot snap the node back. The
+selection box and handles are drawn from the preview geometry (and descendants
+of a dragged container are translated with it), so the chrome follows the
+pointer. Previews use `FreeLayout.LayoutObject` and repaint only the moved
+object: a container refresh would recursively refresh every sibling and
+re-decode every image. Reparenting into a different container requires Alt.
 
 **Operations.** Every edit becomes a `scene.Tx` with invertible `scene.Op`s.
 `Document.Apply` is atomic (clone, apply, swap), returns `[]scene.Change`, and

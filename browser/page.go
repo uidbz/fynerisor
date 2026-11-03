@@ -24,6 +24,13 @@ type Page struct {
 	Body     []byte
 	Version  string
 	Writable bool
+	// Script is an optional sidecar script, already fetched off the UI thread.
+	// ScriptErr reports why it is missing; the page still renders data-only.
+	Script    []byte
+	ScriptErr error
+	// Dispose, when set by the renderer, releases the page's live objects
+	// (scene views own async loads that must stop when the page is replaced).
+	Dispose func()
 }
 
 // EditorProvider turns a page into an editor UI. The browser stops the page's

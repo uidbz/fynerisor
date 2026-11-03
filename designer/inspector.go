@@ -78,7 +78,7 @@ func (i *inspector) refresh() {
 	}
 
 	i.section(fmt.Sprintf("%s  ·  %s", primary.Type, primary.ID))
-	name := widget.NewEntry()
+	name := newEditorEntry(i.ed)
 	name.SetText(primary.Name)
 	name.SetPlaceHolder("Display name")
 	name.OnChanged = func(s string) {
@@ -93,7 +93,9 @@ func (i *inspector) refresh() {
 		}
 		if len(ops) > 0 {
 			i.ed.applyEdit("rename", "name:"+primary.ID, ops...)
-			i.ed.outline.refresh()
+			// Refresh the labels only; a full outline refresh reopens every
+			// branch on every keystroke.
+			i.ed.outline.tree.Refresh()
 		}
 	}
 	i.row("Name", name)
@@ -131,7 +133,7 @@ func (i *inspector) style(n *scene.Node) {
 		}
 		i.ed.applyEdit("style", "style:"+n.ID, scene.SetFieldOp(n.ID, "style", cur.Style, &next))
 	}
-	fg := widget.NewEntry()
+	fg := newEditorEntry(i.ed)
 	fg.SetPlaceHolder("foreground color")
 	fg.SetText(st.Fg)
 	fg.OnChanged = func(s string) {
@@ -142,7 +144,7 @@ func (i *inspector) style(n *scene.Node) {
 		apply()
 	}
 	i.row("Foreground", fg)
-	bg := widget.NewEntry()
+	bg := newEditorEntry(i.ed)
 	bg.SetPlaceHolder("background color")
 	bg.SetText(st.Bg)
 	bg.OnChanged = func(s string) {
@@ -153,7 +155,7 @@ func (i *inspector) style(n *scene.Node) {
 		apply()
 	}
 	i.row("Background", bg)
-	size := widget.NewEntry()
+	size := newEditorEntry(i.ed)
 	size.SetText(formatNum(st.TextSize))
 	size.OnChanged = func(s string) {
 		if i.loading {
@@ -223,7 +225,7 @@ func (i *inspector) placement(n *scene.Node) {
 	i.section("Placement in " + parent.Type)
 
 	numEntry := func(label string, get func() float64, set func(float64)) {
-		entry := widget.NewEntry()
+		entry := newEditorEntry(i.ed)
 		entry.SetText(formatNum(get()))
 		entry.OnChanged = func(s string) {
 			if i.loading {
@@ -292,11 +294,11 @@ func (i *inspector) placement(n *scene.Node) {
 		numEntry("Min width", func() float64 { return n.Place.MinW }, func(v float64) { place(func(p *scene.Place) { p.MinW = v }) })
 		numEntry("Min height", func() float64 { return n.Place.MinH }, func(v float64) { place(func(p *scene.Place) { p.MinH = v }) })
 		if pspec.Kind == scene.Tabs {
-			title := widget.NewEntry()
+			title := newEditorEntry(i.ed)
 			title.SetText(n.Place.Title)
 			title.OnChanged = func(s string) { place(func(p *scene.Place) { p.Title = s }) }
 			i.row("Tab title", title)
-			icon := widget.NewEntry()
+			icon := newEditorEntry(i.ed)
 			icon.SetText(n.Place.Icon)
 			icon.OnChanged = func(s string) { place(func(p *scene.Place) { p.Icon = s }) }
 			i.row("Tab icon", icon)
@@ -304,10 +306,18 @@ func (i *inspector) placement(n *scene.Node) {
 
 	case scene.Slots:
 		if len(pspec.Slots) > 0 {
-			sel := widget.NewSelect(pspec.Slots, func(s string) {
+			// SetSelected fires OnChanged: attach the callback after the
+			// initial selection, or every refresh would push a no-op
+			// SetPlace and mark the document dirty.
+			initial := n.Place.Slot
+			sel := widget.NewSelect(pspec.Slots, nil)
+			sel.SetSelected(initial)
+			sel.OnChanged = func(s string) {
+				if i.loading || s == initial {
+					return
+				}
 				place(func(p *scene.Place) { p.Slot = s })
-			})
-			sel.SetSelected(n.Place.Slot)
+			}
 			i.row("Slot", sel)
 		}
 		numEntry("Min width", func() float64 { return n.Place.MinW }, func(v float64) { place(func(p *scene.Place) { p.MinW = v }) })
@@ -379,7 +389,7 @@ func (i *inspector) propRow(n *scene.Node, p scene.PropSpec) {
 		sel.SetSelected(stringOf(val))
 		i.row(p.Title, sel)
 	case scene.PropNumber, scene.PropInt:
-		entry := widget.NewEntry()
+		entry := newEditorEntry(i.ed)
 		entry.SetText(formatNum(numOf(val, 0)))
 		entry.OnChanged = func(s string) {
 			if i.loading {
@@ -397,7 +407,7 @@ func (i *inspector) propRow(n *scene.Node, p scene.PropSpec) {
 		}
 		i.row(p.Title, entry)
 	case scene.PropColor:
-		entry := widget.NewEntry()
+		entry := newEditorEntry(i.ed)
 		entry.SetText(stringOf(val))
 		entry.OnChanged = func(s string) { i.setProp(p.Name, s) }
 		if i.ed.opts.Window != nil {
@@ -419,7 +429,7 @@ func (i *inspector) propRow(n *scene.Node, p scene.PropSpec) {
 			i.row(p.Title, entry)
 		}
 	case scene.PropOptions, scene.PropTags:
-		entry := widget.NewEntry()
+		entry := newEditorEntry(i.ed)
 		entry.SetText(strings.Join(listOf(val), ", "))
 		entry.OnChanged = func(s string) {
 			var out []any
@@ -441,7 +451,7 @@ func (i *inspector) propRow(n *scene.Node, p scene.PropSpec) {
 		sel.SetSelected(stringOf(val))
 		i.row(p.Title, sel)
 	case scene.PropPoints:
-		entry := widget.NewMultiLineEntry()
+		entry := newEditorMultiLineEntry(i.ed)
 		if val != nil {
 			if data, err := json.MarshalIndent(val, "", "  "); err == nil {
 				entry.SetText(string(data))
@@ -467,13 +477,13 @@ func (i *inspector) propRow(n *scene.Node, p scene.PropSpec) {
 		}
 		i.row(p.Title, entry)
 	case scene.PropText:
-		entry := widget.NewMultiLineEntry()
+		entry := newEditorMultiLineEntry(i.ed)
 		entry.SetText(stringOf(val))
 		entry.SetMinRowsVisible(3)
 		entry.OnChanged = func(s string) { i.setProp(p.Name, s) }
 		i.row(p.Title, entry)
 	default: // string, asset, url, sceneRef, icon
-		entry := widget.NewEntry()
+		entry := newEditorEntry(i.ed)
 		entry.SetText(stringOf(val))
 		entry.OnChanged = func(s string) { i.setProp(p.Name, s) }
 		if (p.Kind == scene.PropAsset || p.Kind == scene.PropSceneRef) && i.ed.opts.AssetPick != nil {
@@ -545,15 +555,21 @@ func (i *inspector) events(n *scene.Node) {
 			case "call":
 				targetLabel, target = "Handler", a.Handler
 			}
-			entry := widget.NewEntry()
+			entry := newEditorEntry(i.ed)
 			entry.SetText(target)
 			entry.SetPlaceHolder(targetLabel)
-			apply := func() {
-				cur := n.On[ev]
-				if idx >= len(cur) {
+			// Apply without rebuilding the inspector: rebuilding on every
+			// keystroke replaces the entry the user is typing into.
+			apply := func(rebuild bool) {
+				cur, ok := i.ed.doc.Find(n.ID)
+				if !ok {
 					return
 				}
-				next := append([]scene.Action(nil), cur...)
+				actions := cur.On[ev]
+				if idx >= len(actions) {
+					return
+				}
+				next := append([]scene.Action(nil), actions...)
 				act := next[idx]
 				act.Do = verb.Selected
 				switch act.Do {
@@ -568,17 +584,33 @@ func (i *inspector) events(n *scene.Node) {
 					act.To, act.Handler = "", ""
 				}
 				next[idx] = act
-				i.setOn(ev, n, next)
+				i.setOn(ev, n, next, rebuild)
 			}
-			verb.OnChanged = func(string) { apply() }
-			entry.OnChanged = func(string) { apply() }
-			del := widget.NewButton("×", func() {
-				cur := n.On[ev]
-				if idx >= len(cur) {
+			verb.OnChanged = func(string) {
+				if i.loading {
 					return
 				}
-				next := append(append([]scene.Action(nil), cur[:idx]...), cur[idx+1:]...)
-				i.setOn(ev, n, next)
+				// The target field changes meaning with the verb; rebuild the
+				// row deliberately here.
+				apply(true)
+			}
+			entry.OnChanged = func(string) {
+				if i.loading {
+					return
+				}
+				apply(false)
+			}
+			del := widget.NewButton("×", func() {
+				cur, ok := i.ed.doc.Find(n.ID)
+				if !ok {
+					return
+				}
+				actions := cur.On[ev]
+				if idx >= len(actions) {
+					return
+				}
+				next := append(append([]scene.Action(nil), actions[:idx]...), actions[idx+1:]...)
+				i.setOn(ev, n, next, true)
 			})
 			i.box.Add(container.NewBorder(nil, nil, nil, del, container.NewVBox(
 				container.NewGridWithColumns(2, verb, entry),
@@ -586,15 +618,19 @@ func (i *inspector) events(n *scene.Node) {
 		}
 		addEv := ev
 		add := widget.NewButton("+ action", func() {
-			cur := append([]scene.Action(nil), n.On[addEv]...)
-			cur = append(cur, scene.Action{Do: "navigate"})
-			i.setOn(addEv, n, cur)
+			cur, ok := i.ed.doc.Find(n.ID)
+			if !ok {
+				return
+			}
+			actions := append([]scene.Action(nil), cur.On[addEv]...)
+			actions = append(actions, scene.Action{Do: "navigate"})
+			i.setOn(addEv, n, actions, true)
 		})
 		i.box.Add(add)
 	}
 }
 
-func (i *inspector) setOn(event string, n *scene.Node, actions []scene.Action) {
+func (i *inspector) setOn(event string, n *scene.Node, actions []scene.Action, rebuild bool) {
 	if i.loading {
 		return
 	}
@@ -612,7 +648,9 @@ func (i *inspector) setOn(event string, n *scene.Node, actions []scene.Action) {
 		next[event] = actions
 	}
 	i.ed.applyEdit("event "+event, "on:"+n.ID+":"+event, scene.SetFieldOp(n.ID, "on", cur.On, next))
-	i.refresh()
+	if rebuild {
+		i.refresh()
+	}
 }
 
 func propValue(n *scene.Node, p scene.PropSpec) any {

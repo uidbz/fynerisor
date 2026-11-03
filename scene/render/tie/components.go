@@ -3,6 +3,7 @@ package tieassets
 import (
 	"fmt"
 	"image/color"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -214,18 +215,25 @@ type galleryItem struct {
 type galleryLive struct {
 	box        *fyne.Container
 	gw         *widget.GridWrap
+	msg        *widget.Label
 	bc         *render.BuildContext
 	tc         *client.TieClient
 	collection bool
+	tile       float32
 
-	mu    sync.Mutex
-	items []galleryItem
-	ref   string
-	gen   atomic.Int64
+	mu     sync.Mutex
+	items  []galleryItem
+	loaded map[*canvas.Image]string
+	ref    string
+	gen    atomic.Int64
 }
 
 func newGallery(bc *render.BuildContext, n *scene.Node, tc *client.TieClient, collection bool) *galleryLive {
-	l := &galleryLive{bc: bc, tc: tc, collection: collection}
+	tile := float32(bc.Num(n, "tile", 120))
+	if tile < 48 {
+		tile = 48
+	}
+	l := &galleryLive{bc: bc, tc: tc, collection: collection, tile: tile, loaded: make(map[*canvas.Image]string)}
 	l.gw = widget.NewGridWrap(
 		func() int {
 			l.mu.Lock()
@@ -235,12 +243,15 @@ func newGallery(bc *render.BuildContext, n *scene.Node, tc *client.TieClient, co
 		func() fyne.CanvasObject {
 			img := canvas.NewImageFromResource(nil)
 			img.FillMode = canvas.ImageFillCover
-			return container.NewGridWrap(fyne.NewSize(120, 120), img)
+			return container.NewGridWrap(fyne.NewSize(l.tile, l.tile), img)
 		},
 		func(id widget.GridWrapItemID, obj fyne.CanvasObject) {
 			l.updateItem(int(id), obj)
 		},
 	)
+	l.msg = widget.NewLabel("")
+	l.msg.Wrapping = fyne.TextWrapWord
+	l.msg.Hide()
 	l.gw.OnSelected = func(id widget.GridWrapItemID) {
 		l.mu.Lock()
 		var item galleryItem
@@ -253,7 +264,7 @@ func newGallery(bc *render.BuildContext, n *scene.Node, tc *client.TieClient, co
 			bc.Emit(n.ID, "itemTapped", map[string]any{"item": item.hash, "value": item.name})
 		}
 	}
-	l.box = container.NewStack(l.gw)
+	l.box = container.NewStack(l.gw, l.msg)
 	l.apply(n)
 	return l
 }
@@ -277,10 +288,15 @@ func (l *galleryLive) apply(n *scene.Node) {
 	uid := l.bc.Str(n, "uid", "")
 	collection := l.collection
 	go func() {
-		var items []galleryItem
+		var (
+			items []galleryItem
+			err   error
+		)
 		if collection {
 			if uid != "" {
-				if rows, err := l.tc.CollectionMembers(uid); err == nil {
+				var rows []client.Row
+				rows, err = l.tc.CollectionMembers(uid)
+				if err == nil {
 					for i, row := range rows {
 						if limit > 0 && i >= limit {
 							break
@@ -290,7 +306,9 @@ func (l *galleryLive) apply(n *scene.Node) {
 				}
 			}
 		} else {
-			if rows, _, err := l.tc.FilesWithTags(scope, include, exclude, 0, limit); err == nil {
+			var rows []client.TaggedFile
+			rows, _, err = l.tc.FilesWithTags(scope, include, exclude, 0, limit)
+			if err == nil {
 				for _, f := range rows {
 					if f.IsDir || f.IsArchive {
 						continue
@@ -307,6 +325,17 @@ func (l *galleryLive) apply(n *scene.Node) {
 			l.items = items
 			l.mu.Unlock()
 			l.gw.Refresh()
+			switch {
+			case err != nil:
+				l.msg.SetText("Gallery query failed: " + err.Error())
+				l.msg.Show()
+				l.bc.Statusf("tie.gallery: %v", err)
+			case len(items) == 0:
+				l.msg.SetText("No items match this query.")
+				l.msg.Show()
+			default:
+				l.msg.Hide()
+			}
 		})
 	}()
 }
@@ -327,15 +356,18 @@ func (l *galleryLive) updateItem(id int, obj fyne.CanvasObject) {
 	if !ok {
 		return
 	}
-	if img.Resource != nil && img.Resource.Name() == item.hash {
+	if l.loaded[img] == item.hash {
 		return
 	}
+	l.loaded[img] = item.hash
 	img.Resource = nil
+	img.Refresh()
 	gen := l.gen.Load()
 	go func() {
 		res, err := l.bc.Assets.Open(l.bc.Context, "tie:"+item.hash)
 		guithread.Do(func() {
-			if l.gen.Load() != gen {
+			// The cell may have been recycled to another item while loading.
+			if l.gen.Load() != gen || l.loaded[img] != item.hash {
 				return
 			}
 			if err == nil {
@@ -347,6 +379,9 @@ func (l *galleryLive) updateItem(id int, obj fyne.CanvasObject) {
 }
 
 func (l *galleryLive) Update(n *scene.Node, _ scene.Fields) error {
+	if tile := float32(l.bc.Num(n, "tile", 120)); tile != l.tile {
+		return render.ErrRebuild
+	}
 	l.apply(n)
 	return nil
 }
@@ -395,9 +430,14 @@ func (l *subjectLive) apply(n *scene.Node) {
 		case "relations":
 			row, err := l.tc.Get(subject)
 			if err == nil {
+				keys := make([]string, 0, len(row.Attributes))
+				for k := range row.Attributes {
+					keys = append(keys, k)
+				}
+				sort.Strings(keys)
 				var parts []string
-				for k, v := range row.Attributes {
-					parts = append(parts, fmt.Sprintf("%s: %s", k, strings.Join(v, ", ")))
+				for _, k := range keys {
+					parts = append(parts, fmt.Sprintf("%s: %s", k, strings.Join(row.Attributes[k], ", ")))
 				}
 				text = strings.Join(parts, "\n")
 			}

@@ -9,6 +9,7 @@
 package designer
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -20,6 +21,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
@@ -27,6 +29,18 @@ import (
 	"github.com/uidbz/fynerisor/scene"
 	"github.com/uidbz/fynerisor/scene/render"
 	renderbuiltin "github.com/uidbz/fynerisor/scene/render/builtin"
+)
+
+// SaveState is the editor's save lifecycle, reported through
+// Options.OnSaveState so a host can show a persistent indicator.
+type SaveState int
+
+const (
+	SaveIdle SaveState = iota
+	SaveDirty
+	SaveSaving
+	SaveSaved
+	SaveFailed
 )
 
 // Options configures an Editor.
@@ -46,6 +60,12 @@ type Options struct {
 	OnClose func(reload bool)
 	OnSaved func(*scene.Document)
 	OnDirty func(bool)
+	// OnSaveState reports the save lifecycle (dirty, saving, saved, failed)
+	// for a persistent host indicator. It fires on the UI thread.
+	OnSaveState func(SaveState, error)
+	// OnSaveDone fires after a save and all of its UI updates have completed.
+	// Hosts use it to sequence work after a save; tests use it to synchronize.
+	OnSaveDone func()
 	// AssetPick opens a host picker for asset/scene reference properties.
 	// It must call done exactly once (ok=false on cancel).
 	AssetPick func(kind scene.PropKind, current string, done func(ref string, ok bool))
@@ -73,6 +93,7 @@ type Editor struct {
 	outline   *outlineView
 	palette   *paletteView
 	problems  *problemsView
+	rightTabs *container.AppTabs
 
 	stage   *fyne.Container
 	center  *fyne.Container
@@ -85,7 +106,23 @@ type Editor struct {
 	onDirty  func(bool)
 	lastDirt bool
 	autosave chan struct{}
+
+	closeAfterSave bool
+	pendingSave    *pendingSave
+	shortcuts      []fyne.Shortcut
+
+	// Gesture deferral: panel rebuilds are postponed while a drag/resize is in
+	// flight, so mouse-down does not rebuild the inspector before the first
+	// drag event.
+	gesture     int
+	panelsDirty bool
+
+	// modsOverride replaces the driver's modifier state in tests (the test
+	// driver has no desktop.Driver to report Alt/Shift).
+	modsOverride fyne.KeyModifier
 }
+
+type pendingSave struct{ after func(bool) }
 
 // New builds an editor for doc.
 func New(doc *scene.Document, opts Options) *Editor {
@@ -118,12 +155,100 @@ func New(doc *scene.Document, opts Options) *Editor {
 	e.hist = scene.NewHistory(200)
 	e.overlay = newOverlay(e)
 	e.buildUI()
+	e.installShortcuts()
 	e.refreshUI()
 	if opts.Window != nil && opts.Ref != "" {
 		e.startAutosave()
 		e.offerDraft()
 	}
 	return e
+}
+
+// reportSaveState forwards the save lifecycle to the host.
+func (e *Editor) reportSaveState(s SaveState, err error) {
+	if e.opts.OnSaveState != nil {
+		e.opts.OnSaveState(s, err)
+	}
+}
+
+// beginGesture postpones inspector/outline rebuilds until the pointer
+// gesture ends; endGesture flushes the pending rebuild once.
+func (e *Editor) beginGesture() { e.gesture++ }
+
+func (e *Editor) endGesture() {
+	if e.gesture > 0 {
+		e.gesture--
+	}
+	if e.gesture > 0 || !e.panelsDirty {
+		return
+	}
+	e.panelsDirty = false
+	if e.inspector != nil {
+		e.inspector.refresh()
+	}
+	if e.outline != nil {
+		e.outline.syncSelection()
+	}
+}
+
+// handleShortcut lets editor fields and the canvas share save/close bindings.
+// It reports whether the shortcut was consumed.
+func (e *Editor) handleShortcut(s fyne.Shortcut) bool {
+	sh, ok := s.(*desktop.CustomShortcut)
+	if !ok {
+		return false
+	}
+	ctrl := sh.Modifier&(fyne.KeyModifierControl|fyne.KeyModifierSuper) != 0
+	if !ctrl {
+		return false
+	}
+	switch sh.KeyName {
+	case fyne.KeyS:
+		e.Save()
+		return true
+	case fyne.KeyE:
+		e.RequestClose()
+		return true
+	}
+	return false
+}
+
+// handleKey handles editor-level keys from a focused field.
+func (e *Editor) handleKey(ev *fyne.KeyEvent) bool {
+	if ev != nil && ev.Name == fyne.KeyF4 {
+		e.RequestClose()
+		return true
+	}
+	return false
+}
+
+// installShortcuts registers the editor's canvas shortcuts. They only fire
+// when no field consumes them; editorEntry forwards them when one does.
+func (e *Editor) installShortcuts() {
+	c := e.canvas()
+	if c == nil {
+		return
+	}
+	add := func(key fyne.KeyName, mod fyne.KeyModifier, fn func()) {
+		sc := &desktop.CustomShortcut{KeyName: key, Modifier: mod}
+		c.AddShortcut(sc, func(fyne.Shortcut) { fn() })
+		e.shortcuts = append(e.shortcuts, sc)
+	}
+	add(fyne.KeyS, fyne.KeyModifierControl, e.Save)
+	add(fyne.KeyS, fyne.KeyModifierSuper, e.Save)
+	add(fyne.KeyE, fyne.KeyModifierControl, e.RequestClose)
+	add(fyne.KeyE, fyne.KeyModifierSuper, e.RequestClose)
+}
+
+func (e *Editor) removeShortcuts() {
+	c := e.canvas()
+	if c == nil {
+		return
+	}
+	for _, sc := range e.shortcuts {
+		c.RemoveShortcut(sc)
+	}
+	e.shortcuts = nil
 }
 
 // Object returns the editor UI as a canvas object.
@@ -157,36 +282,35 @@ func (e *Editor) Issues() []scene.Issue { return e.issue }
 // Selection returns the selected node IDs in document order.
 func (e *Editor) Selection() []string { return e.selectedIDs() }
 
-// paletteDrag drives a palette drag into the canvas. start/current are
-// absolute screen positions from the palette item.
-func (e *Editor) paletteDrag(typ string, start, current fyne.Position) {
+// paletteDrag drives a palette drag into the canvas. current is the absolute
+// pointer position from the palette item's drag event.
+func (e *Editor) paletteDrag(typ string, current fyne.Position) {
 	app := fyne.CurrentApp()
 	if app == nil || app.Driver() == nil || e.overlay == nil {
 		return
 	}
 	oa := app.Driver().AbsolutePositionForObject(e.overlay)
 	os := e.overlay.Size()
-	local := func(p fyne.Position) fyne.Position { return p.Subtract(oa) }
-	s, c := local(start), local(current)
-	if s.X < 0 || s.Y < 0 || s.X > os.Width || s.Y > os.Height {
-		s = c // the drag entered the canvas at the current point
+	c := current.Subtract(oa)
+	if c.X < 0 || c.Y < 0 || c.X > os.Width || c.Y > os.Height {
+		return
 	}
 	if e.tool != typ {
 		e.tool = typ
-		e.overlay.beginPalette(s)
+		e.overlay.beginPalette(c)
 	}
 	e.overlay.movePalette(c)
 }
 
-// paletteDrop finishes a palette drag.
-func (e *Editor) paletteDrop(typ string, start, current fyne.Position) {
+// paletteDrop finishes a palette drag at the pointer position.
+func (e *Editor) paletteDrop(typ string, current fyne.Position) {
 	app := fyne.CurrentApp()
 	if app == nil || app.Driver() == nil || e.overlay == nil {
 		return
 	}
 	oa := app.Driver().AbsolutePositionForObject(e.overlay)
 	os := e.overlay.Size()
-	s, c := start.Subtract(oa), current.Subtract(oa)
+	c := current.Subtract(oa)
 	if c.X < 0 || c.Y < 0 || c.X > os.Width || c.Y > os.Height {
 		// Dropped outside the canvas: cancel rather than create at a bogus
 		// coordinate.
@@ -196,12 +320,9 @@ func (e *Editor) paletteDrop(typ string, start, current fyne.Position) {
 		e.DisarmTool()
 		return
 	}
-	if s.X < 0 || s.Y < 0 || s.X > os.Width || s.Y > os.Height {
-		s = c
-	}
 	if e.tool != typ {
 		e.tool = typ
-		e.overlay.beginPalette(s)
+		e.overlay.beginPalette(c)
 	}
 	e.overlay.dropPalette(c)
 	e.DisarmTool()
@@ -347,6 +468,7 @@ func (e *Editor) buildUI() {
 		container.NewTabItemWithIcon("Inspector", theme.SettingsIcon(), e.inspector.object()),
 		container.NewTabItemWithIcon("Problems", theme.WarningIcon(), e.problems.object()),
 	)
+	e.rightTabs = right
 
 	e.stage = container.NewStack(e.view, e.overlay)
 	e.center = container.NewStack(e.stage)
@@ -471,13 +593,6 @@ func (e *Editor) Save() { e.save(nil) }
 func (e *Editor) save(after func(bool)) { e.saveWith(e.version, after) }
 
 func (e *Editor) saveWith(baseVersion string, after func(bool)) {
-	if e.saving {
-		e.setStatus("Save already in progress")
-		if after != nil {
-			after(false)
-		}
-		return
-	}
 	if e.opts.Store == nil || e.opts.Ref == "" {
 		e.setStatus("No store configured for this document")
 		if after != nil {
@@ -485,12 +600,31 @@ func (e *Editor) saveWith(baseVersion string, after func(bool)) {
 		}
 		return
 	}
+	if e.saving {
+		// Coalesce: the save in flight is older than the document, so run one
+		// more save when it finishes instead of dropping the request.
+		if e.pendingSave == nil {
+			e.pendingSave = &pendingSave{}
+		}
+		e.pendingSave.after = after
+		e.setStatus("Save queued…")
+		return
+	}
 	e.issue = scene.Validate(e.doc, e.opts.Registry.Registry)
 	e.problems.set(e.issue)
 	if scene.Errors(e.issue) > 0 {
 		e.setStatus(fmt.Sprintf("Cannot save: %d validation errors", scene.Errors(e.issue)))
+		e.showProblems()
 		if after != nil {
 			after(false)
+		}
+		return
+	}
+	if !e.hist.Dirty() {
+		e.setStatus("No changes to save")
+		e.reportSaveState(SaveSaved, nil)
+		if after != nil {
+			after(true)
 		}
 		return
 	}
@@ -502,9 +636,13 @@ func (e *Editor) saveWith(baseVersion string, after func(bool)) {
 		}
 		return
 	}
+	// Record exactly the state we are about to write. The save is asynchronous
+	// and can take seconds; edits made meanwhile must stay dirty.
+	cp := e.hist.Checkpoint()
 	ref, version := e.opts.Ref, baseVersion
 	e.saving = true
 	e.setStatus("Saving…")
+	e.reportSaveState(SaveSaving, nil)
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
@@ -512,6 +650,7 @@ func (e *Editor) saveWith(baseVersion string, after func(bool)) {
 		guithread.Do(func() {
 			e.saving = false
 			if err != nil {
+				e.reportSaveState(SaveFailed, err)
 				if errors.Is(err, scene.ErrConflict) && e.opts.Window != nil {
 					e.resolveConflict(after)
 					return
@@ -520,12 +659,25 @@ func (e *Editor) saveWith(baseVersion string, after func(bool)) {
 				if after != nil {
 					after(false)
 				}
+				e.finishSave(false)
 				return
 			}
 			e.version = snap.Version
-			e.hist.MarkSaved()
+			if !e.hist.MarkSavedAt(cp) {
+				// The history moved while saving. If the document still
+				// encodes to exactly what was written it is saved anyway;
+				// otherwise it stays dirty.
+				if cur, encErr := scene.Encode(e.doc); encErr == nil && bytes.Equal(cur, data) {
+					e.hist.MarkSaved()
+				}
+			}
 			removeDraft(e.opts.Ref)
 			e.refreshDirty()
+			if e.hist.Dirty() {
+				e.reportSaveState(SaveDirty, nil)
+			} else {
+				e.reportSaveState(SaveSaved, nil)
+			}
 			if e.opts.OnSaved != nil {
 				e.opts.OnSaved(e.doc)
 			}
@@ -533,13 +685,48 @@ func (e *Editor) saveWith(baseVersion string, after func(bool)) {
 			if after != nil {
 				after(true)
 			}
+			e.finishSave(true)
+			if e.opts.OnSaveDone != nil {
+				e.opts.OnSaveDone()
+			}
 		})
 	}()
 }
 
-// RequestClose closes the editor, asking about unsaved changes.
+// finishSave runs a coalesced follow-up save or the pending close.
+func (e *Editor) finishSave(ok bool) {
+	if req := e.pendingSave; req != nil {
+		e.pendingSave = nil
+		e.saveWith(e.version, req.after)
+		return
+	}
+	if e.closeAfterSave {
+		e.closeAfterSave = false
+		if !ok {
+			return
+		}
+		if e.hist.Dirty() {
+			e.save(func(saved bool) {
+				if saved {
+					e.close(false)
+				}
+			})
+			return
+		}
+		e.close(false)
+	}
+}
+
+// RequestClose closes the editor, asking about unsaved changes. A save already
+// in flight is waited for (and followed by one more save if the document
+// changed meanwhile) instead of being dropped.
 func (e *Editor) RequestClose() {
 	if e.closing {
+		return
+	}
+	if e.saving {
+		e.closeAfterSave = true
+		e.setStatus("Saving… the editor closes when the save completes")
 		return
 	}
 	if !e.Dirty() {
@@ -551,19 +738,25 @@ func (e *Editor) RequestClose() {
 		e.close(false)
 		return
 	}
-	d := dialog.NewConfirm("Unsaved changes", "Save before closing?", func(save bool) {
-		if save {
-			e.save(func(ok bool) {
-				if ok {
-					e.close(false)
-				}
-			})
-			return
-		}
+	var d *dialog.CustomDialog
+	discard := widget.NewButton("Discard", func() {
+		d.Hide()
 		e.close(false)
-	}, w)
-	d.SetConfirmText("Save")
-	d.SetDismissText("Discard")
+	})
+	save := widget.NewButtonWithIcon("Save", theme.DocumentSaveIcon(), func() {
+		d.Hide()
+		e.save(func(ok bool) {
+			if ok {
+				e.close(false)
+			}
+		})
+	})
+	content := container.NewVBox(
+		widget.NewLabel("Save before closing? Unsaved changes are lost otherwise."),
+		container.NewHBox(discard, save),
+	)
+	d = dialog.NewCustom("Unsaved changes", "Cancel", content, w)
+	d.Resize(fyne.NewSize(420, 150))
 	d.Show()
 }
 
@@ -592,6 +785,7 @@ func (e *Editor) close(reload bool) {
 		return
 	}
 	e.closing = true
+	e.removeShortcuts()
 	if e.autosave != nil {
 		close(e.autosave)
 		e.autosave = nil
@@ -610,6 +804,7 @@ func (e *Editor) Abandon() {
 		return
 	}
 	e.closing = true
+	e.removeShortcuts()
 	if e.autosave != nil {
 		close(e.autosave)
 		e.autosave = nil
@@ -644,7 +839,29 @@ func (e *Editor) refreshUI() {
 	e.refreshDirty()
 }
 
+// showProblems brings the Problems tab forward and selects the first invalid
+// node, so a blocked save is actionable instead of a transient status line.
+func (e *Editor) showProblems() {
+	if e.rightTabs != nil {
+		e.rightTabs.SelectIndex(1)
+	}
+	for _, is := range e.issue {
+		if is.Severity == scene.Error && is.NodeID != "" {
+			e.Select(is.NodeID)
+			break
+		}
+	}
+}
+
 func (e *Editor) refreshSelection() {
+	if e.gesture > 0 {
+		// A drag/resize is starting: rebuilding the inspector and outline now
+		// would stall the gesture before its first event.
+		e.panelsDirty = true
+		e.overlay.Refresh()
+		e.refreshStatus()
+		return
+	}
 	e.inspector.refresh()
 	e.outline.syncSelection()
 	e.overlay.Refresh()
@@ -674,6 +891,14 @@ func (e *Editor) refreshDirty() {
 		if e.onDirty != nil {
 			e.onDirty(d)
 		}
+	}
+	if e.saving {
+		return
+	}
+	if d {
+		e.reportSaveState(SaveDirty, nil)
+	} else {
+		e.reportSaveState(SaveSaved, nil)
 	}
 }
 
@@ -1178,15 +1403,22 @@ func (e *Editor) offerDraft() {
 		return
 	}
 	w := e.opts.Window
-	dialog.NewConfirm("Unsaved draft",
-		fmt.Sprintf("A draft from %s exists. Restore it?", d.SavedAt.Format("2006-01-02 15:04")),
-		func(ok bool) {
-			if ok {
-				e.RestoreDraft()
-			} else {
-				removeDraft(e.opts.Ref)
-			}
-		}, w).Show()
+	var dlg *dialog.CustomDialog
+	restore := widget.NewButton("Restore", func() {
+		dlg.Hide()
+		e.RestoreDraft()
+	})
+	discard := widget.NewButton("Discard draft", func() {
+		dlg.Hide()
+		removeDraft(e.opts.Ref)
+	})
+	content := container.NewVBox(
+		widget.NewLabel(fmt.Sprintf("A draft from %s exists. Restore it?", d.SavedAt.Format("2006-01-02 15:04"))),
+		container.NewHBox(discard, restore),
+	)
+	dlg = dialog.NewCustom("Unsaved draft", "Later", content, w)
+	dlg.Resize(fyne.NewSize(460, 160))
+	dlg.Show()
 }
 
 // replaceDocument swaps the edited document and view contents, used by draft
@@ -1216,18 +1448,51 @@ func (e *Editor) resolveConflict(after func(bool)) {
 		}
 		return
 	}
-	d := dialog.NewConfirm("Version conflict",
-		"The document changed elsewhere. Overwrite it with your version? Choose Reload to discard your changes and load the stored version.",
-		func(overwrite bool) {
-			if overwrite {
-				e.saveWith("", after)
-				return
-			}
-			e.reloadFromStore(after)
-		}, w)
-	d.SetConfirmText("Overwrite")
-	d.SetDismissText("Reload")
-	d.Show()
+	var (
+		dlg   *dialog.CustomDialog
+		acted bool
+	)
+	overwrite := widget.NewButton("Overwrite", func() {
+		acted = true
+		dlg.Hide()
+		e.saveWith("", after)
+	})
+	reload := widget.NewButton("Reload…", func() {
+		acted = true
+		dlg.Hide()
+		// Reloading discards local edits: ask once more instead of making a
+		// single wrong click (or a programmatic Hide) destroy them.
+		confirm := dialog.NewConfirm("Discard your changes?",
+			"Reloading replaces this editor with the stored version and discards your unsaved changes.",
+			func(ok bool) {
+				if ok {
+					e.reloadFromStore(after)
+				} else if after != nil {
+					after(false)
+				}
+			}, w)
+		confirm.SetConfirmText("Discard and reload")
+		confirm.SetDismissText("Keep editing")
+		confirm.Show()
+	})
+	content := container.NewVBox(
+		widget.NewLabel("The document changed elsewhere. Overwrite it with your version, or reload the stored one?"),
+		container.NewHBox(reload, overwrite),
+	)
+	dlg = dialog.NewCustom("Version conflict", "Cancel", content, w)
+	dlg.SetOnClosed(func() {
+		if acted {
+			return
+		}
+		// Cancel also clears a pending close: the conflict aborted the save
+		// that close was waiting for.
+		e.closeAfterSave = false
+		if after != nil {
+			after(false)
+		}
+	})
+	dlg.Resize(fyne.NewSize(560, 170))
+	dlg.Show()
 }
 
 func (e *Editor) reloadFromStore(after func(bool)) {

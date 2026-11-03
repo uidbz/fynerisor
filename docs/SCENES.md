@@ -102,7 +102,7 @@ version is its hash.
 | `format` | Format version. Unknown major versions are refused with a clear error. |
 | `id` | Stable identity. In tie-browser this is the scene directory's `DirUID`; it survives edits and moves. |
 | `title` | Human title (browser, tab, outline). |
-| `script` | Optional sidecar Risor script, resolved relative to the document. |
+| `script` | Optional sidecar Risor script, resolved relative to the document. In tie, a scene is a directory: the sidecar lives *inside* it (`tie:/scenes/home/page.risor`), not beside it. |
 | `meta` | Free-form string map for hosts. |
 | `root` | The root node. It must be a container. |
 
@@ -149,6 +149,7 @@ duplicate slots are errors.
 | `background` | — | Asset reference drawn behind the children. |
 | `backgroundFill` | `stretch` | `stretch`, `contain`, `cover`, `original`. |
 | `letterbox` | `#000000` | Color behind/around the design rectangle. |
+| `backgroundColor` | — | Design-area background fill. Empty keeps the historic look (the letterbox shows through). |
 | `clip` | false | Clip children to the container. Changing it rebuilds the node. |
 | `scaleText` | true | Canvas text follows the scale (widget text scaling is on the roadmap). |
 

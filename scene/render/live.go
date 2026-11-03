@@ -16,14 +16,27 @@ import (
 
 // hintObject carries a minimum-size hint for a node placed inside a layout
 // container. Free placement ignores it (the place is authoritative).
+//
+// It is a real widget, not a CanvasObject wrapper: Fyne's render and hit-test
+// walks only descend into *fyne.Container and fyne.Widget values, and the
+// painters only draw concrete canvas types. A wrapper that merely embeds the
+// CanvasObject interface therefore hid its whole subtree — nothing below it was
+// painted, hit-tested, registered with the canvas, or positioned absolutely.
 type hintObject struct {
-	fyne.CanvasObject
+	widget.BaseWidget
+	content    fyne.CanvasObject
 	minW, minH float32
+}
+
+func newHintObject(content fyne.CanvasObject) *hintObject {
+	h := &hintObject{content: content}
+	h.ExtendBaseWidget(h)
+	return h
 }
 
 // MinSize returns the child's minimum size enlarged by the scene hint.
 func (h *hintObject) MinSize() fyne.Size {
-	m := h.CanvasObject.MinSize()
+	m := h.content.MinSize()
 	if h.minW > m.Width {
 		m.Width = h.minW
 	}
@@ -35,10 +48,33 @@ func (h *hintObject) MinSize() fyne.Size {
 
 // SetScale forwards the free-layout scale to objects that care (canvas text).
 func (h *hintObject) SetScale(sx, sy float64) {
-	if s, ok := h.CanvasObject.(interface{ SetScale(sx, sy float64) }); ok {
+	if s, ok := h.content.(interface{ SetScale(sx, sy float64) }); ok {
 		s.SetScale(sx, sy)
 	}
 }
+
+// Visibility is the content's, so Hide on a node (including script `hide` and
+// `toggle` actions) keeps working exactly as before the wrapper became a
+// widget.
+func (h *hintObject) Visible() bool { return h.content.Visible() }
+func (h *hintObject) Show()         { h.content.Show() }
+func (h *hintObject) Hide()         { h.content.Hide() }
+
+// CreateRenderer implements fyne.Widget.
+func (h *hintObject) CreateRenderer() fyne.WidgetRenderer { return &hintRenderer{h: h} }
+
+type hintRenderer struct{ h *hintObject }
+
+func (r *hintRenderer) Layout(size fyne.Size) {
+	r.h.content.Move(fyne.NewPos(0, 0))
+	r.h.content.Resize(size)
+}
+func (r *hintRenderer) MinSize() fyne.Size { return r.h.MinSize() }
+func (r *hintRenderer) Refresh()           { r.h.content.Refresh() }
+func (r *hintRenderer) Objects() []fyne.CanvasObject {
+	return []fyne.CanvasObject{r.h.content}
+}
+func (r *hintRenderer) Destroy() {}
 
 type hintedLive struct {
 	Live
@@ -66,10 +102,11 @@ func (h *hintedContainer) FreeLayout() *FreeLayout {
 
 // wrapHint wraps lives so placed min sizes work for leaves and containers.
 func wrapHint(l Live) Live {
+	hint := newHintObject(l.Object())
 	if c, ok := l.(ContainerLive); ok {
-		return &hintedContainer{ContainerLive: c, hint: &hintObject{CanvasObject: l.Object()}}
+		return &hintedContainer{ContainerLive: c, hint: hint}
 	}
-	return &hintedLive{Live: l, hint: &hintObject{CanvasObject: l.Object()}}
+	return &hintedLive{Live: l, hint: hint}
 }
 
 // SetSizeHint updates the minimum size of a node's object. It is a no-op for

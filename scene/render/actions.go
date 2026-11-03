@@ -24,11 +24,23 @@ func (e *Engine) Run(n *scene.Node, event string, evt map[string]any) {
 	for _, a := range actions {
 		e.runAction(n, a, evt)
 	}
-	// A scene link without an explicit action navigates to its target. This
-	// keeps point-and-click pages terse: a link node with `to` just works.
-	if len(actions) == 0 && n.Type == "link" && event == "tapped" {
-		if to := n.StringProp("to", ""); to != "" {
-			e.navigate(to)
+	// Components with an obvious default action work without wiring actions by
+	// hand: a link with `to` navigates, a tie audio/video card plays/opens its
+	// subject. This keeps point-and-click pages terse.
+	if len(actions) == 0 && event == "tapped" {
+		switch n.Type {
+		case "link":
+			if to := n.StringProp("to", ""); to != "" {
+				e.navigate(to)
+			}
+		case "tie.audio":
+			if v.opts.Opener != nil {
+				v.opts.Opener.Play(firstRef(scene.Action{}, evt))
+			}
+		case "tie.video":
+			if v.opts.Opener != nil {
+				v.opts.Opener.Open(firstRef(scene.Action{}, evt))
+			}
 		}
 	}
 	v.mu.Lock()

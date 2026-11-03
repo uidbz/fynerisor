@@ -3,7 +3,6 @@ package designer
 import (
 	"context"
 	"testing"
-	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/test"
@@ -87,6 +86,32 @@ func TestDragMoveAndUndo(t *testing.T) {
 	n, _ = e.doc.Find("door")
 	if n.Place.X != 100 || n.Place.Y != 100 {
 		t.Fatalf("undo place = %+v", n.Place)
+	}
+}
+
+// TestDragChromeFollowsPreview: the selection box and handles are drawn from
+// the drag preview, not from the committed document position.
+func TestDragChromeFollowsPreview(t *testing.T) {
+	e, _ := newTestEditor(t)
+	e.SetGrid(0)
+	e.Select("door")
+	r := viewRect(t, e, "door")
+	o := e.overlay
+	o.begin(fyne.NewPos(r.X+10, r.Y+10))
+	o.Dragged(&fyne.DragEvent{
+		PointEvent: fyne.PointEvent{Position: o.press},
+		Dragged:    fyne.Delta{DX: 50, DY: 20},
+	})
+	cr, ok := o.chromeRect("door")
+	if !ok {
+		t.Fatal("no chrome rect during drag")
+	}
+	if cr.X != r.X+50 || cr.Y != r.Y+20 {
+		t.Fatalf("chrome rect = %+v, want %+v", cr, render.NewRect(r.X+50, r.Y+20, r.W, r.H))
+	}
+	o.DragEnd()
+	if _, ok := o.previewRects["door"]; ok {
+		t.Fatal("preview rect survived DragEnd")
 	}
 }
 
@@ -212,25 +237,22 @@ func TestNudgeAndSnap(t *testing.T) {
 
 func TestSaveToMemoryStore(t *testing.T) {
 	e, store := newTestEditor(t)
+	sig := newSaveSignal(e)
 	e.SetGrid(0)
 	e.Select("door")
 	e.overlay.nudge(1, 0)
 	e.Save()
-	deadline := time.Now().Add(3 * time.Second)
-	for time.Now().Before(deadline) {
-		snap, err := store.Load(context.Background(), "mem://scene")
-		if err == nil {
-			if _, _, err := scene.DecodeValidated(snap.Data, e.opts.Registry.Registry); err != nil {
-				t.Fatalf("saved document does not decode: %v", err)
-			}
-			if e.Dirty() {
-				t.Fatal("document is still dirty after save")
-			}
-			return
-		}
-		time.Sleep(10 * time.Millisecond)
+	sig.wait(t, 1)
+	snap, err := store.Load(context.Background(), "mem://scene")
+	if err != nil {
+		t.Fatalf("save did not reach the store: %v", err)
 	}
-	t.Fatal("save did not reach the store")
+	if _, _, err := scene.DecodeValidated(snap.Data, e.opts.Registry.Registry); err != nil {
+		t.Fatalf("saved document does not decode: %v", err)
+	}
+	if e.Dirty() {
+		t.Fatal("document is still dirty after save")
+	}
 }
 
 func TestKeyboardDeleteAndEscape(t *testing.T) {
@@ -257,7 +279,7 @@ func TestHitTestAndOrderedDrop(t *testing.T) {
 	if id := e.hitTest(fyne.NewPos(r.X+5, r.Y+5)); id != "door" {
 		t.Fatalf("hit test = %q", id)
 	}
-	// Drag a label into the ordered box.
+	// A plain drag over another container must NOT reparent it.
 	e.SetGrid(0)
 	e.Select("title")
 	tr := viewRect(t, e, "title")
@@ -269,7 +291,24 @@ func TestHitTestAndOrderedDrop(t *testing.T) {
 	})
 	o.DragEnd()
 	wall, _ := e.doc.Find("wall")
+	if len(wall.Children) != 2 {
+		t.Fatalf("plain drag reparented: wall children = %d, want 2", len(wall.Children))
+	}
+	e.undo() // restore the title's position for the second drag
+
+	// Holding Alt makes the same drag reparent into the ordered box.
+	e.modsOverride = fyne.KeyModifierAlt
+	e.Select("title")
+	tr = viewRect(t, e, "title")
+	o.begin(fyne.NewPos(tr.X+tr.W/2, tr.Y+tr.H/2))
+	o.Dragged(&fyne.DragEvent{
+		PointEvent: fyne.PointEvent{Position: o.press},
+		Dragged:    fyne.Delta{DX: -200, DY: 500},
+	})
+	o.DragEnd()
+	e.modsOverride = 0
+	wall, _ = e.doc.Find("wall")
 	if len(wall.Children) != 3 {
-		t.Fatalf("wall children = %d, want 3", len(wall.Children))
+		t.Fatalf("alt-drag wall children = %d, want 3", len(wall.Children))
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/uidbz/fynerisor/scene"
 	"github.com/uidbz/fynerisor/scene/render"
 	renderbuiltin "github.com/uidbz/fynerisor/scene/render/builtin"
+	tieassets "github.com/uidbz/fynerisor/scene/render/tie"
 )
 
 func freeDoc() *scene.Document {
@@ -219,6 +220,35 @@ func TestListenersRunAfterActions(t *testing.T) {
 	v.EmitEvent("door", "tapped", nil)
 	if len(order) != 2 || order[0] != "listener" || order[1] != "listener2" {
 		t.Fatalf("listener order = %#v", order)
+	}
+}
+
+type opener struct {
+	played []string
+	opened []string
+}
+
+func (o *opener) Open(ref string) { o.opened = append(o.opened, ref) }
+func (o *opener) Play(ref string) { o.played = append(o.played, ref) }
+func (o *opener) Pause()          {}
+
+// tie.audio and tie.video work without hand-wired actions.
+func TestTieMediaDefaultActions(t *testing.T) {
+	reg := renderbuiltin.NewRegistry()
+	tieassets.Register(reg, nil)
+	d := &scene.Document{Root: &scene.Node{ID: "root", Type: "free", Children: []*scene.Node{
+		{ID: "track", Type: "tie.audio", Props: map[string]any{"subject": "abc"}},
+		{ID: "clip", Type: "tie.video", Props: map[string]any{"subject": "def"}},
+	}}}
+	o := &opener{}
+	v := render.NewView(d, render.Options{Registry: reg, Opener: o})
+	v.EmitEvent("track", "tapped", map[string]any{"item": "abc"})
+	v.EmitEvent("clip", "tapped", map[string]any{"item": "def"})
+	if len(o.played) != 1 || o.played[0] != "abc" {
+		t.Fatalf("played = %v, want [abc]", o.played)
+	}
+	if len(o.opened) != 1 || o.opened[0] != "def" {
+		t.Fatalf("opened = %v, want [def]", o.opened)
 	}
 }
 

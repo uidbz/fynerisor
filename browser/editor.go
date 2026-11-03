@@ -27,9 +27,14 @@ func (b *Browser) CurrentPage() *Page { return b.currentPage }
 func (b *Browser) Window() *gui.Window { return b.window }
 
 // ToggleEdit enters or leaves edit mode. A page is only editable when the
-// provider accepts it.
+// provider accepts it. Leaving goes through the editor's own close path when it
+// offers one, so unsaved changes are not discarded silently.
 func (b *Browser) ToggleEdit() {
 	if b.editing {
+		if closer, ok := b.editor.(interface{ RequestClose() }); ok {
+			closer.RequestClose()
+			return
+		}
 		b.CloseEditor(true)
 		return
 	}
@@ -48,7 +53,9 @@ func (b *Browser) ToggleEdit() {
 	}
 	// Stop the page script first: the designer must be the only owner of the
 	// document while it is open, and no widget callbacks may race the editor.
+	// The rendered view is replaced by the editor; release its async loads.
 	b.window.Release()
+	b.disposePage()
 	obj := b.editor.Open(p, b)
 	if obj == nil {
 		b.SetStatus("Editor failed to open")
@@ -72,6 +79,13 @@ func (b *Browser) CloseEditor(reload bool) {
 	p := b.currentPage
 	b.editing = false
 	b.editorObj = nil
+	// The provider may not know the editor is gone (a programmatic close, the
+	// window closing). Tell it, so its autosave goroutine stops instead of
+	// writing drafts for a dead editor.
+	if c, ok := b.editor.(interface{ EditorClosed() }); ok {
+		c.EditorClosed()
+	}
+	b.SetSaveState("")
 	if p == nil {
 		return
 	}
@@ -91,9 +105,18 @@ func (b *Browser) installEditShortcut() {
 	if b.window == nil || b.window.FyneWindow == nil {
 		return
 	}
-	shortcut := &desktop.CustomShortcut{KeyName: fyne.KeyF4}
-	b.window.FyneWindow.Canvas().AddShortcut(shortcut, func(fyne.Shortcut) {
-		b.ToggleEdit()
+	c := b.window.FyneWindow.Canvas()
+	toggle := func(fyne.Shortcut) { b.ToggleEdit() }
+	// The GLFW driver only builds custom shortcuts for keys with a non-Shift
+	// modifier, so F4 could never be a canvas shortcut. Ctrl/Cmd+E is the
+	// reliable binding; F4 is handled as a plain key when nothing is focused
+	// (the designer overlay and its fields handle it themselves while editing).
+	c.AddShortcut(&desktop.CustomShortcut{KeyName: fyne.KeyE, Modifier: fyne.KeyModifierControl}, toggle)
+	c.AddShortcut(&desktop.CustomShortcut{KeyName: fyne.KeyE, Modifier: fyne.KeyModifierSuper}, toggle)
+	c.SetOnTypedKey(func(ev *fyne.KeyEvent) {
+		if ev != nil && ev.Name == fyne.KeyF4 {
+			b.ToggleEdit()
+		}
 	})
 }
 

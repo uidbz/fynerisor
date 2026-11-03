@@ -27,6 +27,8 @@ type Assets struct {
 
 	mu    sync.Mutex
 	cache map[string]fyne.Resource
+	order []string
+	max   int
 }
 
 // New returns a tie asset resolver.
@@ -60,9 +62,16 @@ func (a *Assets) Open(ctx context.Context, ref string) (fyne.Resource, error) {
 	a.mu.Unlock()
 
 	useThumb := ""
-	if a.PreferThumbnails {
-		if row, err := a.Client.GetContext(ctx, hash); err == nil {
+	name := hash + ".bin"
+	// One Get gives both the thumbnail pointer and a real filename. The name
+	// matters: Fyne picks SVG rendering from the suffix, and a ".bin" name
+	// made SVG assets decode as bitmaps.
+	if row, err := a.Client.GetContext(ctx, hash); err == nil {
+		if a.PreferThumbnails {
 			useThumb = client.RowFirst(row, "thumbnail")
+		}
+		if fn := client.RowFirst(row, "filename"); fn != "" {
+			name = fn
 		}
 	}
 	downloadHash := hash
@@ -73,13 +82,13 @@ func (a *Assets) Open(ctx context.Context, ref string) (fyne.Resource, error) {
 	if err != nil {
 		return nil, err
 	}
-	name := tmp.Name()
+	tmpName := tmp.Name()
 	tmp.Close()
-	defer os.Remove(name)
-	if err := a.Client.DownloadContext(ctx, "", downloadHash, name); err != nil {
+	defer os.Remove(tmpName)
+	if err := a.Client.DownloadContext(ctx, "", downloadHash, tmpName); err != nil {
 		// A stale thumbnail must not hide the original.
 		if useThumb != "" {
-			if err := a.Client.DownloadContext(ctx, "", hash, name); err == nil {
+			if err := a.Client.DownloadContext(ctx, "", hash, tmpName); err == nil {
 				downloadHash = hash
 			} else {
 				return nil, fmt.Errorf("tieassets: download %s: %w", hash, err)
@@ -88,13 +97,27 @@ func (a *Assets) Open(ctx context.Context, ref string) (fyne.Resource, error) {
 			return nil, fmt.Errorf("tieassets: download %s: %w", hash, err)
 		}
 	}
-	data, err := os.ReadFile(name)
+	data, err := os.ReadFile(tmpName)
 	if err != nil {
 		return nil, err
 	}
-	res := fyne.NewStaticResource(downloadHash+".bin", data)
+	res := fyne.NewStaticResource(name, data)
 	a.mu.Lock()
+	if a.cache == nil {
+		a.cache = make(map[string]fyne.Resource)
+	}
+	if _, ok := a.cache[hash]; !ok {
+		a.order = append(a.order, hash)
+	}
 	a.cache[hash] = res
+	if a.max <= 0 {
+		a.max = 256
+	}
+	for len(a.order) > a.max {
+		old := a.order[0]
+		a.order = a.order[1:]
+		delete(a.cache, old)
+	}
 	a.mu.Unlock()
 	return res, nil
 }

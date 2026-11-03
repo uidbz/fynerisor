@@ -64,6 +64,7 @@ func Specs() []scene.ComponentSpec {
 				p("background", "Background", "Content", scene.PropAsset, ""),
 				enum("backgroundFill", "Background fill", "Content", "stretch", "stretch", "contain", "cover", "original"),
 				p("letterbox", "Letterbox color", "Look", scene.PropColor, "#000000"),
+				p("backgroundColor", "Design background", "Look", scene.PropColor, ""),
 				p("clip", "Clip children", "Layout", scene.PropBool, false),
 				p("scaleText", "Scale canvas text", "Layout", scene.PropBool, true),
 			},

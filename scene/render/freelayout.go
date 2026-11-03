@@ -127,24 +127,32 @@ func (l *FreeLayout) ChildRect(size fyne.Size, p scene.Place) Rect {
 
 // Layout implements fyne.Layout.
 func (l *FreeLayout) Layout(objs []fyne.CanvasObject, size fyne.Size) {
-	t := l.Transform(size)
 	for _, o := range objs {
-		if o == nil {
-			continue
-		}
-		if s, ok := o.(interface{ SetScale(sx, sy float64) }); ok {
-			s.SetScale(t.SX, t.SY)
-		}
-		p := l.placeOf(o)
-		if l.Mode == ScaleNone || l.Mode == "" {
-			p = applyAnchor(p, l.Design, size)
-		}
-		o.Move(fyne.NewPos(
-			float32(t.OX+p.X*t.SX),
-			float32(t.OY+p.Y*t.SY),
-		))
-		o.Resize(fyne.NewSize(float32(p.W*t.SX), float32(p.H*t.SY)))
+		l.LayoutObject(o, size)
 	}
+}
+
+// LayoutObject places one child exactly as Layout would, without touching the
+// others. Drag previews use it: re-running the whole layout (or refreshing the
+// container) on every pointer event also refreshes every sibling, and a
+// container refresh re-decodes every image in the tree.
+func (l *FreeLayout) LayoutObject(o fyne.CanvasObject, size fyne.Size) {
+	if o == nil {
+		return
+	}
+	t := l.Transform(size)
+	if s, ok := o.(interface{ SetScale(sx, sy float64) }); ok {
+		s.SetScale(t.SX, t.SY)
+	}
+	p := l.placeOf(o)
+	if l.Mode == ScaleNone || l.Mode == "" {
+		p = applyAnchor(p, l.Design, size)
+	}
+	o.Move(fyne.NewPos(
+		float32(t.OX+p.X*t.SX),
+		float32(t.OY+p.Y*t.SY),
+	))
+	o.Resize(fyne.NewSize(float32(p.W*t.SX), float32(p.H*t.SY)))
 }
 
 // MinSize implements fyne.Layout. Scaled layouts can shrink to nothing; an
