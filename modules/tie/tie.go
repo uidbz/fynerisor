@@ -152,5 +152,6 @@ func fileHostFromOption(obj object.Object) (client.FileHost, error) {
 func Module() *object.Module {
 	return object.NewBuiltinsModule("tie", map[string]object.Object{
 		"connect": object.NewBuiltin("tie.connect", Connect),
+		"runner":  object.NewBuiltin("tie.runner", ConnectRunner),
 	})
 }

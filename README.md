@@ -285,7 +285,7 @@ Enable modules via `With*()` options. Scripts can optionally use `require(["@mod
 | `@os` | `WithOS()` | OS operations, open browser |
 | `@io` | `WithIO()` | File I/O operations (cp, etc.) |
 | `@sql` | `db.WithSQL()` — opt-in subpackage (`core/db`, `gui/db`) | Database connectivity |
-| `@tie` | `WithTie()` | Tie triple store database |
+| `@tie` | `WithTie()` | Tie triple store + filehost (`tie.connect`) and runner jobs/pipelines/services (`tie.runner`) |
 | `@strings` | `WithStrings()` | String manipulation |
 | `@filepath` | `WithFilepath()` | Path operations |
 | `@time` | `WithTime()` | Time and date functions |
