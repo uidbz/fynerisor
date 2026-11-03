@@ -1113,7 +1113,7 @@ embedding application (tie-browser registers the `tie.*` family).
 | `circle` | Circle | leaf | Shapes | fill (color = #22c55e), stroke (color = #00000000), strokeWidth (number = 0) | tapped |  |
 | `embed` | Embedded scene | leaf | Navigation | src (sceneRef = ) |  |  |
 | `entry` | Entry | leaf | Input | text (string = ), placeholder (string = ), multiline (bool = false), password (bool = false) | changed, submitted |  |
-| `free` | Free canvas | free | Layout | designW (number = 1600), designH (number = 900), scale (enum = fit), background (asset = ), backgroundFill (enum = stretch), letterbox (color = #000000), clip (bool = false), scaleText (bool = true) |  |  |
+| `free` | Free canvas | free | Layout | designW (number = 1600), designH (number = 900), scale (enum = fit), background (asset = ), backgroundFill (enum = stretch), letterbox (color = #000000), backgroundColor (color = ), clip (bool = false), scaleText (bool = true) |  |  |
 | `grid` | Grid | ordered | Layout | cols (number = 2) |  |  |
 | `gridwrap` | Grid wrap | ordered | Layout |  |  |  |
 | `hbox` | Horizontal box | ordered | Layout |  |  |  |
