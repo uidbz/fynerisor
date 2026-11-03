@@ -199,6 +199,14 @@ func (b *Browser) Navigate(url string) {
 	b.navigate(url, true)
 }
 
+// Reload fetches the current page again without adding a history entry. Hosts
+// use it after changing a page's sidecar or other external state.
+func (b *Browser) Reload() {
+	if p := b.currentPage; p != nil {
+		b.navigateNow(p.URL, false)
+	}
+}
+
 // Back navigates to the previous history entry. While editing it asks the
 // editor first: moving the history cursor before the editor agrees left the
 // cursor pointing at a page that was never shown when the user cancelled.

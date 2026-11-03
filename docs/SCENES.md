@@ -151,7 +151,7 @@ duplicate slots are errors.
 | `letterbox` | `#000000` | Color behind/around the design rectangle. |
 | `backgroundColor` | — | Design-area background fill. Empty keeps the historic look (the letterbox shows through). |
 | `clip` | false | Clip children to the container. Changing it rebuilds the node. |
-| `scaleText` | true | Canvas text follows the scale (widget text scaling is on the roadmap). |
+| `scaleText` | true | Widget text and spacing follow the scale (canvas text always does), so the editor stage and play view match. |
 
 `render.FreeLayout` computes a `Transform` from the window size:
 
@@ -463,17 +463,17 @@ tie:/scenes/house/living-room/        DirUID D (dir-type "scene")
 
 ## Status
 
-Implemented in v0.12.0: document model/specs/registry, canonical codec with
+Implemented in v0.15.0: document model/specs/registry, canonical codec with
 limits, validation, invertible ops and undo/redo, file/http/memory/tie stores,
-`FreeLayout` with fit/fill/stretch and anchors, the standard component set,
+`FreeLayout` with fit/fill/stretch and anchors (widget text scales with the
+canvas; `backgroundColor` fills the design area), the standard component set,
 hotspot/action engine (including polygon hotspots), incremental rendering,
 style overrides, host-resolved embeds, designer overlay/palette/outline/
 inspector/problems with inline text, wrap/convert, autosave/drafts,
 device/zoom previews, palette drag, story map and touch-sized handles, Risor
-binding, browser page kinds and F4 editing, CLI `check`/`scene`, standalone
-designer, tie store indexing/thumbnails, tie components and tie-browser.
+binding, browser page kinds and Ctrl+E/F4 editing, CLI `check`/`scene`,
+standalone designer, tie store async indexing/thumbnails, tie components and
+tie-browser (including in-place sidecar editing).
 
 Roadmap: native pwplay/mpv playback in tie-browser, further component polish,
-and a decentralized asset/store backend. Multi-document story maps, media/scene
-asset pickers, touch-first editor layout and file/tie scene thumbnails are
-implemented.
+and a decentralized asset/store backend.

@@ -664,16 +664,26 @@ func (v *View) walkRects(n *scene.Node, rect Rect, viewAbs fyne.Position) {
 		}
 	}
 	free, _ := v.lives[n.ID].(interface{ FreeLayout() *FreeLayout })
+	direct, _ := v.lives[n.ID].(interface{ DirectLayout() bool })
 	for _, ch := range n.Children {
 		var childRect Rect
-		if kind == scene.Free && free != nil {
+		switch {
+		case kind == scene.Free && free != nil:
 			place := ch.Place
 			if rp, ok := v.runtimePl[ch.ID]; ok {
 				place = rp
 			}
 			p := free.FreeLayout().ChildRect(rect.Size(), place)
 			childRect = NewRect(rect.X+p.X, rect.Y+p.Y, p.W, p.H)
-		} else {
+		case direct != nil && direct.DirectLayout() && v.lives[ch.ID] != nil:
+			// Ordered/border children are direct objects of the container:
+			// their Position is relative to the container's rect. This avoids
+			// a full canvas walk (AbsolutePositionForObject) per child.
+			obj := v.lives[ch.ID].Object()
+			p := obj.Position()
+			s := obj.Size()
+			childRect = NewRect(rect.X+p.X, rect.Y+p.Y, s.Width, s.Height)
+		default:
 			childRect = v.absoluteRect(ch.ID, rect, viewAbs)
 		}
 		v.walkRects(ch, childRect, viewAbs)

@@ -2,22 +2,64 @@ package builtin
 
 import (
 	"image/color"
+	"math"
 	"sync/atomic"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/uidbz/fynerisor/scene"
 	"github.com/uidbz/fynerisor/scene/render"
 )
 
+// scaleTheme scales text and spacing with the free canvas transform, so a
+// scene laid out at 60% (the editor stage) looks like the same scene at 100%
+// (the play view) instead of keeping full-size text in shrunken boxes.
+type scaleTheme struct {
+	base  fyne.Theme
+	scale float32
+}
+
+func newScaleTheme() *scaleTheme {
+	base := theme.DefaultTheme()
+	if app := fyne.CurrentApp(); app != nil && app.Settings() != nil && app.Settings().Theme() != nil {
+		base = app.Settings().Theme()
+	}
+	return &scaleTheme{base: base, scale: 1}
+}
+
+func (t *scaleTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
+	return t.base.Color(name, variant)
+}
+func (t *scaleTheme) Font(style fyne.TextStyle) fyne.Resource { return t.base.Font(style) }
+func (t *scaleTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
+	return t.base.Icon(name)
+}
+func (t *scaleTheme) Size(name fyne.ThemeSizeName) float32 {
+	size := t.base.Size(name)
+	if t.scale <= 0 || t.scale == 1 {
+		return size
+	}
+	switch name {
+	case theme.SizeNameText, theme.SizeNameHeadingText, theme.SizeNameSubHeadingText,
+		theme.SizeNameCaptionText, theme.SizeNamePadding, theme.SizeNameInnerPadding,
+		theme.SizeNameInlineIcon, theme.SizeNameScrollBar, theme.SizeNameScrollBarSmall,
+		theme.SizeNameSeparatorThickness, theme.SizeNameInputBorder:
+		return size * t.scale
+	}
+	return size
+}
+
 // --------------------------------------------------------------------- free
 
 type freeLive struct {
 	stack, layer *fyne.Container
+	over         *container.ThemeOverride
+	theme        *scaleTheme
 	outer        fyne.CanvasObject
 	clip         *container.Clip
 	clipped      bool
@@ -29,6 +71,7 @@ type freeLive struct {
 	bc           *render.BuildContext
 	bgGen        atomic.Int64
 	bgRef        string
+	scaleText    bool
 }
 
 func newFree(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
@@ -44,18 +87,44 @@ func newFree(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
 	stack := container.NewStack(letterbox, layer)
 	l := &freeLive{
 		stack: stack, layer: layer, letterbox: letterbox, bgFill: bgFill, bg: bg, fl: fl, bc: bc,
+		theme: newScaleTheme(), scaleText: true,
 	}
+	// Widget text and spacing scale with the canvas transform, so the editor
+	// (which lays the stage out at ~60%) matches play mode.
+	l.over = container.NewThemeOverride(stack, l.theme)
+	fl.OnLayout = func(size fyne.Size) { l.applyScale(size) }
 	if bc.Bool(n, "clip", false) {
-		l.clip = container.NewClip(stack)
+		l.clip = container.NewClip(l.over)
 		l.clipped = true
 		l.outer = l.clip
 	} else {
-		l.outer = stack
+		l.outer = l.over
 	}
 	if err := l.apply(n); err != nil {
 		return nil, err
 	}
 	return l, nil
+}
+
+// applyScale updates the widget theme from the current free-layout transform.
+// The scale is quantized so a window resize does not refresh the whole subtree
+// on every pixel; the refresh is queued (fyne.Do) so it cannot re-enter the
+// layout that is running.
+func (l *freeLive) applyScale(size fyne.Size) {
+	if !l.scaleText {
+		return
+	}
+	s := float32(l.fl.Transform(size).SX)
+	if s <= 0 {
+		s = 1
+	}
+	s = float32(math.Round(float64(s)*10)) / 10
+	if s == l.theme.scale {
+		return
+	}
+	l.theme.scale = s
+	over := l.over
+	fyne.Do(func() { over.Refresh() })
 }
 
 func (l *freeLive) Object() fyne.CanvasObject { return l.outer }
@@ -73,6 +142,12 @@ func (l *freeLive) apply(n *scene.Node) error {
 	}
 	design := fyne.NewSize(designW, designH)
 	l.fl.SetDesign(design, l.bc.Str(n, "scale", render.ScaleFit))
+	l.scaleText = l.bc.Bool(n, "scaleText", true)
+	if !l.scaleText && l.theme.scale != 1 {
+		l.theme.scale = 1
+		over := l.over
+		fyne.Do(func() { over.Refresh() })
+	}
 	l.letterbox.FillColor = l.bc.ColorProp(n, "letterbox", render.Color("#000000", nil))
 	// The design-area background is separate from the letterbox. An empty
 	// value keeps the historic look (the letterbox shows through).
@@ -353,6 +428,10 @@ func (l *orderedLive) DropSpot(local fyne.Position) (render.DropSpot, bool) {
 
 func (l *orderedLive) Transform(fyne.Size) render.Transform { return render.Transform{SX: 1, SY: 1} }
 
+// DirectLayout: ordered children are direct objects of the box, so their
+// positions are relative to the container's rect (no canvas walk needed).
+func (l *orderedLive) DirectLayout() bool { return true }
+
 func (l *orderedLive) Destroy() {}
 
 func (l *orderedLive) sync() {
@@ -460,6 +539,8 @@ func (l *borderLive) DropSpot(local fyne.Position) (render.DropSpot, bool) {
 }
 
 func (l *borderLive) Transform(fyne.Size) render.Transform { return render.Transform{SX: 1, SY: 1} }
+
+func (l *borderLive) DirectLayout() bool { return true }
 
 func (l *borderLive) Destroy() {}
 

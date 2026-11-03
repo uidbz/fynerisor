@@ -46,6 +46,7 @@ func TestIndexAndThumbnail(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	store.WaitIndex()
 	uid, err := tc.DirUIDFromPath(sceneRef)
 	if err != nil || uid == "" {
 		t.Fatalf("uid = %q err=%v", uid, err)

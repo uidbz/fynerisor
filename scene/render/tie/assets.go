@@ -25,10 +25,19 @@ type Assets struct {
 	// thumbnail is usually much smaller than a camera original.
 	PreferThumbnails bool
 
-	mu    sync.Mutex
-	cache map[string]fyne.Resource
-	order []string
-	max   int
+	mu       sync.Mutex
+	cache    map[string]fyne.Resource
+	order    []string
+	max      int
+	inflight map[string]*assetCall
+}
+
+// assetCall deduplicates concurrent loads of the same hash (a gallery and a
+// picker can ask for the same thumbnail at the same time).
+type assetCall struct {
+	done chan struct{}
+	res  fyne.Resource
+	err  error
 }
 
 // New returns a tie asset resolver.
@@ -59,8 +68,33 @@ func (a *Assets) Open(ctx context.Context, ref string) (fyne.Resource, error) {
 		a.mu.Unlock()
 		return r, nil
 	}
+	if call, ok := a.inflight[hash]; ok {
+		a.mu.Unlock()
+		select {
+		case <-call.done:
+			return call.res, call.err
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+	if a.inflight == nil {
+		a.inflight = make(map[string]*assetCall)
+	}
+	call := &assetCall{done: make(chan struct{})}
+	a.inflight[hash] = call
 	a.mu.Unlock()
 
+	res, err := a.load(ctx, hash)
+	a.mu.Lock()
+	call.res, call.err = res, err
+	delete(a.inflight, hash)
+	a.mu.Unlock()
+	close(call.done)
+	return res, err
+}
+
+// load fetches one asset (thumbnail when available) and caches it.
+func (a *Assets) load(ctx context.Context, hash string) (fyne.Resource, error) {
 	useThumb := ""
 	name := hash + ".bin"
 	// One Get gives both the thumbnail pointer and a real filename. The name
@@ -120,4 +154,25 @@ func (a *Assets) Open(ctx context.Context, ref string) (fyne.Resource, error) {
 	}
 	a.mu.Unlock()
 	return res, nil
+}
+
+// Prefetch warms the cache for refs (a scene gallery after a listing). It
+// downloads at most four assets at a time and never blocks the caller.
+func (a *Assets) Prefetch(ctx context.Context, refs []string) {
+	if a.Client == nil || len(refs) == 0 {
+		return
+	}
+	sem := make(chan struct{}, 4)
+	for _, ref := range refs {
+		ref := ref
+		go func() {
+			select {
+			case sem <- struct{}{}:
+			case <-ctx.Done():
+				return
+			}
+			defer func() { <-sem }()
+			_, _ = a.Open(ctx, ref)
+		}()
+	}
 }

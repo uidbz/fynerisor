@@ -100,6 +100,14 @@ func (h *hintedContainer) FreeLayout() *FreeLayout {
 	return nil
 }
 
+// DirectLayout forwards the optional geometry hint through the hint wrapper.
+func (h *hintedContainer) DirectLayout() bool {
+	if d, ok := h.ContainerLive.(interface{ DirectLayout() bool }); ok {
+		return d.DirectLayout()
+	}
+	return false
+}
+
 // wrapHint wraps lives so placed min sizes work for leaves and containers.
 func wrapHint(l Live) Live {
 	hint := newHintObject(l.Object())

@@ -237,8 +237,8 @@ github.com/tiendc/go-deepcopy v1.7.2 h1:Ut2yYR7W9tWjTQitganoIue4UGxZwCcJy3orjrrI
 github.com/tiendc/go-deepcopy v1.7.2/go.mod h1:4bKjNC2r7boYOkD2IOuZpYjmlDdzjbpTRyCx+goBCJQ=
 github.com/uidbz/conf v1.1.6-0.20260830150407-08bf80e17ef6 h1:GTI/4+CFJJDcBplnIYw5i+2Zy8VO8DBgJGgPkDzW34U=
 github.com/uidbz/conf v1.1.6-0.20260830150407-08bf80e17ef6/go.mod h1:XIwt3LLWCVqucBqkfBSAvr6Qs52z8VS+NXGRcdr6FQ8=
-github.com/uidbz/tie v0.8.4 h1:l7OoLyl3h0XqdeI3a3fWtTjnJZfLz1L9BNCAL5y3os0=
-github.com/uidbz/tie v0.8.4/go.mod h1:r4NOdHk9/grV4fO6DyxQLq3L2rYlC+8GrXTltOLo9tU=
+github.com/uidbz/tie v0.8.5 h1:0NpmjM/CBR+KxKU7GoOrLycOdIsIbbKYBlwWUT6BtXA=
+github.com/uidbz/tie v0.8.5/go.mod h1:pdnrf7iY0sX3FNxUPvMe9yxs7m3OzBmHUBGxUX97CQA=
 github.com/ulikunitz/xz v0.5.8/go.mod h1:nbz6k7qbPmH4IRqmfOplQw/tblSgqTqBwxkY0oWt/14=
 github.com/ulikunitz/xz v0.5.15 h1:9DNdB5s+SgV3bQ2ApL10xRc35ck0DuIX/isZvIk+ubY=
 github.com/ulikunitz/xz v0.5.15/go.mod h1:nbz6k7qbPmH4IRqmfOplQw/tblSgqTqBwxkY0oWt/14=

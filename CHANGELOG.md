@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.15.0] - 2026-11-03
+
+### Added
+
+- **Widget text scaling on free canvases.** `scaleText` (default true) now
+  scales widget text and spacing with the canvas transform through a
+  `ThemeOverride`, so the designer stage (laid out at ~60%) matches play mode
+  instead of showing full-size text in shrunken boxes. The scale is quantized
+  and the refresh is queued, so a window resize does not refresh the subtree
+  per pixel.
+- **`browser.Browser.Reload()`** re-fetches the current page without adding a
+  history entry (hosts use it after changing a sidecar).
+- **Asset prefetching**: `render.Prefetcher` is an optional resolver capability;
+  `tieassets.Assets` implements it with four concurrent downloads, and the
+  scene gallery and tie-browser picker warm their thumbnail caches after a
+  listing instead of one metadata fetch per visible cell.
+
+### Changed / performance
+
+- **Async scene indexing**: `tiestore.Store.Save` returns after the pointer
+  write and enqueues the `member-of`/`links-to`/dir-type pass on a single
+  ordered worker (60 s budget, errors via `OnIndexError`). `Store.WaitIndex()`
+  is a barrier for tests and hosts that need the edges immediately.
+- **Asset loads are deduplicated** (single-flight) and the cache stays bounded;
+  concurrent cells asking for the same hash share one download.
+- **Chrome rectangles are pooled** in the designer overlay (no fresh objects
+  per hover/drag frame).
+- **Ordered/border geometry no longer walks the canvas per child**:
+  `DirectLayout` containers sum child positions from the parent rect, cutting
+  the O(N·T) hit-test/selection cost.
+
 ## [0.14.0] - 2026-11-03
 
 ### Added

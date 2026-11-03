@@ -106,6 +106,13 @@ type AssetResolver interface {
 	Open(ctx context.Context, ref string) (fyne.Resource, error)
 }
 
+// Prefetcher is an optional AssetResolver capability: warm the cache for a
+// batch of references. The scene gallery uses it after a listing so visible
+// cells do not each trigger their own metadata fetch.
+type Prefetcher interface {
+	Prefetch(ctx context.Context, refs []string)
+}
+
 // EmbedResolver loads another scene document for an embed node. It runs off
 // the UI thread. The returned base is the embedded document's own URL/path,
 // used for relative links and assets inside it.

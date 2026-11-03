@@ -23,6 +23,11 @@ type FreeLayout struct {
 	Design fyne.Size
 	Mode   string
 
+	// OnLayout, when set, is called after a full Layout pass with the
+	// container size. It is how a free canvas applies a scale-dependent theme
+	// (widget text scaling) without wrapping every child.
+	OnLayout func(size fyne.Size)
+
 	places  map[fyne.CanvasObject]scene.Place
 	preview map[fyne.CanvasObject]scene.Place
 }
@@ -129,6 +134,9 @@ func (l *FreeLayout) ChildRect(size fyne.Size, p scene.Place) Rect {
 func (l *FreeLayout) Layout(objs []fyne.CanvasObject, size fyne.Size) {
 	for _, o := range objs {
 		l.LayoutObject(o, size)
+	}
+	if l.OnLayout != nil {
+		l.OnLayout(size)
 	}
 }
 

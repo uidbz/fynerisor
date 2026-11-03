@@ -69,6 +69,7 @@ type overlay struct {
 	suppressTap bool
 	focused     bool
 	objs        []fyne.CanvasObject
+	chrome      []*canvas.Rectangle
 
 	inline     *editorEntry
 	inlineID   string
@@ -1135,14 +1136,27 @@ func (o *overlay) chromeRect(id string) (render.Rect, bool) {
 }
 
 func (o *overlay) refreshChrome() {
-	o.objs = nil
+	o.objs = o.objs[:0]
+	used := 0
 	addRect := func(r render.Rect, stroke color.Color, width float32, fill color.Color) {
-		rect := canvas.NewRectangle(fill)
+		// Reuse chrome rectangles: a refresh runs on every hover/drag event,
+		// and allocating a fresh object per outline churned Fyne's render
+		// cache for no visual benefit.
+		var rect *canvas.Rectangle
+		if used < len(o.chrome) {
+			rect = o.chrome[used]
+		} else {
+			rect = canvas.NewRectangle(fill)
+			o.chrome = append(o.chrome, rect)
+		}
+		rect.FillColor = fill
 		rect.StrokeColor = stroke
 		rect.StrokeWidth = width
 		rect.Move(r.Position())
 		rect.Resize(r.Size())
+		rect.Show()
 		o.objs = append(o.objs, rect)
+		used++
 	}
 	blue := color.NRGBA{R: 59, G: 130, B: 246, A: 255}
 	green := color.NRGBA{R: 34, G: 197, B: 94, A: 255}
@@ -1216,6 +1230,10 @@ func (o *overlay) refreshChrome() {
 				}
 			}
 		}
+	}
+	// Hide pooled rectangles that this frame did not use.
+	for i := used; i < len(o.chrome); i++ {
+		o.chrome[i].Hide()
 	}
 }
 

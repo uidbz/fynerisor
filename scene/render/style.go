@@ -82,6 +82,13 @@ func (s *styledContainer) FreeLayout() *FreeLayout {
 	return nil
 }
 
+func (s *styledContainer) DirectLayout() bool {
+	if d, ok := s.ContainerLive.(interface{ DirectLayout() bool }); ok {
+		return d.DirectLayout()
+	}
+	return false
+}
+
 // wrapStyle applies a node's style to its whole subtree. It runs after the
 // children are inserted so the ThemeOverride sees the complete tree.
 func wrapStyle(l Live, st *scene.Style) Live {

@@ -317,6 +317,15 @@ func (l *galleryLive) apply(n *scene.Node) {
 				}
 			}
 		}
+		// Warm the thumbnail cache for the whole page in the background, so
+		// each visible cell does not do its own metadata fetch/download.
+		if p, ok := l.bc.Assets.(render.Prefetcher); ok && len(items) > 0 {
+			refs := make([]string, len(items))
+			for i, it := range items {
+				refs[i] = "tie:" + it.hash
+			}
+			p.Prefetch(l.bc.Context, refs)
+		}
 		guithread.Do(func() {
 			if l.gen.Load() != gen {
 				return

@@ -25,6 +25,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/uidbz/tie/api"
 	"github.com/uidbz/tie/client"
@@ -44,6 +45,17 @@ type Store struct {
 	OnIndexError func(error)
 
 	thumbMu sync.Mutex
+
+	indexOnce sync.Once
+	indexCh   chan indexJob
+}
+
+// indexJob is one background index pass. A job with a non-nil done channel is a
+// barrier: the worker closes it after all earlier jobs have run.
+type indexJob struct {
+	path string
+	data []byte
+	done chan struct{}
 }
 
 // Client is the subset of *client.TieClient the store uses. Keeping it narrow
@@ -277,10 +289,49 @@ func (s *Store) Save(ctx context.Context, ref string, data []byte, baseVersion s
 	}
 	// Reads are read-your-writes; Sync only bounds what a crash can lose.
 	_ = s.Client.Sync()
-	if err := s.Index(ctx, path, data); err != nil && s.OnIndexError != nil {
-		s.OnIndexError(err)
-	}
+	// Indexing is best-effort and must not delay the save: it is several
+	// round trips (collection members, links, dir-type) and the document is
+	// already committed.
+	s.enqueueIndex(path, data)
 	return &scene.Snapshot{Ref: path, Version: hash, Data: data, Writable: true}, nil
+}
+
+// startIndexer runs the single background index worker. Jobs are processed in
+// the order Save enqueued them, so an older pass cannot undo a newer one.
+func (s *Store) startIndexer() {
+	s.indexCh = make(chan indexJob, 64)
+	go func() {
+		for job := range s.indexCh {
+			if job.done != nil {
+				close(job.done)
+				continue
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+			if err := s.Index(ctx, job.path, job.data); err != nil && s.OnIndexError != nil {
+				s.OnIndexError(err)
+			}
+			cancel()
+		}
+	}()
+}
+
+func (s *Store) enqueueIndex(path string, data []byte) {
+	s.indexOnce.Do(s.startIndexer)
+	select {
+	case s.indexCh <- indexJob{path: path, data: data}:
+	default:
+		// Queue full (unlikely: saves are user-driven). Never block the save.
+		go func() { s.indexCh <- indexJob{path: path, data: data} }()
+	}
+}
+
+// WaitIndex waits until every index pass enqueued so far has completed. Tests
+// and hosts that need member-of/links-to immediately call it after Save.
+func (s *Store) WaitIndex() {
+	s.indexOnce.Do(s.startIndexer)
+	done := make(chan struct{})
+	s.indexCh <- indexJob{done: done}
+	<-done
 }
 
 // download fetches one blob into memory.
