@@ -3,10 +3,10 @@ package dialog
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/dialog"
-	"fyne.io/fyne/v2/storage"
+	"github.com/uidbz/fyne-addons/kdefilepicker"
 	"github.com/uidbz/fynerisor/gui/guithread"
 	"github.com/uidbz/fynerisor/gui/objattrs"
 
@@ -18,10 +18,14 @@ var _ object.Object = &FileDialog{}
 
 const FileDialogType object.Type = "dialog.FileDialog"
 
-// FileDialog wraps dialog.FileDialog for Risor scripting
+// FileDialog wraps the kdefilepicker KDE-style file dialog for Risor
+// scripts. The picker is presented as an overlay on the parent window with
+// the same lifecycle the stock Fyne file dialog had: Show/Hide may be used
+// repeatedly, and accepting or cancelling dismisses the overlay and fires
+// the script callback with the chosen path.
 type FileDialog struct {
-	instance *dialog.FileDialog
-	window   fyne.Window
+	instance *kdefilepicker.Dialog
+	parent   fyne.Window
 }
 
 func (obj *FileDialog) Type() object.Type {
@@ -85,144 +89,156 @@ func (obj *FileDialog) GetAttr(name string) (object.Object, bool) {
 var fileDialogAttrs = objattrs.Register(string(FileDialogType), object.NewAttrRegistry[*FileDialog](string(FileDialogType)))
 
 func (obj *FileDialog) getAttrUI(name string) (object.Object, bool) {
-	// Create a simple extension filter
 	return fileDialogAttrs.GetAttr(obj, name)
 }
 
-func NewFileOpen(callback func(fyne.URIReadCloser, error), parent fyne.Window) *FileDialog {
-	return &FileDialog{
-		instance: dialog.NewFileOpen(callback, parent),
-		window:   parent,
-	}
+// NewFileOpen creates an open-file picker. The callback receives the
+// selected path, or an empty path with a nil error when the dialog was
+// cancelled.
+func NewFileOpen(callback func(path string, err error), parent fyne.Window) *FileDialog {
+	return newFileDialog(kdefilepicker.ModeOpen, callback, parent)
 }
 
-func NewFileSave(callback func(fyne.URIWriteCloser, error), parent fyne.Window) *FileDialog {
-	return &FileDialog{
-		instance: dialog.NewFileSave(callback, parent),
-		window:   parent,
-	}
+// NewFileSave creates a save-file picker.
+func NewFileSave(callback func(path string, err error), parent fyne.Window) *FileDialog {
+	return newFileDialog(kdefilepicker.ModeSave, callback, parent)
 }
 
-func NewFolderOpen(callback func(fyne.ListableURI, error), parent fyne.Window) *FileDialog {
-	return &FileDialog{
-		instance: dialog.NewFolderOpen(callback, parent),
-		window:   parent,
-	}
+// NewFolderOpen creates a folder picker.
+func NewFolderOpen(callback func(path string, err error), parent fyne.Window) *FileDialog {
+	return newFileDialog(kdefilepicker.ModeDirectory, callback, parent)
 }
+
+// newFileDialog builds the picker up front so Interface() always returns a
+// live canvas object. Construction reads the filesystem (initial listing,
+// user places) but never touches the canvas, so it is safe to call from a
+// script goroutine; presentation happens on the GUI thread via ShowUI.
+func newFileDialog(mode kdefilepicker.Mode, callback func(path string, err error), parent fyne.Window) *FileDialog {
+	var instance *kdefilepicker.Dialog
+	switch mode {
+	case kdefilepicker.ModeSave:
+		instance = kdefilepicker.NewSaveDialog("", "")
+	case kdefilepicker.ModeDirectory:
+		instance = kdefilepicker.NewDirectoryDialog("")
+	default:
+		instance = kdefilepicker.NewOpenDialog("")
+	}
+	instance.SetOnAccept(func(path string) {
+		if callback != nil {
+			callback(path, nil)
+		}
+	})
+	instance.SetOnCancel(func() {
+		if callback != nil {
+			callback("", nil)
+		}
+	})
+	return &FileDialog{instance: instance, parent: parent}
+}
+
+// ShowUI presents the dialog as an overlay on the parent window. Safe to
+// call from any goroutine; it is the Go-side entry point used by the
+// one-shot ShowFileOpen/ShowFileSave/ShowFolderOpen builtins.
+func (obj *FileDialog) ShowUI() {
+	guithread.Do(func() { obj.instance.ShowOverlay(obj.parent) })
+}
+
+// extensionPatterns converts a stock-style extension filter such as
+// ".txt" (or "txt", "*.txt", space/semicolon/comma separated lists) into
+// kdefilepicker glob patterns.
+func extensionPatterns(filter string) []string {
+	fields := strings.FieldsFunc(filter, func(r rune) bool {
+		return r == ' ' || r == ';' || r == ','
+	})
+	patterns := make([]string, 0, len(fields))
+	for _, f := range fields {
+		if !strings.HasPrefix(f, "*") {
+			if !strings.HasPrefix(f, ".") {
+				f = "." + f
+			}
+			f = "*" + f
+		}
+		patterns = append(patterns, f)
+	}
+	return patterns
+}
+
 func init() {
 	fileDialogAttrs.
-		Define("Show").Args().Returns("nil").Impl(func(
-		obj *FileDialog, ctx context.
-			Context, args ...object.
-			Object) (object.Object, error) {
-		guithread.Do(func() { obj.instance.Show() })
-		return object.
-			Nil, nil
-	})
-	fileDialogAttrs.
-		Define("Hide").Args().Returns("nil").Impl(func(
-		obj *FileDialog, ctx context.
-			Context, args ...object.
-			Object) (object.Object, error) {
-		guithread.Do(func() { obj.instance.Hide() })
-		return object.
-			Nil, nil
-	})
-	fileDialogAttrs.
-		Define("Refresh").Args().Returns("nil").Impl(func(obj *FileDialog, ctx context.
-		Context, args ...object.
-		Object) (object.Object, error) {
-		guithread.
-			Do(func() { obj.instance.Refresh() })
+		Define("Show").Args().Returns("nil").Impl(func(obj *FileDialog, ctx context.Context, args ...object.Object) (object.Object, error) {
+		obj.ShowUI()
 		return object.Nil, nil
 	})
 	fileDialogAttrs.
-		Define("SetFileName").Args(
-		"arg1",
-	).Returns("nil").Impl(func(obj *FileDialog, ctx context.Context, args ...object.Object) (object.Object, error) {
+		Define("Hide").Args().Returns("nil").Impl(func(obj *FileDialog, ctx context.Context, args ...object.Object) (object.Object, error) {
+		guithread.Do(func() { obj.instance.Dismiss() })
+		return object.Nil, nil
+	})
+	fileDialogAttrs.
+		Define("Refresh").Args().Returns("nil").Impl(func(obj *FileDialog, ctx context.Context, args ...object.Object) (object.Object, error) {
+		guithread.Do(func() { obj.instance.RefreshDir() })
+		return object.Nil, nil
+	})
+	fileDialogAttrs.
+		Define("SetFileName").Args("arg1").Returns("nil").Impl(func(obj *FileDialog, ctx context.Context, args ...object.Object) (object.Object, error) {
 		filename, err := object.AsString(args[0])
-		if err !=
-			nil {
-			return nil, object.Errorf("type error: %v",
-
-				err)
+		if err != nil {
+			return nil, object.Errorf("type error: %v", err)
 		}
 		guithread.Do(func() {
 			obj.instance.SetFileName(filename)
 		})
-		return object.
-			Nil, nil
+		return object.Nil, nil
 	})
 	fileDialogAttrs.
-		Define("SetFilter").
-		Args("arg1").Returns("nil").
-		Impl(func(obj *FileDialog, ctx context.Context, args ...object.Object) (object.Object, error) {
-			filter,
-				err := object.AsString(args[0])
-			if err !=
-				nil {
-				return nil, object.Errorf("type error: %v",
-
-					err)
+		Define("SetFilter").Args("arg1").Returns("nil").Impl(func(obj *FileDialog, ctx context.Context, args ...object.Object) (object.Object, error) {
+		filter, err := object.AsString(args[0])
+		if err != nil {
+			return nil, object.Errorf("type error: %v", err)
+		}
+		patterns := extensionPatterns(filter)
+		guithread.Do(func() {
+			if len(patterns) == 0 {
+				obj.instance.SetFilters([]kdefilepicker.Filter{kdefilepicker.AllFiles})
+				return
 			}
-			guithread.Do(func() {
-
-				obj.instance.SetFilter(storage.NewExtensionFileFilter([]string{filter}))
+			// Keep "All Files" selectable in the combo, like the stock dialog
+			// kept its tree/list toggle, and select the custom filter.
+			obj.instance.SetFilters([]kdefilepicker.Filter{
+				kdefilepicker.AllFiles,
+				{Name: "Filtered", Patterns: patterns},
 			})
-			return object.Nil, nil
+			obj.instance.SetSelectedFilter(1)
 		})
+		return object.Nil, nil
+	})
 	fileDialogAttrs.
-		Define("SetLocation").Args(
-		"arg1",
-	).Returns("nil").Impl(func(obj *FileDialog, ctx context.Context, args ...object.Object) (object.Object, error) {
+		Define("SetLocation").Args("arg1").Returns("nil").Impl(func(obj *FileDialog, ctx context.Context, args ...object.Object) (object.Object, error) {
 		path, err := object.AsString(args[0])
-		if err !=
-			nil {
-			return nil, object.Errorf("type error: %v",
-
-				err)
+		if err != nil {
+			return nil, object.Errorf("type error: %v", err)
 		}
 		guithread.Do(func() {
-
-			uri := storage.NewFileURI(path)
-			listableURI, _ := storage.
-				ListerForURI(uri)
-			if listableURI != nil {
-				obj.instance.
-					SetLocation(listableURI)
-			}
+			obj.instance.SetDirectory(path)
 		})
-		return object.Nil,
-			nil
+		return object.Nil, nil
 	})
 	fileDialogAttrs.
-		Define("SetConfirmText").Args("arg1").Returns("nil").Impl(func(obj *FileDialog, ctx context.Context,
-		args ...object.Object) (object.Object, error) {
+		Define("SetConfirmText").Args("arg1").Returns("nil").Impl(func(obj *FileDialog, ctx context.Context, args ...object.Object) (object.Object, error) {
 		text, err := object.AsString(args[0])
-		if err !=
-			nil {
-			return nil, object.Errorf("type error: %v",
-
-				err)
+		if err != nil {
+			return nil, object.Errorf("type error: %v", err)
 		}
-		guithread.Do(func() { obj.instance.SetConfirmText(text) })
-		return object.
-				Nil,
-			nil
+		guithread.Do(func() { obj.instance.SetOpenLabel(text) })
+		return object.Nil, nil
 	})
 	fileDialogAttrs.
-		Define("SetDismissText").Args("arg1").Returns("nil").Impl(func(obj *FileDialog, ctx context.Context,
-		args ...object.Object) (object.Object, error) {
+		Define("SetDismissText").Args("arg1").Returns("nil").Impl(func(obj *FileDialog, ctx context.Context, args ...object.Object) (object.Object, error) {
 		text, err := object.AsString(args[0])
-		if err !=
-			nil {
-			return nil, object.Errorf("type error: %v",
-
-				err)
+		if err != nil {
+			return nil, object.Errorf("type error: %v", err)
 		}
-		guithread.Do(func() { obj.instance.SetDismissText(text) })
-		return object.
-				Nil,
-			nil
+		guithread.Do(func() { obj.instance.SetCancelLabel(text) })
+		return object.Nil, nil
 	})
 }

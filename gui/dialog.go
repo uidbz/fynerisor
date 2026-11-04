@@ -38,35 +38,18 @@ type Dialog struct {
 	w *Window
 }
 
-// fileDialogResult converts a file open/save dialog result into the
-// (path, error) arguments passed to the script callback. The file handle is
-// closed here: scripts only receive the path.
-func fileDialogResult(f interface {
-	URI() fyne.URI
-	Close() error
-}, err error) (object.Object, object.Object) {
-	var path, errObj object.Object = object.Nil, object.Nil
-	if f != nil {
-		path = object.NewString(f.URI().Path())
-		f.Close()
+// pathResult converts a file/folder dialog's (path, error) result into the
+// two arguments passed to the script callback. An empty path with a nil
+// error means the dialog was cancelled.
+func pathResult(path string, err error) (object.Object, object.Object) {
+	var pathObj, errObj object.Object = object.Nil, object.Nil
+	if path != "" {
+		pathObj = object.NewString(path)
 	}
 	if err != nil {
 		errObj = object.NewString(err.Error())
 	}
-	return path, errObj
-}
-
-// folderDialogResult converts a folder dialog result into the (path, error)
-// arguments passed to the script callback.
-func folderDialogResult(uri fyne.ListableURI, err error) (object.Object, object.Object) {
-	var path, errObj object.Object = object.Nil, object.Nil
-	if uri != nil {
-		path = object.NewString(uri.Path())
-	}
-	if err != nil {
-		errObj = object.NewString(err.Error())
-	}
-	return path, errObj
+	return pathObj, errObj
 }
 
 func NewDialog(w *Window) *Dialog {
@@ -256,12 +239,10 @@ func init() {
 
 				err
 		}
-		callback := func(reader fyne.URIReadCloser, err error) {
-			cb.Fire(fileDialogResult(reader, err))
+		callback := func(path string, err error) {
+			cb.Fire(pathResult(path, err))
 		}
-		guithread.Do(func() {
-			dialog.ShowFileOpen(callback, d.w.FyneWindow)
-		})
+		risorDialog.NewFileOpen(callback, d.w.FyneWindow).ShowUI()
 		return object.Nil, nil
 	})
 	dialogAttrs.
@@ -280,11 +261,10 @@ func init() {
 
 				err
 		}
-		callback := func(writer fyne.URIWriteCloser, err error) {
-			cb.Fire(fileDialogResult(writer, err))
+		callback := func(path string, err error) {
+			cb.Fire(pathResult(path, err))
 		}
-		guithread.Do(
-			func() { dialog.ShowFileSave(callback, d.w.FyneWindow) })
+		risorDialog.NewFileSave(callback, d.w.FyneWindow).ShowUI()
 		return object.Nil, nil
 	},
 	)
@@ -303,12 +283,10 @@ func init() {
 
 				err
 		}
-		callback := func(uri fyne.ListableURI, err error) {
-			cb.Fire(folderDialogResult(uri, err))
+		callback := func(path string, err error) {
+			cb.Fire(pathResult(path, err))
 		}
-		guithread.Do(func() {
-			dialog.ShowFolderOpen(callback, d.w.FyneWindow)
-		})
+		risorDialog.NewFolderOpen(callback, d.w.FyneWindow).ShowUI()
 		return object.Nil, nil
 	})
 	dialogAttrs.
@@ -543,8 +521,8 @@ func init() {
 				err
 
 		}
-		callback := func(reader fyne.URIReadCloser, err error) {
-			cb.Fire(fileDialogResult(reader, err))
+		callback := func(path string, err error) {
+			cb.Fire(pathResult(path, err))
 		}
 		fileDialog := risorDialog.
 			NewFileOpen(callback, d.w.FyneWindow)
@@ -567,8 +545,8 @@ func init() {
 				err
 
 		}
-		callback := func(writer fyne.URIWriteCloser, err error) {
-			cb.Fire(fileDialogResult(writer, err))
+		callback := func(path string, err error) {
+			cb.Fire(pathResult(path, err))
 		}
 		fileDialog := risorDialog.
 			NewFileSave(callback, d.w.FyneWindow)
@@ -589,8 +567,8 @@ func init() {
 
 				err
 		}
-		callback := func(uri fyne.ListableURI, err error) {
-			cb.Fire(folderDialogResult(uri, err))
+		callback := func(path string, err error) {
+			cb.Fire(pathResult(path, err))
 		}
 		fileDialog := risorDialog.
 			NewFolderOpen(callback, d.w.FyneWindow)

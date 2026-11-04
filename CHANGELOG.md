@@ -1,5 +1,22 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- **File and folder pickers now use the KDE 6 file dialog** from
+  `github.com/uidbz/fyne-addons/kdefilepicker` instead of Fyne's stock
+  dialog. `dialog.NewFileOpen`, `dialog.NewFileSave`, `dialog.NewFolderOpen`
+  and the one-shot `dialog.ShowFileOpen`/`ShowFileSave`/`ShowFolderOpen`
+  present the Breeze-styled picker as an overlay on the window: places
+  sidebar with KDE bookmarks and devices, breadcrumb navigation,
+  details/compact/icon views, preview dock, type filters and KDE keyboard
+  shortcuts (`Ctrl+L` path edit, `Ctrl+F` filter, `Ctrl+H` hidden files, ...).
+  The script API is unchanged: same methods, same `(path, err)` callback
+  contract, cancel still yields `(nil, nil)`. `SetFilter` now also accepts
+  space/semicolon/comma-separated extension lists. Pinned via a
+  `replace` to the sibling checkout pending a fyne-addons tag.
+
 ## [0.15.1] - 2026-11-04
 
 ### Added
