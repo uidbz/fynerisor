@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.15.3] - 2026-11-04
+
+### Changed
+
+- **kdefilepicker v0.1.1: picker performance and Windows fixes.** Text
+  measurement in the picker is no longer quadratic (name fields, path bar,
+  list elision), which removes the several-hundred-ms focus/selection/hover
+  stalls seen on Windows; preview image decoding moved off the UI thread.
+  The path bar now switches to edit mode when you click next to the path,
+  and text in the name/path fields is selectable (drag, Shift+arrows,
+  Ctrl+A). Details columns are resizable via header separator drag and
+  sortable by header click. On Windows the Places sidebar's Devices group
+  now lists fixed drives and mapped network drives.
+
 ## [0.15.2] - 2026-11-04
 
 ### Changed
