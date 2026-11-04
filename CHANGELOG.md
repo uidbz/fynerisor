@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.15.4] - 2026-11-04
+
+### Changed
+
+- **kdefilepicker v0.1.2: file-picker responsiveness and correctness fixes.**
+  Selecting files and hovering no longer re-parses theme SVG icons on every
+  refresh (Fyne 2.8 re-decodes an image on every `canvas.Image.Refresh`;
+  measured 580 ms → 135 ms for a click-select + hover sweep in a 1000-entry
+  directory). Details-column dragging works correctly on desktop (it relied
+  on `DragStart`, which the desktop driver never calls) and stays smooth
+  while dragging. The path edit field now follows navigation: when the
+  folder changes while the path is in edit mode, the field is refilled with
+  the new path, fully selected (KDE behaviour).
+
 ## [0.15.3] - 2026-11-04
 
 ### Changed
