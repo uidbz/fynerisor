@@ -71,11 +71,90 @@ func TestScatterSetPoints(t *testing.T) {
 	}
 	defer mountChart(t, sc, 460, 340)()
 
-	sc.xvals, sc.yvals = []float64{5, 6, 7}, []float64{25, 26, 27}
+	sc.series[0].xvals, sc.series[0].yvals = []float64{5, 6, 7}, []float64{25, 26, 27}
 	sc.clearHover()
 	sc.recomputeDomains()
 	if _, _, _, y1 := sc.dataExtent(); y1 < 27 {
 		t.Errorf("domain did not follow new points: y1=%v", y1)
+	}
+}
+
+func TestScatterMultiSeries(t *testing.T) {
+	sc, err := NewScatterChart("T", "X", "Y", []float64{1, 2, 3}, []float64{1, 2, 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Series 1: markers hidden, drawn as a 2px y=x line spanning 0..10.
+	sc.series = append(sc.series, &scatterSeries{
+		xvals: []float64{0, 10}, yvals: []float64{0, 10},
+		col: paletteColor(1), markerSize: 0, lineWidth: 2,
+	})
+	sc.recomputeDomains()
+	defer mountChart(t, sc, 460, 340)()
+
+	if _, _, _, y1 := sc.dataExtent(); y1 < 10 {
+		t.Errorf("extent must cover every series, y1=%v", y1)
+	}
+	if x0, _, _, _ := sc.dataExtent(); x0 > 0 {
+		t.Errorf("extent must cover every series, x0=%v", x0)
+	}
+
+	// hitTest reaches series 1 and reports its index.
+	px, py := sc.xScale.toPixel(10), sc.yScale.toPixel(10)
+	h, ok := sc.hitTest(px, py, sc.xScale, sc.yScale)
+	if !ok || h.Series != 1 || h.Index != 1 {
+		t.Errorf("hit = %+v ok=%v, want series 1 index 1", h, ok)
+	}
+	if h.ValueStr != "(10, 10)" {
+		t.Errorf("value string = %q", h.ValueStr)
+	}
+
+	// The line series contributes 2px polyline segments to the scene.
+	var segs int
+	for _, it := range sc.sc.items {
+		if it.kind == kindLine && it.lineW == 2 {
+			segs++
+		}
+	}
+	if segs < 1 {
+		t.Errorf("expected polyline segments for the line series, got %d", segs)
+	}
+
+	// Hover identity distinguishes series: hovering the line series point
+	// must not collide with the same index in series 0.
+	sc.MouseMoved(&desktop.MouseEvent{PointEvent: fyne.PointEvent{Position: fyne.NewPos(px, py)}})
+	if sc.hoverSeries != 1 || sc.hoverIdx != 1 {
+		t.Errorf("hover = series %d index %d, want series 1 index 1", sc.hoverSeries, sc.hoverIdx)
+	}
+}
+
+func TestLineMultiSeries(t *testing.T) {
+	li, err := NewLineChart("T", "X", "Y", []float64{1, 2, 3}, []float64{10, 20, 30})
+	if err != nil {
+		t.Fatal(err)
+	}
+	li.series = append(li.series, &lineSeries{
+		xvals: []float64{1, 2, 3}, yvals: []float64{1, 2, 100},
+		col: paletteColor(2), width: 2,
+	})
+	li.recomputeDomains()
+	defer mountChart(t, li, 460, 340)()
+
+	if _, _, _, y1 := li.dataExtent(); y1 < 100 {
+		t.Errorf("y domain %v must cover the second series", y1)
+	}
+
+	// x-snap is per series: near the second line's endpoint, not the first.
+	px, py := li.xScale.toPixel(3), li.yScale.toPixel(100)
+	h, ok := li.hitTest(px, py, li.xScale, li.yScale)
+	if !ok || h.Series != 1 || h.Index != 2 {
+		t.Errorf("hit = %+v ok=%v, want series 1 index 2", h, ok)
+	}
+	// And near the primary line, the primary wins.
+	px, py = li.xScale.toPixel(3), li.yScale.toPixel(30)
+	h, ok = li.hitTest(px, py, li.xScale, li.yScale)
+	if !ok || h.Series != 0 || h.Index != 2 {
+		t.Errorf("hit = %+v ok=%v, want series 0 index 2", h, ok)
 	}
 }
 

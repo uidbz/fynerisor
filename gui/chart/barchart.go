@@ -252,6 +252,19 @@ func colorArg(o object.Object) (color.Color, error) {
 	return nil, fmt.Errorf("type error: expected a color name or hex string, got %s", o.Type())
 }
 
+// seriesIndexArg validates a series index against the current series count.
+func seriesIndexArg(name string, o object.Object, n int) (int, error) {
+	f, err := object.AsFloat(o)
+	if err != nil {
+		return 0, fmt.Errorf("%s: series index must be a number (got %s)", name, o.Type())
+	}
+	i := int(f)
+	if i < 0 || i >= n {
+		return 0, fmt.Errorf("chart error: %s: series index %d out of range [0, %d)", name, i, n)
+	}
+	return i, nil
+}
+
 func floatSliceArg(o object.Object) ([]float64, error) {
 	list, ok := o.(*object.List)
 	if !ok {

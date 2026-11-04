@@ -1,5 +1,24 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- **Multi-series charts.** `chart.scatterchart` and `chart.linechart` now
+  hold a list of series instead of one implicit dataset. New verbs on both
+  types: `AddSeries(xvalues, yvalues, color?, lineWidth?)` (returns the new
+  series index; color is a name or `#rrggbb`, default cycles a fixed
+  palette chosen to contrast the steel-blue primary), `ClearSeries()`
+  (keeps the primary series), `SeriesCount()`, `SetSeriesColor(index,
+  color)`, and per-type style: `SetSeriesMarkerSize(index, size)` and
+  `SetSeriesLineWidth(index, width)` on scatter (a scatter series can be
+  markers, a connecting line, or both), `SetSeriesLineWidth(index,
+  width)` on line. Hover highlight, tooltips, hit-testing, domain fitting
+  and SVG export are series-aware; line-chart hover snaps per series and
+  keeps the series closest to the pointer. `SetPoints`/`SetColor`/
+  `SetMarkerSize`/`SetLineWidth` keep working as primary-series (index 0)
+  shorthands, so existing scripts are unchanged.
+
 ## [0.15.0] - 2026-11-03
 
 ### Added

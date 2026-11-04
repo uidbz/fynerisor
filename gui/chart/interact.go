@@ -26,6 +26,7 @@ func (c *chartCore) MouseMoved(e *desktop.MouseEvent) {
 func (c *chartCore) MouseOut() {
 	if c.hoverIdx >= 0 {
 		c.hoverIdx = -1
+		c.hoverSeries = 0
 		c.tipText = ""
 		c.refresh()
 	}
@@ -39,15 +40,17 @@ func (c *chartCore) hoverAt(pt fyne.Position) {
 	if !ok {
 		if c.hoverIdx != -1 {
 			c.hoverIdx = -1
+			c.hoverSeries = 0
 			c.tipText = ""
 			c.refresh()
 		}
 		return
 	}
-	if h.Index == c.hoverIdx {
+	if h.Index == c.hoverIdx && h.Series == c.hoverSeries {
 		return
 	}
 	c.hoverIdx = h.Index
+	c.hoverSeries = h.Series
 	c.hoverPt = pt
 	c.tipText = c.tooltipFor(h)
 	if c.onHoverFn != nil {
@@ -138,6 +141,7 @@ func (c *chartCore) ResetZoom() {
 // highlights never reference removed elements.
 func (c *chartCore) clearHover() {
 	c.hoverIdx = -1
+	c.hoverSeries = 0
 	c.tipText = ""
 }
 

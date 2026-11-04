@@ -37,8 +37,25 @@ var (
 	colTipBorder  = color.NRGBA{0x99, 0x99, 0x99, 0xff}
 )
 
+// seriesPalette is the automatic color cycle for AddSeries: the primary
+// steel blue first, then muted companions chosen to stay readable against
+// it and the white plot background.
+var seriesPalette = []color.NRGBA{
+	{70, 130, 180, 0xff}, // steel blue (primary series default)
+	{178, 34, 34, 0xff},  // firebrick red
+	{60, 139, 60, 0xff},  // forest green
+	{221, 132, 33, 0xff}, // ochre
+	{148, 103, 189, 0xff},// muted purple
+	{31, 119, 180, 0xff}, // classic blue
+	{23, 190, 207, 0xff}, // bright cyan
+	{140, 86, 75, 0xff},  // umber
+}
+
+func paletteColor(i int) color.Color { return seriesPalette[((i%len(seriesPalette))+len(seriesPalette))%len(seriesPalette)] }
+
 // hitResult identifies the data element under the pointer.
 type hitResult struct {
+	Series   int // index into the chart's series list; 0 = primary series
 	Index    int
 	Label    string
 	Value    float64
@@ -47,8 +64,9 @@ type hitResult struct {
 
 // seriesOpts carries transient interaction state into buildSeries.
 type seriesOpts struct {
-	hoverIdx   int
-	showValues bool
+	hoverIdx    int
+	hoverSeries int
+	showValues  bool
 }
 
 // chartDelegate is implemented by each chart type (bar, line, scatter, ...).
@@ -83,9 +101,10 @@ type chartCore struct {
 	showValues  bool
 	zoomEnabled bool
 
-	hoverIdx int
-	hoverPt  fyne.Position
-	tipText  string
+	hoverIdx    int
+	hoverSeries int
+	hoverPt     fyne.Position
+	tipText     string
 
 	sc     scene
 	view   sceneView
@@ -220,7 +239,7 @@ func (c *chartCore) build(size fyne.Size) {
 
 	// Series.
 	p := newPlotPainter(s, left, top, right, bottom)
-	c.delegate.buildSeries(p, c.xScale, c.yScale, &seriesOpts{hoverIdx: c.hoverIdx, showValues: c.showValues})
+	c.delegate.buildSeries(p, c.xScale, c.yScale, &seriesOpts{hoverIdx: c.hoverIdx, hoverSeries: c.hoverSeries, showValues: c.showValues})
 
 	// Hover tooltip on top.
 	if c.hoverIdx >= 0 && c.tipText != "" {

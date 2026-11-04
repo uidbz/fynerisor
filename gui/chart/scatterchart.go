@@ -20,17 +20,25 @@ var _ fyne.CanvasObject = &ScatterChart{}
 
 const ScatterChartType object.Type = "chart.scatterchart"
 
-// ScatterChart is an interactive scatter plot built from Fyne canvas
-// primitives. Hovering highlights the nearest point and shows its
+// scatterSeries is one plotted series: a point cloud, an optional
+// connecting polyline, or both. The primary series (index 0) holds the
+// values given to NewScatterChart; AddSeries appends more.
+type scatterSeries struct {
+	xvals, yvals []float64
+	col          color.Color
+	markerSize   float32 // <= 0 hides markers
+	lineWidth    float32 // > 0 connects the points in supply order
+}
+
+// ScatterChart is an interactive multi-series scatter plot built from Fyne
+// canvas primitives. Hovering highlights the nearest point and shows its
 // coordinates; the mouse wheel zooms around the cursor and dragging pans
 // (double-click resets). OnTap/OnHover/OnSecondaryTap expose the hit point
 // to scripts, and SaveImage exports the chart as SVG.
 type ScatterChart struct {
 	*chartCore
 
-	xvals, yvals []float64
-	color        color.Color
-	markerSize   float32
+	series []*scatterSeries
 }
 
 // NewScatterChart creates an interactive scatter plot with the given title,
@@ -41,10 +49,12 @@ func NewScatterChart(title, xlabel, ylabel string, xvalues, yvalues []float64) (
 	}
 
 	s := &ScatterChart{
-		xvals:      xvalues,
-		yvals:      yvalues,
-		color:      color.NRGBA{R: 70, G: 130, B: 180, A: 255}, // steel blue
-		markerSize: 6,
+		series: []*scatterSeries{{
+			xvals:      xvalues,
+			yvals:      yvalues,
+			col:        paletteColor(0), // steel blue
+			markerSize: 6,
+		}},
 	}
 	s.chartCore = newChartCore(string(ScatterChartType), s)
 	s.title = title
@@ -105,24 +115,32 @@ func (r *ScatterChart) setAttrUI(name string, value object.Object) error {
 // --- chartDelegate ----------------------------------------------------------
 
 func (s *ScatterChart) dataExtent() (float64, float64, float64, float64) {
-	if len(s.xvals) == 0 {
-		return 0, 1, 0, 1
+	seeded := false
+	var xmin, xmax, ymin, ymax float64
+	for _, sr := range s.series {
+		for i := range sr.xvals {
+			x, y := sr.xvals[i], sr.yvals[i]
+			if !seeded {
+				xmin, xmax, ymin, ymax = x, x, y, y
+				seeded = true
+				continue
+			}
+			if x < xmin {
+				xmin = x
+			}
+			if x > xmax {
+				xmax = x
+			}
+			if y < ymin {
+				ymin = y
+			}
+			if y > ymax {
+				ymax = y
+			}
+		}
 	}
-	xmin, xmax := s.xvals[0], s.xvals[0]
-	ymin, ymax := s.yvals[0], s.yvals[0]
-	for i := range s.xvals {
-		if s.xvals[i] < xmin {
-			xmin = s.xvals[i]
-		}
-		if s.xvals[i] > xmax {
-			xmax = s.xvals[i]
-		}
-		if s.yvals[i] < ymin {
-			ymin = s.yvals[i]
-		}
-		if s.yvals[i] > ymax {
-			ymax = s.yvals[i]
-		}
+	if !seeded {
+		return 0, 1, 0, 1
 	}
 	xpad := (xmax - xmin) * 0.05
 	ypad := (ymax - ymin) * 0.05
@@ -134,43 +152,60 @@ func (s *ScatterChart) xTicks() ([]float64, []string) {
 }
 
 func (s *ScatterChart) buildSeries(p *plotPainter, xs, ys *linearScale, opts *seriesOpts) {
-	for i := range s.xvals {
-		px := xs.toPixel(s.xvals[i])
-		py := ys.toPixel(s.yvals[i])
-		size := s.markerSize
-		col := s.color
-		if i == opts.hoverIdx {
-			size = s.markerSize * 1.6
-			col = darken(col, 0.72)
+	for si, sr := range s.series {
+		if len(sr.xvals) == 0 {
+			continue
 		}
-		p.rect(px-size/2, py-size/2, size, size, col)
+		pxs := make([]float32, len(sr.xvals))
+		pys := make([]float32, len(sr.xvals))
+		for i := range sr.xvals {
+			pxs[i] = xs.toPixel(sr.xvals[i])
+			pys[i] = ys.toPixel(sr.yvals[i])
+		}
+		if sr.lineWidth > 0 {
+			p.polyline(pxs, pys, sr.col, sr.lineWidth)
+		}
+		if sr.markerSize > 0 {
+			for i := range pxs {
+				size, col := sr.markerSize, sr.col
+				if si == opts.hoverSeries && i == opts.hoverIdx {
+					size = sr.markerSize * 1.6
+					col = darken(col, 0.72)
+				}
+				p.rect(pxs[i]-size/2, pys[i]-size/2, size, size, col)
 
-		if opts.showValues {
-			lbl := "(" + formatTick(s.xvals[i]) + ", " + formatTick(s.yvals[i]) + ")"
-			p.text(px+size, py-14, 80, 12, lbl, colText, 10, fyne.TextAlignLeading)
+				if opts.showValues {
+					lbl := "(" + formatTick(sr.xvals[i]) + ", " + formatTick(sr.yvals[i]) + ")"
+					p.text(pxs[i]+size, pys[i]-14, 80, 12, lbl, colText, 10, fyne.TextAlignLeading)
+				}
+			}
 		}
 	}
 }
 
 func (s *ScatterChart) hitTest(px, py float32, xs, ys *linearScale) (hitResult, bool) {
-	// Nearest point within a small radius; linear scan is a handful of
-	// microseconds even for tens of thousands of points.
-	best, bestD := -1, float32(14)
-	for i := range s.xvals {
-		dx := xs.toPixel(s.xvals[i]) - px
-		dy := ys.toPixel(s.yvals[i]) - py
-		d := float32(math.Hypot(float64(dx), float64(dy)))
-		if d < bestD {
-			bestD, best = d, i
+	// Nearest point within a small radius across all series; linear scan is
+	// a handful of microseconds even for tens of thousands of points.
+	best, bestS, bestD := -1, -1, float32(14)
+	for si, sr := range s.series {
+		for i := range sr.xvals {
+			dx := xs.toPixel(sr.xvals[i]) - px
+			dy := ys.toPixel(sr.yvals[i]) - py
+			d := float32(math.Hypot(float64(dx), float64(dy)))
+			if d < bestD {
+				bestD, best, bestS = d, i, si
+			}
 		}
 	}
-	if best < 0 {
+	if bestS < 0 {
 		return hitResult{}, false
 	}
+	sr := s.series[bestS]
 	return hitResult{
+		Series:   bestS,
 		Index:    best,
-		Value:    s.yvals[best],
-		ValueStr: "(" + formatTick(s.xvals[best]) + ", " + formatTick(s.yvals[best]) + ")",
+		Value:    sr.yvals[best],
+		ValueStr: "(" + formatTick(sr.xvals[best]) + ", " + formatTick(sr.yvals[best]) + ")",
 	}, true
 }
 
@@ -189,71 +224,211 @@ func (g *ScatterChart) getAttrUI(name string) (object.Object, bool) {
 	}
 	return g.chartCore.getAttr(name)
 }
+
+// scatterSeriesStyle parses the optional trailing (color, lineWidth) args of
+// AddSeries. defCol is the palette default for the new series index.
+func scatterSeriesStyle(name string, args []object.Object, defCol color.Color) (*scatterSeries, error) {
+	sr := &scatterSeries{col: defCol, markerSize: 6}
+	if len(args) > 0 {
+		col, err := colorArg(args[0])
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", name, err)
+		}
+		sr.col = col
+	}
+	if len(args) > 1 {
+		f, err := object.AsFloat(args[1])
+		if err != nil {
+			return nil, fmt.Errorf("%s: line width must be a number (got %s)", name, args[1].Type())
+		}
+		if f < 0 || f > 20 {
+			return nil, fmt.Errorf("chart error: %s: line width must be in [0, 20] (got %v)", name, f)
+		}
+		sr.lineWidth = float32(f)
+	}
+	return sr, nil
+}
+
 func init() {
 	objattrs.Add(scatterChartAttrs)
 	addInteractive(scatterChartAttrs)
-	scatterChartAttrs.Define("SetPoints").Args("arg1",
-		"arg2").Returns("nil").Impl(func(g *ScatterChart, ctx context.Context, args ...object.Object) (object.Object, error) {
-		xs, err := floatSliceArg(args[0])
-		if err != nil {
-			return nil,
-				err
-		}
-		ys, err := floatSliceArg(args[1])
-		if err != nil {
-			return nil, err
-		}
-		if len(xs) != len(ys) {
-			return nil,
-
-				fmt.Errorf("chart error: x and y values must have same length (got %d x values, %d y values)",
-
-					len(xs), len(ys))
-		}
-		guithread.Do(
-			func() {
-				g.xvals, g.yvals = xs, ys
+	scatterChartAttrs.Define("SetPoints").
+		Doc("Replace the primary series' x and y values.").
+		Args("xvalues", "yvalues").Returns("nil").
+		Impl(func(g *ScatterChart, ctx context.Context, args ...object.Object) (object.Object, error) {
+			xs, err := floatSliceArg(args[0])
+			if err != nil {
+				return nil, err
+			}
+			ys, err := floatSliceArg(args[1])
+			if err != nil {
+				return nil, err
+			}
+			if len(xs) != len(ys) {
+				return nil, fmt.Errorf("chart error: x and y values must have same length (got %d x values, %d y values)", len(xs), len(ys))
+			}
+			guithread.Do(func() {
+				g.series[0].xvals, g.series[0].yvals = xs, ys
 				g.clearHover()
 				g.recomputeDomains()
 				g.refresh()
 			})
-		return object.Nil, nil
-	})
-	scatterChartAttrs.Define("SetColor").Args("arg1").Returns("nil").Impl(
-		func(g *ScatterChart,
-
-			ctx context.Context, args ...object.Object) (object.
-			Object, error) {
+			return object.Nil, nil
+		})
+	scatterChartAttrs.Define("AddSeries").
+		Doc("Add a new series with the given x and y values; optional color and line width.").
+		Args("xvalues", "yvalues").OptionalArg("color").OptionalArg("lineWidth").
+		Returns("int, the new series index").
+		Impl(func(g *ScatterChart, ctx context.Context, args ...object.Object) (object.Object, error) {
+			xs, err := floatSliceArg(args[0])
+			if err != nil {
+				return nil, err
+			}
+			ys, err := floatSliceArg(args[1])
+			if err != nil {
+				return nil, err
+			}
+			if len(xs) != len(ys) {
+				return nil, fmt.Errorf("chart error: x and y values must have same length (got %d x values, %d y values)", len(xs), len(ys))
+			}
+			var idx int
+			if err := guithread.DoAndWaitContext(ctx, func() {
+				sr, serr := scatterSeriesStyle("AddSeries", args[2:], paletteColor(len(g.series)))
+				if serr != nil {
+					err = serr
+					return
+				}
+				sr.xvals, sr.yvals = xs, ys
+				g.series = append(g.series, sr)
+				idx = len(g.series) - 1
+				g.clearHover()
+				g.recomputeDomains()
+				g.refresh()
+			}); err != nil {
+				return nil, err
+			}
+			return object.NewInt(int64(idx)), nil
+		})
+	scatterChartAttrs.Define("ClearSeries").
+		Doc("Remove all series except the primary one.").
+		Returns("nil").
+		Impl(func(g *ScatterChart, _ context.Context, _ ...object.Object) (object.Object, error) {
+			guithread.Do(func() {
+				if len(g.series) > 1 {
+					g.series = g.series[:1]
+					g.clearHover()
+					g.recomputeDomains()
+					g.refresh()
+				}
+			})
+			return object.Nil, nil
+		})
+	scatterChartAttrs.Define("SeriesCount").
+		Doc("Number of plotted series (>= 1).").
+		Returns("int").
+		Impl(func(g *ScatterChart, ctx context.Context, _ ...object.Object) (object.Object, error) {
+			var n int
+			if err := guithread.DoAndWaitContext(ctx, func() { n = len(g.series) }); err != nil {
+				return nil, err
+			}
+			return object.NewInt(int64(n)), nil
+		})
+	scatterChartAttrs.Define("SetSeriesColor").
+		Doc("Set one series' color by name or #rrggbb.").
+		Args("index", "color").Returns("nil").
+		Impl(func(g *ScatterChart, ctx context.Context, args ...object.Object) (object.Object, error) {
+			col, err := colorArg(args[1])
+			if err != nil {
+				return nil, err
+			}
+			if err := guithread.DoAndWaitContext(ctx, func() {
+				var i int
+				if i, err = seriesIndexArg("SetSeriesColor", args[0], len(g.series)); err != nil {
+					return
+				}
+				g.series[i].col = col
+				g.refresh()
+			}); err != nil {
+				return nil, err
+			}
+			return object.Nil, nil
+		})
+	scatterChartAttrs.Define("SetSeriesMarkerSize").
+		Doc("Set one series' marker size; 0 hides its markers.").
+		Args("index", "size").Returns("nil").
+		Impl(func(g *ScatterChart, ctx context.Context, args ...object.Object) (object.Object, error) {
+			f, err := object.AsFloat(args[1])
+			if err != nil {
+				return nil, err
+			}
+			if f < 0 || f > 30 {
+				return nil, fmt.Errorf("chart error: marker size must be in [0, 30] (got %v)", f)
+			}
+			if err := guithread.DoAndWaitContext(ctx, func() {
+				var i int
+				if i, err = seriesIndexArg("SetSeriesMarkerSize", args[0], len(g.series)); err != nil {
+					return
+				}
+				g.series[i].markerSize = float32(f)
+				g.refresh()
+			}); err != nil {
+				return nil, err
+			}
+			return object.Nil, nil
+		})
+	scatterChartAttrs.Define("SetSeriesLineWidth").
+		Doc("Connect one series' points with a line of the given width; 0 disables.").
+		Args("index", "width").Returns("nil").
+		Impl(func(g *ScatterChart, ctx context.Context, args ...object.Object) (object.Object, error) {
+			f, err := object.AsFloat(args[1])
+			if err != nil {
+				return nil, err
+			}
+			if f < 0 || f > 20 {
+				return nil, fmt.Errorf("chart error: line width must be in [0, 20] (got %v)", f)
+			}
+			if err := guithread.DoAndWaitContext(ctx, func() {
+				var i int
+				if i, err = seriesIndexArg("SetSeriesLineWidth", args[0], len(g.series)); err != nil {
+					return
+				}
+				g.series[i].lineWidth = float32(f)
+				g.refresh()
+			}); err != nil {
+				return nil, err
+			}
+			return object.Nil, nil
+		})
+	// Primary-series shorthands (series 0), kept for compatibility.
+	scatterChartAttrs.Define("SetColor").
+		Doc("Set the primary series' color (name or #rrggbb).").
+		Arg("color").Returns("nil").
+		Impl(func(g *ScatterChart, ctx context.Context, args ...object.Object) (object.Object, error) {
 			col, err := colorArg(args[0])
 			if err != nil {
 				return nil, err
 			}
-			guithread.
-				Do(func() {
-					g.color = col
-					g.
-						refresh()
-				})
+			guithread.Do(func() {
+				g.series[0].col = col
+				g.refresh()
+			})
 			return object.Nil, nil
-		},
-	)
-	scatterChartAttrs.Define("SetMarkerSize").Args(
-		"arg1").Returns("nil").
+		})
+	scatterChartAttrs.Define("SetMarkerSize").
+		Doc("Set the primary series' marker size; 0 hides markers.").
+		Arg("size").Returns("nil").
 		Impl(func(g *ScatterChart, ctx context.Context, args ...object.Object) (object.Object, error) {
-			f, err := object.
-				AsFloat(args[0])
+			f, err := object.AsFloat(args[0])
 			if err != nil {
-				return nil,
-
-					err
+				return nil, err
 			}
-			if f < 1 || f > 30 {
-				return nil,
-					fmt.Errorf("chart error: marker size must be in [1, 30] (got %v)",
-						f)
+			if f < 0 || f > 30 {
+				return nil, fmt.Errorf("chart error: marker size must be in [0, 30] (got %v)", f)
 			}
-			guithread.
-				Do(func() { g.markerSize = float32(f); g.refresh() })
+			guithread.Do(func() {
+				g.series[0].markerSize = float32(f)
+				g.refresh()
+			})
 			return object.Nil, nil
 		})
 }
