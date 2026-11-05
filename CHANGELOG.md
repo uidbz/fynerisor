@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.15.5] - 2026-11-05
+
+### Fixed
+
+- **`widget.Table.Refresh` re-reads its data again (issue #58).** The
+  shared-canvas-verb consolidation (issue #38) silently dropped Table's
+  bespoke Refresh, the only call path into `TableWidget.Refresh()`. The
+  generic verb merely redraws the outer container, so script-side
+  `table.Refresh()` never re-ran `RowCount`/`Data`/cell callbacks and
+  dynamic tables (e.g. goto's lars-server) could never show new rows —
+  paging was the only path that refetched. Table now registers its own
+  Refresh before the generic verbs, and `objattrs` verb registrars skip
+  names a type already defines (a duplicate Define used to panic).
+
 ## [0.15.4] - 2026-11-04
 
 ### Changed

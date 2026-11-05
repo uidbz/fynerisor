@@ -84,7 +84,7 @@ fynerisor enables building cross-platform desktop applications using Risor scrip
 
 ## Version
 
-**Current Version**: 0.15.0
+**Current Version**: 0.15.5
 **Risor Compatibility**: v2.2+ (arrow functions required)  
 **Fyne Compatibility**: v2.8+
 
