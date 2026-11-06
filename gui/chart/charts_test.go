@@ -564,3 +564,34 @@ func TestChartErrorsPropagate(t *testing.T) {
 		t.Error("line AddSeries must surface invalid color errors")
 	}
 }
+
+func TestBarAddHLine(t *testing.T) {
+	bc, err := NewBarChart("monitor", "T2", []string{"s0", "s1"}, []float64{2, 4})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mountChart(t, bc, 460, 340)()
+
+	callChart(t, bc, "AddHLine", object.NewFloat(6))
+	if _, _, _, y1 := bc.dataExtent(); y1 < 6 {
+		t.Errorf("extent must cover the limit line, got %v", y1)
+	}
+	var n int
+	for _, it := range bc.sc.items {
+		if it.kind == kindLine && it.col == colorRed && it.lineW == 1.5 {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Errorf("expected 1 red limit line, got %d", n)
+	}
+	a, _ := bc.GetAttr("AddHLine")
+	res, err := a.(*object.Builtin).Call(context.Background(), object.NewFloat(1), object.NewString("bogus"))
+	if err == nil && (res == nil || res.Type() != object.ERROR) {
+		t.Error("AddHLine must surface invalid color errors")
+	}
+	callChart(t, bc, "RemoveHLines")
+	if _, _, _, y1 := bc.dataExtent(); y1 > 4+4*0.06+1e-9 {
+		t.Errorf("removed lines must shrink extent, got %v", y1)
+	}
+}

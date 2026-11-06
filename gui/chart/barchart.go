@@ -20,6 +20,14 @@ var _ fyne.CanvasObject = &BarChart{}
 
 const BarChartType object.Type = "chart.barchart"
 
+// hLine is a horizontal reference line (control limits on monitoring
+// bar charts) spanning the category axis at a data-space y value.
+type hLine struct {
+	y     float64
+	col   color.Color
+	width float32
+}
+
 // BarChart is an interactive bar chart widget built from Fyne canvas
 // primitives. Hovering a bar highlights it and shows a label/value tooltip;
 // clicking fires the OnTap callback; right-click fires OnSecondaryTap; the
@@ -36,6 +44,7 @@ type BarChart struct {
 	colors    []color.Color // per-bar overrides, nil = baseColor
 	baseColor color.Color
 	errBars   []float64 // optional symmetric ± whiskers per bar (confidence intervals)
+	hLines    []hLine   // horizontal reference/control limits
 }
 
 // NewBarChart creates an interactive bar chart with the given title, y-axis
@@ -127,6 +136,14 @@ func (b *BarChart) dataExtent() (float64, float64, float64, float64) {
 			maxV = hi
 		}
 	}
+	for _, hl := range b.hLines {
+		if hl.y < minV {
+			minV = hl.y
+		}
+		if hl.y > maxV {
+			maxV = hl.y
+		}
+	}
 	// Bars start at zero, so the domain always includes 0, with a little headroom.
 	if minV > 0 {
 		minV = 0
@@ -197,6 +214,12 @@ func (b *BarChart) buildSeries(p *plotPainter, xs, ys *linearScale, opts *series
 			}
 			p.text(cx-40, y, 80, 12, lbl, colText, 10, fyne.TextAlignCenter)
 		}
+	}
+
+	// Horizontal reference lines span the full category axis.
+	for _, hl := range b.hLines {
+		y := ys.toPixel(hl.y)
+		p.line(xs.toPixel(0), y, xs.toPixel(float64(len(b.values))), y, hl.col, hl.width)
 	}
 }
 
@@ -481,6 +504,58 @@ func init() {
 			}
 			guithread.Do(func() {
 				g.errBars = errs
+				g.recomputeDomains()
+				g.refresh()
+			})
+			return object.Nil, nil
+		})
+	barChartAttrs.Define("AddHLine").
+		Doc("Horizontal reference line at y spanning the bars (e.g. a T2/Q control limit); returns nothing.").
+		Args("y").OptionalArg("color").OptionalArg("lineWidth").
+		Returns("nil").
+		Impl(func(g *BarChart, ctx context.Context, args ...object.Object) (object.Object, error) {
+			yv, err := object.AsFloat(args[0])
+			if err != nil {
+				return nil, err
+			}
+			var derr error
+			guithread.Do(func() {
+				hl := hLine{y: yv, col: colorRed, width: 1.5}
+				if len(args) > 1 {
+					col, cerr := colorArg(args[1])
+					if cerr != nil {
+						derr = fmt.Errorf("AddHLine: %w", cerr)
+						return
+					}
+					hl.col = col
+				}
+				if len(args) > 2 {
+					f, ferr := object.AsFloat(args[2])
+					if ferr != nil {
+						derr = fmt.Errorf("AddHLine: line width must be a number (got %s)", args[2].Type())
+						return
+					}
+					if f < 0 || f > 20 {
+						derr = fmt.Errorf("chart error: AddHLine: line width must be in [0, 20] (got %v)", f)
+						return
+					}
+					hl.width = float32(f)
+				}
+				g.hLines = append(g.hLines, hl)
+				g.recomputeDomains()
+				g.refresh()
+			})
+			if derr != nil {
+				return nil, derr
+			}
+			return object.Nil, nil
+		})
+	barChartAttrs.Define("RemoveHLines").
+		Doc("Remove all horizontal reference lines.").
+		Args().Returns("nil").
+		Impl(func(g *BarChart, ctx context.Context, args ...object.Object) (object.Object, error) {
+			guithread.Do(func() {
+				g.hLines = nil
 				g.recomputeDomains()
 				g.refresh()
 			})

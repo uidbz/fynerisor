@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.16.1] - 2026-11-06
+
+### Added
+
+- **`BarChart.AddHLine` / `RemoveHLines`**: horizontal reference lines
+  (T2/Q control limits on monitoring bar charts) spanning the category
+  axis, defaulting to red 1.5 px; the y-domain accounts for them so a
+  limit above the bars never clips. Completes the 0.16.0 reference-line
+  set, which covered scatter and line charts only.
+
 ## [0.16.0] - 2026-11-06
 
 ### Added
