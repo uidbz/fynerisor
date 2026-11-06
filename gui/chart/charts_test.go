@@ -1,12 +1,17 @@
 package risorchart
 
 import (
+	"context"
+	"math"
 	"strings"
 	"testing"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/test"
+
+	"github.com/deepnoodle-ai/risor/v2/pkg/object"
+	"github.com/uidbz/fynerisor/gui/canvas"
 )
 
 // mountChart puts a chart in a test window, lays out its renderer and returns
@@ -296,5 +301,266 @@ func TestQuantile(t *testing.T) {
 	}
 	if got := quantile([]float64{4}, 0.9); got != 4 {
 		t.Errorf("single-value quantile = %v, want 4", got)
+	}
+}
+
+// callChart invokes a chart's Risor method by name (builtins run inline on
+// the test's main goroutine via guithread) and fails the test on error.
+func callChart(t *testing.T, obj interface {
+	GetAttr(string) (object.Object, bool)
+}, name string, args ...object.Object) object.Object {
+	t.Helper()
+	a, ok := obj.GetAttr(name)
+	if !ok {
+		t.Fatalf("%s: attribute not bound", name)
+	}
+	b, ok := a.(*object.Builtin)
+	if !ok {
+		t.Fatalf("%s: not a builtin (%s)", name, a.Type())
+	}
+	res, err := b.Call(context.Background(), args...)
+	if err != nil {
+		t.Fatalf("%s: %v", name, err)
+	}
+	if res.Type() == object.ERROR {
+		t.Fatalf("%s: %s", name, res.Inspect())
+	}
+	return res
+}
+
+func floatList(vals ...float64) *object.List {
+	items := make([]object.Object, len(vals))
+	for i, v := range vals {
+		items[i] = object.NewFloat(v)
+	}
+	return object.NewList(items)
+}
+
+func stringList(vals ...string) *object.List {
+	items := make([]object.Object, len(vals))
+	for i, v := range vals {
+		items[i] = object.NewString(v)
+	}
+	return object.NewList(items)
+}
+
+func countScene(sc *ScatterChart, kind sceneKind, pred func(sceneItem) bool) int {
+	var n int
+	for _, it := range sc.sc.items {
+		if it.kind == kind && pred(it) {
+			n++
+		}
+	}
+	return n
+}
+
+func TestScatterAnnotations(t *testing.T) {
+	sc, err := NewScatterChart("scores", "t1", "t2", []float64{1, 2, 3}, []float64{1, 2, 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mountChart(t, sc, 460, 340)()
+
+	callChart(t, sc, "SetSeriesMarkerSizes", object.NewInt(0), floatList(2, 10, 0))
+	callChart(t, sc, "SetSeriesPointColors", object.NewInt(0), stringList("", "red", ""))
+	callChart(t, sc, "SetSeriesPointLabels", object.NewInt(0), stringList("A", "", "C"))
+
+	if n := countScene(sc, kindRect, func(it sceneItem) bool { return it.w == 10 }); n != 1 {
+		t.Errorf("expected 1 marker of size 10, got %d", n)
+	}
+	if n := countScene(sc, kindRect, func(it sceneItem) bool { return it.w == 2 }); n != 1 {
+		t.Errorf("expected 1 marker of size 2, got %d", n)
+	}
+	// Per-point color took effect on point 1 (the one parsed from "red").
+	wantRed, _ := risorcanvas.ParseColor("red")
+	if n := countScene(sc, kindRect, func(it sceneItem) bool { return it.w == 10 && it.col == wantRed }); n != 1 {
+		t.Errorf("expected the size-10 marker to use the per-point red, got %d", n)
+	}
+	// Labels A and C drawn, B skipped; point 3 (size 0) has no marker but
+	// still shows its label.
+	for _, want := range []string{"A", "C"} {
+		if n := countScene(sc, kindText, func(it sceneItem) bool { return it.text == want }); n != 1 {
+			t.Errorf("expected label %q once, got %d", want, n)
+		}
+	}
+
+	// Validation: length mismatch and bad colors are errors, not panics.
+	a, _ := sc.GetAttr("SetSeriesMarkerSizes")
+	res, err := a.(*object.Builtin).Call(context.Background(), object.NewInt(0), floatList(1, 2))
+	if err == nil && (res == nil || res.Type() != object.ERROR) {
+		t.Error("expected error for mismatched sizes length")
+	}
+	a, _ = sc.GetAttr("SetSeriesPointColors")
+	res, err = a.(*object.Builtin).Call(context.Background(), object.NewInt(0), stringList("notacolor", "", ""))
+	if err == nil && (res == nil || res.Type() != object.ERROR) {
+		t.Error("expected error for invalid color name")
+	}
+	// Labels must survive SVG export too (same scene).
+	svg := sc.writeSVG(400, 300)
+	if !strings.Contains(svg, "A</text>") || !strings.Contains(svg, "C</text>") {
+		t.Error("SVG export must include point labels")
+	}
+}
+
+func TestScatterReferenceGeometry(t *testing.T) {
+	sc, err := NewScatterChart("scores", "t1", "t2", []float64{-1, 1}, []float64{-1, 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mountChart(t, sc, 460, 340)()
+
+	if got := callChart(t, sc, "AddHLine", object.NewFloat(2)).(*object.Int).Value(); got != 1 {
+		t.Errorf("AddHLine series index = %d, want 1", got)
+	}
+	if got := callChart(t, sc, "AddEllipse", object.NewFloat(0), object.NewFloat(0),
+		object.NewFloat(2), object.NewFloat(1)).(*object.Int).Value(); got != 2 {
+		t.Errorf("AddEllipse series index = %d, want 2", got)
+	}
+	x0, x1, y0, y1 := sc.dataExtent()
+	if x0 > -2 || x1 < 2 {
+		t.Errorf("extent must cover the ellipse x: [%v, %v]", x0, x1)
+	}
+	if y0 > -1 || y1 < 2 {
+		t.Errorf("extent must cover ellipse + hline y: [%v, %v]", y0, y1)
+	}
+	if n := countScene(sc, kindLine, func(it sceneItem) bool { return it.lineW == 1.5 }); n < 64 {
+		t.Errorf("ellipse must render ~64 polyline segments, got %d", n)
+	}
+	a, _ := sc.GetAttr("AddEllipse")
+	res, err := a.(*object.Builtin).Call(context.Background(),
+		object.NewFloat(0), object.NewFloat(0), object.NewFloat(0), object.NewFloat(1))
+	if err == nil && (res == nil || res.Type() != object.ERROR) {
+		t.Error("expected error for zero radius")
+	}
+}
+
+func TestEllipsePoints(t *testing.T) {
+	xs, ys := ellipsePoints(3, -2, 4, 1, 64)
+	if len(xs) != 65 || len(ys) != 65 {
+		t.Fatalf("expected 65 points, got %d/%d", len(xs), len(ys))
+	}
+	if xs[0] != xs[64] || ys[0] != ys[64] {
+		t.Error("ellipse polyline must close")
+	}
+	minX, maxX, minY, maxY := xs[0], xs[0], ys[0], ys[0]
+	for i := range xs {
+		if xs[i] < minX {
+			minX = xs[i]
+		}
+		if xs[i] > maxX {
+			maxX = xs[i]
+		}
+		if ys[i] < minY {
+			minY = ys[i]
+		}
+		if ys[i] > maxY {
+			maxY = ys[i]
+		}
+	}
+	if math.Abs(maxX-(3+4)) > 1e-9 || math.Abs(minX-(3-4)) > 1e-9 {
+		t.Errorf("x span [%v, %v], want [-1, 7]", minX, maxX)
+	}
+	if math.Abs(maxY-(-1)) > 1e-9 || math.Abs(minY-(-3)) > 1e-9 {
+		t.Errorf("y span [%v, %v], want [-3, -1]", minY, maxY)
+	}
+}
+
+func TestLineAddHLine(t *testing.T) {
+	lc, err := NewLineChart("monitor", "sample", "T2", []float64{1, 2, 3, 4}, []float64{5, 2, 4, 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mountChart(t, lc, 460, 340)()
+
+	callChart(t, lc, "AddHLine", object.NewFloat(4.5))
+	if len(lc.series) != 2 {
+		t.Fatalf("expected 2 series, got %d", len(lc.series))
+	}
+	lim := lc.series[1]
+	if lim.xvals[0] != 1 || lim.xvals[1] != 4 {
+		t.Errorf("limit line must span the data x-range, got %v", lim.xvals)
+	}
+	if lim.yvals[0] != 4.5 || lim.yvals[1] != 4.5 {
+		t.Errorf("limit line y = %v, want constant 4.5", lim.yvals)
+	}
+	if lim.col != colorRed || lim.width != 1.5 {
+		t.Errorf("default limit style must be red 1.5px, got col=%v width=%v", lim.col, lim.width)
+	}
+	callChart(t, lc, "AddHLine", object.NewFloat(2), object.NewString("green"), object.NewFloat(3))
+	if lc.series[2].width != 3 {
+		t.Errorf("explicit line width not applied: %v", lc.series[2].width)
+	}
+}
+
+func TestBarErrorBars(t *testing.T) {
+	bc, err := NewBarChart("coeffs", "beta", []string{"v1", "v2"}, []float64{2, 4})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mountChart(t, bc, 460, 340)()
+
+	callChart(t, bc, "SetErrorBars", floatList(1, 0))
+
+	var whiskers int
+	for _, it := range bc.sc.items {
+		if it.kind == kindLine && it.lineW == 1.2 {
+			whiskers++
+		}
+	}
+	if whiskers != 3 { // stem + 2 caps for bar 0 only
+		t.Errorf("expected 3 whisker segments, got %d", whiskers)
+	}
+	if _, _, _, y1 := bc.dataExtent(); y1 < 3 {
+		t.Errorf("extent must cover value+err (3), got %v", y1)
+	}
+	a, _ := bc.GetAttr("SetErrorBars")
+	res, err := a.(*object.Builtin).Call(context.Background(), floatList(1))
+	if err == nil && (res == nil || res.Type() != object.ERROR) {
+		t.Error("expected error for wrong error-bars length")
+	}
+	res, err = a.(*object.Builtin).Call(context.Background(), floatList(-1, 0))
+	if err == nil && (res == nil || res.Type() != object.ERROR) {
+		t.Error("expected error for negative error bar")
+	}
+	// Clearing restores the plain extent.
+	callChart(t, bc, "SetErrorBars", floatList())
+	if _, _, _, y1 := bc.dataExtent(); y1 > 4+4*0.06+1e-9 {
+		t.Errorf("cleared error bars must shrink extent back, got %v", y1)
+	}
+}
+
+// TestChartErrorsPropagate guards the DoAndWaitContext shadowing bug:
+// validation failures set inside the UI-thread closure must reach the
+// caller, and a later successful call must not inherit the stale error.
+func TestChartErrorsPropagate(t *testing.T) {
+	sc, err := NewScatterChart("t", "x", "y", []float64{1}, []float64{1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mountChart(t, sc, 300, 200)()
+
+	a, _ := sc.GetAttr("AddSeries")
+	res, err := a.(*object.Builtin).Call(context.Background(),
+		floatList(1, 2), floatList(1, 2), object.NewString("bogus"))
+	if err == nil && (res == nil || res.Type() != object.ERROR) {
+		t.Error("AddSeries must surface invalid color errors")
+	}
+	res, err = a.(*object.Builtin).Call(context.Background(), floatList(1, 2), floatList(3, 4))
+	if err != nil {
+		t.Fatalf("AddSeries after failed call: %v", err)
+	}
+	if res.Type() != object.INT || res.(*object.Int).Value() != 1 {
+		t.Errorf("AddSeries index = %s, want int 1", res.Inspect())
+	}
+
+	lc, err := NewLineChart("t", "x", "y", []float64{1, 2}, []float64{1, 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, _ = lc.GetAttr("AddSeries")
+	res, err = a.(*object.Builtin).Call(context.Background(),
+		floatList(1, 2), floatList(1, 2), object.NewString("bogus"))
+	if err == nil && (res == nil || res.Type() != object.ERROR) {
+		t.Error("line AddSeries must surface invalid color errors")
 	}
 }

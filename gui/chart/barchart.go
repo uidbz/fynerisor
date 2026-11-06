@@ -35,6 +35,7 @@ type BarChart struct {
 	values    []float64
 	colors    []color.Color // per-bar overrides, nil = baseColor
 	baseColor color.Color
+	errBars   []float64 // optional symmetric ± whiskers per bar (confidence intervals)
 }
 
 // NewBarChart creates an interactive bar chart with the given title, y-axis
@@ -115,11 +116,15 @@ func (b *BarChart) dataExtent() (float64, float64, float64, float64) {
 	}
 	minV, maxV := 0.0, 0.0
 	for i, v := range b.values {
-		if i == 0 || v < minV {
-			minV = v
+		lo, hi := v, v
+		if i < len(b.errBars) && b.errBars[i] > 0 {
+			lo, hi = v-b.errBars[i], v+b.errBars[i]
 		}
-		if i == 0 || v > maxV {
-			maxV = v
+		if i == 0 || lo < minV {
+			minV = lo
+		}
+		if i == 0 || hi > maxV {
+			maxV = hi
 		}
 	}
 	// Bars start at zero, so the domain always includes 0, with a little headroom.
@@ -173,6 +178,17 @@ func (b *BarChart) buildSeries(p *plotPainter, xs, ys *linearScale, opts *series
 		top := ys.toPixel(v)
 		p.rect(cx-barW/2, top, barW, baseline-top, col)
 
+		// Confidence whiskers: vertical bar top±err with horizontal caps,
+		// drawn in a darkened bar color so they read as an overlay.
+		if i < len(b.errBars) && b.errBars[i] > 0 {
+			eCol := darken(col, 0.6)
+			yLo, yHi := ys.toPixel(v-b.errBars[i]), ys.toPixel(v+b.errBars[i])
+			p.line(cx, yLo, cx, yHi, eCol, 1.2)
+			capW := barW * 0.3
+			p.line(cx-capW, yLo, cx+capW, yLo, eCol, 1.2)
+			p.line(cx-capW, yHi, cx+capW, yHi, eCol, 1.2)
+		}
+
 		if opts.showValues {
 			lbl := formatTick(v)
 			y := top - 14
@@ -221,6 +237,9 @@ func (b *BarChart) updateData(labels []string, values []float64) {
 	b.values = values
 	if len(b.colors) > len(values) {
 		b.colors = b.colors[:len(values)]
+	}
+	if len(b.errBars) > len(values) {
+		b.errBars = b.errBars[:len(values)]
 	}
 	b.clearHover()
 	b.recomputeDomains()
@@ -444,4 +463,27 @@ func init() {
 		})
 		return object.Nil, nil
 	})
+	barChartAttrs.Define("SetErrorBars").
+		Doc("Symmetric +/- error whiskers per bar (e.g. regression-coefficient confidence intervals); an empty list clears them.").
+		Args("errors").Returns("nil").
+		Impl(func(g *BarChart, ctx context.Context, args ...object.Object) (object.Object, error) {
+			errs, err := floatSliceArg(args[0])
+			if err != nil {
+				return nil, err
+			}
+			if len(errs) != 0 && len(errs) != len(g.values) {
+				return nil, fmt.Errorf("chart error: %d error bars for %d bars", len(errs), len(g.values))
+			}
+			for _, e := range errs {
+				if e < 0 {
+					return nil, fmt.Errorf("chart error: error bar sizes must be >= 0 (got %v)", e)
+				}
+			}
+			guithread.Do(func() {
+				g.errBars = errs
+				g.recomputeDomains()
+				g.refresh()
+			})
+			return object.Nil, nil
+		})
 }

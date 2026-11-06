@@ -221,6 +221,32 @@ func (g *LineChart) GetAttr(name string) (object.Object, bool) {
 	return guithread.GetAttr(name, g.getAttrUI)
 }
 
+// lineXSpan computes the min/max x across all series, for reference-line
+// spans (dataExtent pads, so it is not reused here).
+func lineXSpan(g *LineChart) (float64, float64) {
+	seeded := false
+	var x0, x1 float64
+	for _, sr := range g.series {
+		for _, x := range sr.xvals {
+			if !seeded {
+				x0, x1 = x, x
+				seeded = true
+				continue
+			}
+			if x < x0 {
+				x0 = x
+			}
+			if x > x1 {
+				x1 = x
+			}
+		}
+	}
+	if !seeded {
+		return 0, 1
+	}
+	return x0, x1
+}
+
 var lineChartAttrs = objattrs.Register(string(LineChartType), object.NewAttrRegistry[*LineChart](string(LineChartType)))
 
 func (g *LineChart) getAttrUI(name string) (object.Object, bool) {
@@ -273,7 +299,7 @@ func init() {
 				return nil, fmt.Errorf("chart error: x and y values must have same length (got %d x values, %d y values)", len(xs), len(ys))
 			}
 			var idx int
-			if err := guithread.DoAndWaitContext(ctx, func() {
+			if derr := guithread.DoAndWaitContext(ctx, func() {
 				sr := &lineSeries{col: paletteColor(len(g.series)), width: 2}
 				if len(args) > 2 {
 					col, cerr := colorArg(args[2])
@@ -301,7 +327,56 @@ func init() {
 				g.clearHover()
 				g.recomputeDomains()
 				g.refresh()
-			}); err != nil {
+			}); derr != nil {
+				return nil, derr
+			}
+			if err != nil {
+				return nil, err
+			}
+			return object.NewInt(int64(idx)), nil
+		})
+	lineChartAttrs.Define("AddHLine").
+		Doc("Horizontal reference line at y across the data range (e.g. a control limit); returns the series index.").
+		Args("y").OptionalArg("color").OptionalArg("lineWidth").
+		Returns("int").
+		Impl(func(g *LineChart, ctx context.Context, args ...object.Object) (object.Object, error) {
+			yv, err := object.AsFloat(args[0])
+			if err != nil {
+				return nil, err
+			}
+			var idx int
+			if derr := guithread.DoAndWaitContext(ctx, func() {
+				x0, x1 := lineXSpan(g)
+				sr := &lineSeries{col: colorRed, width: 1.5}
+				if len(args) > 1 {
+					col, cerr := colorArg(args[1])
+					if cerr != nil {
+						err = fmt.Errorf("AddHLine: %w", cerr)
+						return
+					}
+					sr.col = col
+				}
+				if len(args) > 2 {
+					f, ferr := object.AsFloat(args[2])
+					if ferr != nil {
+						err = fmt.Errorf("AddHLine: line width must be a number (got %s)", args[2].Type())
+						return
+					}
+					if f < 0 || f > 20 {
+						err = fmt.Errorf("chart error: AddHLine: line width must be in [0, 20] (got %v)", f)
+						return
+					}
+					sr.width = float32(f)
+				}
+				sr.xvals, sr.yvals = []float64{x0, x1}, []float64{yv, yv}
+				g.series = append(g.series, sr)
+				idx = len(g.series) - 1
+				g.recomputeDomains()
+				g.refresh()
+			}); derr != nil {
+				return nil, derr
+			}
+			if err != nil {
 				return nil, err
 			}
 			return object.NewInt(int64(idx)), nil
@@ -338,14 +413,17 @@ func init() {
 			if err != nil {
 				return nil, err
 			}
-			if err := guithread.DoAndWaitContext(ctx, func() {
+			if derr := guithread.DoAndWaitContext(ctx, func() {
 				var i int
 				if i, err = seriesIndexArg("SetSeriesColor", args[0], len(g.series)); err != nil {
 					return
 				}
 				g.series[i].col = col
 				g.refresh()
-			}); err != nil {
+			}); derr != nil {
+				return nil, derr
+			}
+			if err != nil {
 				return nil, err
 			}
 			return object.Nil, nil
@@ -361,14 +439,17 @@ func init() {
 			if f < 0 || f > 20 {
 				return nil, fmt.Errorf("chart error: line width must be in [0, 20] (got %v)", f)
 			}
-			if err := guithread.DoAndWaitContext(ctx, func() {
+			if derr := guithread.DoAndWaitContext(ctx, func() {
 				var i int
 				if i, err = seriesIndexArg("SetSeriesLineWidth", args[0], len(g.series)); err != nil {
 					return
 				}
 				g.series[i].width = float32(f)
 				g.refresh()
-			}); err != nil {
+			}); derr != nil {
+				return nil, derr
+			}
+			if err != nil {
 				return nil, err
 			}
 			return object.Nil, nil

@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.15.5] - 2026-11-06
+
+### Added
+
+- **Chart annotation primitives (chemometrics plot types).** Scatter charts
+  gain per-point styling — `SetSeriesMarkerSizes`, `SetSeriesPointColors`
+  and `SetSeriesPointLabels` — for outlier emphasis and named samples, plus
+  reference geometries that land as ordinary polyline series (extent, hover
+  and SVG export all treat them uniformly): `AddHLine`, `AddVLine` and
+  `AddEllipse` (Hotelling confidence ellipses). Line charts gain
+  `AddHLine` control limits. Bar charts gain `SetErrorBars`, symmetric ±
+  whiskers with caps (regression-coefficient confidence intervals); the
+  y-domain accounts for them.
+- Labels near the plot top flip below their point so they are never
+  clipped by the plot-area anchor guard.
+
+### Fixed
+
+- **Validation errors from chart methods were silently swallowed.** The
+  `if err := guithread.DoAndWaitContext(...)` idiom shadowed the outer
+  `err` that closures assign (bad colors, out-of-range series indices,
+  length mismatches), so e.g. `AddSeries(..., "bogus")` returned a series
+  index instead of an error. Affected scatter and line chart methods
+  (since 0.15.1); now every closure-assigned error is checked after the
+  UI-thread hop.
+
 ## [0.15.4] - 2026-11-04
 
 ### Changed
