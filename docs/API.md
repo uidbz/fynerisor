@@ -193,9 +193,14 @@ with parentheses (`t.SetText(x)`).
 - `ResetZoom()` — Restore the full data domain on both axes.
 - `SetTitle(title)` — Set the chart title.
 - `WriteSVG(size...)` → string — Render the chart to an SVG string; optional width and height.
-- `SetPoints(arg1, arg2)`
-- `SetColor(arg1)`
-- `SetLineWidth(arg1)`
+- `SetPoints(xvalues, yvalues)` — Replace the primary series' x and y values.
+- `AddSeries(xvalues, yvalues, color, lineWidth)` → int, the new series index — Add a new series with the given x and y values; optional color and line width.
+- `ClearSeries()` — Remove all series except the primary one.
+- `SeriesCount()` → int — Number of plotted series (>= 1).
+- `SetSeriesColor(index, color)` — Set one series' color by name or #rrggbb.
+- `SetSeriesLineWidth(index, width)` — Set one series' stroke width; 0 hides the line.
+- `SetColor(color)` — Set the primary series' color (name or #rrggbb).
+- `SetLineWidth(width)` — Set the primary series' stroke width.
 
 ## chart.scatterchart
 
@@ -215,9 +220,15 @@ with parentheses (`t.SetText(x)`).
 - `ResetZoom()` — Restore the full data domain on both axes.
 - `SetTitle(title)` — Set the chart title.
 - `WriteSVG(size...)` → string — Render the chart to an SVG string; optional width and height.
-- `SetPoints(arg1, arg2)`
-- `SetColor(arg1)`
-- `SetMarkerSize(arg1)`
+- `SetPoints(xvalues, yvalues)` — Replace the primary series' x and y values.
+- `AddSeries(xvalues, yvalues, color, lineWidth)` → int, the new series index — Add a new series with the given x and y values; optional color and line width.
+- `ClearSeries()` — Remove all series except the primary one.
+- `SeriesCount()` → int — Number of plotted series (>= 1).
+- `SetSeriesColor(index, color)` — Set one series' color by name or #rrggbb.
+- `SetSeriesMarkerSize(index, size)` — Set one series' marker size; 0 hides its markers.
+- `SetSeriesLineWidth(index, width)` — Connect one series' points with a line of the given width; 0 disables.
+- `SetColor(color)` — Set the primary series' color (name or #rrggbb).
+- `SetMarkerSize(size)` — Set the primary series' marker size; 0 hides markers.
 
 ## clipboard
 
@@ -1005,9 +1016,9 @@ with parentheses (`t.SetText(x)`).
 
 ## widget.Table
 
+- `Refresh()` — Reload the table: re-runs Columns, RowCount, Data and the cell callbacks, then redraws.
 - `Show()` — Make the object visible.
 - `Hide()` — Hide the object.
-- `Refresh()` — Redraw the object.
 - `Resize(width, height)` — Resize the object to width, height.
 - `Move(x, y)` — Move the object to x, y (relative to its parent canvas; layout containers reposition on the next refresh).
 - `MinSize()` → map — Minimum size of the object as {width, height}.

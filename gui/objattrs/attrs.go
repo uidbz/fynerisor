@@ -22,8 +22,22 @@ type HasCanvas interface {
 	CanvasObject() fyne.CanvasObject
 }
 
+// registered reports whether the registry already defines name. Verb
+// registrars skip when a type defined its own version first: getter-
+// driven widgets (Table) need bespoke Refresh semantics that re-run
+// the data getters, and a duplicate Define would panic (issue #58).
+func registered[T HasCanvas](r *object.AttrRegistry[T], name string) bool {
+	for _, spec := range r.Specs() {
+		if spec.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
 // Add registers Show, Hide, Refresh, Resize, Move, MinSize and Visible
-// on the type's attribute registry. Types whose script API defines its
+// on the type's attribute registry. A type that registers a verb before
+// calling Add keeps its own. Types whose script API defines its
 // own geometry verbs (PopUp's Move/Resize) register the base trio via
 // Show/Hide/Refresh instead. Bodies marshal to the UI thread exactly
 // like the hand-written versions they replace (issue #49).
@@ -37,8 +51,12 @@ func Add[T HasCanvas](r *object.AttrRegistry[T]) {
 	Visible(r)
 }
 
-// Show registers the Show verb alone (see Add).
+// Show registers the Show verb alone (see Add); skipped when the
+// type already defined its own "Show".
 func Show[T HasCanvas](r *object.AttrRegistry[T]) {
+	if registered(r, "Show") {
+		return
+	}
 	r.Define("Show").
 		Doc("Make the object visible.").
 		Returns("nil").
@@ -48,8 +66,12 @@ func Show[T HasCanvas](r *object.AttrRegistry[T]) {
 		})
 }
 
-// Hide registers the Hide verb alone (see Add).
+// Hide registers the Hide verb alone (see Add); skipped when the
+// type already defined its own "Hide".
 func Hide[T HasCanvas](r *object.AttrRegistry[T]) {
+	if registered(r, "Hide") {
+		return
+	}
 	r.Define("Hide").
 		Doc("Hide the object.").
 		Returns("nil").
@@ -59,8 +81,12 @@ func Hide[T HasCanvas](r *object.AttrRegistry[T]) {
 		})
 }
 
-// Refresh registers the Refresh verb alone (see Add).
+// Refresh registers the Refresh verb alone (see Add); skipped when the
+// type already defined its own "Refresh".
 func Refresh[T HasCanvas](r *object.AttrRegistry[T]) {
+	if registered(r, "Refresh") {
+		return
+	}
 	r.Define("Refresh").
 		Doc("Redraw the object.").
 		Returns("nil").
@@ -70,8 +96,12 @@ func Refresh[T HasCanvas](r *object.AttrRegistry[T]) {
 		})
 }
 
-// Resize registers the Resize verb alone (see Add).
+// Resize registers the Resize verb alone (see Add); skipped when the
+// type already defined its own "Resize".
 func Resize[T HasCanvas](r *object.AttrRegistry[T]) {
+	if registered(r, "Resize") {
+		return
+	}
 	r.Define("Resize").
 		Doc("Resize the object to width, height.").
 		Args("width", "height").
@@ -90,8 +120,12 @@ func Resize[T HasCanvas](r *object.AttrRegistry[T]) {
 		})
 }
 
-// Move registers the Move verb alone (see Add).
+// Move registers the Move verb alone (see Add); skipped when the
+// type already defined its own "Move".
 func Move[T HasCanvas](r *object.AttrRegistry[T]) {
+	if registered(r, "Move") {
+		return
+	}
 	r.Define("Move").
 		Doc("Move the object to x, y (relative to its parent canvas; layout containers reposition on the next refresh).").
 		Args("x", "y").
@@ -110,8 +144,12 @@ func Move[T HasCanvas](r *object.AttrRegistry[T]) {
 		})
 }
 
-// MinSize registers the MinSize verb alone (see Add).
+// MinSize registers the MinSize verb alone (see Add); skipped when the
+// type already defined its own "MinSize".
 func MinSize[T HasCanvas](r *object.AttrRegistry[T]) {
+	if registered(r, "MinSize") {
+		return
+	}
 	r.Define("MinSize").
 		Doc("Minimum size of the object as {width, height}.").
 		Returns("map").
@@ -122,8 +160,12 @@ func MinSize[T HasCanvas](r *object.AttrRegistry[T]) {
 		})
 }
 
-// Visible registers the Visible verb alone (see Add).
+// Visible registers the Visible verb alone (see Add); skipped when the
+// type already defined its own "Visible".
 func Visible[T HasCanvas](r *object.AttrRegistry[T]) {
+	if registered(r, "Visible") {
+		return
+	}
 	r.Define("Visible").
 		Doc("Whether the object is currently visible.").
 		Returns("bool").

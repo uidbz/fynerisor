@@ -1,30 +1,18 @@
 # Changelog
 
-## [0.15.5] - 2026-11-06
-
-### Added
-
-- **Chart annotation primitives (chemometrics plot types).** Scatter charts
-  gain per-point styling — `SetSeriesMarkerSizes`, `SetSeriesPointColors`
-  and `SetSeriesPointLabels` — for outlier emphasis and named samples, plus
-  reference geometries that land as ordinary polyline series (extent, hover
-  and SVG export all treat them uniformly): `AddHLine`, `AddVLine` and
-  `AddEllipse` (Hotelling confidence ellipses). Line charts gain
-  `AddHLine` control limits. Bar charts gain `SetErrorBars`, symmetric ±
-  whiskers with caps (regression-coefficient confidence intervals); the
-  y-domain accounts for them.
-- Labels near the plot top flip below their point so they are never
-  clipped by the plot-area anchor guard.
+## [0.15.5] - 2026-11-05
 
 ### Fixed
 
-- **Validation errors from chart methods were silently swallowed.** The
-  `if err := guithread.DoAndWaitContext(...)` idiom shadowed the outer
-  `err` that closures assign (bad colors, out-of-range series indices,
-  length mismatches), so e.g. `AddSeries(..., "bogus")` returned a series
-  index instead of an error. Affected scatter and line chart methods
-  (since 0.15.1); now every closure-assigned error is checked after the
-  UI-thread hop.
+- **`widget.Table.Refresh` re-reads its data again (issue #58).** The
+  shared-canvas-verb consolidation (issue #38) silently dropped Table's
+  bespoke Refresh, the only call path into `TableWidget.Refresh()`. The
+  generic verb merely redraws the outer container, so script-side
+  `table.Refresh()` never re-ran `RowCount`/`Data`/cell callbacks and
+  dynamic tables (e.g. goto's lars-server) could never show new rows —
+  paging was the only path that refetched. Table now registers its own
+  Refresh before the generic verbs, and `objattrs` verb registrars skip
+  names a type already defines (a duplicate Define used to panic).
 
 ## [0.15.4] - 2026-11-04
 

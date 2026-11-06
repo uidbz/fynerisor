@@ -4,7 +4,7 @@ Risor v2 language bindings for the Fyne GUI framework: cross-platform desktop
 apps written in Risor scripts, plus a headless (`core`) runtime for CLI and
 server use.
 
-Version: 0.15.0 · Risor v2.2+ · Fyne v2.8+ · Go 1.27 · module `github.com/uidbz/fynerisor`
+Version: 0.15.5 · Risor v2.2+ · Fyne v2.8+ · Go 1.27 · module `github.com/uidbz/fynerisor`
 
 > Start with the "Optional"-style rule: the per-type script API reference is
 > **generated** from the compiled code and CI-pinned. For any exact attribute,

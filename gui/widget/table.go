@@ -355,6 +355,18 @@ func (g *GenericCanvasObjectTable) getAttrUI(name string) (object.Object, bool) 
 
 }
 func init() {
+	// Table's own Refresh, registered BEFORE the generic canvas verbs so it
+	// wins (objattrs skips names already defined). The generic verb only
+	// redraws the container; TableWidget re-reads RowCount/Data/cell getters
+	// solely through its own Refresh - without this, a dynamic table can
+	// never show new rows (issue #58, found in goto lars-server).
+	tableAttrs.Define("Refresh").
+		Doc("Reload the table: re-runs Columns, RowCount, Data and the cell callbacks, then redraws.").
+		Args().Returns("nil").
+		Impl(func(obj *Table, _ context.Context, _ ...object.Object) (object.Object, error) {
+			guithread.Do(obj.instance.Refresh)
+			return object.Nil, nil
+		})
 	objattrs.Add(tableAttrs)
 	tableAttrs.Define("Columns").Args("arg1").Returns("nil").Impl(func(obj *Table, ctx context.Context, args ...object.Object) (object.
 		Object, error) {
