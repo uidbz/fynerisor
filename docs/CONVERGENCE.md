@@ -13,6 +13,11 @@ hosts in the wider ecosystem.
 
 ## M1 — Close the component gap: `form`, `field`, `table`, `log` (F)
 
+**Status: done 2026-11-12** (fynerisor `5b05722`, tie-browser dogfood `6952831`).
+Implemented as specified below; the table `data` static-rows question was
+resolved as recommended (script-fed rows only in v1). Manual designer drag UX
+for `field` still worth an interactive pass.
+
 Goal: a typical data-tool page is expressible as a scene document + sidecar.
 Everything stays inside the existing schema machinery — spec in
 `scene/builtin/builtin.go`, factory bound in `scene/render/builtin/registry.go`
