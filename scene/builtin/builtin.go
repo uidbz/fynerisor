@@ -344,6 +344,45 @@ func Specs() []scene.ComponentSpec {
 			Events: []scene.EventSpec{evChanged},
 		},
 
+		{
+			Type: "form", Title: "Form", Category: "Input", Icon: "edit",
+			Doc: "Labeled input rows; its children are field nodes. Labels align across rows.", Kind: scene.Ordered,
+			DefaultPlace: defaultPlace(340, 240),
+		},
+		{
+			Type: "field", Title: "Field", Category: "Input", Icon: "edit",
+			Doc:  "A labeled row inside a form; wraps exactly one input component (entry, select, check, slider, …).",
+			Kind: scene.Ordered, MaxChildren: 1,
+			DefaultPlace: defaultPlace(340, 48),
+			Props: []scene.PropSpec{
+				p("label", "Label", "Content", scene.PropString, "Field"),
+				p("help", "Help text", "Content", scene.PropString, ""),
+			},
+		},
+
+		// ---------------------------------------------------------------- data
+		{
+			Type: "table", Title: "Table", Category: "Data", Icon: "list",
+			Doc: "A data grid with title, filter, sorting and paging; rows are fed by the page script (node.SetRows).", Kind: scene.Leaf,
+			DefaultPlace: defaultPlace(560, 320),
+			DefaultProps: map[string]any{"columns": []any{"A", "B", "C"}},
+			Props: []scene.PropSpec{
+				p("title", "Title", "Content", scene.PropString, ""),
+				p("columns", "Columns", "Data", scene.PropOptions, nil),
+				num("pageSize", "Rows per page", "Data", 10, 1, 1000),
+			},
+			Events: []scene.EventSpec{ev("cellTapped", "A cell was tapped; evt fields: row, col (page-local) and text.")},
+		},
+		{
+			Type: "log", Title: "Log", Category: "Data", Icon: "file",
+			Doc: "A scrolling text log; the page script appends lines (node.Append).", Kind: scene.Leaf,
+			DefaultPlace: defaultPlace(560, 240),
+			Props: []scene.PropSpec{
+				p("text", "Initial text", "Content", scene.PropText, ""),
+				num("maxLines", "Max buffered lines", "Data", 1000, 10, 100000),
+			},
+		},
+
 		// ------------------------------------------------------------ navigation
 		{
 			Type: "hotspot", Title: "Hotspot", Category: "Navigation", Icon: "target",

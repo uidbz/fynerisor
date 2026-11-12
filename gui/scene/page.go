@@ -419,6 +419,85 @@ func init() {
 			}
 			return object.Nil, nil
 		})
+	nodeAttrs.Define("SetRows").
+		Doc("Replace the rows of a table node: a list of rows, each a list with one entry per column.").
+		Arg("rows").Returns("nil").
+		Impl(func(n *Node, ctx context.Context, args ...object.Object) (object.Object, error) {
+			rows, err := stringRows(goFromObject(args[0]))
+			if err != nil {
+				return nil, fmt.Errorf("scene.Node.SetRows: %w", err)
+			}
+			var ok bool
+			err = guithread.DoAndWaitContext(ctx, func() {
+				if l, found := n.page.view.Live(n.id); found {
+					if rm, is := render.RowModelOf(l); is {
+						rm.SetRows(rows)
+						ok = true
+					}
+				}
+			})
+			if err != nil {
+				return nil, err
+			}
+			if !ok {
+				return nil, object.Errorf("scene.Node.SetRows: node %q is not a table", n.id)
+			}
+			return object.Nil, nil
+		})
+	nodeAttrs.Define("SetCell").
+		Doc("Set one cell of a table node (0-based row and column).").
+		Args("row", "col", "value").Returns("nil").
+		Impl(func(n *Node, ctx context.Context, args ...object.Object) (object.Object, error) {
+			row, err := object.AsInt(args[0])
+			if err != nil {
+				return nil, err
+			}
+			col, err := object.AsInt(args[1])
+			if err != nil {
+				return nil, err
+			}
+			value := fmt.Sprint(goFromObject(args[2]))
+			var ok bool
+			err = guithread.DoAndWaitContext(ctx, func() {
+				if l, found := n.page.view.Live(n.id); found {
+					if rm, is := render.RowModelOf(l); is {
+						ok = rm.SetCell(int(row), int(col), value)
+					}
+				}
+			})
+			if err != nil {
+				return nil, err
+			}
+			if !ok {
+				return nil, object.Errorf("scene.Node.SetCell: (%d,%d) out of range on %q or not a table", row, col, n.id)
+			}
+			return object.Nil, nil
+		})
+	nodeAttrs.Define("Append").
+		Doc("Append a line to a log node (trailing newline optional).").
+		Arg("text").Returns("nil").
+		Impl(func(n *Node, ctx context.Context, args ...object.Object) (object.Object, error) {
+			text, err := object.AsString(args[0])
+			if err != nil {
+				return nil, err
+			}
+			var ok bool
+			err = guithread.DoAndWaitContext(ctx, func() {
+				if l, found := n.page.view.Live(n.id); found {
+					if a, is := render.AppenderOf(l); is {
+						a.AppendText(text)
+						ok = true
+					}
+				}
+			})
+			if err != nil {
+				return nil, err
+			}
+			if !ok {
+				return nil, object.Errorf("scene.Node.Append: node %q is not a log", n.id)
+			}
+			return object.Nil, nil
+		})
 	nodeAttrs.Define("SetPlace").
 		Doc("Change a node's placement at runtime. Keys: x, y, w, h, minW, minH, slot, title, icon.").
 		Arg("place").Returns("nil").
@@ -744,4 +823,29 @@ func sortedKeys(m map[string]any) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// stringRows converts a goFromObject result (list of lists) into table
+// rows; scalars are rendered with fmt.Sprint so numbers arrive as text.
+func stringRows(v any) ([][]string, error) {
+	list, ok := v.([]any)
+	if !ok {
+		if v == nil {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("expected a list of rows, got %T", v)
+	}
+	rows := make([][]string, 0, len(list))
+	for i, r := range list {
+		cells, ok := r.([]any)
+		if !ok {
+			return nil, fmt.Errorf("row %d is not a list", i)
+		}
+		row := make([]string, len(cells))
+		for j, c := range cells {
+			row[j] = fmt.Sprint(c)
+		}
+		rows = append(rows, row)
+	}
+	return rows, nil
 }

@@ -66,12 +66,16 @@ type styledLive struct {
 	obj fyne.CanvasObject
 }
 
+func (s *styledLive) inner() Live { return s.Live }
+
 func (s *styledLive) Object() fyne.CanvasObject { return s.obj }
 
 type styledContainer struct {
 	ContainerLive
 	obj fyne.CanvasObject
 }
+
+func (s *styledContainer) inner() Live { return s.ContainerLive }
 
 func (s *styledContainer) Object() fyne.CanvasObject { return s.obj }
 

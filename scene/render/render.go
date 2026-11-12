@@ -47,6 +47,52 @@ type Live interface {
 	Destroy()
 }
 
+// RowModel is implemented by table-style components whose rows are fed at
+// runtime (the scene "table"). It is an optional capability: page scripts
+// and hosts discover it with RowModelOf, never by type-testing components.
+type RowModel interface {
+	// SetRows replaces the whole row set; each row has one entry per column.
+	SetRows(rows [][]string)
+	// SetCell updates one cell and reports whether it was in range.
+	SetCell(row, col int, value string) bool
+}
+
+// Appender is implemented by log-style components that accept text lines at
+// runtime (the scene "log"). Discover it with AppenderOf.
+type Appender interface {
+	AppendText(text string)
+}
+
+// UnwrapLive peels off the render wrappers (style override, size hint) to
+// reach the live component a factory returned. Wrappers forward the
+// interfaces that callers of wrapped lives need via inner().
+func UnwrapLive(l Live) Live {
+	for i := 0; l != nil && i < 16; i++ {
+		w, ok := l.(interface{ inner() Live })
+		if !ok {
+			return l
+		}
+		l = w.inner()
+	}
+	return l
+}
+
+// RowModelOf unwraps a live and reports its RowModel, if any.
+func RowModelOf(l Live) (RowModel, bool) {
+	if c, ok := UnwrapLive(l).(RowModel); ok {
+		return c, true
+	}
+	return nil, false
+}
+
+// AppenderOf unwraps a live and reports its Appender, if any.
+func AppenderOf(l Live) (Appender, bool) {
+	if c, ok := UnwrapLive(l).(Appender); ok {
+		return c, true
+	}
+	return nil, false
+}
+
 // ContainerLive is implemented by components with children.
 type ContainerLive interface {
 	Live

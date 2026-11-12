@@ -1,5 +1,23 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- **Scene data components: `form`, `field`, `table`, `log`.** The document
+  layer can now express the interactive data-tool page, not just
+  point-and-click pages. `form` renders its `field` children as one Fyne
+  form (aligned labels; a bare child degrades to an unlabeled row).
+  `table` wraps the same `TableWidget` the classic widget API uses — title,
+  filter, sorting, paging — declares `columns` and is fed by page scripts
+  (`node.SetRows`, `node.SetCell`); tapping a cell emits `cellTapped`.
+  `log` mirrors the script-built log and takes `node.Append(text)`.
+  Feeding happens through the new optional `render.RowModel` /
+  `render.Appender` capabilities (`RowModelOf`/`AppenderOf` unwrap the
+  style/hint wrappers), keeping the script node API narrow by design
+  (docs/DIRECTION.md complexity budget). Designer palette gained a "Data"
+  category; see docs/CONVERGENCE.md M1.
+
 ## [0.15.5] - 2026-11-05
 
 ### Fixed

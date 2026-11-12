@@ -56,6 +56,12 @@ func RegisterFactories(r *render.Registry) {
 	r.Factory("select", newSelect)
 	r.Factory("radio", newRadio)
 	r.Factory("slider", newSlider)
+	r.Factory("form", newForm)
+	r.Factory("field", newField)
+
+	// Data.
+	r.Factory("table", newTable)
+	r.Factory("log", newLog)
 
 	// Navigation and composition.
 	r.Factory("hotspot", newHotspot)

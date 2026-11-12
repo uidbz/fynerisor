@@ -81,6 +81,8 @@ type hintedLive struct {
 	hint *hintObject
 }
 
+func (h *hintedLive) inner() Live { return h.Live }
+
 func (h *hintedLive) Object() fyne.CanvasObject { return h.hint }
 
 // hintedContainer applies place.minW/minH to a container's object while
@@ -89,6 +91,8 @@ type hintedContainer struct {
 	ContainerLive
 	hint *hintObject
 }
+
+func (h *hintedContainer) inner() Live { return h.ContainerLive }
 
 func (h *hintedContainer) Object() fyne.CanvasObject { return h.hint }
 

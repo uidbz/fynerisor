@@ -341,7 +341,7 @@ Types and attributes are listed in [API.md](API.md#scene). Summary:
 |---|---|
 | `scene` | `Load(ref)`, `Parse(json)`, `New()` |
 | `scene.Page` | `Root`, `Title`, `Node(id)`, `Find(filter)`, `Bind(handlers)`, `Values()` |
-| `scene.Node` | `ID`, `Type`, `Name`, `Props`, `Place`, `Children`, `Parent`, `Prop(name)`, `Set(name, value)`, `SetPlace(map)`, `SetName(name)`, `Show()`, `Hide()`, `On(event, fn)`, `Off(event)`, `SetContent(object)` |
+| `scene.Node` | `ID`, `Type`, `Name`, `Props`, `Place`, `Children`, `Parent`, `Prop(name)`, `Set(name, value)`, `SetPlace(map)`, `SetName(name)`, `Show()`, `Hide()`, `On(event, fn)`, `Off(event)`, `SetContent(object)`; on `table`: `SetRows(rows)`, `SetCell(row, col, value)`; on `log`: `Append(text)` |
 | `scene.Doc` | `Title`, `Encode()`, `Validate()`, `Page()` |
 
 `page.Node(id)` returns a **composite handle**: scene attributes win
@@ -369,7 +369,10 @@ the document, not runtime state.
 ### Dynamic content
 
 Use `slot` nodes and `node.SetContent(widget)` for content a script builds with
-the full fynerisor widget API (tables, chart, list, custom controls). Use
+the full fynerisor widget API (charts, custom controls). Data grids do not need
+slots: declare a `table` (its `columns` prop) and feed it with
+`node.SetRows([[...], ...])` / `node.SetCell(row, col, value)`, or a `log` and
+append with `node.Append(text)`. Use
 `node.Set(prop, value)` for scene components. Runtime changes are not written
 back to the document; the designer edits the saved document.
 

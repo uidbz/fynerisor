@@ -559,6 +559,9 @@ with parentheses (`t.SetText(x)`).
 - `Parent`
 - `Prop(name)` → any — Read a component property.
 - `Set(name, value)` — Set a component property at runtime (not saved to the document).
+- `SetRows(rows)` — Replace the rows of a table node: a list of rows, each a list with one entry per column.
+- `SetCell(row, col, value)` — Set one cell of a table node (0-based row and column).
+- `Append(text)` — Append a line to a log node (trailing newline optional).
 - `SetPlace(place)` — Change a node's placement at runtime. Keys: x, y, w, h, minW, minH, slot, title, icon.
 - `SetName(name)` — Set the node's display name.
 - `Show()` — Show the node.
@@ -1124,6 +1127,8 @@ embedding application (tie-browser registers the `tie.*` family).
 | `circle` | Circle | leaf | Shapes | fill (color = #22c55e), stroke (color = #00000000), strokeWidth (number = 0) | tapped |  |
 | `embed` | Embedded scene | leaf | Navigation | src (sceneRef = ) |  |  |
 | `entry` | Entry | leaf | Input | text (string = ), placeholder (string = ), multiline (bool = false), password (bool = false) | changed, submitted |  |
+| `field` | Field | ordered | Input | label (string = Field), help (string = ) |  |  |
+| `form` | Form | ordered | Input |  |  |  |
 | `free` | Free canvas | free | Layout | designW (number = 1600), designH (number = 900), scale (enum = fit), background (asset = ), backgroundFill (enum = stretch), letterbox (color = #000000), backgroundColor (color = ), clip (bool = false), scaleText (bool = true) |  |  |
 | `grid` | Grid | ordered | Layout | cols (number = 2) |  |  |
 | `gridwrap` | Grid wrap | ordered | Layout |  |  |  |
@@ -1136,6 +1141,7 @@ embedding application (tie-browser registers the `tie.*` family).
 | `label` | Label | leaf | Display | text (text = ), bold (bool = false), italic (bool = false), mono (bool = false), align (enum = left), wrap (enum = word), truncation (enum = off) |  |  |
 | `line` | Line | leaf | Shapes | color (color = #ffffff), width (number = 2) |  |  |
 | `link` | Scene link | leaf | Navigation | text (string = Open), to (sceneRef = ) | tapped |  |
+| `log` | Log | leaf | Data | text (text = ), maxLines (number = 1000) |  |  |
 | `markdown` | Markdown | leaf | Display | text (text = ) |  |  |
 | `padded` | Padded | ordered | Layout |  |  |  |
 | `progress` | Progress | leaf | Display | value (number = 0.5) |  |  |
@@ -1147,6 +1153,7 @@ embedding application (tie-browser registers the `tie.*` family).
 | `slider` | Slider | leaf | Input | value (number = 0), min (number = 0), max (number = 100), step (number = 1) | changed |  |
 | `slot` | Script slot | leaf | Navigation | hint (string = Script fills this area) |  |  |
 | `stack` | Stack | ordered | Layout |  |  |  |
+| `table` | Table | leaf | Data | title (string = ), columns (options), pageSize (number = 10) | cellTapped |  |
 | `tabs` | Tabs | tabs | Layout | location (enum = top) |  |  |
 | `text` | Canvas text | leaf | Display | text (text = ), size (number = 18), color (color = #ffffff), bold (bool = false), italic (bool = false), mono (bool = false), align (enum = left) |  |  |
 | `vbox` | Vertical box | ordered | Layout |  |  |  |

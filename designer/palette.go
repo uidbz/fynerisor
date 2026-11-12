@@ -51,7 +51,7 @@ func (p *paletteView) rebuild() {
 		}
 		groups[cat] = append(groups[cat], spec)
 	}
-	rank := map[string]int{"Layout": 0, "Display": 1, "Shapes": 2, "Input": 3, "Navigation": 4}
+	rank := map[string]int{"Layout": 0, "Display": 1, "Shapes": 2, "Input": 3, "Data": 4, "Navigation": 5}
 	sort.SliceStable(order, func(a, b int) bool {
 		ra, oka := rank[order[a]]
 		rb, okb := rank[order[b]]
