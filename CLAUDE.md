@@ -337,6 +337,8 @@ documentation, each kind of fact has exactly ONE owner:
 | Threading model prose | `docs/CONCURRENCY.md` |
 | Agent working guidance (syntax rules, gotchas, patterns) | `skill/` (SKILL.md + references/ — guidance only, points at docs/API.md, never duplicates API lists) |
 | Version/breaking changes | `CHANGELOG.md` |
+| Architecture doctrine (why documents + scripts coexist) | `docs/DIRECTION.md` |
+| Active cross-repo roadmap | `docs/CONVERGENCE.md` |
 | LLM-reader index | `llms.txt` — links + one-liners only, no content dumps |
 | Package docs for godoc | `doc.go` |
 

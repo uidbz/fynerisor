@@ -471,6 +471,8 @@ Eventually I dream of making an other browser app, that incorporates the origina
 - [Changelog](CHANGELOG.md) - Version history
 - [Scene Documents](docs/SCENES.md) - Declarative pages: format, components, actions, scripting
 - [Scene Designer](docs/DESIGNER.md) - The editor: gestures, inspector, architecture, embedding
+- [Direction](docs/DIRECTION.md) - Why documents and scripts coexist: one page model, two layers
+- [Convergence plan](docs/CONVERGENCE.md) - Connecting the document layer to production usage
 - [Concurrency Guide](docs/CONCURRENCY.md) - Threading patterns
 - [Widget Status](docs/WIDGET_STATUS.md) - Supported Fyne widgets
 - [App Versioning](examples/27-app-versioning) - Custom application versioning

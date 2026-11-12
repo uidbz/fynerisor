@@ -19,6 +19,8 @@ Risor language bindings for the Fyne GUI framework.
 - [Global Objects](#global-objects)
 - [Scenes and the designer](SCENES.md)
 - [Scene designer guide](DESIGNER.md)
+- [Direction: documents + scripts, one model](DIRECTION.md)
+- [Convergence plan](CONVERGENCE.md)
 - [Widgets](#widgets)
   - [Button](#button)
   - [Label](#label)

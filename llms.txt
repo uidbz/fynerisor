@@ -21,6 +21,8 @@ Version: 0.15.5 · Risor v2.2+ · Fyne v2.8+ · Go 1.27 · module `github.com/ui
 - [docs/SCENES.md](docs/SCENES.md): declarative scene documents — placement/scaling, components, actions, sidecar scripting, stores, security, tie-browser model.
 - [docs/DESIGNER.md](docs/DESIGNER.md): the in-place scene designer — gestures, inspector, architecture, embedding, status/roadmap.
 - [docs/EXAMPLES.md](docs/EXAMPLES.md): worked example walkthroughs.
+- [docs/DIRECTION.md](docs/DIRECTION.md): doctrine — why scene documents and the Risor widget API coexist (one page model, two layers).
+- [docs/CONVERGENCE.md](docs/CONVERGENCE.md): active plan — connect the document layer to production usage (form/field/table/log components, host scene-page wiring, scene-first defaults).
 - [docs/NAMING_CONVENTIONS.md](docs/NAMING_CONVENTIONS.md): naming rules for wrappers/attributes.
 - [CHANGELOG.md](CHANGELOG.md): per-version changes, breaking changes highlighted.
 
