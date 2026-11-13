@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- File dialog lifecycle no longer races the picker's deferred-focus timers
+  with overlay dismissal (uidbz/fyne-addons kdefilepicker: destroyed flag
+  is now atomic and a dedicated mutex serializes the timers' canvas
+  operations against Dismiss). `go test -race ./gui/dialog/` is clean.
+
 ### Added
 
 - **Scene data components: `form`, `field`, `table`, `log`.** The document
