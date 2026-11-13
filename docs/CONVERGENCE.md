@@ -68,6 +68,12 @@ without touching raw widgets.
 
 ## M2 — Browser hosts render scene pages (H, F)
 
+**Status: first host landed 2026-11-13.** A production browser host now
+renders both page kinds side by side (script pages and scene pages over
+plain authenticated HTTP; sidecar version-gated, assets same-origin).
+No new fynerisor API was needed — `LoadPage`/`RenderScene` plus
+`guiscene.BuildPage` carried the whole host integration.
+
 Goal: any browser-style host can open a `.scene.json` page from wherever it
 already fetches script pages — same transport, same auth — while its existing
 script-page URLs keep working **forever, unchanged**.
