@@ -41,17 +41,22 @@ var (
 // steel blue first, then muted companions chosen to stay readable against
 // it and the white plot background.
 var seriesPalette = []color.NRGBA{
-	{70, 130, 180, 0xff}, // steel blue (primary series default)
-	{178, 34, 34, 0xff},  // firebrick red
-	{60, 139, 60, 0xff},  // forest green
-	{221, 132, 33, 0xff}, // ochre
-	{148, 103, 189, 0xff},// muted purple
-	{31, 119, 180, 0xff}, // classic blue
-	{23, 190, 207, 0xff}, // bright cyan
-	{140, 86, 75, 0xff},  // umber
+	{70, 130, 180, 0xff},  // steel blue (primary series default)
+	{178, 34, 34, 0xff},   // firebrick red
+	{60, 139, 60, 0xff},   // forest green
+	{221, 132, 33, 0xff},  // ochre
+	{148, 103, 189, 0xff}, // muted purple
+	{31, 119, 180, 0xff},  // classic blue
+	{23, 190, 207, 0xff},  // bright cyan
+	{140, 86, 75, 0xff},   // umber
 }
 
-func paletteColor(i int) color.Color { return seriesPalette[((i%len(seriesPalette))+len(seriesPalette))%len(seriesPalette)] }
+func paletteColor(i int) color.Color {
+	return seriesPalette[((i%len(seriesPalette))+len(seriesPalette))%len(seriesPalette)]
+}
+
+// colorRed is the conventional color for reference/control limits.
+var colorRed = color.NRGBA{R: 200, G: 30, B: 30, A: 255}
 
 // hitResult identifies the data element under the pointer.
 type hitResult struct {

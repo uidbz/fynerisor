@@ -132,6 +132,9 @@ with parentheses (`t.SetText(x)`).
 - `SetLabel(arg1, arg2)`
 - `SetColor(arg1)`
 - `SetBarColor(arg1, arg2)`
+- `SetErrorBars(errors)` — Symmetric +/- error whiskers per bar (e.g. regression-coefficient confidence intervals); an empty list clears them.
+- `AddHLine(y, color, lineWidth)` — Horizontal reference line at y spanning the bars (e.g. a T2/Q control limit); returns nothing.
+- `RemoveHLines()` — Remove all horizontal reference lines.
 
 ## chart.boxplot
 
@@ -195,6 +198,7 @@ with parentheses (`t.SetText(x)`).
 - `WriteSVG(size...)` → string — Render the chart to an SVG string; optional width and height.
 - `SetPoints(xvalues, yvalues)` — Replace the primary series' x and y values.
 - `AddSeries(xvalues, yvalues, color, lineWidth)` → int, the new series index — Add a new series with the given x and y values; optional color and line width.
+- `AddHLine(y, color, lineWidth)` → int — Horizontal reference line at y across the data range (e.g. a control limit); returns the series index.
 - `ClearSeries()` — Remove all series except the primary one.
 - `SeriesCount()` → int — Number of plotted series (>= 1).
 - `SetSeriesColor(index, color)` — Set one series' color by name or #rrggbb.
@@ -227,6 +231,12 @@ with parentheses (`t.SetText(x)`).
 - `SetSeriesColor(index, color)` — Set one series' color by name or #rrggbb.
 - `SetSeriesMarkerSize(index, size)` — Set one series' marker size; 0 hides its markers.
 - `SetSeriesLineWidth(index, width)` — Connect one series' points with a line of the given width; 0 disables.
+- `SetSeriesMarkerSizes(index, sizes)` — Per-point marker sizes for one series (overrides SetSeriesMarkerSize per point; 0 hides a point).
+- `SetSeriesPointColors(index, colors)` — Per-point colors for one series (name or #rrggbb; empty string uses the series color).
+- `SetSeriesPointLabels(index, labels)` — Per-point text labels for one series (empty strings are skipped).
+- `AddHLine(y, color, lineWidth)` → int — Horizontal reference line at y across the data range; returns the series index.
+- `AddVLine(x, color, lineWidth)` → int — Vertical reference line at x across the data range; returns the series index.
+- `AddEllipse(cx, cy, rx, ry, color, lineWidth)` → int — Ellipse centered at (cx,cy) with data-space radii rx/ry (e.g. a Hotelling T2 confidence ellipse); returns the series index.
 - `SetColor(color)` — Set the primary series' color (name or #rrggbb).
 - `SetMarkerSize(size)` — Set the primary series' marker size; 0 hides markers.
 
