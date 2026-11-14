@@ -1,0 +1,25 @@
+// Counter: one immutable program, no callbacks and no mutable script state.
+// The host sends {type:"init"} once, then one event per interaction.
+
+const init = event.type == "init";
+const inc = event.type == "tapped" && (event?.node ?? "") == "inc";
+const reset = event.type == "tapped" && (event?.node ?? "") == "reset";
+
+const count = if (inc) {
+  state.count + 1
+} else if (reset) {
+  0
+} else {
+  state.count
+};
+
+const actions = if (init || inc || reset) {
+  [{do: "set", node: "count", prop: "text", value: string(count)}]
+} else {
+  []
+};
+
+{
+  state: {...state, count},
+  actions,
+}

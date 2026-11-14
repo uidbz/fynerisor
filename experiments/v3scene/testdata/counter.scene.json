@@ -1,0 +1,29 @@
+{
+  "format": "fynerisor.scene/1",
+  "id": "counter",
+  "title": "v3 counter",
+  "root": {
+    "id": "root",
+    "type": "vbox",
+    "children": [
+      {
+        "id": "title",
+        "type": "label",
+        "props": {"text": "Host-dispatched events", "bold": true}
+      },
+      {
+        "id": "count",
+        "type": "label",
+        "props": {"text": "0"}
+      },
+      {
+        "id": "buttons",
+        "type": "hbox",
+        "children": [
+          {"id": "inc", "type": "button", "props": {"text": "+1"}},
+          {"id": "reset", "type": "button", "props": {"text": "Reset"}}
+        ]
+      }
+    ]
+  }
+}

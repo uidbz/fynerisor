@@ -1,0 +1,48 @@
+// Host functions with side effects. store.customers() and store.add() run
+// synchronously inside the program. The program still returns only scene
+// actions; the host does not need a fetch round trip.
+
+const init = event.type == "init";
+const refresh = event.type == "tapped" && (event?.node ?? "") == "refresh";
+const add = event.type == "tapped" && (event?.node ?? "") == "add";
+
+const name = event?.values?.name ?? "";
+const city = event?.values?.city ?? "";
+const valid = name != "" && city != "";
+
+const fetched = if (init || refresh) {
+  store.customers()
+} else {
+  state.customers
+};
+
+const customers = if (add && valid) {
+  [...fetched, store.add(name, city)]
+} else {
+  fetched
+};
+
+const rows = customers.map(c => [
+  c.name,
+  c.city,
+  if (c.active) { "yes" } else { "no" },
+]);
+
+const log = if (init) {
+  [`loaded ${len(customers)} customers from a host function`]
+} else if (refresh) {
+  [`refreshed ${len(customers)} customers`]
+} else if (add && valid) {
+  [`added ${name}`]
+} else if (add) {
+  ["name and city are required"]
+} else {
+  []
+};
+
+const logActions = log.map(line => ({do: "append", node: "log", text: line}));
+
+{
+  state: {...state, name, city, customers, log: [...state.log, ...log]},
+  actions: [...logActions, {do: "rows", node: "table", rows}],
+}

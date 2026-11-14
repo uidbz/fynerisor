@@ -1,0 +1,54 @@
+// Effects as actions. The program never performs I/O: it returns fetch/save
+// actions, and the host performs them. `loaded` arrives as a new event.
+
+const init = event.type == "init";
+const loaded = event.type == "loaded";
+const refresh = event.type == "tapped" && (event?.node ?? "") == "refresh";
+const add = event.type == "tapped" && (event?.node ?? "") == "add";
+
+const name = event?.values?.name ?? "";
+const city = event?.values?.city ?? "";
+const valid = name != "" && city != "";
+const newCustomer = {name, city, active: true};
+
+const customers = if (loaded) {
+  event?.data ?? []
+} else if (add && valid) {
+  [...state.customers, newCustomer]
+} else {
+  state.customers
+};
+
+const rows = customers.map(c => [
+  c.name,
+  c.city,
+  if (c.active) { "yes" } else { "no" },
+]);
+
+const log = if (init || refresh) {
+  ["loading customers..."]
+} else if (loaded) {
+  [`loaded ${len(customers)} customers`]
+} else if (add && valid) {
+  [`added ${name}`]
+} else if (add) {
+  ["name and city are required"]
+} else {
+  []
+};
+
+const rowsAction = {do: "rows", node: "table", rows};
+const logAction = {do: "append", node: "log", text: log[0] ?? ""};
+
+{
+  state: {...state, name, city, customers, log: [...state.log, ...log]},
+  actions: if (init || refresh) {
+    [{do: "fetch", node: "table", target: "customers"}, logAction, rowsAction]
+  } else if (add && valid) {
+    [{do: "save", customer: newCustomer}, logAction, rowsAction]
+  } else if (add || loaded) {
+    [logAction, rowsAction]
+  } else {
+    [rowsAction]
+  },
+}
