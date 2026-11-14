@@ -2,6 +2,7 @@ package gui
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -26,8 +27,11 @@ throw("boom after building UI")
 	fw.Execute()
 	time.Sleep(200 * time.Millisecond)
 
-	if fw.Status() != "ERROR: boom after building UI" {
-		t.Fatalf("expected an ERROR status, got: %q", fw.Status())
+	// Assert the stable part only. Risor v2.3 adds the error kind and a
+	// source location ("ERROR: runtime error: ... (4:7)"); the message is
+	// what scripts and hosts can rely on.
+	if status := fw.Status(); !strings.HasPrefix(status, "ERROR:") || !strings.Contains(status, "boom after building UI") {
+		t.Fatalf("expected an ERROR status containing the script error, got: %q", status)
 	}
 
 	btn := findButton(w.Content())
