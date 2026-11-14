@@ -48,3 +48,28 @@ jobs:
       # routing in docs/CONCURRENCY.md must hold).
       - name: go test -race
         run: go test -race -count=1 ./...
+
+  # Issue #58: surface a future Risor v2 release before it is tagged.
+  # This job is allowed to fail: it is a heads-up, not a merge gate.
+  risor-v2-canary:
+    name: risor v2 branch canary (non-blocking)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install Fyne build dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgl1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev
+
+      - name: Upgrade to the risor v2 branch head
+        run: go get github.com/deepnoodle-ai/risor/v2@v2
+
+      - name: build, vet, test
+        run: |
+          go build ./...
+          go vet ./...
+          go test -count=1 ./...
