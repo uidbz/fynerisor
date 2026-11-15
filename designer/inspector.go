@@ -15,8 +15,8 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/uidbz/fynerisor/internal/colors"
-	"github.com/uidbz/fynerisor/internal/sceneedit"
 	"github.com/uidbz/fynerisor/scene"
+	"github.com/uidbz/fynerisor/scene/handlers"
 )
 
 type inspector struct {
@@ -610,7 +610,7 @@ func (i *inspector) events(n *scene.Node) {
 					actions := append([]scene.Action(nil), cur.On[ev]...)
 					handler := actions[idx].Handler
 					if handler == "" {
-						handler = sceneedit.HandlerName(n.ID, ev)
+						handler = handlers.HandlerName(n.ID, ev)
 						actions[idx].Handler = handler
 						i.setOn(ev, n, actions, true)
 					}
@@ -653,7 +653,7 @@ func (i *inspector) events(n *scene.Node) {
 			if !ok {
 				return
 			}
-			handler := sceneedit.HandlerName(n.ID, addEv)
+			handler := handlers.HandlerName(n.ID, addEv)
 			actions := append([]scene.Action(nil), cur.On[addEv]...)
 			actions = append(actions, scene.Action{Do: "call", Handler: handler})
 			i.setOn(addEv, n, actions, true)

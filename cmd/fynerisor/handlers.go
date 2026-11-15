@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/uidbz/fynerisor/internal/sceneedit"
 	"github.com/uidbz/fynerisor/scene"
+	"github.com/uidbz/fynerisor/scene/handlers"
 )
 
 // runHandlers rewrites a scene sidecar script for the editor workflow:
@@ -62,7 +62,7 @@ func runHandlers(argv []string) int {
 		return 1
 	}
 
-	res, err := sceneedit.Apply(doc, string(src))
+	res, err := handlers.Apply(doc, string(src))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "fynerisor: %v\n", err)
 		return 1
@@ -102,7 +102,7 @@ func runHandlers(argv []string) int {
 	return 0
 }
 
-func printReport(r sceneedit.Report) {
+func printReport(r handlers.Report) {
 	if len(r.Created) > 0 {
 		fmt.Fprintf(os.Stderr, "created: %v\n", r.Created)
 	}
@@ -114,7 +114,7 @@ func printReport(r sceneedit.Report) {
 	}
 }
 
-func printReportJSON(r sceneedit.Report) {
+func printReportJSON(r handlers.Report) {
 	_ = json.NewEncoder(os.Stdout).Encode(map[string]any{
 		"created":   r.Created,
 		"converted": r.Converted,

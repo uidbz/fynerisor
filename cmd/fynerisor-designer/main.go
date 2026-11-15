@@ -20,8 +20,8 @@ import (
 	"fyne.io/fyne/v2/app"
 
 	"github.com/uidbz/fynerisor/designer"
-	"github.com/uidbz/fynerisor/internal/sceneedit"
 	"github.com/uidbz/fynerisor/scene"
+	"github.com/uidbz/fynerisor/scene/handlers"
 )
 
 func main() {
@@ -84,9 +84,9 @@ func main() {
 			log.Printf("[designer] edit %s: %s", script, handler)
 		},
 		BeforeSave: func(doc *scene.Document) (bool, error) {
-			rep, changed, err := sceneedit.ApplySidecar(doc, ref)
+			rep, changed, err := handlers.ApplySidecar(doc, ref)
 			if err != nil {
-				if errors.Is(err, os.ErrNotExist) || errors.Is(err, sceneedit.ErrRemoteSidecar) {
+				if errors.Is(err, os.ErrNotExist) || errors.Is(err, handlers.ErrRemoteSidecar) {
 					return false, nil
 				}
 				return false, err

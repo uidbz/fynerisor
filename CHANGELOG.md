@@ -13,7 +13,7 @@
 
 - **Save-time handler rewrite.** `designer.Options.BeforeSave` runs before
   validation/encoding; the CLI designer and the reference browser host use
-  `internal/sceneedit.ApplySidecar` to rewrite local sidecars and include any
+  `scene/handlers.ApplySidecar` to rewrite local sidecars and include any
   handler-name changes in the same save. Remote sidecars are skipped.
 - **Designer handler actions.** The inspector's Events section gains
   “+ handler” and “Edit handler”. They create the `on_<node>_<event>` call
@@ -26,7 +26,7 @@
   `page.RefreshBindings()` forces an update. See docs/HANDLERS.md#bindings.
 - **Scene handler convention and `fynerisor handlers`.** Sidecar scripts use
   standalone `on_<node>_<event>` functions and one `page.Bind({...})` section
-  at the bottom. `internal/sceneedit` moves inline `page.Bind` functions out,
+  at the bottom. `scene/handlers` moves inline `page.Bind` functions out,
   names empty `call` actions, and creates missing stubs; `fynerisor handlers
   [-write] page.scene.json` runs the pass. See docs/HANDLERS.md.
 - **Scene data components: `form`, `field`, `table`, `log`.** The document

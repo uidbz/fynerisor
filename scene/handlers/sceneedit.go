@@ -8,7 +8,7 @@
 //
 // The package works on source text and the scene document only. It does not
 // execute a script, touch Fyne, or depend on the designer.
-package sceneedit
+package handlers
 
 import (
 	"bytes"

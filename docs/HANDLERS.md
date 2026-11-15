@@ -70,7 +70,7 @@ is only added to the bindings section.
 
 The CLI designer and the reference browser host run the same pass on save
 through `designer.Options.BeforeSave` and
-`internal/sceneedit.ApplySidecar`. Local sidecars are rewritten next to the
+`scene/handlers.ApplySidecar`. Local sidecars are rewritten next to the
 document; remote sidecars are left to the host.
 
 ## Bindings

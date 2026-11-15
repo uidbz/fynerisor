@@ -18,8 +18,8 @@ import (
 	"github.com/uidbz/fynerisor/browser"
 	"github.com/uidbz/fynerisor/designer"
 	guiscene "github.com/uidbz/fynerisor/gui/scene"
-	"github.com/uidbz/fynerisor/internal/sceneedit"
 	"github.com/uidbz/fynerisor/scene"
+	"github.com/uidbz/fynerisor/scene/handlers"
 	"github.com/uidbz/fynerisor/scene/render"
 	renderbuiltin "github.com/uidbz/fynerisor/scene/render/builtin"
 )
@@ -157,9 +157,9 @@ func (p *BrowserEditorProvider) Open(page *browser.Page, br *browser.Browser) fy
 			if !strings.HasPrefix(page.URL, "file:") {
 				return false, nil
 			}
-			rep, changed, err := sceneedit.ApplySidecar(doc, page.URL)
+			rep, changed, err := handlers.ApplySidecar(doc, page.URL)
 			if err != nil {
-				if errors.Is(err, os.ErrNotExist) || errors.Is(err, sceneedit.ErrRemoteSidecar) {
+				if errors.Is(err, os.ErrNotExist) || errors.Is(err, handlers.ErrRemoteSidecar) {
 					return false, nil
 				}
 				return false, err

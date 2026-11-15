@@ -1,4 +1,4 @@
-package sceneedit
+package handlers
 
 import (
 	"context"
