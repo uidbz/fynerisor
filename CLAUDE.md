@@ -351,6 +351,7 @@ documentation, each kind of fact has exactly ONE owner:
 - `skill/` - The fynerisor agent skill (canonical home; installed via symlink)
 - `docs/CONCURRENCY.md` - Threading guidelines
 - `docs/SCENES.md` - Scene document format and runtime
+- `docs/HANDLERS.md` - Scene handler convention (`fynerisor handlers`)
 - `docs/DESIGNER.md` - Scene designer guide and architecture
 - `docs/EXAMPLES.md` - Example descriptions
 - `cmd/fynerisor/main.go` - CLI tool

@@ -32,7 +32,8 @@ sidecar that only binds handlers still displays the page.
 Files:
 
 - `page.scene.json` — layout, components, actions.
-- `page.risor` — sidecar script (`page.Bind`, `page.Node`).
+- `page.risor` — sidecar script: a standalone `on_hello_tapped` handler and
+  one `page.Bind({...})` section at the bottom (see [HANDLERS.md](../../docs/HANDLERS.md)).
 - `main.go` — decode, build the page, execute the sidecar, show it.
 
 See [docs/SCENES.md](../../docs/SCENES.md) for the format and

@@ -54,7 +54,7 @@
         "type": "button",
         "place": {"x": 60, "y": 230, "w": 200, "h": 44},
         "props": {"text": "Call the script", "importance": "high"},
-        "on": {"tapped": [{"do": "call", "handler": "hello"}]}
+        "on": {"tapped": [{"do": "call", "handler": "on_hello_tapped"}]}
       },
       {
         "id": "help",

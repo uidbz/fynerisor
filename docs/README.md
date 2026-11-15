@@ -18,6 +18,7 @@ Risor language bindings for the Fyne GUI framework.
 - [Non-GUI Usage](#non-gui-usage)
 - [Global Objects](#global-objects)
 - [Scenes and the designer](SCENES.md)
+- [Scene handlers and the editor convention](HANDLERS.md)
 - [Scene designer guide](DESIGNER.md)
 - [Direction: documents + scripts, one model](DIRECTION.md)
 - [Convergence plan](CONVERGENCE.md)
@@ -1104,6 +1105,7 @@ subcommands (issue #43) plus a shorthand that defaults to `run`:
 fynerisor run     [flags] script.risor [args...]   # run (GUI runtime)
 fynerisor check           script.risor...          # compile only, no execute
 fynerisor analyze [--json] script.risor            # requirements + imports
+fynerisor handlers [-write] page.scene.json         # scene handler convention
 fynerisor                 script.risor [args...]   # alias for `run`
 ```
 
@@ -1171,6 +1173,8 @@ the designer edits them in place. A data-only scene runs no code at all.
 
 - [SCENES.md](SCENES.md) — format, placement/scaling, components, actions,
   scripting, assets, stores, tie-browser storage model and security.
+- [HANDLERS.md](HANDLERS.md) — standalone `on_<node>_<event>` handlers and the
+  bottom `page.Bind({...})` section.
 - [DESIGNER.md](DESIGNER.md) — gestures, inspector, outline, snapping, undo,
   saving, the overlay architecture, embedding the editor and the current
   roadmap.
@@ -1180,6 +1184,7 @@ the designer edits them in place. A data-only scene runs no code at all.
 ```sh
 fynerisor check page.scene.json
 fynerisor scene page.scene.json
+fynerisor handlers -write page.scene.json   # standalone handlers + bindings
 fynerisor-designer page.scene.json
 ```
 

@@ -47,6 +47,8 @@ func dispatch(argv []string) int {
 			return runDocs(argv[1:])
 		case "scene":
 			return runScene(argv[1:])
+		case "handlers":
+			return runHandlers(argv[1:])
 		case "run":
 			return runRun(argv[1:])
 		case "help", "-h", "--help":
@@ -68,6 +70,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "  fynerisor analyze [--json] <script.risor>               requirements and imports\n")
 	fmt.Fprintf(os.Stderr, "  fynerisor docs [--json] [-o file]                       generated API reference (issue #47)\n")
 	fmt.Fprintf(os.Stderr, "  fynerisor scene [options] <page.scene.json>              show a scene document (designer: fynerisor-designer)\n")
+	fmt.Fprintf(os.Stderr, "  fynerisor handlers [-write] <page.scene.json>            rewrite sidecar handlers and bindings\n")
 	fmt.Fprintf(os.Stderr, "  cat script.risor | fynerisor [options] -\n\n")
 	fmt.Fprintf(os.Stderr, "Run options:\n")
 	flag.PrintDefaults()

@@ -316,22 +316,29 @@ require(["v0.10", "@gui", "@scene"])
 
 let musicOn = false
 
-page.Bind({
-    toggleMusic: (evt) => {
-        musicOn = !musicOn
-        if (musicOn) {
-            page.Node("radio-glow").Show()
-        } else {
-            page.Node("radio-glow").Hide()
-        }
+let on_toggle_music_tapped = (evt) => {
+    musicOn = !musicOn
+    if (musicOn) {
+        page.Node("radio-glow").Show()
+    } else {
+        page.Node("radio-glow").Hide()
     }
-})
+}
 
 page.Node("wall-title").SetText(sprintf("Summer %d", 2014))
 page.Find({type: "hotspot"}).each((n) => {
     n.On("hoverIn", (evt) => { browser.SetStatus(evt.name) })
 })
+
+page.Bind({
+    on_toggle_music_tapped,
+})
 ```
+
+New pages should use the standalone-handler convention: one
+`on_<node>_<event>` function per event and one `page.Bind({...})` section at
+the bottom. `fynerisor handlers` converts older inline `page.Bind` code. See
+[HANDLERS.md](HANDLERS.md).
 
 ### Script API
 
