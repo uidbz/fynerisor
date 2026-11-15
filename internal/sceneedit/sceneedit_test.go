@@ -1,8 +1,11 @@
 package sceneedit
 
 import (
+	"context"
 	"strings"
 	"testing"
+
+	"github.com/deepnoodle-ai/risor/v2"
 
 	"github.com/uidbz/fynerisor/scene"
 )
@@ -154,5 +157,21 @@ func TestUnicodeInlineHandler(t *testing.T) {
 	}
 	if !strings.Contains(out, "let on_x_tapped = (evt) => {\n    print(\"x\")\n}") {
 		t.Fatalf("handler corrupted by rune offset:\n%s", out)
+	}
+}
+
+func TestConventionCompiles(t *testing.T) {
+	src := `let count = 0
+
+let on_inc_tapped = (evt) => {
+    count = count + 1
+}
+
+page.Bind({
+    on_inc_tapped,
+})
+`
+	if _, err := risor.Compile(context.Background(), src, risor.WithEnv(map[string]any{"page": map[string]any{}})); err != nil {
+		t.Fatalf("convention does not compile: %v", err)
 	}
 }
