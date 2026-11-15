@@ -17,9 +17,9 @@ type State struct {
 
 func TestCompileAndRun(t *testing.T) {
 	set, err := Compile[State](map[string]string{
-		"count":    "state.count",
-		"title":    `"Count: " + string(state.count)`,
-		"hasItems": "len(state.items) > 0",
+		"count":    "count",
+		"title":    `"Count: " + string(count)`,
+		"hasItems": "len(items) > 0",
 	}, Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -49,10 +49,10 @@ func TestCompileAndRun(t *testing.T) {
 
 func TestCheckErrorNamesTheField(t *testing.T) {
 	_, err := Compile[State](map[string]string{
-		"bad": "state.nope",
+		"bad": "nope",
 	}, Config{})
-	if err == nil || !strings.Contains(err.Error(), "no field") {
-		t.Fatalf("got %v, want a no-field check error", err)
+	if err == nil || !strings.Contains(err.Error(), "undefined-name") {
+		t.Fatalf("got %v, want an undefined-name check error", err)
 	}
 }
 
@@ -71,7 +71,7 @@ func TestLimits(t *testing.T) {
 
 func TestProgramsRunConcurrently(t *testing.T) {
 	set, err := Compile[State](map[string]string{
-		"count": "state.count",
+		"count": "count",
 	}, Config{})
 	if err != nil {
 		t.Fatal(err)

@@ -8,6 +8,7 @@ package v3bind
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 
@@ -39,7 +40,17 @@ func Compile[T any](exprs map[string]string, cfg Config) (*Set[T], error) {
 	if err != nil {
 		return nil, fmt.Errorf("v3bind: state type: %w", err)
 	}
-	decls := []risor.Decl{risor.VarType("state", stateType)}
+	// Declare each record field as a top-level variable, so binding text is
+	// the same ${count} form the scene uses. A non-record state falls back
+	// to a single `state` variable.
+	var decls []risor.Decl
+	if fields := stateType.Fields(); len(fields) > 0 {
+		for _, f := range fields {
+			decls = append(decls, risor.Var(f.Key, f.Type.String()))
+		}
+	} else {
+		decls = append(decls, risor.VarType("state", stateType))
+	}
 	if cfg.Steps > 0 {
 		decls = append(decls, risor.Limits{Steps: cfg.Steps})
 	}
@@ -76,8 +87,12 @@ func (s *Set[T]) Names() []string { return append([]string(nil), s.names...) }
 // failure; a binding error carries the binding name.
 func (s *Set[T]) Run(ctx context.Context, state T) (map[string]any, error) {
 	out := make(map[string]any, len(s.programs))
+	vars, err := bindingVars(state)
+	if err != nil {
+		return nil, err
+	}
 	for _, name := range s.names {
-		v, err := s.programs[name].Run(ctx, risor.Map{"state": state})
+		v, err := s.programs[name].Run(ctx, risor.Map(vars))
 		if err != nil {
 			return nil, fmt.Errorf("v3bind: %s: %w", name, err)
 		}
@@ -93,5 +108,21 @@ func (s *Set[T]) RunOne(ctx context.Context, name string, state T) (any, error) 
 	if !ok {
 		return nil, fmt.Errorf("v3bind: unknown binding %q", name)
 	}
-	return prog.Run(ctx, risor.Map{"state": state})
+	vars, err := bindingVars(state)
+	if err != nil {
+		return nil, err
+	}
+	return prog.Run(ctx, risor.Map(vars))
+}
+
+func bindingVars[T any](state T) (map[string]any, error) {
+	data, err := json.Marshal(state)
+	if err != nil {
+		return nil, fmt.Errorf("v3bind: state: %w", err)
+	}
+	var vars map[string]any
+	if err := json.Unmarshal(data, &vars); err != nil {
+		return nil, fmt.Errorf("v3bind: state: %w", err)
+	}
+	return vars, nil
 }

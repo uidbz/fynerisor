@@ -13,9 +13,9 @@ was removed rather than kept as a second, more complicated way to build pages.
 
 ## What it does
 
-`Compile[T]` derives the state type from a Go struct with `risor.TypeOf`, so
-no type text is written by hand. Every binding is a v3 expression over the
-`state` variable:
+`Compile[T]` derives the state type from a Go struct with `risor.TypeOf` and
+declares each record field as a top-level variable. The binding text is the
+same bare-name form as `${count}` in a scene property:
 
 ```go
 type State struct {
@@ -25,9 +25,9 @@ type State struct {
 }
 
 set, err := v3bind.Compile[State](map[string]string{
-    "count":    "state.count",
-    "title":    `"Count: " + string(state.count)`,
-    "hasItems": "len(state.items) > 0",
+    "count":    "count",
+    "title":    `"Count: " + string(count)`,
+    "hasItems": "len(items) > 0",
 }, v3bind.Config{})
 
 out, err := set.Run(ctx, State{Count: 2, Items: []string{"a"}})
@@ -39,7 +39,7 @@ out, err := set.Run(ctx, State{Count: 2, Items: []string{"a"}})
 Each binding is parsed and checked when `Compile` runs. A typo is a load error:
 
 ```
-v3bind: bad: check no-field at [1, 7, 1, 11]: ... has no field "nope"
+v3bind: bad: check undefined-name at [1, 1, 1, 5]: nope is not defined
 ```
 
 The compiled programs are immutable and safe to run from many goroutines at
