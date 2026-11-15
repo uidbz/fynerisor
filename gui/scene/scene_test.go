@@ -224,10 +224,15 @@ func TestBindValuesUpdatesAfterHandler(t *testing.T) {
 		require(["@scene"])
 		let page = scene.Load("` + filepath.ToSlash(path) + `")
 		let count = 0
+		let refreshes = 0
 		let on_btn_tapped = (evt) => {
 			count = count + 1
 		}
-		page.BindValues(() => ({count}))
+		page.BindValues(() => {
+			refreshes = refreshes + 1
+			if (refreshes > 1) { window.SetStatus("bindings-refreshed") }
+			({count})
+		})
 		page.Bind({on_btn_tapped})
 		window.SetContent(page)
 	`)
@@ -249,10 +254,19 @@ func TestBindValuesUpdatesAfterHandler(t *testing.T) {
 	view.EmitEvent("btn", "tapped", nil)
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
-		if label() == "1" {
-			return
+		if fw.Status() == "bindings-refreshed" {
+			break
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	t.Fatalf("binding after handler = %q, want 1", label())
+	if fw.Status() != "bindings-refreshed" {
+		t.Fatalf("bindings did not refresh, status = %q", fw.Status())
+	}
+	// Quiesce the run before reading the widget from the test goroutine.
+	if !fw.Quiesce(5 * time.Second) {
+		t.Fatal("run did not stop")
+	}
+	if got := label(); got != "1" {
+		t.Fatalf("binding after handler = %q, want 1", got)
+	}
 }
