@@ -585,6 +585,8 @@ with parentheses (`t.SetText(x)`).
 - `Root`
 - `Title`
 - `Node(id)` → scene.Node — Return a node handle by ID: page.Node("door").SetPlace({x: 10, y: 20}).
+- `BindValues(values)` — Register a values closure for ${...} scene properties; it runs after every page handler. Example: page.BindValues(() => ({count})).
+- `RefreshBindings()` — Re-evaluate the values closure and apply all ${...} properties now.
 - `Find(filter)` → list — Return node handles matching a map filter: page.Find({type: "hotspot"}).
 - `Bind(handlers)` — Register named handlers for declarative call actions: page.Bind({toggleMusic: (evt) => {...}}).
 - `Values()` → map — Values of every input node by ID (entry, check, select, radio, slider), for forms.

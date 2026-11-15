@@ -3,6 +3,7 @@ package scene
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -10,6 +11,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 
+	risor "github.com/deepnoodle-ai/risor/v2"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 
@@ -19,6 +21,7 @@ import (
 	"github.com/uidbz/fynerisor/gui/objattrs"
 	"github.com/uidbz/fynerisor/gui/vmexec"
 	risorwidget "github.com/uidbz/fynerisor/gui/widget"
+	"github.com/uidbz/fynerisor/internal/convert"
 	scenedoc "github.com/uidbz/fynerisor/scene"
 	"github.com/uidbz/fynerisor/scene/render"
 )
@@ -38,6 +41,17 @@ type Page struct {
 	handlers map[string]*vmexec.Callback
 	pending  []pendingCall
 	bound    bool
+
+	values   *vmexec.Callback
+	bindings []bindingProp
+}
+
+// bindingProp is one scene property whose string contains ${...}.
+type bindingProp struct {
+	node     string
+	prop     string
+	template string
+	kind     scenedoc.PropKind
 }
 
 type pendingCall struct {
@@ -89,7 +103,7 @@ func (p *Page) Call(handler string, evt map[string]any) bool {
 		return false
 	}
 	p.mu.Unlock()
-	cb.Fire(objectFromAny(evt))
+	cb.FireThen(func(ctx context.Context) { p.refreshBindings(ctx) }, objectFromAny(evt))
 	return true
 }
 
@@ -106,7 +120,7 @@ func (p *Page) bind(ctx context.Context, m *object.Map) error {
 	p.bound = true
 	for _, call := range p.pending {
 		if cb, ok := p.handlers[call.handler]; ok {
-			cb.Fire(objectFromAny(call.evt))
+			cb.FireThen(func(ctx context.Context) { p.refreshBindings(ctx) }, objectFromAny(call.evt))
 			continue
 		}
 		if p.cfg.Status != nil {
@@ -115,6 +129,145 @@ func (p *Page) bind(ctx context.Context, m *object.Map) error {
 	}
 	p.pending = nil
 	return nil
+}
+
+// BindValues registers the values closure for ${...} properties. The closure
+// returns a map; after every page handler (and on registration) the page
+// re-evaluates every property template and applies it with RuntimeSet.
+func (p *Page) BindValues(ctx context.Context, fn object.Object) error {
+	cb, err := vmexec.NewCallback(ctx, "page.BindValues", fn)
+	if err != nil {
+		return err
+	}
+	p.scanBindings()
+	p.mu.Lock()
+	p.values = cb
+	p.mu.Unlock()
+	p.refreshBindings(ctx)
+	return nil
+}
+
+// RefreshBindings re-evaluates the values closure and applies every binding.
+func (p *Page) RefreshBindings(ctx context.Context) {
+	p.refreshBindings(ctx)
+}
+
+func (p *Page) scanBindings() {
+	var out []bindingProp
+	doc := p.view.Doc()
+	doc.Walk(func(n *scenedoc.Node) bool {
+		spec, ok := p.view.Registry().Spec(n.Type)
+		if !ok {
+			return true
+		}
+		kinds := make(map[string]scenedoc.PropKind, len(spec.Props))
+		for _, ps := range spec.Props {
+			kinds[ps.Name] = ps.Kind
+		}
+		for prop, raw := range n.Props {
+			str, ok := raw.(string)
+			if !ok || !strings.Contains(str, "${") {
+				continue
+			}
+			out = append(out, bindingProp{node: n.ID, prop: prop, template: str, kind: kinds[prop]})
+		}
+		return true
+	})
+	p.mu.Lock()
+	p.bindings = out
+	p.mu.Unlock()
+}
+
+var bindingRe = regexp.MustCompile(`\$\{([^{}]+)\}`)
+
+func (p *Page) refreshBindings(ctx context.Context) {
+	p.mu.Lock()
+	cb := p.values
+	binds := append([]bindingProp(nil), p.bindings...)
+	p.mu.Unlock()
+	if cb == nil || len(binds) == 0 {
+		return
+	}
+	obj, err := cb.Call()
+	if err != nil {
+		p.bindingError(err)
+		return
+	}
+	m, ok := obj.(*object.Map)
+	if !ok {
+		p.bindingError(fmt.Errorf("page.BindValues must return a map, got %s", obj.Type()))
+		return
+	}
+	vals := make(map[string]any, len(m.Value()))
+	for k, v := range m.Value() {
+		gv, err := convert.ToGo(v)
+		if err != nil {
+			p.bindingError(fmt.Errorf("page.BindValues[%s]: %w", k, err))
+			continue
+		}
+		vals[k] = gv
+	}
+	type update struct {
+		id, prop string
+		value    any
+	}
+	var updates []update
+	for _, b := range binds {
+		v, err := resolveBinding(ctx, b.template, b.kind, vals)
+		if err != nil {
+			p.bindingError(fmt.Errorf("binding %s.%s: %w", b.node, b.prop, err))
+			continue
+		}
+		updates = append(updates, update{id: b.node, prop: b.prop, value: v})
+	}
+	if len(updates) == 0 {
+		return
+	}
+	_ = guithread.DoAndWaitContext(ctx, func() {
+		for _, u := range updates {
+			p.view.RuntimeSet(u.id, u.prop, u.value)
+		}
+	})
+}
+
+func (p *Page) bindingError(err error) {
+	if p.cfg.Status != nil {
+		p.cfg.Status("page.BindValues: " + err.Error())
+	}
+}
+
+func resolveBinding(ctx context.Context, template string, kind scenedoc.PropKind, vals map[string]any) (any, error) {
+	matches := bindingRe.FindAllStringSubmatchIndex(template, -1)
+	if len(matches) == 1 && matches[0][0] == 0 && matches[0][1] == len(template) {
+		v, err := risor.Eval(ctx, template[matches[0][2]:matches[0][3]], risor.WithEnv(vals))
+		if err != nil {
+			return nil, err
+		}
+		switch kind {
+		case scenedoc.PropNumber, scenedoc.PropInt, scenedoc.PropBool:
+			return v, nil
+		default:
+			if v == nil {
+				return "", nil
+			}
+			return fmt.Sprint(v), nil
+		}
+	}
+	var b strings.Builder
+	last := 0
+	for _, m := range matches {
+		b.WriteString(template[last:m[0]])
+		v, err := risor.Eval(ctx, template[m[2]:m[3]], risor.WithEnv(vals))
+		if err != nil {
+			return nil, err
+		}
+		if v != nil {
+			b.WriteString(fmt.Sprint(v))
+		}
+		last = m[1]
+	}
+	b.WriteString(template[last:])
+	return b.String(), nil
 }
 
 var pageAttrs = objattrs.Register(string(PageType), object.NewAttrRegistry[*Page](string(PageType)))
@@ -142,6 +295,22 @@ func init() {
 				return nil, object.Errorf("page.Node: no node %q", id)
 			}
 			return n, nil
+		})
+	pageAttrs.Define("BindValues").
+		Doc("Register a values closure for ${...} scene properties; it runs after every page handler. Example: page.BindValues(() => ({count})).").
+		Arg("values").Returns("nil").
+		Impl(func(p *Page, ctx context.Context, args ...object.Object) (object.Object, error) {
+			if len(args) != 1 {
+				return nil, object.Errorf("page.BindValues: expected 1 argument, got %d", len(args))
+			}
+			return object.Nil, p.BindValues(ctx, args[0])
+		})
+	pageAttrs.Define("RefreshBindings").
+		Doc("Re-evaluate the values closure and apply all ${...} properties now.").
+		Returns("nil").
+		Impl(func(p *Page, ctx context.Context, _ ...object.Object) (object.Object, error) {
+			p.RefreshBindings(ctx)
+			return object.Nil, nil
 		})
 	pageAttrs.Define("Find").
 		Doc("Return node handles matching a map filter: page.Find({type: \"hotspot\"}).").
@@ -556,7 +725,7 @@ func init() {
 				return nil, err
 			}
 			off := n.page.view.On(n.id, event, func(evt map[string]any) {
-				cb.Fire(objectFromAny(evt))
+				cb.FireThen(func(ctx context.Context) { n.page.refreshBindings(ctx) }, objectFromAny(evt))
 			})
 			n.mu.Lock()
 			if n.listeners == nil {

@@ -66,6 +66,11 @@ type Options struct {
 	// OnSaveDone fires after a save and all of its UI updates have completed.
 	// Hosts use it to sequence work after a save; tests use it to synchronize.
 	OnSaveDone func()
+	// EditHandler opens a sidecar handler for a node event. script is the
+	// document's sidecar reference (doc.Script), and handler is the
+	// standalone function name, usually on_<node>_<event>. The host decides
+	// whether to open an editor, create a stub, or only show the name.
+	EditHandler func(script, handler string)
 	// AssetPick opens a host picker for asset/scene reference properties.
 	// It must call done exactly once (ok=false on cancel).
 	AssetPick func(kind scene.PropKind, current string, done func(ref string, ok bool))

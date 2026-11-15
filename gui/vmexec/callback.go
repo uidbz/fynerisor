@@ -90,6 +90,25 @@ func (c *Callback) Fire(args ...object.Object) {
 	_ = c.run.Enqueue(c.name, func() { c.invoke(args) })
 }
 
+// FireThen is Fire followed by after on the same VM goroutine. It is used by
+// the scene page to recompute bindings after a handler has changed state.
+// after still runs when the handler fails; it receives the callback context.
+func (c *Callback) FireThen(after func(context.Context), args ...object.Object) {
+	if c.run == nil {
+		if c.ctx.Err() == nil {
+			c.invoke(args)
+			after(c.ctx)
+		}
+		return
+	}
+	_ = c.run.Enqueue(c.name, func() {
+		c.invoke(args)
+		if c.ctx.Err() == nil {
+			after(c.ctx)
+		}
+	})
+}
+
 // FireCoalesced is Fire for change-style events (Entry.OnChanged,
 // Slider.OnChanged, binding listeners). While one call for this callback
 // is still queued, a later call replaces it — carrying its arguments —

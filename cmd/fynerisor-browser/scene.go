@@ -145,7 +145,12 @@ func (p *BrowserEditorProvider) Open(page *browser.Page, br *browser.Browser) fy
 		Navigator: browserNav{br},
 		Opener:    browserOpener{},
 		Status:    br.SetStatus,
-		OnSaved:   func(doc *scene.Document) { p.app.saveSceneThumbnail(page.URL, doc) },
+		// A browser host can open the sidecar in the source pane or an
+		// editor. The reference host reports the target.
+		EditHandler: func(script, handler string) {
+			br.SetStatus("Edit " + handler + " in " + script)
+		},
+		OnSaved: func(doc *scene.Document) { p.app.saveSceneThumbnail(page.URL, doc) },
 		OnClose: func(reload bool) {
 			p.app.editor = nil
 			br.CloseEditor(reload)

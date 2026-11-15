@@ -11,6 +11,15 @@
 
 ### Added
 
+- **Designer handler actions.** The inspector's Events section gains
+  “+ handler” and “Edit handler”. They create the `on_<node>_<event>` call
+  action and invoke `designer.Options.EditHandler(script, handler)`; hosts
+  open the sidecar in their editor or source pane. See docs/DESIGNER.md.
+- **Scene property bindings.** A sidecar can register
+  `page.BindValues(() => ({count}))`; scene props such as `"text": "${count}"`
+  re-evaluate after every handler, so handlers change state instead of calling
+  `SetText`. Exact placeholders keep their raw type for number/bool props;
+  `page.RefreshBindings()` forces an update. See docs/HANDLERS.md#bindings.
 - **Scene handler convention and `fynerisor handlers`.** Sidecar scripts use
   standalone `on_<node>_<event>` functions and one `page.Bind({...})` section
   at the bottom. `internal/sceneedit` moves inline `page.Bind` functions out,

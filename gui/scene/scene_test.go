@@ -208,3 +208,51 @@ func nilCtx(t *testing.T) context.Context {
 	t.Helper()
 	return context.Background()
 }
+
+func TestBindValuesUpdatesAfterHandler(t *testing.T) {
+	a := newApp(t)
+	dir := t.TempDir()
+	path := filepath.Join(dir, "bound.scene.json")
+	doc := strings.Replace(sampleScene, `"text": "Before"`, `"text": "${count}"`, 1)
+	doc = strings.Replace(doc, `"handler": "hit"`, `"handler": "on_btn_tapped"`, 1)
+	if err := os.WriteFile(path, []byte(doc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	fw := gui.NewWindow(a.NewWindow("scene"), guiscene.WithScene(guiscene.Config{}))
+	fw.LoadScript(`
+		require(["@scene"])
+		let page = scene.Load("` + filepath.ToSlash(path) + `")
+		let count = 0
+		let on_btn_tapped = (evt) => {
+			count = count + 1
+		}
+		page.BindValues(() => ({count}))
+		page.Bind({on_btn_tapped})
+		window.SetContent(page)
+	`)
+	fw.Run(nilCtx(t))
+	waitReady(t, fw)
+
+	view := fw.GetContentContainer().Objects[0].(*render.View)
+	label := func() string {
+		obj, _ := view.LiveObject("title")
+		if l, ok := obj.(*widget.Label); ok {
+			return l.Text
+		}
+		return ""
+	}
+	if got := label(); got != "0" {
+		t.Fatalf("initial binding = %q, want 0", got)
+	}
+
+	view.EmitEvent("btn", "tapped", nil)
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		if label() == "1" {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("binding after handler = %q, want 1", label())
+}

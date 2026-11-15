@@ -77,6 +77,11 @@ func main() {
 		Version: version,
 		Window:  w,
 		Status:  func(s string) { log.Println("[designer]", s) },
+		// The CLI has no script editor. Show the sidecar and handler so the
+		// author can open them; browser hosts replace this hook.
+		EditHandler: func(script, handler string) {
+			log.Printf("[designer] edit %s: %s", script, handler)
+		},
 		OnClose: func(reload bool) { w.Close() },
 		OnDirty: func(dirty bool) {
 			if dirty {

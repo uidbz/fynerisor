@@ -340,6 +340,11 @@ New pages should use the standalone-handler convention: one
 the bottom. `fynerisor handlers` converts older inline `page.Bind` code. See
 [HANDLERS.md](HANDLERS.md).
 
+Properties can contain `${name}` bindings. The sidecar registers a values
+closure with `page.BindValues(() => ({name}))`; the page re-evaluates it after
+every handler, so labels and other props update without `SetText` calls. See
+[HANDLERS.md](HANDLERS.md#bindings).
+
 ### Script API
 
 Types and attributes are listed in [API.md](API.md#scene). Summary:

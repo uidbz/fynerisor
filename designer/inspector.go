@@ -15,6 +15,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/uidbz/fynerisor/internal/colors"
+	"github.com/uidbz/fynerisor/internal/sceneedit"
 	"github.com/uidbz/fynerisor/scene"
 )
 
@@ -600,6 +601,27 @@ func (i *inspector) events(n *scene.Node) {
 				}
 				apply(false)
 			}
+			if a.Do == "call" {
+				edit := widget.NewButton("Edit handler", func() {
+					cur, ok := i.ed.doc.Find(n.ID)
+					if !ok || idx >= len(cur.On[ev]) {
+						return
+					}
+					actions := append([]scene.Action(nil), cur.On[ev]...)
+					handler := actions[idx].Handler
+					if handler == "" {
+						handler = sceneedit.HandlerName(n.ID, ev)
+						actions[idx].Handler = handler
+						i.setOn(ev, n, actions, true)
+					}
+					if i.ed.opts.EditHandler != nil {
+						i.ed.opts.EditHandler(i.ed.doc.Script, handler)
+						return
+					}
+					i.ed.setStatus("Handler: " + handler)
+				})
+				i.box.Add(edit)
+			}
 			del := widget.NewButton("×", func() {
 				cur, ok := i.ed.doc.Find(n.ID)
 				if !ok {
@@ -626,7 +648,22 @@ func (i *inspector) events(n *scene.Node) {
 			actions = append(actions, scene.Action{Do: "navigate"})
 			i.setOn(addEv, n, actions, true)
 		})
-		i.box.Add(add)
+		addHandler := widget.NewButton("+ handler", func() {
+			cur, ok := i.ed.doc.Find(n.ID)
+			if !ok {
+				return
+			}
+			handler := sceneedit.HandlerName(n.ID, addEv)
+			actions := append([]scene.Action(nil), cur.On[addEv]...)
+			actions = append(actions, scene.Action{Do: "call", Handler: handler})
+			i.setOn(addEv, n, actions, true)
+			if i.ed.opts.EditHandler != nil {
+				i.ed.opts.EditHandler(i.ed.doc.Script, handler)
+				return
+			}
+			i.ed.setStatus("Handler: " + handler)
+		})
+		i.box.Add(container.NewGridWithColumns(2, add, addHandler))
 	}
 }
 

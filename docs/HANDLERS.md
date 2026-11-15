@@ -68,6 +68,43 @@ It will:
 Existing function bodies are not changed. A handler that is already declared
 is only added to the bindings section.
 
+## Bindings
+
+Handlers change state. Bindings show it without a `SetText` call in every
+handler:
+
+```risor
+let count = 0
+
+let on_inc_tapped = (evt) => {
+    count = count + 1
+}
+
+page.Bind({
+    on_inc_tapped,
+})
+
+page.BindValues(() => ({
+    count,
+}))
+```
+
+In the scene document, use the value name in a property:
+
+```json
+"props": {"text": "${count}"}
+```
+
+`page.BindValues` takes a closure returning a map. The page re-evaluates the
+map after every handler and updates every property containing `${name}`.
+`${name}` can also be an expression over the map fields, such as
+`${count + 1}`. A property that is exactly one placeholder receives the raw
+value for number/bool props; text props receive its string form.
+`page.RefreshBindings()` forces an update.
+
+Keep binding expressions pure: read values, no side effects. That is the
+subset that can move from v2 to v3 later without changing the scene file.
+
 ## Why this shape
 
 - The handler is easy to find by name: node and event are in the name.

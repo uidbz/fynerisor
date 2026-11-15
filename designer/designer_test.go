@@ -6,6 +6,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/test"
+	"fyne.io/fyne/v2/widget"
 
 	"github.com/uidbz/fynerisor/scene"
 	"github.com/uidbz/fynerisor/scene/render"
@@ -310,5 +311,46 @@ func TestHitTestAndOrderedDrop(t *testing.T) {
 	wall, _ = e.doc.Find("wall")
 	if len(wall.Children) != 3 {
 		t.Fatalf("alt-drag wall children = %d, want 3", len(wall.Children))
+	}
+}
+
+func TestEditHandlerHook(t *testing.T) {
+	a := test.NewApp()
+	t.Cleanup(a.Quit)
+	doc := testDoc()
+	doc.Script = "page.risor"
+	doc.Root.Children = append(doc.Root.Children, &scene.Node{
+		ID: "btn", Type: "button",
+		On: map[string][]scene.Action{"tapped": {{Do: "call"}}},
+	})
+	var gotScript, gotHandler string
+	e := New(doc, Options{
+		Registry: renderbuiltin.NewRegistry(),
+		EditHandler: func(script, handler string) {
+			gotScript, gotHandler = script, handler
+		},
+	})
+	w := test.NewWindow(e.Object())
+	w.Resize(fyne.NewSize(1200, 800))
+	e.Select("btn")
+	e.inspector.refresh()
+
+	var edit *widget.Button
+	for _, obj := range e.inspector.box.Objects {
+		if b, ok := obj.(*widget.Button); ok && b.Text == "Edit handler" {
+			edit = b
+			break
+		}
+	}
+	if edit == nil {
+		t.Fatal("no Edit handler button")
+	}
+	test.Tap(edit)
+	if gotScript != "page.risor" || gotHandler != "on_btn_tapped" {
+		t.Fatalf("hook = %q, %q", gotScript, gotHandler)
+	}
+	n, _ := doc.Find("btn")
+	if n.On["tapped"][0].Handler != "on_btn_tapped" {
+		t.Fatalf("action handler = %q", n.On["tapped"][0].Handler)
 	}
 }

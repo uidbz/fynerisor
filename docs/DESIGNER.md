@@ -118,6 +118,13 @@ Each event lists its actions. Every action has a verb, a target (URL for
 `navigate`, handler for `call`, node for the rest), and a delete button. “+ action”
 adds one. The full verb list is in [SCENES.md](SCENES.md#actions).
 
+“+ handler” adds a `call` action named with the convention
+`on_<node>_<event>`, then asks the host to open it through
+`designer.Options.EditHandler(script, handler)`. “Edit handler” does the same
+for an existing call. The designer does not edit script text itself; hosts
+open the sidecar in the browser source pane, an external editor, or report the
+target. See [HANDLERS.md](HANDLERS.md).
+
 ## Clipboard, undo and saving
 
 - Ctrl+C/X/V — canonical JSON fragments on the system clipboard, so nodes can be
