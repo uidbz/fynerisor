@@ -11,6 +11,11 @@
 
 ### Added
 
+- **Scene handler convention and `fynerisor handlers`.** Sidecar scripts use
+  standalone `on_<node>_<event>` functions and one `page.Bind({...})` section
+  at the bottom. `internal/sceneedit` moves inline `page.Bind` functions out,
+  names empty `call` actions, and creates missing stubs; `fynerisor handlers
+  [-write] page.scene.json` runs the pass. See docs/HANDLERS.md.
 - **Scene data components: `form`, `field`, `table`, `log`.** The document
   layer can now express the interactive data-tool page, not just
   point-and-click pages. `form` renders its `field` children as one Fyne
