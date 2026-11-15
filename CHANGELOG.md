@@ -11,6 +11,10 @@
 
 ### Added
 
+- **Save-time handler rewrite.** `designer.Options.BeforeSave` runs before
+  validation/encoding; the CLI designer and the reference browser host use
+  `internal/sceneedit.ApplySidecar` to rewrite local sidecars and include any
+  handler-name changes in the same save. Remote sidecars are skipped.
 - **Designer handler actions.** The inspector's Events section gains
   “+ handler” and “Edit handler”. They create the `on_<node>_<event>` call
   action and invoke `designer.Options.EditHandler(script, handler)`; hosts

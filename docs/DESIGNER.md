@@ -125,6 +125,13 @@ for an existing call. The designer does not edit script text itself; hosts
 open the sidecar in the browser source pane, an external editor, or report the
 target. See [HANDLERS.md](HANDLERS.md).
 
+`designer.Options.BeforeSave(doc) (changed, error)` runs before validation and
+encoding. A host uses it to rewrite the sidecar (standalone handlers, binding
+section) with `internal/sceneedit.ApplySidecar`. Returning `changed=true`
+forces the save even when the editor history is clean; an error aborts the
+save. The CLI designer and the reference browser host use this for local
+sidecars.
+
 ## Clipboard, undo and saving
 
 - Ctrl+C/X/V — canonical JSON fragments on the system clipboard, so nodes can be

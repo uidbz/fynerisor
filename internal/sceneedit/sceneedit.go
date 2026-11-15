@@ -11,8 +11,11 @@
 package sceneedit
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"unicode"
@@ -473,4 +476,47 @@ func isShorthand(item ast.MapItem) bool {
 		return false
 	}
 	return item.Key.Pos().Char == item.Value.Pos().Char
+}
+
+// ErrRemoteSidecar means the document's sidecar is not a local file, so this
+// package cannot read or write it. Hosts with their own storage handle it.
+var ErrRemoteSidecar = errors.New("sceneedit: sidecar is not a local file")
+
+// ApplySidecar resolves doc.Script against docRef, rewrites the sidecar, and
+// returns whether the document changed. The caller saves the document after
+// it returns true (the designer's BeforeSave hook does exactly that).
+func ApplySidecar(doc *scene.Document, docRef string) (Report, bool, error) {
+	if doc == nil || doc.Script == "" {
+		return Report{}, false, nil
+	}
+	ref, err := scene.ResolveRef(docRef, doc.Script)
+	if err != nil {
+		return Report{}, false, err
+	}
+	path, err := scene.FilePath(ref)
+	if err != nil {
+		return Report{}, false, fmt.Errorf("%w: %s", ErrRemoteSidecar, ref)
+	}
+	src, err := os.ReadFile(path)
+	if err != nil {
+		return Report{}, false, err
+	}
+	before, err := scene.Encode(doc)
+	if err != nil {
+		return Report{}, false, err
+	}
+	res, err := Apply(doc, string(src))
+	if err != nil {
+		return Report{}, false, err
+	}
+	if res.Source != string(src) {
+		if err := os.WriteFile(path, []byte(res.Source), 0o644); err != nil {
+			return res.Report, false, err
+		}
+	}
+	after, err := scene.Encode(doc)
+	if err != nil {
+		return res.Report, false, err
+	}
+	return res.Report, !bytes.Equal(before, after), nil
 }

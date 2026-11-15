@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"image"
 	"image/png"
@@ -17,6 +18,7 @@ import (
 	"github.com/uidbz/fynerisor/browser"
 	"github.com/uidbz/fynerisor/designer"
 	guiscene "github.com/uidbz/fynerisor/gui/scene"
+	"github.com/uidbz/fynerisor/internal/sceneedit"
 	"github.com/uidbz/fynerisor/scene"
 	"github.com/uidbz/fynerisor/scene/render"
 	renderbuiltin "github.com/uidbz/fynerisor/scene/render/builtin"
@@ -149,6 +151,23 @@ func (p *BrowserEditorProvider) Open(page *browser.Page, br *browser.Browser) fy
 		// editor. The reference host reports the target.
 		EditHandler: func(script, handler string) {
 			br.SetStatus("Edit " + handler + " in " + script)
+		},
+		BeforeSave: func(doc *scene.Document) (bool, error) {
+			// Remote sidecars are served by the host, not by this editor.
+			if !strings.HasPrefix(page.URL, "file:") {
+				return false, nil
+			}
+			rep, changed, err := sceneedit.ApplySidecar(doc, page.URL)
+			if err != nil {
+				if errors.Is(err, os.ErrNotExist) || errors.Is(err, sceneedit.ErrRemoteSidecar) {
+					return false, nil
+				}
+				return false, err
+			}
+			if len(rep.Created) > 0 || len(rep.Converted) > 0 {
+				br.SetStatus(fmt.Sprintf("handlers: %d created, %d converted", len(rep.Created), len(rep.Converted)))
+			}
+			return changed, nil
 		},
 		OnSaved: func(doc *scene.Document) { p.app.saveSceneThumbnail(page.URL, doc) },
 		OnClose: func(reload bool) {

@@ -354,3 +354,29 @@ func TestEditHandlerHook(t *testing.T) {
 		t.Fatalf("action handler = %q", n.On["tapped"][0].Handler)
 	}
 }
+
+func TestBeforeSaveHook(t *testing.T) {
+	e, _ := newTestEditor(t)
+	called := false
+	e.opts.BeforeSave = func(doc *scene.Document) (bool, error) {
+		called = true
+		return false, nil
+	}
+	sig := newSaveSignal(e)
+	e.Select("title")
+	e.inspector.refresh()
+	e.inspector.setProp("text", "Changed")
+	e.Save()
+	sig.wait(t, 1)
+	if !called {
+		t.Fatal("BeforeSave was not called")
+	}
+}
+
+func TestBeforeSaveForcesSaveWhenClean(t *testing.T) {
+	e, _ := newTestEditor(t)
+	e.opts.BeforeSave = func(doc *scene.Document) (bool, error) { return true, nil }
+	sig := newSaveSignal(e)
+	e.Save()
+	sig.wait(t, 1)
+}

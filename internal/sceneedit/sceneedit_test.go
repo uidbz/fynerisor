@@ -2,6 +2,9 @@ package sceneedit
 
 import (
 	"context"
+	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -173,5 +176,52 @@ page.Bind({
 `
 	if _, err := risor.Compile(context.Background(), src, risor.WithEnv(map[string]any{"page": map[string]any{}})); err != nil {
 		t.Fatalf("convention does not compile: %v", err)
+	}
+}
+
+func TestApplySidecar(t *testing.T) {
+	dir := t.TempDir()
+	doc := mustDoc(t, `{
+  "format": "fynerisor.scene/1",
+  "title": "Test",
+  "script": "page.risor",
+  "root": {"id": "root", "type": "vbox", "children": [
+    {"id": "btn", "type": "button", "on": {"tapped": [{"do": "call"}]}}
+  ]}
+}`)
+	script := filepath.Join(dir, "page.risor")
+	if err := os.WriteFile(script, []byte("page.Bind({old: (evt) => {}})\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	rep, changed, err := ApplySidecar(doc, filepath.Join(dir, "page.scene.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !changed {
+		t.Fatal("document should have changed (handler name)")
+	}
+	if len(rep.Created) != 1 || rep.Created[0] != "on_btn_tapped" {
+		t.Fatalf("report = %+v", rep)
+	}
+	got, err := os.ReadFile(script)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"let on_btn_tapped = (evt) => {",
+		"let old = (evt) => {}",
+		"page.Bind({\n    old,\n    on_btn_tapped,\n})",
+	} {
+		if !strings.Contains(string(got), want) {
+			t.Fatalf("missing %q in:\n%s", want, got)
+		}
+	}
+}
+
+func TestApplySidecarRemote(t *testing.T) {
+	doc := &scene.Document{Script: "page.risor"}
+	_, _, err := ApplySidecar(doc, "https://example.com/page.scene.json")
+	if !errors.Is(err, ErrRemoteSidecar) {
+		t.Fatalf("got %v, want ErrRemoteSidecar", err)
 	}
 }

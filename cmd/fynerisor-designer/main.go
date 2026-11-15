@@ -20,6 +20,7 @@ import (
 	"fyne.io/fyne/v2/app"
 
 	"github.com/uidbz/fynerisor/designer"
+	"github.com/uidbz/fynerisor/internal/sceneedit"
 	"github.com/uidbz/fynerisor/scene"
 )
 
@@ -81,6 +82,19 @@ func main() {
 		// author can open them; browser hosts replace this hook.
 		EditHandler: func(script, handler string) {
 			log.Printf("[designer] edit %s: %s", script, handler)
+		},
+		BeforeSave: func(doc *scene.Document) (bool, error) {
+			rep, changed, err := sceneedit.ApplySidecar(doc, ref)
+			if err != nil {
+				if errors.Is(err, os.ErrNotExist) || errors.Is(err, sceneedit.ErrRemoteSidecar) {
+					return false, nil
+				}
+				return false, err
+			}
+			if len(rep.Created) > 0 || len(rep.Converted) > 0 {
+				log.Printf("[designer] handlers: created %v, converted %v", rep.Created, rep.Converted)
+			}
+			return changed, nil
 		},
 		OnClose: func(reload bool) { w.Close() },
 		OnDirty: func(dirty bool) {

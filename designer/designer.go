@@ -71,6 +71,11 @@ type Options struct {
 	// standalone function name, usually on_<node>_<event>. The host decides
 	// whether to open an editor, create a stub, or only show the name.
 	EditHandler func(script, handler string)
+	// BeforeSave runs on the UI thread before validation and encoding. A host
+	// uses it to rewrite the sidecar (handler stubs, bindings) and optionally
+	// update doc. changed=true forces a save even when the editor history is
+	// clean. An error aborts the save.
+	BeforeSave func(doc *scene.Document) (changed bool, err error)
 	// AssetPick opens a host picker for asset/scene reference properties.
 	// It must call done exactly once (ok=false on cancel).
 	AssetPick func(kind scene.PropKind, current string, done func(ref string, ok bool))
@@ -615,6 +620,19 @@ func (e *Editor) saveWith(baseVersion string, after func(bool)) {
 		e.setStatus("Save queued…")
 		return
 	}
+	changed := false
+	if e.opts.BeforeSave != nil {
+		var err error
+		changed, err = e.opts.BeforeSave(e.doc)
+		if err != nil {
+			e.setStatus("BeforeSave: " + err.Error())
+			e.reportSaveState(SaveFailed, err)
+			if after != nil {
+				after(false)
+			}
+			return
+		}
+	}
 	e.issue = scene.Validate(e.doc, e.opts.Registry.Registry)
 	e.problems.set(e.issue)
 	if scene.Errors(e.issue) > 0 {
@@ -625,7 +643,7 @@ func (e *Editor) saveWith(baseVersion string, after func(bool)) {
 		}
 		return
 	}
-	if !e.hist.Dirty() {
+	if !e.hist.Dirty() && !changed {
 		e.setStatus("No changes to save")
 		e.reportSaveState(SaveSaved, nil)
 		if after != nil {
