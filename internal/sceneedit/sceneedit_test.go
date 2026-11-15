@@ -145,3 +145,14 @@ func TestUnicodeBeforeBind(t *testing.T) {
 		t.Fatalf("unexpected duplicates:\n%s", out)
 	}
 }
+
+func TestUnicodeInlineHandler(t *testing.T) {
+	src := "let title = \"café — ready\"\n\npage.Bind({\n    on_x_tapped: (evt) => {\n        print(\"x\")\n    },\n})\n"
+	out, _, err := ConvertInlineBindings(src, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "let on_x_tapped = (evt) => {\n    print(\"x\")\n}") {
+		t.Fatalf("handler corrupted by rune offset:\n%s", out)
+	}
+}
