@@ -275,6 +275,19 @@ func Specs() []scene.ComponentSpec {
 			Events: []scene.EventSpec{evTapped},
 		},
 		{
+			Type: "submit", Title: "Submit button", Category: "Input", Icon: "button",
+			Doc: "A natural-width button for form fields; keeps its size instead of stretching to fill the cell.", Kind: scene.Leaf,
+			DefaultPlace: defaultPlace(140, 40),
+			DefaultProps: map[string]any{"text": "Submit"},
+			Props: []scene.PropSpec{
+				p("text", "Text", "Content", scene.PropString, "Submit"),
+				p("icon", "Icon", "Content", scene.PropIcon, ""),
+				enum("importance", "Importance", "Look", "medium", "low", "medium", "high", "danger", "warning", "success"),
+				p("disabled", "Disabled", "Content", scene.PropBool, false),
+			},
+			Events: []scene.EventSpec{evTapped},
+		},
+		{
 			Type: "hyperlink", Title: "Hyperlink", Category: "Input", Icon: "link",
 			Doc: "A link that opens its URL in the system browser.", Kind: scene.Leaf,
 			DefaultPlace: defaultPlace(200, 32),

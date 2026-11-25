@@ -1165,6 +1165,7 @@ embedding application (tie-browser registers the `tie.*` family).
 | `slider` | Slider | leaf | Input | value (number = 0), min (number = 0), max (number = 100), step (number = 1) | changed |  |
 | `slot` | Script slot | leaf | Navigation | hint (string = Script fills this area) |  |  |
 | `stack` | Stack | ordered | Layout |  |  |  |
+| `submit` | Submit button | leaf | Input | text (string = Submit), icon (icon = ), importance (enum = medium), disabled (bool = false) | tapped |  |
 | `table` | Table | leaf | Data | title (string = ), columns (options), pageSize (number = 10) | cellTapped |  |
 | `tabs` | Tabs | tabs | Layout | location (enum = top) |  |  |
 | `text` | Canvas text | leaf | Display | text (text = ), size (number = 18), color (color = #ffffff), bold (bool = false), italic (bool = false), mono (bool = false), align (enum = left) |  |  |

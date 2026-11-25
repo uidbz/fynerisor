@@ -50,6 +50,7 @@ func RegisterFactories(r *render.Registry) {
 
 	// Input.
 	r.Factory("button", newButton)
+	r.Factory("submit", newSubmit)
 	r.Factory("hyperlink", newHyperlink)
 	r.Factory("entry", newEntry)
 	r.Factory("check", newCheck)
