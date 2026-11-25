@@ -239,14 +239,6 @@ func newButton(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
 	return newLeaf(btn, update), nil
 }
 
-// newSubmit builds a natural-width button for form fields. A bare Button in a
-// FormItem stretches to fill the widget column; the HBox keeps the button at
-// its own size, which is the conventional form-submit placement.
-func newSubmit(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
-	btn, update := makeButton(bc, n)
-	return newLeaf(container.NewHBox(btn), update), nil
-}
-
 func makeButton(bc *render.BuildContext, n *scene.Node) (*widget.Button, func(*scene.Node, scene.Fields) error) {
 	btn := widget.NewButton(bc.Str(n, "text", "Button"), func() {
 		bc.Emit(n.ID, "tapped", nil)

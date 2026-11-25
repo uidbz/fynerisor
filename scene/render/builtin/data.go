@@ -20,6 +20,7 @@ import (
 // unlabeled row, so the page still renders.
 type formLive struct {
 	form     *widget.Form
+	bc       *render.BuildContext
 	children []render.Live
 }
 
@@ -30,15 +31,36 @@ type formChild interface {
 	formItem() (widget.FormItem, bool)
 }
 
-func newForm(_ *render.BuildContext, _ *scene.Node) (render.Live, error) {
-	return &formLive{form: widget.NewForm()}, nil
+func newForm(bc *render.BuildContext, _ *scene.Node) (render.Live, error) {
+	return &formLive{form: widget.NewForm(), bc: bc}, nil
 }
 
 func (l *formLive) Object() fyne.CanvasObject { return l.form }
 
-func (l *formLive) Update(_ *scene.Node, _ scene.Fields) error {
+func (l *formLive) Update(n *scene.Node, _ scene.Fields) error {
+	l.applyButtons(n)
 	l.sync()
 	return nil
+}
+
+// applyButtons exposes Fyne Form's native submit/cancel row: setting a text
+// installs the callback that emits the event, clearing it removes the button.
+func (l *formLive) applyButtons(n *scene.Node) {
+	st := l.bc.Str(n, "submit-text", "")
+	ct := l.bc.Str(n, "cancel-text", "")
+	id := n.ID
+	l.form.SubmitText = st
+	l.form.CancelText = ct
+	if st != "" {
+		l.form.OnSubmit = func() { l.bc.Emit(id, "submitted", nil) }
+	} else {
+		l.form.OnSubmit = nil
+	}
+	if ct != "" {
+		l.form.OnCancel = func() { l.bc.Emit(id, "cancelled", nil) }
+	} else {
+		l.form.OnCancel = nil
+	}
 }
 
 func (l *formLive) Destroy() {}

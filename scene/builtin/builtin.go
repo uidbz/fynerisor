@@ -45,6 +45,7 @@ var (
 	evHoverOut  = ev("hoverOut", "The pointer left the component.")
 	evChanged   = ev("changed", "The value changed.")
 	evSubmitted = ev("submitted", "The value was submitted.")
+	evCancelled = ev("cancelled", "The form's cancel button was tapped.")
 )
 
 func defaultPlace(w, h float64) scene.Place { return scene.Place{W: w, H: h} }
@@ -275,19 +276,6 @@ func Specs() []scene.ComponentSpec {
 			Events: []scene.EventSpec{evTapped},
 		},
 		{
-			Type: "submit", Title: "Submit button", Category: "Input", Icon: "button",
-			Doc: "A natural-width button for form fields; keeps its size instead of stretching to fill the cell.", Kind: scene.Leaf,
-			DefaultPlace: defaultPlace(140, 40),
-			DefaultProps: map[string]any{"text": "Submit"},
-			Props: []scene.PropSpec{
-				p("text", "Text", "Content", scene.PropString, "Submit"),
-				p("icon", "Icon", "Content", scene.PropIcon, ""),
-				enum("importance", "Importance", "Look", "medium", "low", "medium", "high", "danger", "warning", "success"),
-				p("disabled", "Disabled", "Content", scene.PropBool, false),
-			},
-			Events: []scene.EventSpec{evTapped},
-		},
-		{
 			Type: "hyperlink", Title: "Hyperlink", Category: "Input", Icon: "link",
 			Doc: "A link that opens its URL in the system browser.", Kind: scene.Leaf,
 			DefaultPlace: defaultPlace(200, 32),
@@ -359,8 +347,14 @@ func Specs() []scene.ComponentSpec {
 
 		{
 			Type: "form", Title: "Form", Category: "Input", Icon: "edit",
-			Doc: "Labeled input rows; its children are field nodes. Labels align across rows.", Kind: scene.Ordered,
+			Doc: "Labeled input rows; its children are field nodes. Labels align across rows. With submit-text set, the form shows its own standard submit button row and emits submitted.", Kind: scene.Ordered,
 			DefaultPlace: defaultPlace(340, 240),
+			DefaultProps: map[string]any{"submit-text": ""},
+			Props: []scene.PropSpec{
+				p("submit-text", "Submit text", "Content", scene.PropString, ""),
+				p("cancel-text", "Cancel text", "Content", scene.PropString, ""),
+			},
+			Events: []scene.EventSpec{evSubmitted, evCancelled},
 		},
 		{
 			Type: "field", Title: "Field", Category: "Input", Icon: "edit",

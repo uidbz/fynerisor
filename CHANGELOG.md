@@ -11,10 +11,11 @@
 
 ### Added
 
-- **Scene `submit` component.** A natural-width button for form fields: a
-  bare `button` in a `field` stretches to fill the widget column, `submit`
-  keeps its own size (HBox-wrapped), matching the conventional form-submit
-  placement. Same props and `tapped` event as `button`.
+- **Scene form submit row.** `form` accepts `submit-text`/`cancel-text`;
+  when set, the form shows Fyne's own standard submit/cancel button row
+  (natural width, bottom of the form) and emits `submitted`/`cancelled`
+  events — the conventional form-submit placement without a hand-placed
+  button. (Supersedes the short-lived `submit` component from 1a007a3.)
 - **Save-time handler rewrite.** `designer.Options.BeforeSave` runs before
   validation/encoding; the CLI designer and the reference browser host use
   `scene/handlers.ApplySidecar` to rewrite local sidecars and include any

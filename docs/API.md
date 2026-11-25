@@ -1140,7 +1140,7 @@ embedding application (tie-browser registers the `tie.*` family).
 | `embed` | Embedded scene | leaf | Navigation | src (sceneRef = ) |  |  |
 | `entry` | Entry | leaf | Input | text (string = ), placeholder (string = ), multiline (bool = false), password (bool = false) | changed, submitted |  |
 | `field` | Field | ordered | Input | label (string = Field), help (string = ) |  |  |
-| `form` | Form | ordered | Input |  |  |  |
+| `form` | Form | ordered | Input | submit-text (string = ), cancel-text (string = ) | submitted, cancelled |  |
 | `free` | Free canvas | free | Layout | designW (number = 1600), designH (number = 900), scale (enum = fit), background (asset = ), backgroundFill (enum = stretch), letterbox (color = #000000), backgroundColor (color = ), clip (bool = false), scaleText (bool = true) |  |  |
 | `grid` | Grid | ordered | Layout | cols (number = 2) |  |  |
 | `gridwrap` | Grid wrap | ordered | Layout |  |  |  |
@@ -1165,7 +1165,6 @@ embedding application (tie-browser registers the `tie.*` family).
 | `slider` | Slider | leaf | Input | value (number = 0), min (number = 0), max (number = 100), step (number = 1) | changed |  |
 | `slot` | Script slot | leaf | Navigation | hint (string = Script fills this area) |  |  |
 | `stack` | Stack | ordered | Layout |  |  |  |
-| `submit` | Submit button | leaf | Input | text (string = Submit), icon (icon = ), importance (enum = medium), disabled (bool = false) | tapped |  |
 | `table` | Table | leaf | Data | title (string = ), columns (options), pageSize (number = 10) | cellTapped |  |
 | `tabs` | Tabs | tabs | Layout | location (enum = top) |  |  |
 | `text` | Canvas text | leaf | Display | text (text = ), size (number = 18), color (color = #ffffff), bold (bool = false), italic (bool = false), mono (bool = false), align (enum = left) |  |  |
