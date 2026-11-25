@@ -1,3 +1,11 @@
+## [Unreleased]
+
+### Fixed
+- scene form: submit-text/cancel-text props now apply at initial build (the
+  renderer never calls Update on fresh nodes, so the props were dead and Fyne's
+  default Submit/Cancel row leaked onto every scene form); regression tests in
+  scene/render/builtin/build_events_test.go
+
 # Changelog
 
 ## [Unreleased]

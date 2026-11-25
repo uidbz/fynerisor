@@ -31,8 +31,13 @@ type formChild interface {
 	formItem() (widget.FormItem, bool)
 }
 
-func newForm(bc *render.BuildContext, _ *scene.Node) (render.Live, error) {
-	return &formLive{form: widget.NewForm(), bc: bc}, nil
+func newForm(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
+	l := &formLive{form: widget.NewForm(), bc: bc}
+	// Props must be applied at build too: the renderer only calls Update on
+	// changes, so without this submit-text/cancel-text never take effect and
+	// Fyne's default Submit/Cancel row leaks through on every scene form.
+	l.applyButtons(n)
+	return l, nil
 }
 
 func (l *formLive) Object() fyne.CanvasObject { return l.form }
