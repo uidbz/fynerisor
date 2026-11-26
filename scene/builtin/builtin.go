@@ -349,7 +349,6 @@ func Specs() []scene.ComponentSpec {
 			Type: "form", Title: "Form", Category: "Input", Icon: "edit",
 			Doc: "Labeled input rows; its children are field nodes. Labels align across rows. With submit-text set, the form shows its own standard submit button row and emits submitted.", Kind: scene.Ordered,
 			DefaultPlace: defaultPlace(340, 240),
-			DefaultProps: map[string]any{"submit-text": ""},
 			Props: []scene.PropSpec{
 				p("submit-text", "Submit text", "Content", scene.PropString, ""),
 				p("cancel-text", "Cancel text", "Content", scene.PropString, ""),

@@ -235,30 +235,15 @@ func newLine(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
 // ------------------------------------------------------------------ inputs
 
 func newButton(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
-	btn, update := makeButton(bc, n)
-	return newLeaf(btn, update), nil
-}
-
-func makeButton(bc *render.BuildContext, n *scene.Node) (*widget.Button, func(*scene.Node, scene.Fields) error) {
 	btn := widget.NewButton(bc.Str(n, "text", "Button"), func() {
 		bc.Emit(n.ID, "tapped", nil)
 	})
-	var icon fyne.Resource
-	if name := bc.Str(n, "icon", ""); name != "" {
-		icon = render.IconResource(name)
-	}
-	btn.Icon = icon
-	btn.Importance = render.Importance(bc.Str(n, "importance", "medium"))
-	if bc.Bool(n, "disabled", false) {
-		btn.Disable()
-	}
-	return btn, func(n *scene.Node, _ scene.Fields) error {
-		btn.SetText(bc.Str(n, "text", "Button"))
+	apply := func(n *scene.Node) {
+		btn.Text = bc.Str(n, "text", "Button")
 		btn.Importance = render.Importance(bc.Str(n, "importance", "medium"))
+		btn.Icon = nil
 		if name := bc.Str(n, "icon", ""); name != "" {
 			btn.Icon = render.IconResource(name)
-		} else {
-			btn.Icon = nil
 		}
 		if bc.Bool(n, "disabled", false) {
 			btn.Disable()
@@ -266,8 +251,9 @@ func makeButton(bc *render.BuildContext, n *scene.Node) (*widget.Button, func(*s
 			btn.Enable()
 		}
 		btn.Refresh()
-		return nil
 	}
+	apply(n)
+	return newLeaf(btn, func(n *scene.Node, _ scene.Fields) error { apply(n); return nil }), nil
 }
 
 func newHyperlink(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
