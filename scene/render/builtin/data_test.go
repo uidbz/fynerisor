@@ -202,3 +202,42 @@ func TestFormFieldRuntimeLabelAndHelp(t *testing.T) {
 		t.Fatalf("rendered form texts %q lack the added help", got)
 	}
 }
+
+// Log: maxLines changes apply at runtime, the spec minimum (10) holds, and a
+// trailing newline does not add a blank line (#64.4).
+func TestLogMaxLinesAndTrailingNewline(t *testing.T) {
+	a := test.NewApp()
+	defer a.Quit()
+	v := render.NewView(dataDoc(), render.Options{Registry: NewRegistry()})
+	w := test.NewWindow(v)
+	defer w.Close()
+	ll := render.UnwrapLive(mustLive(t, v, "lg")).(*logLive)
+
+	ll.AppendText("x\n")
+	if len(ll.lines) != 3 || ll.lines[2] != "x" {
+		t.Fatalf("Append(\"x\\n\") lines = %q", ll.lines)
+	}
+	ll.AppendText("y\nz\n")
+	if len(ll.lines) != 5 || ll.lines[4] != "z" {
+		t.Fatalf("Append(\"y\\nz\\n\") lines = %q", ll.lines)
+	}
+
+	// Raise the cap to 20 at runtime: 15 more lines are all kept.
+	v.RuntimeSet("lg", "maxLines", 20.0)
+	for i := 0; i < 15; i++ {
+		ll.AppendText("n")
+	}
+	if len(ll.lines) != 20 {
+		t.Fatalf("after maxLines=20: %d lines, want 20", len(ll.lines))
+	}
+	// Lowering it below the spec minimum clamps to 10 and trims now.
+	v.RuntimeSet("lg", "maxLines", 3.0)
+	if len(ll.lines) != 10 {
+		t.Fatalf("after maxLines=3: %d lines, want 10 (spec minimum)", len(ll.lines))
+	}
+	// Initial text: a trailing newline does not add a blank line either.
+	v.RuntimeSet("lg", "text", "a\nb\n")
+	if len(ll.lines) != 2 || ll.lines[1] != "b" {
+		t.Fatalf("text lines = %q", ll.lines)
+	}
+}

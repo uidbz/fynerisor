@@ -429,10 +429,7 @@ type logLive struct {
 }
 
 func newLog(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
-	l := &logLive{bc: bc, max: int(bc.Num(n, "maxLines", 1000))}
-	if l.max < 1 {
-		l.max = 1000
-	}
+	l := &logLive{bc: bc, max: logMaxLines(bc, n)}
 	l.list = widget.NewList(
 		func() int { return len(l.lines) },
 		func() fyne.CanvasObject { return widget.NewLabel("") },
@@ -446,38 +443,54 @@ func newLog(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
 	return l, nil
 }
 
+// logMaxLines reads maxLines clamped to the spec range (10..100000).
+func logMaxLines(bc *render.BuildContext, n *scene.Node) int {
+	return min(max(int(bc.Num(n, "maxLines", 1000)), 10), 100000)
+}
+
 func (l *logLive) Object() fyne.CanvasObject { return l.list }
 
 func (l *logLive) Update(n *scene.Node, changed scene.Fields) error {
-	if !changed["text"] {
-		return nil
+	l.max = logMaxLines(l.bc, n)
+	if changed["text"] {
+		l.setLines(l.bc.Str(n, "text", ""))
+	} else {
+		l.trim()
 	}
-	l.setLines(l.bc.Str(n, "text", ""))
 	l.list.Refresh()
 	return nil
 }
 
 func (l *logLive) Destroy() {}
 
+// splitLines splits text into lines; one trailing newline only ends the
+// last line, it does not add an empty one.
+func splitLines(text string) []string {
+	text = strings.TrimSuffix(text, "\n")
+	return strings.Split(text, "\n")
+}
+
 func (l *logLive) setLines(text string) {
 	if text == "" {
 		l.lines = nil
 		return
 	}
-	l.lines = strings.Split(text, "\n")
+	l.lines = splitLines(text)
+	l.trim()
+}
+
+// trim drops the oldest lines beyond max.
+func (l *logLive) trim() {
 	if over := len(l.lines) - l.max; over > 0 {
-		l.lines = l.lines[over:]
+		l.lines = l.lines[over:] // append reallocates, releasing the prefix
 	}
 }
 
-// AppendText appends one line (render.Appender).
+// AppendText appends one or more lines (render.Appender); a trailing
+// newline is optional.
 func (l *logLive) AppendText(text string) {
-	for _, line := range strings.Split(text, "\n") {
-		if len(l.lines) >= l.max {
-			l.lines = l.lines[1:]
-		}
-		l.lines = append(l.lines, line)
-	}
+	l.lines = append(l.lines, splitLines(text)...)
+	l.trim()
 	l.list.Refresh()
 	l.list.ScrollToBottom()
 }
