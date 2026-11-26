@@ -141,17 +141,6 @@ Code that changes state outside a handler, such as a timer, calls
 `page.RefreshBindings()` to update. Until `page.BindValues` runs, the raw
 `${...}` text shows. Expression errors are reported like handler errors.
 
-Current limitations:
-
-- An expression sees only the fields of the values map: no builtins (`len`,
-  `string`, ...) and no `{` or `}` characters inside `${...}`.
-- The map is re-evaluated after `page.Bind` and `node.On` handlers and after
-  `page.BindValues` itself. State changed elsewhere (a timer, a goroutine)
-  needs `page.RefreshBindings()`.
-- Until `page.BindValues` runs, a property shows its raw `${...}` text.
-- Only number, integer and bool properties receive raw values; every other
-  kind, including lists, receives the string form.
-
 Keep binding expressions pure: read values, no side effects. That is the
 subset that can move from v2 to v3 later without changing the scene file.
 
