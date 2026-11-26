@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -12,7 +12,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 
-	risor "github.com/deepnoodle-ai/risor/v2"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 
@@ -45,14 +44,15 @@ type Page struct {
 
 	values   *vmexec.Callback
 	bindings []bindingProp
+	exprs    exprCache
 }
 
 // bindingProp is one scene property whose string contains ${...}.
 type bindingProp struct {
-	node     string
-	prop     string
-	template string
-	kind     scenedoc.PropKind
+	node string
+	prop string
+	segs []segment
+	kind scenedoc.PropKind
 }
 
 type pendingCall struct {
@@ -173,7 +173,11 @@ func (p *Page) scanBindings() {
 			if !ok || !strings.Contains(str, "${") {
 				continue
 			}
-			out = append(out, bindingProp{node: n.ID, prop: prop, template: str, kind: kinds[prop]})
+			segs := parseTemplate(str)
+			if !slices.ContainsFunc(segs, func(s segment) bool { return s.expr }) {
+				continue
+			}
+			out = append(out, bindingProp{node: n.ID, prop: prop, segs: segs, kind: kinds[prop]})
 		}
 		return true
 	})
@@ -181,8 +185,6 @@ func (p *Page) scanBindings() {
 	p.bindings = out
 	p.mu.Unlock()
 }
-
-var bindingRe = regexp.MustCompile(`\$\{([^{}]+)\}`)
 
 func (p *Page) refreshBindings(ctx context.Context) {
 	p.mu.Lock()
@@ -216,8 +218,9 @@ func (p *Page) refreshBindings(ctx context.Context) {
 		value    any
 	}
 	var updates []update
+	env := newBindEnv(vals)
 	for _, b := range binds {
-		v, err := resolveBinding(ctx, b.template, b.kind, vals)
+		v, err := p.exprs.resolve(ctx, b.segs, b.kind, env)
 		if err != nil {
 			p.fail(ctx, cb, "page.BindValues", fmt.Errorf("binding %s.%s: %w", b.node, b.prop, err))
 			continue
@@ -260,40 +263,6 @@ func (p *Page) fail(ctx context.Context, cb *vmexec.Callback, what string, err e
 		}
 		p.cfg.Status(what + ": " + msg)
 	}
-}
-
-func resolveBinding(ctx context.Context, template string, kind scenedoc.PropKind, vals map[string]any) (any, error) {
-	matches := bindingRe.FindAllStringSubmatchIndex(template, -1)
-	if len(matches) == 1 && matches[0][0] == 0 && matches[0][1] == len(template) {
-		v, err := risor.Eval(ctx, template[matches[0][2]:matches[0][3]], risor.WithEnv(vals))
-		if err != nil {
-			return nil, err
-		}
-		switch kind {
-		case scenedoc.PropNumber, scenedoc.PropInt, scenedoc.PropBool:
-			return v, nil
-		default:
-			if v == nil {
-				return "", nil
-			}
-			return fmt.Sprint(v), nil
-		}
-	}
-	var b strings.Builder
-	last := 0
-	for _, m := range matches {
-		b.WriteString(template[last:m[0]])
-		v, err := risor.Eval(ctx, template[m[2]:m[3]], risor.WithEnv(vals))
-		if err != nil {
-			return nil, err
-		}
-		if v != nil {
-			b.WriteString(fmt.Sprint(v))
-		}
-		last = m[1]
-	}
-	b.WriteString(template[last:])
-	return b.String(), nil
 }
 
 var pageAttrs = objattrs.Register(string(PageType), object.NewAttrRegistry[*Page](string(PageType)))
