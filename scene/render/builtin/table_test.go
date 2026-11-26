@@ -44,9 +44,11 @@ func rows(n int) [][]string {
 	return out
 }
 
-// objects walks the table's object tree through widget renderers
+func (f *tableFixture) objects() []fyne.CanvasObject { return treeObjects(f.tl.tw.Instance) }
+
+// treeObjects walks an object tree through widget renderers
 // (test.LaidOutObjects does not reach widget.Table's cells).
-func (f *tableFixture) objects() []fyne.CanvasObject {
+func treeObjects(root fyne.CanvasObject) []fyne.CanvasObject {
 	var out []fyne.CanvasObject
 	var walk func(o fyne.CanvasObject)
 	walk = func(o fyne.CanvasObject) {
@@ -62,7 +64,7 @@ func (f *tableFixture) objects() []fyne.CanvasObject {
 			}
 		}
 	}
-	walk(f.tl.tw.Instance)
+	walk(root)
 	return out
 }
 

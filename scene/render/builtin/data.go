@@ -25,10 +25,13 @@ type formLive struct {
 }
 
 // formChild is the internal contract between form and field: field hands
-// over its assembled FormItem. It is looked up through render.UnwrapLive
-// because children arrive wrapped in style/hint wrappers.
+// over its assembled FormItem, and the form attaches a callback the field
+// calls when its label, help or input changes (nil detaches). It is looked
+// up through render.UnwrapLive because children arrive wrapped in
+// style/hint wrappers.
 type formChild interface {
 	formItem() (widget.FormItem, bool)
+	attach(changed func())
 }
 
 func newForm(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
@@ -84,9 +87,22 @@ func (l *formLive) items() []*widget.FormItem {
 	return items
 }
 
-func (l *formLive) sync() {
-	l.form.Items = l.items()
-	l.form.Refresh()
+func (l *formLive) sync() { setFormItems(l.form, l.items()) }
+
+// setFormItems replaces a form's rows. Fyne's Form keeps a row's rendered
+// input while its widget is unchanged, and the hint text lives in that
+// rendered input, so a changed hint would never show: rows are recreated
+// when any hint differs. Labels update in place on Refresh.
+func setFormItems(f *widget.Form, items []*widget.FormItem) {
+	for i, it := range items {
+		if i < len(f.Items) && f.Items[i].HintText != it.HintText {
+			f.Items = nil
+			f.Refresh()
+			break
+		}
+	}
+	f.Items = items
+	f.Refresh()
 }
 
 func (l *formLive) Insert(index int, child render.Live, p scene.Place) error {
@@ -95,6 +111,9 @@ func (l *formLive) Insert(index int, child render.Live, p scene.Place) error {
 	copy(l.children[index+1:], l.children[index:])
 	l.children[index] = child
 	render.SetSizeHint(child.Object(), p.MinW, p.MinH)
+	if fc, ok := render.UnwrapLive(child).(formChild); ok {
+		fc.attach(l.sync)
+	}
 	l.sync()
 	return nil
 }
@@ -103,6 +122,9 @@ func (l *formLive) Remove(child render.Live) error {
 	for i, c := range l.children {
 		if c == child {
 			l.children = append(l.children[:i], l.children[i+1:]...)
+			if fc, ok := render.UnwrapLive(child).(formChild); ok {
+				fc.attach(nil)
+			}
 			l.sync()
 			return nil
 		}
@@ -165,12 +187,14 @@ func (l *formLive) DropSpot(local fyne.Position) (render.DropSpot, bool) {
 
 // fieldLive is a labeled row. Inside a form it contributes its FormItem to
 // the parent; standalone it renders as its own one-row form, so a stray
-// field degrades to the same look instead of an unlabeled widget.
+// field degrades to the same look instead of an unlabeled widget. Its own
+// form stays empty while attached, so the input sits in one form only.
 type fieldLive struct {
 	bc          *render.BuildContext
 	form        *widget.Form
 	label, help string
 	child       render.Live
+	parent      func() // the enclosing form's sync, nil when standalone
 }
 
 func newField(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
@@ -187,8 +211,23 @@ func (l *fieldLive) Object() fyne.CanvasObject { return l.form }
 func (l *fieldLive) Update(n *scene.Node, _ scene.Fields) error {
 	l.label = l.bc.Str(n, "label", "")
 	l.help = l.bc.Str(n, "help", "")
-	l.sync()
+	l.changed()
 	return nil
+}
+
+func (l *fieldLive) attach(changed func()) {
+	l.parent = changed
+	l.sync()
+}
+
+// changed re-renders wherever the field's item is shown: the enclosing form
+// when attached, its own form otherwise.
+func (l *fieldLive) changed() {
+	if l.parent != nil {
+		l.parent()
+		return
+	}
+	l.sync()
 }
 
 func (l *fieldLive) Destroy() {}
@@ -202,11 +241,10 @@ func (l *fieldLive) formItem() (widget.FormItem, bool) {
 
 func (l *fieldLive) sync() {
 	items := []*widget.FormItem{}
-	if it, ok := l.formItem(); ok {
+	if it, ok := l.formItem(); ok && l.parent == nil {
 		items = append(items, &it)
 	}
-	l.form.Items = items
-	l.form.Refresh()
+	setFormItems(l.form, items)
 }
 
 func (l *fieldLive) Insert(_ int, child render.Live, p scene.Place) error {
@@ -215,14 +253,14 @@ func (l *fieldLive) Insert(_ int, child render.Live, p scene.Place) error {
 	}
 	l.child = child
 	render.SetSizeHint(child.Object(), p.MinW, p.MinH)
-	l.sync()
+	l.changed()
 	return nil
 }
 
 func (l *fieldLive) Remove(child render.Live) error {
 	if l.child == child {
 		l.child = nil
-		l.sync()
+		l.changed()
 	}
 	return nil
 }
@@ -233,7 +271,7 @@ func (l *fieldLive) SetPlace(child render.Live, p scene.Place) error {
 	if child == l.child {
 		render.SetSizeHint(child.Object(), p.MinW, p.MinH)
 	}
-	l.form.Refresh()
+	l.changed()
 	return nil
 }
 

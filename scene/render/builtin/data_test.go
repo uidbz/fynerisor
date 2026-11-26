@@ -1,10 +1,13 @@
 package builtin
 
 import (
+	"slices"
 	"testing"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/test"
+	"fyne.io/fyne/v2/widget"
 
 	"github.com/uidbz/fynerisor/scene"
 	"github.com/uidbz/fynerisor/scene/render"
@@ -128,17 +131,74 @@ func TestFormFieldItems(t *testing.T) {
 		t.Fatalf("bare child item = %+v", fl.form.Items[1])
 	}
 
-	// Editing the field label updates the assembled item.
-	doc, _ := v.Doc().Find("f1")
-	doc.Props["label"] = "Full name"
-	if c, ok := v.Live("f1"); ok {
-		fld := render.UnwrapLive(c).(*fieldLive)
-		if err := fld.Update(doc, scene.Fields{"label": true}); err != nil {
-			t.Fatal(err)
+	// The field's input sits in the enclosing form only.
+	fld := render.UnwrapLive(mustLive(t, v, "f1")).(*fieldLive)
+	if len(fld.form.Items) != 0 {
+		t.Fatalf("attached field's own form has %d items", len(fld.form.Items))
+	}
+}
+
+func mustLive(t *testing.T, v *render.View, id string) render.Live {
+	t.Helper()
+	l, ok := v.Live(id)
+	if !ok {
+		t.Fatalf("no live %s", id)
+	}
+	return l
+}
+
+// formTexts returns every text shown in a form: labels (rich text) and
+// hint lines (canvas text).
+func formTexts(f *widget.Form) []string {
+	var out []string
+	for _, o := range treeObjects(f) {
+		switch x := o.(type) {
+		case *widget.RichText:
+			out = append(out, x.String())
+		case *canvas.Text:
+			if x.Visible() {
+				out = append(out, x.Text)
+			}
 		}
 	}
-	fl.sync()
+	return out
+}
+
+// Runtime label/help changes of a field reach the enclosing form's rendered
+// rows (#64.3: fieldLive.Update only re-synced its own, undisplayed form).
+func TestFormFieldRuntimeLabelAndHelp(t *testing.T) {
+	a := test.NewApp()
+	defer a.Quit()
+	v := render.NewView(dataDoc(), render.Options{Registry: NewRegistry()})
+	w := test.NewWindow(v)
+	defer w.Close()
+	w.Resize(fyne.NewSize(1000, 700))
+	fl := render.UnwrapLive(mustLive(t, v, "fm")).(*formLive)
+
+	if !v.RuntimeSet("f1", "label", "Full name") {
+		t.Fatal("RuntimeSet(label) failed")
+	}
 	if fl.form.Items[0].Text != "Full name" {
-		t.Fatalf("label update = %q", fl.form.Items[0].Text)
+		t.Fatalf("form item label = %q", fl.form.Items[0].Text)
+	}
+	if !slices.Contains(formTexts(fl.form), "Full name") {
+		t.Fatalf("rendered form texts %q lack the new label", formTexts(fl.form))
+	}
+
+	v.RuntimeSet("f1", "help", "first and last")
+	if got := formTexts(fl.form); !slices.Contains(got, "first and last") || slices.Contains(got, "your name") {
+		t.Fatalf("rendered form texts %q, want the new help only", got)
+	}
+
+	// A hint added to a row that had none shows too.
+	doc := dataDoc()
+	doc.Root.Children[2].Children[0].Props["help"] = ""
+	v2 := render.NewView(doc, render.Options{Registry: NewRegistry()})
+	w2 := test.NewWindow(v2)
+	defer w2.Close()
+	v2.RuntimeSet("f1", "help", "now with help")
+	fl2 := render.UnwrapLive(mustLive(t, v2, "fm")).(*formLive)
+	if got := formTexts(fl2.form); !slices.Contains(got, "now with help") {
+		t.Fatalf("rendered form texts %q lack the added help", got)
 	}
 }
