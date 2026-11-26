@@ -380,3 +380,105 @@ func TestBeforeSaveForcesSaveWhenClean(t *testing.T) {
 	e.Save()
 	sig.wait(t, 1)
 }
+
+func findButton(objs []fyne.CanvasObject, text string) *widget.Button {
+	for _, obj := range objs {
+		switch x := obj.(type) {
+		case *widget.Button:
+			if x.Text == text {
+				return x
+			}
+		case *fyne.Container:
+			if b := findButton(x.Objects, text); b != nil {
+				return b
+			}
+		}
+	}
+	return nil
+}
+
+// #62: "+ handler" reuses the event's call action instead of adding one per
+// click (each duplicate would fire the handler again).
+func TestAddHandlerReusesCallAction(t *testing.T) {
+	e, _ := newTestEditor(t)
+	var opened []string
+	e.opts.EditHandler = func(_, handler string) { opened = append(opened, handler) }
+	e.Select("door")
+	e.inspector.refresh()
+	for range 2 {
+		add := findButton(e.inspector.box.Objects, "+ handler")
+		if add == nil {
+			t.Fatal("no + handler button")
+		}
+		test.Tap(add)
+	}
+	n, _ := e.doc.Find("door")
+	var calls int
+	for _, acts := range n.On {
+		for _, a := range acts {
+			if a.Do == "call" {
+				calls++
+			}
+		}
+	}
+	if calls != 1 || len(opened) != 2 || opened[0] != opened[1] {
+		t.Fatalf("calls = %d, opened = %v, on = %+v", calls, opened, n.On)
+	}
+}
+
+// #62: handler names filled in by BeforeSave are an undoable edit, so redo
+// cannot bring back the empty name and the hook never mutates the editor's
+// document behind the history.
+func TestBeforeSaveChangesAreUndoable(t *testing.T) {
+	e, _ := newTestEditor(t)
+	e.applyEdit("call", "", scene.SetFieldOp("door", "on", nil,
+		map[string][]scene.Action{"tapped": {{Do: "call"}}}))
+	e.opts.BeforeSave = func(doc *scene.Document) (bool, error) {
+		if doc == e.doc {
+			t.Error("BeforeSave got the live document")
+		}
+		n, _ := doc.Find("door")
+		n.On["tapped"][0].Handler = "on_door_tapped"
+		return true, nil
+	}
+	sig := newSaveSignal(e)
+	e.Save()
+	sig.wait(t, 1)
+	handler := func() string {
+		n, _ := e.doc.Find("door")
+		if len(n.On["tapped"]) == 0 {
+			return "<none>"
+		}
+		return n.On["tapped"][0].Handler
+	}
+	if got := handler(); got != "on_door_tapped" {
+		t.Fatalf("after save handler = %q", got)
+	}
+	if e.hist.Dirty() {
+		t.Fatal("history dirty after save")
+	}
+	e.undo()
+	if got := handler(); got != "" {
+		t.Fatalf("after undo handler = %q", got)
+	}
+	e.redo()
+	if got := handler(); got != "on_door_tapped" {
+		t.Fatalf("after redo handler = %q", got)
+	}
+}
+
+// A hook that changes more than event actions aborts the save.
+func TestBeforeSaveRejectsOtherChanges(t *testing.T) {
+	e, store := newTestEditor(t)
+	e.opts.BeforeSave = func(doc *scene.Document) (bool, error) {
+		doc.Title = "changed"
+		return true, nil
+	}
+	e.Save()
+	if _, err := store.Load(context.Background(), "mem://scene"); err == nil {
+		t.Fatal("document saved")
+	}
+	if e.doc.Title == "changed" {
+		t.Fatal("live document changed")
+	}
+}

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"image/color"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -610,7 +611,7 @@ func (i *inspector) events(n *scene.Node) {
 					actions := append([]scene.Action(nil), cur.On[ev]...)
 					handler := actions[idx].Handler
 					if handler == "" {
-						handler = handlers.HandlerName(n.ID, ev)
+						handler = handlers.NameFor(i.ed.doc, n.ID, ev)
 						actions[idx].Handler = handler
 						i.setOn(ev, n, actions, true)
 					}
@@ -653,10 +654,22 @@ func (i *inspector) events(n *scene.Node) {
 			if !ok {
 				return
 			}
-			handler := handlers.HandlerName(n.ID, addEv)
+			// Reuse a call action for the conventional handler (or an unnamed
+			// one) instead of adding a duplicate: each duplicate would run
+			// the handler once more per event.
+			handler := handlers.NameFor(i.ed.doc, n.ID, addEv)
 			actions := append([]scene.Action(nil), cur.On[addEv]...)
-			actions = append(actions, scene.Action{Do: "call", Handler: handler})
-			i.setOn(addEv, n, actions, true)
+			idx := slices.IndexFunc(actions, func(a scene.Action) bool {
+				return a.Do == "call" && (a.Handler == handler || a.Handler == "")
+			})
+			switch {
+			case idx < 0:
+				actions = append(actions, scene.Action{Do: "call", Handler: handler})
+				i.setOn(addEv, n, actions, true)
+			case actions[idx].Handler == "":
+				actions[idx].Handler = handler
+				i.setOn(addEv, n, actions, true)
+			}
 			if i.ed.opts.EditHandler != nil {
 				i.ed.opts.EditHandler(i.ed.doc.Script, handler)
 				return

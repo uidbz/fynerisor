@@ -84,15 +84,17 @@ func main() {
 			log.Printf("[designer] edit %s: %s", script, handler)
 		},
 		BeforeSave: func(doc *scene.Document) (bool, error) {
+			// ApplySidecar names empty call handlers even when it cannot
+			// rewrite the sidecar, so changed is valid with these errors.
 			rep, changed, err := handlers.ApplySidecar(doc, ref)
-			if err != nil {
-				if errors.Is(err, os.ErrNotExist) || errors.Is(err, handlers.ErrRemoteSidecar) {
-					return false, nil
-				}
+			if err != nil && !errors.Is(err, os.ErrNotExist) && !errors.Is(err, handlers.ErrRemoteSidecar) {
 				return false, err
 			}
 			if len(rep.Created) > 0 || len(rep.Converted) > 0 {
 				log.Printf("[designer] handlers: created %v, converted %v", rep.Created, rep.Converted)
+			}
+			for _, w := range rep.Warnings {
+				log.Printf("[designer] handlers: %s", w)
 			}
 			return changed, nil
 		},
