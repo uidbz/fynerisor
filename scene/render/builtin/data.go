@@ -263,38 +263,42 @@ type tableLive struct {
 }
 
 func newTable(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
-	pageSize := int(bc.Num(n, "pageSize", 10))
-	if pageSize < 1 {
-		pageSize = 10
-	}
-	tw := tablewidget.NewTableWidget(bc.Str(n, "title", ""), pageSize)
+	tw := tablewidget.NewTableWidget(bc.Str(n, "title", ""), tablePageSize(bc, n))
 	tw.SetErrorSink(func(what string, err error) {
 		bc.Statusf("table %s: %v", n.ID, err)
 	})
 	l := &tableLive{bc: bc, tw: tw, cols: bc.List(n, "columns"), id: n.ID}
 	tw.RowCount = func() int { return len(l.rows) }
 	tw.Data = l.page
-	tw.SetOnClick(func(row, col int) {
-		text := ""
-		if row >= 0 && row < len(l.rows) && col >= 0 && col < len(l.rows[row]) {
-			text = l.rows[row][col]
+	// The tapped cell knows what it displays (text) and, through the row
+	// IDs page() assigns, which source row it is — the displayed row is
+	// page-local and shifts with filtering and sorting.
+	tw.GetFlexTable().OnClick = func(c *tablewidget.TableCell) {
+		dataRow := -1
+		if r, err := strconv.Atoi(c.RowID()); err == nil {
+			dataRow = r
 		}
 		bc.Emit(l.id, "cellTapped", map[string]any{
-			"row": row, "col": col, "column": l.colName(col), "text": text,
+			"row": c.Id.Row, "col": c.Id.Col, "column": l.colName(c.Id.Col),
+			"text": c.Text(), "dataRow": dataRow,
 		})
-	})
+	}
 	return l, nil
+}
+
+// tablePageSize reads pageSize clamped to the spec range (1..1000).
+func tablePageSize(bc *render.BuildContext, n *scene.Node) int {
+	return min(max(int(bc.Num(n, "pageSize", 10)), 1), 1000)
 }
 
 func (l *tableLive) Object() fyne.CanvasObject { return l.tw.Instance }
 
-func (l *tableLive) Update(n *scene.Node, changed scene.Fields) error {
-	// Title and page size build the widget chrome; changing them rebuilds.
-	if changed["title"] || changed["pageSize"] {
-		return render.ErrRebuild
-	}
+func (l *tableLive) Update(n *scene.Node, _ scene.Fields) error {
+	// Title and page size update in place: a rebuild would drop the rows
+	// the script fed with SetRows.
+	l.tw.Title = l.bc.Str(n, "title", "")
 	l.cols = l.bc.List(n, "columns")
-	l.tw.Refresh()
+	l.tw.SetPageSize(tablePageSize(l.bc, n)) // refreshes
 	return nil
 }
 
@@ -310,9 +314,9 @@ func (l *tableLive) colName(col int) string {
 // columnNames resolves the column set for one page of TableData. Without
 // declared columns the data's own width gets numbered names, which keeps
 // AddStringRow's column alignment well-defined.
-func (l *tableLive) columnNames(row []string) []string {
-	out := make([]string, len(row))
-	for i := range row {
+func (l *tableLive) columnNames(width int) []string {
+	out := make([]string, width)
+	for i := range out {
 		if i < len(l.cols) {
 			out[i] = l.cols[i]
 		} else {
@@ -324,17 +328,31 @@ func (l *tableLive) columnNames(row []string) []string {
 
 // page builds one page of TableData (the TableWidget pulls it on Refresh).
 // Sorting operates per page snapshot, matching the classic script tables.
+// Every row gets its absolute index as row ID, so a tap can name the source
+// row after filtering or sorting, and rows are padded to one width so short
+// rows keep later columns aligned.
 func (l *tableLive) page(offset, limit int) *tablewidget.TableData {
 	td := tablewidget.NewTableData(l.id)
-	if offset < 0 {
-		offset = 0
-	}
+	offset = min(max(offset, 0), len(l.rows))
 	end := offset + limit
 	if limit < 1 || end > len(l.rows) {
 		end = len(l.rows)
 	}
-	for _, r := range l.rows[offset:end] {
-		td.AddStringRow(l.columnNames(r), r)
+	rows := l.rows[offset:end]
+	width := len(l.cols)
+	for _, r := range rows {
+		width = max(width, len(r))
+	}
+	if width == 0 {
+		return td
+	}
+	names := l.columnNames(width)
+	cells := make([]string, width)
+	for i, r := range rows {
+		clear(cells)
+		copy(cells, r)
+		td.AddStringRow(names, cells)
+		td.RowIds = append(td.RowIds, strconv.Itoa(offset+i))
 	}
 	return td
 }

@@ -213,6 +213,10 @@ func (ts *tableSorter) Swap(i, j int) {
 		col[i].StringValue, col[j].StringValue = col[j].StringValue, col[i].StringValue
 		col[i].cellType, col[j].cellType = col[j].cellType, col[i].cellType
 	}
+	// Row IDs identify rows, so they move with them.
+	if ids := ts.tableData.RowIds; len(ids) == ts.tableData.rowCount {
+		ids[i], ids[j] = ids[j], ids[i]
+	}
 }
 
 func (ts *tableSorter) Less(i, j int) bool {

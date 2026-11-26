@@ -378,7 +378,7 @@ func Specs() []scene.ComponentSpec {
 				p("columns", "Columns", "Data", scene.PropOptions, nil),
 				num("pageSize", "Rows per page", "Data", 10, 1, 1000),
 			},
-			Events: []scene.EventSpec{ev("cellTapped", "A cell was tapped; evt fields: row, col (page-local) and text.")},
+			Events: []scene.EventSpec{ev("cellTapped", "A cell was tapped; evt fields: text (the displayed cell), column, row and col (displayed position on the current page) and dataRow (index into the SetRows rows, for node.SetCell; it follows filtering and sorting).")},
 		},
 		{
 			Type: "log", Title: "Log", Category: "Data", Icon: "file",
