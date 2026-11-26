@@ -8,6 +8,7 @@ import (
 	"os/exec"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
+	"github.com/uidbz/fynerisor/modules/internal/hidewindow"
 )
 
 func CommandFunc(ctx context.Context, args ...object.Object) (object.Object, error) {
@@ -113,7 +114,7 @@ func Exec(ctx context.Context, args ...object.Object) (object.Object, error) {
 	}
 
 	cmd := exec.CommandContext(ctx, program, optArgs...)
-	hideWindow(cmd)
+	hidewindow.Apply(cmd)
 
 	mapOffset := 2
 	if wasList {
