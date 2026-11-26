@@ -113,6 +113,7 @@ func Exec(ctx context.Context, args ...object.Object) (object.Object, error) {
 	}
 
 	cmd := exec.CommandContext(ctx, program, optArgs...)
+	hideWindow(cmd)
 
 	mapOffset := 2
 	if wasList {

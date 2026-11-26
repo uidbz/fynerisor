@@ -1,4 +1,14 @@
 ## [Unreleased]
+### Fixed
+- `strings.trim(s)` (one argument) now trims whitespace instead of erroring.
+  The strict 2-argument-only form silently killed whole GUI event handlers
+  over a bare `trim(s)` call.
+- Failing `page.Bind` handlers are reported to the scene page's status
+  callback instead of vanishing into stderr. On GUI builds (no stderr) the
+  old behaviour was a dead button with no message.
+- Spawned child processes (`exec` module) start with `HideWindow` on
+  Windows: console-subsystem children no longer flash a black window.
+
 
 ### Fixed
 - scene form: submit-text/cancel-text props now apply at initial build (the

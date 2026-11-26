@@ -85,13 +85,19 @@ func trimSuffix(ctx context.Context, args ...object.Object) (object.Object, erro
 }
 
 func trim(ctx context.Context, args ...object.Object) (object.Object, error) {
-	if len(args) != 2 {
-		return nil, object.Errorf("strings.trim: expected 2 arguments, got %d", len(args))
+	if len(args) != 1 && len(args) != 2 {
+		return nil, object.Errorf("strings.trim: expected 1 or 2 arguments, got %d", len(args))
 	}
 
 	s, err := object.AsString(args[0])
 	if err != nil {
 		return nil, err
+	}
+	if len(args) == 1 {
+		// One argument trims whitespace, matching Risor's stdlib strings.trim.
+		// Requiring a cutset here used to kill whole event handlers over a
+		// bare trim(s) call, and the error was invisible in GUI builds.
+		return object.NewString(strings.TrimSpace(s)), nil
 	}
 
 	cutset, err := object.AsString(args[1])

@@ -218,5 +218,6 @@ func (c *Command) Attrs() []object.AttrSpec {
 }
 
 func NewCommand(cmd *exec.Cmd) *Command {
+	hideWindow(cmd)
 	return &Command{value: cmd}
 }

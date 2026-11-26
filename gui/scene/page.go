@@ -115,6 +115,14 @@ func (p *Page) bind(ctx context.Context, m *object.Map) error {
 		if err != nil {
 			return err
 		}
+		// Handler failures must be visible in the app's own UI: GUI builds
+		// have no stderr, and a dead button with no message is how the
+		// platepilot silent-failure bug shipped. Route failures to Status.
+		if p.cfg.Status != nil {
+			cb.OnError(func(err error) {
+				p.cfg.Status("handler " + name + ": " + err.Error())
+			})
+		}
 		p.handlers[name] = cb
 	}
 	p.bound = true
