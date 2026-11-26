@@ -305,11 +305,14 @@ func newEntry(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
 		bc.Emit(n.ID, "submitted", map[string]any{"value": s})
 	}
 	multiline, password := bc.Bool(n, "multiline", false), bc.Bool(n, "password", false)
-	return newLeaf(entry, func(n *scene.Node, _ scene.Fields) error {
+	return newLeaf(entry, func(n *scene.Node, f scene.Fields) error {
+		changed := fields(f)
 		if bc.Bool(n, "multiline", false) != multiline || bc.Bool(n, "password", false) != password {
 			return render.ErrRebuild
 		}
-		if entry.Text != bc.Str(n, "text", "") {
+		// Only an explicit text change may replace what the user typed:
+		// updating another prop (a bound placeholder) must not reset it.
+		if changed.has("text") && entry.Text != bc.Str(n, "text", "") {
 			entry.SetText(bc.Str(n, "text", ""))
 		}
 		entry.SetPlaceHolder(bc.Str(n, "placeholder", ""))
@@ -322,9 +325,11 @@ func newCheck(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
 		bc.Emit(n.ID, "changed", map[string]any{"value": on})
 	})
 	c.SetChecked(bc.Bool(n, "checked", false))
-	return newLeaf(c, func(n *scene.Node, _ scene.Fields) error {
+	return newLeaf(c, func(n *scene.Node, f scene.Fields) error {
 		c.Text = bc.Str(n, "text", "Check")
-		c.SetChecked(bc.Bool(n, "checked", false))
+		if fields(f).has("checked") {
+			c.SetChecked(bc.Bool(n, "checked", false))
+		}
 		c.Refresh()
 		return nil
 	}), nil
@@ -336,9 +341,11 @@ func newSelect(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
 		bc.Emit(n.ID, "changed", map[string]any{"value": s})
 	})
 	sel.SetSelected(bc.Str(n, "selected", ""))
-	return newLeaf(sel, func(n *scene.Node, _ scene.Fields) error {
+	return newLeaf(sel, func(n *scene.Node, f scene.Fields) error {
 		sel.Options = bc.List(n, "options")
-		sel.SetSelected(bc.Str(n, "selected", ""))
+		if fields(f).has("selected", "options") {
+			sel.SetSelected(bc.Str(n, "selected", ""))
+		}
 		sel.Refresh()
 		return nil
 	}), nil
@@ -349,9 +356,11 @@ func newRadio(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
 		bc.Emit(n.ID, "changed", map[string]any{"value": s})
 	})
 	rg.SetSelected(bc.Str(n, "selected", ""))
-	return newLeaf(rg, func(n *scene.Node, _ scene.Fields) error {
+	return newLeaf(rg, func(n *scene.Node, f scene.Fields) error {
 		rg.Options = bc.List(n, "options")
-		rg.SetSelected(bc.Str(n, "selected", ""))
+		if fields(f).has("selected", "options") {
+			rg.SetSelected(bc.Str(n, "selected", ""))
+		}
 		rg.Refresh()
 		return nil
 	}), nil
@@ -366,11 +375,13 @@ func newSlider(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
 	s.OnChanged = func(v float64) {
 		bc.Emit(n.ID, "changed", map[string]any{"value": v})
 	}
-	return newLeaf(s, func(n *scene.Node, _ scene.Fields) error {
+	return newLeaf(s, func(n *scene.Node, f scene.Fields) error {
 		s.Min = bc.Num(n, "min", 0)
 		s.Max = bc.Num(n, "max", 100)
 		s.Step = bc.Num(n, "step", 1)
-		s.SetValue(bc.Num(n, "value", 0))
+		if fields(f).has("value") {
+			s.SetValue(bc.Num(n, "value", 0))
+		}
 		s.Refresh()
 		return nil
 	}), nil

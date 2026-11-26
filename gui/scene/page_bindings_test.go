@@ -28,3 +28,17 @@ func TestBindingExpressionsBuiltinsAndBraces(t *testing.T) {
 		t.Fatalf("label = %q, want %q (stderr %q)", got, "3 / a", stderr.String())
 	}
 }
+
+// Two ${} props on one node both resolve (#63: each RuntimeSet re-applied the
+// other's raw template from the document).
+func TestTwoBindingsOnOneNode(t *testing.T) {
+	var stderr syncBuffer
+	doc := strings.Replace(sampleScene, `"props": {"text": "Alice"}`, `"props": {"text": "${a}", "placeholder": "${b}"}`, 1)
+	view := runSceneDoc(t, doc, guiscene.Config{}, &stderr,
+		`page.BindValues(() => ({a: "A", b: "B"}))`)
+	obj, _ := view.LiveObject("name")
+	e := obj.(*widget.Entry)
+	if e.Text != "A" || e.PlaceHolder != "B" {
+		t.Fatalf("entry text=%q placeholder=%q, want A/B (stderr %q)", e.Text, e.PlaceHolder, stderr.String())
+	}
+}

@@ -213,11 +213,10 @@ func (p *Page) refreshBindings(ctx context.Context) {
 		}
 		vals[k] = gv
 	}
-	type update struct {
-		id, prop string
-		value    any
-	}
-	var updates []update
+	// One update per node, so all of a node's bound props are applied
+	// together (render.View keeps them as runtime props).
+	var order []string
+	updates := make(map[string]map[string]any)
 	env := newBindEnv(vals)
 	for _, b := range binds {
 		v, err := p.exprs.resolve(ctx, b.segs, b.kind, env)
@@ -225,14 +224,18 @@ func (p *Page) refreshBindings(ctx context.Context) {
 			p.fail(ctx, cb, "page.BindValues", fmt.Errorf("binding %s.%s: %w", b.node, b.prop, err))
 			continue
 		}
-		updates = append(updates, update{id: b.node, prop: b.prop, value: v})
+		if updates[b.node] == nil {
+			updates[b.node] = make(map[string]any)
+			order = append(order, b.node)
+		}
+		updates[b.node][b.prop] = v
 	}
-	if len(updates) == 0 {
+	if len(order) == 0 {
 		return
 	}
 	_ = guithread.DoAndWaitContext(ctx, func() {
-		for _, u := range updates {
-			p.view.RuntimeSet(u.id, u.prop, u.value)
+		for _, id := range order {
+			p.view.RuntimeSetProps(id, updates[id])
 		}
 	})
 }

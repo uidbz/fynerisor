@@ -3,6 +3,7 @@ package render
 import (
 	"context"
 	"fmt"
+	"maps"
 	"sync"
 
 	"fyne.io/fyne/v2"
@@ -46,6 +47,11 @@ type View struct {
 	parents   map[string]string
 	rects     map[string]Rect
 	runtimePl map[string]scene.Place
+	// runtimeProps holds property values set at runtime (RuntimeSet,
+	// bindings) per node. Every build and update reads the document node
+	// with these laid over it (effective), so one runtime value never
+	// clobbers another and a rebuild keeps them.
+	runtimeProps map[string]map[string]any
 
 	mu        sync.Mutex
 	listeners map[string]map[string][]func(map[string]any)
@@ -76,6 +82,8 @@ func NewView(doc *scene.Document, opts Options) *View {
 		runtimePl: make(map[string]scene.Place),
 		listeners: make(map[string]map[string][]func(map[string]any)),
 		ctx:       opts.Context,
+
+		runtimeProps: make(map[string]map[string]any),
 	}
 	v.engine = &Engine{view: v}
 	v.ExtendBaseWidget(v)
@@ -96,6 +104,7 @@ func (v *View) Doc() *scene.Document { return v.doc }
 func (v *View) LoadDocument(doc *scene.Document) {
 	v.doc = doc
 	v.runtimePl = make(map[string]scene.Place)
+	v.runtimeProps = make(map[string]map[string]any)
 	v.mu.Lock()
 	v.listeners = make(map[string]map[string][]func(map[string]any))
 	v.mu.Unlock()
@@ -380,6 +389,15 @@ func (v *View) IsVisible(id string) bool {
 // RuntimeSet changes a property at runtime without touching the document. It
 // is what declarative `set` actions and node.Set use.
 func (v *View) RuntimeSet(id, prop string, value any) bool {
+	return v.RuntimeSetProps(id, map[string]any{prop: value})
+}
+
+// RuntimeSetProps changes several properties of one node at runtime in one
+// update. Runtime values persist for the life of the view: later runtime
+// sets, document edits of other properties and rebuilds (ErrRebuild,
+// SetMode) all render the document node with them laid over it. A document
+// edit of the same property (Apply) replaces the runtime value.
+func (v *View) RuntimeSetProps(id string, props map[string]any) bool {
 	n, ok := v.doc.Find(id)
 	if !ok {
 		return false
@@ -388,17 +406,51 @@ func (v *View) RuntimeSet(id, prop string, value any) bool {
 	if !ok {
 		return false
 	}
-	clone := n.Clone()
-	clone.SetProp(prop, value)
-	if err := l.Update(clone, scene.Fields{prop: true}); err != nil {
-		if err == ErrRebuild {
-			_ = v.rebuildNode(id)
-			return true
+	over := v.runtimeProps[id]
+	if over == nil {
+		over = make(map[string]any, len(props))
+		v.runtimeProps[id] = over
+	}
+	prev := make(map[string]any, len(props))
+	fields := make(scene.Fields, len(props))
+	for k, val := range props {
+		if old, had := over[k]; had {
+			prev[k] = old
+		}
+		over[k] = val
+		fields[k] = true
+	}
+	err := l.Update(v.effective(n), fields)
+	if err == ErrRebuild {
+		return v.rebuildNode(id) == nil
+	}
+	if err != nil {
+		for k := range props {
+			if old, had := prev[k]; had {
+				over[k] = old
+			} else {
+				delete(over, k)
+			}
 		}
 		return false
 	}
 	l.Object().Refresh()
 	return true
+}
+
+// effective returns n as rendered: the document node with its runtime props
+// laid over it. Without runtime props it is n itself. The copy is shallow
+// (children, actions and style are shared); components only read it.
+func (v *View) effective(n *scene.Node) *scene.Node {
+	over := v.runtimeProps[n.ID]
+	if len(over) == 0 {
+		return n
+	}
+	cp := *n
+	cp.Props = make(map[string]any, len(n.Props)+len(over))
+	maps.Copy(cp.Props, n.Props)
+	maps.Copy(cp.Props, over)
+	return &cp
 }
 
 // Apply applies document changes to the live tree. It is the incremental path
@@ -413,6 +465,12 @@ func (v *View) Apply(changes []scene.Change) error {
 				}
 				continue
 			}
+			// A document edit of a property replaces its runtime value.
+			if over := v.runtimeProps[ch.Node]; over != nil {
+				for k := range ch.Fields {
+					delete(over, k)
+				}
+			}
 			l, ok := v.lives[ch.Node]
 			if !ok {
 				continue
@@ -421,7 +479,7 @@ func (v *View) Apply(changes []scene.Change) error {
 			if !ok {
 				continue
 			}
-			if err := l.Update(n, ch.Fields); err != nil && err != ErrRebuild {
+			if err := l.Update(v.effective(n), ch.Fields); err != nil && err != ErrRebuild {
 				return err
 			} else if err == ErrRebuild {
 				if err := v.rebuildNode(ch.Node); err != nil {
@@ -473,6 +531,12 @@ func (v *View) Apply(changes []scene.Change) error {
 			}
 			if err := cont.Remove(child); err != nil {
 				return err
+			}
+			if ch.Subtree != nil { // the document no longer has the node
+				ch.Subtree.Walk(func(x *scene.Node) bool {
+					delete(v.runtimeProps, x.ID)
+					return true
+				})
 			}
 			v.unregister(ch.Node)
 
@@ -550,7 +614,7 @@ func (v *View) build(n *scene.Node, parent string) (Live, error) {
 		View:    v,
 		emit:    v.EmitEvent,
 	}
-	live, err := v.reg.Build(bc, n)
+	live, err := v.reg.Build(bc, v.effective(n))
 	if err != nil {
 		return nil, err
 	}
@@ -579,6 +643,11 @@ func (v *View) rebuildNode(id string) error {
 	n, ok := v.doc.Find(id)
 	if !ok {
 		return fmt.Errorf("scene/render: node %q not found", id)
+	}
+	if n == v.doc.Root {
+		// The root has no parent container to re-insert into.
+		v.rebuild()
+		return v.buildErr
 	}
 	parentID := v.parents[id]
 	cont, _ := v.lives[parentID].(ContainerLive)
