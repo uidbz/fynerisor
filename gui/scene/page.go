@@ -3,6 +3,7 @@ package scene
 import (
 	"context"
 	"fmt"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -115,14 +116,11 @@ func (p *Page) bind(ctx context.Context, m *object.Map) error {
 		if err != nil {
 			return err
 		}
-		// Handler failures must be visible in the app's own UI: GUI builds
-		// have no stderr, and a dead button with no message is how the
-		// platepilot silent-failure bug shipped. Route failures to Status.
-		if p.cfg.Status != nil {
-			cb.OnError(func(err error) {
-				p.cfg.Status("handler " + name + ": " + err.Error())
-			})
-		}
+		// Handler failures must be visible: GUI builds have no stderr, and a
+		// dead button with no message is how the platepilot silent-failure
+		// bug shipped. fail logs to the run's sink and shows the status.
+		label := "handler " + name
+		cb.OnError(func(err error) { p.fail(ctx, cb, label, err) })
 		p.handlers[name] = cb
 	}
 	p.bound = true
@@ -131,9 +129,7 @@ func (p *Page) bind(ctx context.Context, m *object.Map) error {
 			cb.FireThen(func(ctx context.Context) { p.refreshBindings(ctx) }, objectFromAny(call.evt))
 			continue
 		}
-		if p.cfg.Status != nil {
-			p.cfg.Status(fmt.Sprintf("page.Bind: no handler %q for a buffered action", call.handler))
-		}
+		p.fail(ctx, nil, "page.Bind", fmt.Errorf("no handler %q for a buffered action", call.handler))
 	}
 	p.pending = nil
 	return nil
@@ -198,19 +194,19 @@ func (p *Page) refreshBindings(ctx context.Context) {
 	}
 	obj, err := cb.Call()
 	if err != nil {
-		p.bindingError(err)
+		p.fail(ctx, cb, "page.BindValues", err)
 		return
 	}
 	m, ok := obj.(*object.Map)
 	if !ok {
-		p.bindingError(fmt.Errorf("page.BindValues must return a map, got %s", obj.Type()))
+		p.fail(ctx, cb, "page.BindValues", fmt.Errorf("page.BindValues must return a map, got %s", obj.Type()))
 		return
 	}
 	vals := make(map[string]any, len(m.Value()))
 	for k, v := range m.Value() {
 		gv, err := convert.ToGo(v)
 		if err != nil {
-			p.bindingError(fmt.Errorf("page.BindValues[%s]: %w", k, err))
+			p.fail(ctx, cb, "page.BindValues", fmt.Errorf("page.BindValues[%s]: %w", k, err))
 			continue
 		}
 		vals[k] = gv
@@ -223,7 +219,7 @@ func (p *Page) refreshBindings(ctx context.Context) {
 	for _, b := range binds {
 		v, err := resolveBinding(ctx, b.template, b.kind, vals)
 		if err != nil {
-			p.bindingError(fmt.Errorf("binding %s.%s: %w", b.node, b.prop, err))
+			p.fail(ctx, cb, "page.BindValues", fmt.Errorf("binding %s.%s: %w", b.node, b.prop, err))
 			continue
 		}
 		updates = append(updates, update{id: b.node, prop: b.prop, value: v})
@@ -238,9 +234,31 @@ func (p *Page) refreshBindings(ctx context.Context) {
 	})
 }
 
-func (p *Page) bindingError(err error) {
+// fail surfaces a script-side failure. It always goes to the run's error
+// sink (the window's stderr or error handler; process stderr without a run),
+// so console builds keep a full log even when the host has a status line,
+// and hosts without Config.Status still see it. When Status is set it also
+// gets the first line, since a status bar shows one line and panics carry a
+// multi-line stack trace. cb, when non-nil, names the failing callback in
+// the log. Quiet errors (VM busy, stopped run) are dropped.
+func (p *Page) fail(ctx context.Context, cb *vmexec.Callback, what string, err error) {
+	if err == nil || vmexec.Quiet(err) {
+		return
+	}
+	switch run := vmexec.FromContext(ctx); {
+	case cb != nil:
+		cb.Report(err)
+	case run != nil:
+		run.Report(what, err)
+	case ctx == nil || ctx.Err() == nil:
+		fmt.Fprintf(os.Stderr, "fynerisor: %s: %v\n", what, err)
+	}
 	if p.cfg.Status != nil {
-		p.cfg.Status("page.BindValues: " + err.Error())
+		msg := err.Error()
+		if i := strings.IndexAny(msg, "\r\n"); i >= 0 {
+			msg = msg[:i]
+		}
+		p.cfg.Status(what + ": " + msg)
 	}
 }
 
@@ -732,6 +750,8 @@ func init() {
 			if err != nil {
 				return nil, err
 			}
+			label := "listener " + n.id + "." + event
+			cb.OnError(func(err error) { n.page.fail(ctx, cb, label, err) })
 			off := n.page.view.On(n.id, event, func(evt map[string]any) {
 				cb.FireThen(func(ctx context.Context) { n.page.refreshBindings(ctx) }, objectFromAny(evt))
 			})
