@@ -65,8 +65,19 @@ jobs:
       - name: Install Fyne build dependencies
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgl1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev
 
+      # "@v2" would be a semver prefix query (latest v2.* tag), not the
+      # branch: resolve the branch head commit and pin that instead.
       - name: Upgrade to the risor v2 branch head
-        run: go get github.com/deepnoodle-ai/risor/v2@v2
+        run: |
+          set -euo pipefail
+          sha=$(git ls-remote https://github.com/deepnoodle-ai/risor refs/heads/v2 | cut -f1)
+          if [ -z "$sha" ]; then
+            echo "could not resolve deepnoodle-ai/risor refs/heads/v2" >&2
+            exit 1
+          fi
+          echo "risor v2 branch head: $sha"
+          go get "github.com/deepnoodle-ai/risor/v2@$sha"
+          go list -m github.com/deepnoodle-ai/risor/v2
 
       - name: build, vet, test
         run: |

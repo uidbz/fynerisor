@@ -9,6 +9,7 @@ import (
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
+	"github.com/uidbz/fynerisor/modules/internal/hidewindow"
 )
 
 type Command struct {
@@ -217,7 +218,12 @@ func (c *Command) Attrs() []object.AttrSpec {
 	}
 }
 
+// NewCommand wraps cmd as a Risor command object. It mutates cmd: on a
+// Windows GUI host (no console) it ORs CREATE_NO_WINDOW into
+// cmd.SysProcAttr.CreationFlags, allocating SysProcAttr if nil, so
+// console-subsystem children do not flash a console window. Other
+// SysProcAttr fields set by the caller are preserved. No-op elsewhere.
 func NewCommand(cmd *exec.Cmd) *Command {
-	hideWindow(cmd)
+	hidewindow.Apply(cmd)
 	return &Command{value: cmd}
 }

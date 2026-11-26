@@ -287,6 +287,33 @@ func (g *BarChart) getAttrUI(name string) (object.Object, bool) {
 
 // --- shared argument helpers --------------------------------------------------
 
+// parseHLineOpts validates the optional (color, lineWidth) arguments of
+// BarChart.AddHLine and LineChart.AddHLine, returning the defaults (red,
+// 1.5) for omitted ones. It touches no UI state so callers run it on the
+// calling goroutine before scheduling the mutation on the GUI thread.
+func parseHLineOpts(opts []object.Object) (color.Color, float32, error) {
+	var col color.Color = colorRed
+	width := float32(1.5)
+	if len(opts) > 0 {
+		c, err := colorArg(opts[0])
+		if err != nil {
+			return nil, 0, fmt.Errorf("AddHLine: %w", err)
+		}
+		col = c
+	}
+	if len(opts) > 1 {
+		f, err := object.AsFloat(opts[1])
+		if err != nil {
+			return nil, 0, fmt.Errorf("AddHLine: line width must be a number (got %s)", opts[1].Type())
+		}
+		if f < 0 || f > 20 {
+			return nil, 0, fmt.Errorf("chart error: AddHLine: line width must be in [0, 20] (got %v)", f)
+		}
+		width = float32(f)
+	}
+	return col, width, nil
+}
+
 func colorArg(o object.Object) (color.Color, error) {
 	if s, ok := o.(*object.String); ok {
 		return risorcanvas.ParseColor(s.Value())
@@ -518,36 +545,18 @@ func init() {
 			if err != nil {
 				return nil, err
 			}
-			var derr error
+			// Validate on the calling goroutine: guithread.Do is
+			// asynchronous off the main goroutine, so an error set inside
+			// the closure would be lost (and racy).
+			col, width, err := parseHLineOpts(args[1:])
+			if err != nil {
+				return nil, err
+			}
 			guithread.Do(func() {
-				hl := hLine{y: yv, col: colorRed, width: 1.5}
-				if len(args) > 1 {
-					col, cerr := colorArg(args[1])
-					if cerr != nil {
-						derr = fmt.Errorf("AddHLine: %w", cerr)
-						return
-					}
-					hl.col = col
-				}
-				if len(args) > 2 {
-					f, ferr := object.AsFloat(args[2])
-					if ferr != nil {
-						derr = fmt.Errorf("AddHLine: line width must be a number (got %s)", args[2].Type())
-						return
-					}
-					if f < 0 || f > 20 {
-						derr = fmt.Errorf("chart error: AddHLine: line width must be in [0, 20] (got %v)", f)
-						return
-					}
-					hl.width = float32(f)
-				}
-				g.hLines = append(g.hLines, hl)
+				g.hLines = append(g.hLines, hLine{y: yv, col: col, width: width})
 				g.recomputeDomains()
 				g.refresh()
 			})
-			if derr != nil {
-				return nil, derr
-			}
 			return object.Nil, nil
 		})
 	barChartAttrs.Define("RemoveHLines").
