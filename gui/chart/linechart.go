@@ -344,30 +344,14 @@ func init() {
 			if err != nil {
 				return nil, err
 			}
+			col, width, err := parseHLineOpts(args[1:])
+			if err != nil {
+				return nil, err
+			}
 			var idx int
 			if derr := guithread.DoAndWaitContext(ctx, func() {
 				x0, x1 := lineXSpan(g)
-				sr := &lineSeries{col: colorRed, width: 1.5}
-				if len(args) > 1 {
-					col, cerr := colorArg(args[1])
-					if cerr != nil {
-						err = fmt.Errorf("AddHLine: %w", cerr)
-						return
-					}
-					sr.col = col
-				}
-				if len(args) > 2 {
-					f, ferr := object.AsFloat(args[2])
-					if ferr != nil {
-						err = fmt.Errorf("AddHLine: line width must be a number (got %s)", args[2].Type())
-						return
-					}
-					if f < 0 || f > 20 {
-						err = fmt.Errorf("chart error: AddHLine: line width must be in [0, 20] (got %v)", f)
-						return
-					}
-					sr.width = float32(f)
-				}
+				sr := &lineSeries{col: col, width: width}
 				sr.xvals, sr.yvals = []float64{x0, x1}, []float64{yv, yv}
 				g.series = append(g.series, sr)
 				idx = len(g.series) - 1
@@ -375,9 +359,6 @@ func init() {
 				g.refresh()
 			}); derr != nil {
 				return nil, derr
-			}
-			if err != nil {
-				return nil, err
 			}
 			return object.NewInt(int64(idx)), nil
 		})
