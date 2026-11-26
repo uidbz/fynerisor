@@ -185,13 +185,21 @@ func (ctx *TableWidget) Refresh() {
 		ctx.reportError("table.Refresh", err)
 		return
 	}
+	totalCount := ctx.RowCount()
+	totalPages := (totalCount + ctx.pageSize - 1) / ctx.pageSize
+	// Keep the current page in range: rows can shrink while a later page
+	// is shown, and the page entry accepts any number. An out-of-range
+	// page would ask Data for an offset past the end.
+	if clamped := min(max(page, 1), max(totalPages, 1)); clamped != page {
+		page = clamped
+		ctx.currentPage.Set(page)
+	}
 	ctx.Offset = (page - 1) * ctx.pageSize
 	ctx.Limit = ctx.pageSize // ctx.Offset + ctx.pageSize
 	data := ctx.Data(ctx.Offset, ctx.Limit)
-	totalCount := ctx.RowCount()
 
 	ctx.totalResults.Set(totalCount)
-	ctx.totalPages.Set((totalCount + ctx.pageSize - 1) / ctx.pageSize)
+	ctx.totalPages.Set(totalPages)
 
 	// Before SetData, so the header stack is in place for the refresh it triggers.
 	ctx.table.SetHeaderLevels(ctx.HeaderLevels())
@@ -205,6 +213,13 @@ func (ctx *TableWidget) Refresh() {
 	}
 	//ctx.table.SetColumnWidth(0, 150) // Why was this here?
 	ctx.table.Refresh()
+}
+
+// SetPageSize changes the number of rows per page (minimum 1) and
+// refreshes; the current page is clamped to the new page count.
+func (ctx *TableWidget) SetPageSize(n int) {
+	ctx.pageSize = max(n, 1)
+	ctx.Refresh()
 }
 
 func (ctx *TableWidget) SetColumnWidth(id int, width float32) {
@@ -260,6 +275,11 @@ func (ctx *TableWidget) filter(text string) {
 			ctx.filteredData.AddStringRow(ctx.currentData.Columns, stringRow)
 			// Store mapping: filtered row index -> original row index
 			ctx.filteredData.RowMapping = append(ctx.filteredData.RowMapping, i)
+			// Row IDs follow their rows, so a filtered row still knows
+			// which source row it shows.
+			if len(ctx.currentData.RowIds) == ctx.currentData.RowCount() {
+				ctx.filteredData.RowIds = append(ctx.filteredData.RowIds, ctx.currentData.RowIds[i])
+			}
 		}
 	}
 	if len(ctx.filteredData.Columns) > 1 {

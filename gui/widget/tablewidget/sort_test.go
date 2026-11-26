@@ -116,3 +116,43 @@ func TestSortRaggedColumns(t *testing.T) {
 		t.Errorf("ragged sort wrong order: %v", keys)
 	}
 }
+
+// Row IDs identify rows, so sorting moves them with their rows.
+func TestSortMovesRowIds(t *testing.T) {
+	td := NewTableData("t")
+	td.AddStringRow([]string{"Name"}, []string{"Charlie"})
+	td.AddStringRow([]string{"Name"}, []string{"Alice"})
+	td.AddStringRow([]string{"Name"}, []string{"Bob"})
+	td.RowIds = []string{"c", "a", "b"}
+
+	td.Sort("Name", true)
+	names := columnValues(td, "Name")
+	for i, n := range names {
+		if want := string(n[0] + 'a' - 'A'); td.RowIds[i] != want {
+			t.Fatalf("row %d %s has id %q, want %q (ids %v)", i, n, td.RowIds[i], want, td.RowIds)
+		}
+	}
+}
+
+// Refresh clamps the current page when the row count shrinks below it.
+func TestRefreshClampsCurrentPage(t *testing.T) {
+	tw := NewTableWidget("t", 10)
+	n := 25
+	var offsets []int
+	tw.RowCount = func() int { return n }
+	tw.Data = func(offset, limit int) *TableData {
+		offsets = append(offsets, offset)
+		return NewTableData("t")
+	}
+	tw.Refresh()
+	tw.nextPage()
+	tw.nextPage()
+	n = 3
+	tw.Refresh()
+	if got := offsets[len(offsets)-1]; got != 0 {
+		t.Fatalf("offset after shrink = %d, want 0 (offsets %v)", got, offsets)
+	}
+	if p, _ := tw.currentPage.Get(); p != 1 {
+		t.Fatalf("current page = %d, want 1", p)
+	}
+}

@@ -48,7 +48,14 @@ type Config struct {
 	// Navigator and Opener receive declarative navigation/media actions.
 	Navigator render.Navigator
 	Opener    render.Opener
-	// Status receives runtime messages.
+	// Status receives one-line runtime messages: script failures (page.Bind
+	// handlers, node.On listeners, page.BindValues bindings — first line
+	// only; the full error also goes to the run's error log), declarative
+	// status actions and component diagnostics. It is called from the
+	// script's VM goroutine as well as from the Fyne UI thread, so it must
+	// be goroutine-safe and must not block waiting for either (marshal UI
+	// updates with fyne.Do). Nil is fine: failures still reach the run's
+	// error log (window stderr / error handler).
 	Status func(string)
 }
 

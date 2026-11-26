@@ -131,11 +131,15 @@ In the scene document, use the value name in a property:
 ```
 
 `page.BindValues` takes a closure returning a map. The page re-evaluates the
-map after every handler and updates every property containing `${name}`.
-`${name}` can also be an expression over the map fields, such as
-`${count + 1}`. A property that is exactly one placeholder receives the raw
-value for number/bool props; text props receive its string form.
-`page.RefreshBindings()` forces an update.
+map after every `page.Bind` handler and `node.On` listener and updates every
+property containing `${name}`. `${name}` can also be an expression over the
+map fields and Risor's builtins, such as `${count + 1}` or `${len(items)}`
+(map keys shadow builtins; braces may nest, as in `${ {n}.n }`). A property
+that is exactly one placeholder receives the raw value for number/bool props;
+every other property receives its string form (a list shows as `[a b]`).
+Code that changes state outside a handler, such as a timer, calls
+`page.RefreshBindings()` to update. Until `page.BindValues` runs, the raw
+`${...}` text shows. Expression errors are reported like handler errors.
 
 Current limitations:
 

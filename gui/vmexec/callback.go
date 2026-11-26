@@ -97,7 +97,11 @@ func (c *Callback) FireThen(after func(context.Context), args ...object.Object) 
 	if c.run == nil {
 		if c.ctx.Err() == nil {
 			c.invoke(args)
-			after(c.ctx)
+			// The handler may have stopped the run; re-check like the
+			// queued path below.
+			if c.ctx.Err() == nil {
+				after(c.ctx)
+			}
 		}
 		return
 	}
