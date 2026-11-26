@@ -119,7 +119,8 @@ Each event lists its actions. Every action has a verb, a target (URL for
 adds one. The full verb list is in [SCENES.md](SCENES.md#actions).
 
 “+ handler” adds a `call` action named with the convention
-`on_<node>_<event>`, then asks the host to open it through
+`on_<node>_<event>` (or reuses the event's existing call action for that
+name, so repeated clicks do not add duplicates), then asks the host to open it through
 `designer.Options.EditHandler(script, handler)`. “Edit handler” does the same
 for an existing call. The designer does not edit script text itself; hosts
 open the sidecar in the browser source pane, an external editor, or report the
@@ -127,10 +128,13 @@ target. See [HANDLERS.md](HANDLERS.md).
 
 `designer.Options.BeforeSave(doc) (changed, error)` runs before validation and
 encoding. A host uses it to rewrite the sidecar (standalone handlers, binding
-section) with `scene/handlers.ApplySidecar`. Returning `changed=true`
-forces the save even when the editor history is clean; an error aborts the
-save. The CLI designer and the reference browser host use this for local
-sidecars.
+section) with `scene/handlers.ApplySidecar`. The hook receives a copy of the
+document: changes to node event actions (`on`, e.g. filled-in handler names)
+are applied as one undoable edit; any other change aborts the save. Returning
+`changed=true` forces the save even when the editor history is clean; an
+error aborts the save. The CLI designer and the reference browser host use
+this for local sidecars; a missing, remote or unparsable sidecar does not
+block the save.
 
 ## Clipboard, undo and saving
 

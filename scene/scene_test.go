@@ -450,3 +450,22 @@ func TestPolygonValidation(t *testing.T) {
 		t.Fatal("out-of-range point was accepted")
 	}
 }
+
+// #61: a call handler that is not an identifier is flagged (as a warning:
+// a quoted page.Bind key still binds it at runtime).
+func TestValidateHandlerIdentifier(t *testing.T) {
+	for handler, want := range map[string]int{"on_btn_tapped": 0, "my-handler": 1, "2fast": 1} {
+		d := &scene.Document{Root: &scene.Node{ID: "root", Type: "vbox", Children: []*scene.Node{
+			{ID: "btn", Type: "button", On: map[string][]scene.Action{"tapped": {{Do: "call", Handler: handler}}}},
+		}}}
+		var got int
+		for _, is := range scene.Validate(d, registry()) {
+			if is.Severity == scene.Warning && strings.Contains(is.Message, "not an identifier") {
+				got++
+			}
+		}
+		if got != want {
+			t.Errorf("%q: %d identifier warnings, want %d", handler, got, want)
+		}
+	}
+}

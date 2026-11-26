@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -73,7 +74,9 @@ type Options struct {
 	EditHandler func(script, handler string)
 	// BeforeSave runs on the UI thread before validation and encoding. A host
 	// uses it to rewrite the sidecar (handler stubs, bindings) and optionally
-	// update doc. changed=true forces a save even when the editor history is
+	// fill in node event actions. doc is a copy: changes to node "on" fields
+	// are applied to the editor as one undoable edit; any other change aborts
+	// the save. changed=true forces a save even when the editor history is
 	// clean. An error aborts the save.
 	BeforeSave func(doc *scene.Document) (changed bool, err error)
 	// AssetPick opens a host picker for asset/scene reference properties.
@@ -623,7 +626,7 @@ func (e *Editor) saveWith(baseVersion string, after func(bool)) {
 	changed := false
 	if e.opts.BeforeSave != nil {
 		var err error
-		changed, err = e.opts.BeforeSave(e.doc)
+		changed, err = e.beforeSave()
 		if err != nil {
 			e.setStatus("BeforeSave: " + err.Error())
 			e.reportSaveState(SaveFailed, err)
@@ -966,6 +969,43 @@ func (e *Editor) apply(label, merge string, ops ...scene.Op) bool {
 
 // applyEdit applies a transaction without rebuilding the inspector, so typing
 // in a field keeps focus. Structural changes use apply.
+// beforeSave runs the host hook on a copy of the document and records what
+// it changed as one undoable edit, so undo/redo, the view and the inspector
+// stay in step with the document (a hook naming call handlers must not make
+// redo restore empty names). Only event actions ("on") are recorded; a hook
+// that changes anything else aborts the save instead of mutating the
+// document behind the history.
+func (e *Editor) beforeSave() (bool, error) {
+	work := e.doc.Clone()
+	changed, err := e.opts.BeforeSave(work)
+	if err != nil {
+		return false, err
+	}
+	var ops []scene.Op
+	work.Walk(func(n *scene.Node) bool {
+		cur, ok := e.doc.Find(n.ID)
+		if ok && !reflect.DeepEqual(cur.On, n.On) {
+			ops = append(ops, scene.SetFieldOp(n.ID, "on", cur.On, n.On))
+		}
+		return true
+	})
+	if len(ops) > 0 && e.applyEdit("before save", "", ops...) {
+		e.inspector.refresh()
+	}
+	want, err := scene.Encode(work)
+	if err != nil {
+		return false, err
+	}
+	got, err := scene.Encode(e.doc)
+	if err != nil {
+		return false, err
+	}
+	if !bytes.Equal(want, got) {
+		return false, fmt.Errorf("the hook changed more than event actions; only node \"on\" changes are supported")
+	}
+	return changed, nil
+}
+
 func (e *Editor) applyEdit(label, merge string, ops ...scene.Op) bool {
 	if len(ops) == 0 {
 		return false

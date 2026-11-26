@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"unicode"
 )
 
 // Severity classifies a validation issue.
@@ -291,6 +292,10 @@ func checkEvents(n *Node, spec ComponentSpec, d *Document, add func(Severity, st
 			case "call":
 				if strings.TrimSpace(a.Handler) == "" {
 					add(Error, n.ID, path, "call needs a handler name")
+				} else if !isIdentifier(a.Handler) {
+					// Legal at runtime with a quoted page.Bind key, but it
+					// cannot be a let-bound handler or a shorthand binding.
+					add(Warning, n.ID, path, "handler %q is not an identifier; bind it with a quoted key in page.Bind", a.Handler)
 				}
 			case "set":
 				if strings.TrimSpace(a.Prop) == "" {
@@ -392,4 +397,15 @@ func ValidColor(s string) bool {
 		}
 	}
 	return true
+}
+
+// isIdentifier reports whether s is a Risor identifier by its characters
+// (scene/handlers.IsIdent also rejects keywords).
+func isIdentifier(s string) bool {
+	for i, r := range s {
+		if !(unicode.IsLetter(r) || r == '_' || (i > 0 && unicode.IsDigit(r))) {
+			return false
+		}
+	}
+	return s != ""
 }

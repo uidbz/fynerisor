@@ -55,3 +55,36 @@ func TestRunHandlersWritesBothFiles(t *testing.T) {
 		t.Fatalf("document not updated:\n%s", doc)
 	}
 }
+
+// #61: a sidecar that does not parse must not block writing handler names
+// into the document; the script itself is left untouched.
+func TestRunHandlersParseErrorWritesDocument(t *testing.T) {
+	dir := t.TempDir()
+	scenePath := filepath.Join(dir, "page.scene.json")
+	scriptPath := filepath.Join(dir, "page.risor")
+	sceneSrc := `{"format": "fynerisor.scene/1", "script": "page.risor",
+  "root": {"id": "root", "type": "vbox", "children": [
+    {"id": "btn", "type": "button", "on": {"tapped": [{"do": "call"}]}}]}}`
+	broken := "let on_btn_tapped = (evt) => {\n"
+	if err := os.WriteFile(scenePath, []byte(sceneSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(scriptPath, []byte(broken), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if code := runHandlers([]string{"-write", "-json", scenePath}); code != 0 {
+		t.Fatalf("runHandlers = %d", code)
+	}
+	script, _ := os.ReadFile(scriptPath)
+	if string(script) != broken {
+		t.Fatalf("script rewritten:\n%s", script)
+	}
+	doc, _ := os.ReadFile(scenePath)
+	if !strings.Contains(string(doc), `"handler": "on_btn_tapped"`) {
+		t.Fatalf("document not updated:\n%s", doc)
+	}
+	entries, _ := os.ReadDir(dir)
+	if len(entries) != 2 {
+		t.Fatalf("temporary files left: %v", entries)
+	}
+}
