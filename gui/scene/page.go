@@ -295,7 +295,7 @@ func init() {
 			return n, nil
 		})
 	pageAttrs.Define("BindValues").
-		Doc("Register a values closure for ${...} scene properties; it runs after every page handler. Example: page.BindValues(() => ({count})).").
+		Doc("Register a values closure for ${...} scene properties; it runs after every page.Bind handler and node.On listener. Example: page.BindValues(() => ({count})).").
 		Arg("values").Returns("nil").
 		Impl(func(p *Page, ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
@@ -336,7 +336,7 @@ func init() {
 			return object.NewList(out), nil
 		})
 	pageAttrs.Define("Bind").
-		Doc("Register named handlers for declarative call actions: page.Bind({toggleMusic: (evt) => {...}}).").
+		Doc("Register named handlers for declarative call actions; with let on_door_tapped = (evt) => {...}, call page.Bind({on_door_tapped}).").
 		Arg("handlers").Returns("nil").
 		Impl(func(p *Page, ctx context.Context, args ...object.Object) (object.Object, error) {
 			m, ok := args[0].(*object.Map)

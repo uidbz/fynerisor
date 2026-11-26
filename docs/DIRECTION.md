@@ -76,9 +76,9 @@ ecosystem are interactive *data tools* — forms, tables, logs, progress
 readouts, live entries — built as scripts: those constructors (Button,
 FormItem/Form, Entry, Label, Check, Select, Markdown, Log, Table, progress
 bars) dominate real usage by a wide margin. The scene component set (~50
-types) covers the point-and-click page well but lacks `form`, `table` and
-`log`. That is a **component gap**, not a model failure; closing it is
-[CONVERGENCE.md](CONVERGENCE.md) M1.
+types) covered the point-and-click page well but lacked `form`, `table` and
+`log`. That was a **component gap**, not a model failure; it was closed by
+[CONVERGENCE.md](CONVERGENCE.md) M1 (`form`, `field`, `table`, `log`).
 
 Second, removing the bindings would save little and break much:
 
@@ -105,7 +105,8 @@ Drift risk is contained by rules, not by re-litigating the model:
    old renderers degrade legibly.
 4. **Script-visible node API grows narrowly.** Component-specific node methods
    (e.g. `Log.Append`, `Table.SetRows`) are added case by case, routed through
-   `View.LiveObject`, not as a general widget-API passthrough — that would
+   narrow component capabilities (`View.Live` + `render.RowModelOf` /
+   `render.AppenderOf`), not as a general widget-API passthrough — that would
    reintroduce the two page kinds inside the script layer.
 
 ## The long game (not committed)

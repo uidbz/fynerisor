@@ -2,9 +2,9 @@
 
 Status: active plan (2026-11-12). Rationale and doctrine: [DIRECTION.md](DIRECTION.md).
 The problem this plan fixes is concrete: the scene stacks and the script stacks
-do not yet serve each other's flagship workloads — `scene/builtin` lacks the
-components production data-tool apps live on (`form`, `table`, `log`), and
-browser hosts have not all opted into scene pages even though
+did not serve each other's flagship workloads — `scene/builtin` lacked the
+components production data-tool apps live on (`form`, `table`, `log`; added
+in M1), and browser hosts have not all opted into scene pages even though
 `fynerisor/browser` already carries both page kinds (`KindRisor`/`KindScene`).
 Neither stack changes shape here; they get connected.
 
@@ -14,9 +14,10 @@ hosts in the wider ecosystem.
 ## M1 — Close the component gap: `form`, `field`, `table`, `log` (F)
 
 **Status: done 2026-11-12** (fynerisor `5b05722`, tie-browser dogfood `6952831`).
-Implemented as specified below; the table `data` static-rows question was
-resolved as recommended (script-fed rows only in v1). Manual designer drag UX
-for `field` still worth an interactive pass.
+Implemented with the deviations noted below (the shipped specs in
+`scene/builtin/builtin.go` and docs/API.md are authoritative); the table
+`data` static-rows question was resolved as recommended (script-fed rows only
+in v1). Manual designer drag UX for `field` still worth an interactive pass.
 
 Goal: a typical data-tool page is expressible as a scene document + sidecar.
 Everything stays inside the existing schema machinery — spec in
@@ -39,16 +40,25 @@ Everything stays inside the existing schema machinery — spec in
 - Props (v1): `columns` (`PropOptions`, header row). Rows are script-fed;
   declarative static `data` is deferred until the designer needs previews —
   and when it lands it must not invent an object-list `PropKind` without a
-  real editor use-case.
+  real editor use-case. *Shipped:* also `title` and `pageSize` (1..1000),
+  since the component wraps the classic `TableWidget` (filter, sort, pager).
 - Script feed: extend `gui/scene` node wrappers with component-specific
-  methods routed through `View.LiveObject` (DIRECTION rule 4):
-  `table.SetRows(rows)` / `table.SetCell(r, c, v)` (coalesced refresh via
-  `vmexec`), `log.Append(text)`. Generated `docs/API.md` via `go generate .`.
+  methods (DIRECTION rule 4): `table.SetRows(rows)` / `table.SetCell(r, c, v)`,
+  `log.Append(text)`. Generated `docs/API.md` via `go generate .`.
+  *Shipped:* the methods reach the component through `View.Live` and the
+  `render.RowModelOf` / `render.AppenderOf` capabilities (not
+  `View.LiveObject`); each call runs on the UI thread via
+  `guithread.DoAndWaitContext` and refreshes the table directly — there is no
+  coalesced refresh.
 
 ### `log`
 
 - Leaf; props: `text` (initial content), `autoScroll` (bool, default true).
   Factory wraps `widget.Log`; script API `Append` (see above).
+  *Shipped:* props `text` and `maxLines` (10..100000, default 1000) — no
+  `autoScroll` (appends always scroll to the bottom); the factory wraps a
+  `widget.List` over a bounded line buffer, the same shape as the classic
+  `widget.Log`.
 
 ### M1 work items
 
@@ -56,7 +66,7 @@ Everything stays inside the existing schema machinery — spec in
 |---|---|---|
 | 1.1 | F | Specs for `form`/`field`/`table`/`log` in `scene/builtin/builtin.go` (categories "Input"/"Data") |
 | 1.2 | F | Factories in `scene/render/builtin/` (new `data.go`), wire in `registry.go` |
-| 1.3 | F | `gui/scene`: `Log.Append`, `Table.SetRows`/`SetCell` via `LiveObject`; `objattrs` method defs |
+| 1.3 | F | `gui/scene`: `Log.Append`, `Table.SetRows`/`SetCell` (shipped via `View.Live` + `RowModelOf`/`AppenderOf`); `objattrs` method defs |
 | 1.4 | F | Tests: spec validation (scene package), render smoke (fyne test app), node-method round-trip; `go test -race ./...` |
 | 1.5 | F | Regenerate `docs/API.md`; update `docs/SCENES.md` component tables; CHANGELOG |
 | 1.6 | F | Designer check: palette auto-lists new types (spec-driven); verify `field` single-child drag-in UX; fix gaps |
