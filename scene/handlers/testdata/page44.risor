@@ -1,0 +1,11 @@
+require(["v0.10", "@gui", "@scene"])
+
+page.Bind({
+    hello: (evt) => {
+        page.Node("title").SetText("Hello from page.risor")
+        page.Node("light").Set("fill", "#22c55e")
+        print("page.risor handler ran for " + evt.id)
+    }
+})
+
+page.Node("title").SetText("Scene example — ready")
