@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Dependencies
+
+- Fyne v2.8.3 (from v2.8.2): draggable scroll-bar gutter, Form validity
+  fix, Table header-row keyboard navigation, Markdown line breaks and panic
+  fixes, multiline Entry scroll fixes, text/scroll performance.
+
 ### Added
 
 - **Scene form submit row.** `form` accepts `submit-text`/`cancel-text`;

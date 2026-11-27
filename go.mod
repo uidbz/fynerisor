@@ -3,7 +3,7 @@ module github.com/uidbz/fynerisor
 go 1.27.2
 
 require (
-	fyne.io/fyne/v2 v2.8.2
+	fyne.io/fyne/v2 v2.8.3
 	github.com/deepnoodle-ai/risor/v2 v2.2.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-sql-driver/mysql v1.8.1
