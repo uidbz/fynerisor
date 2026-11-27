@@ -424,6 +424,18 @@ func (c *TableCell) Text() string {
 	return c.label.Text
 }
 
+// RowID returns the TableData.RowIds entry of the row this cell displays
+// ("" when the data has no row IDs). IDs follow rows through sorting and
+// filtering, so it identifies the source row where Id.Row is only the
+// displayed position.
+func (c *TableCell) RowID() string {
+	d := c.table.data
+	if d == nil || c.Id.Row < 0 || c.Id.Row >= len(d.RowIds) {
+		return ""
+	}
+	return d.RowIds[c.Id.Row]
+}
+
 func (c *TableCell) IsEmpty() bool {
 	if c.Text() == "" {
 		return true

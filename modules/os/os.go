@@ -11,6 +11,7 @@ import (
 	"runtime"
 
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
+	"github.com/uidbz/fynerisor/modules/internal/hidewindow"
 )
 
 // scriptArgs holds the command-line arguments passed to the running script.
@@ -147,6 +148,7 @@ func openBrowser(ctx context.Context, args ...object.Object) (object.Object, err
 		return nil, object.Errorf("os.open_browser: unsupported platform: %s", runtime.GOOS)
 	}
 
+	hidewindow.Apply(cmd)
 	if err := cmd.Start(); err != nil {
 		return nil, object.NewError(err)
 	}
@@ -451,6 +453,7 @@ func execCommand(ctx context.Context, args ...object.Object) (object.Object, err
 	}
 
 	cmd := exec.Command(command, cmdArgs...)
+	hidewindow.Apply(cmd)
 	if err := cmd.Start(); err != nil {
 		return nil, object.NewError(err)
 	}

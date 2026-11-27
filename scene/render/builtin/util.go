@@ -29,6 +29,23 @@ func (l *baseLive) Update(n *scene.Node, changed scene.Fields) error {
 
 func (l *baseLive) Destroy() {}
 
+// fields wraps an Update's changed set. Inputs use it so that updating one
+// prop does not re-apply a user-editable value (typed text, a ticked box)
+// from another; an empty set means "everything".
+type fields scene.Fields
+
+func (f fields) has(keys ...string) bool {
+	if len(f) == 0 {
+		return true
+	}
+	for _, k := range keys {
+		if f[k] {
+			return true
+		}
+	}
+	return false
+}
+
 func newLeaf(obj fyne.CanvasObject, update func(*scene.Node, scene.Fields) error) render.Live {
 	return &baseLive{obj: obj, update: update}
 }

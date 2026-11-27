@@ -1,31 +1,6 @@
-## [Unreleased]
-### Fixed
-- `strings.trim(s)` (one argument) now trims whitespace instead of erroring.
-  The strict 2-argument-only form silently killed whole GUI event handlers
-  over a bare `trim(s)` call.
-- Failing `page.Bind` handlers are reported to the scene page's status
-  callback instead of vanishing into stderr. On GUI builds (no stderr) the
-  old behaviour was a dead button with no message.
-- Spawned child processes (`exec` module) start with `HideWindow` on
-  Windows: console-subsystem children no longer flash a black window.
-
-
-### Fixed
-- scene form: submit-text/cancel-text props now apply at initial build (the
-  renderer never calls Update on fresh nodes, so the props were dead and Fyne's
-  default Submit/Cancel row leaked onto every scene form); regression tests in
-  scene/render/builtin/build_events_test.go
-
 # Changelog
 
 ## [Unreleased]
-
-### Fixed
-
-- File dialog lifecycle no longer races the picker's deferred-focus timers
-  with overlay dismissal (uidbz/fyne-addons kdefilepicker: destroyed flag
-  is now atomic and a dedicated mutex serializes the timers' canvas
-  operations against Dismiss). `go test -race ./gui/dialog/` is clean.
 
 ### Added
 
@@ -52,6 +27,69 @@
   at the bottom. `scene/handlers` moves inline `page.Bind` functions out,
   names empty `call` actions, and creates missing stubs; `fynerisor handlers
   [-write] page.scene.json` runs the pass. See docs/HANDLERS.md.
+- `strings.trim_space(s)`; `strings.trim(s)` with one argument trims
+  whitespace (the strict two-argument form silently killed whole GUI event
+  handlers over a bare `trim(s)` call).
+- `scene/handlers`: `NameFor` (collision-free handler names), `IsIdent`,
+  and `WriteFile` (atomic write, mode kept).
+- `render.View.RuntimeSetProps`; scene `cellTapped` events carry `dataRow`,
+  the absolute row for `SetCell` (stable through paging, filter and sort);
+  `tablewidget.SetPageSize`, `TableCell.RowID()`.
+- Binding expressions see Risor's builtins (`${len(items)}`) and may contain
+  braces; compiled expressions are cached.
+
+### Changed
+
+- `designer.Options.BeforeSave` runs on a copy of the document; changes to
+  node `on` fields are applied as one undoable History step, any other change
+  aborts the save (#62).
+- `scene/handlers` edits `page.Bind` sections in place (comments and order
+  are kept; an unchanged script round-trips byte for byte) instead of
+  regenerating them; a sidecar that does not parse is left unchanged with a
+  warning and no longer blocks saving the scene (#61, #62).
+- Spawned console children (`exec` module, `os.exec`, `os.open_browser`) get
+  `CREATE_NO_WINDOW` on Windows GUI hosts instead of `HideWindow`, which also
+  hid GUI programs launched through `exec` (#67).
+- Handler, `node.On` listener and binding errors always reach the run's error
+  log; `Config.Status` additionally gets their first line. `Config.Status`
+  must be goroutine-safe (#66).
+
+### Fixed
+
+- **Data loss:** converting inline `page.Bind` handlers (the documented
+  migration path, also run on every designer/browser save) deleted handler
+  bodies whose name a `call` action referenced (#60).
+- Non-identifier `page.Bind` keys and handler names produced unparsable
+  scripts; quoted/template keys lost their key; `function`/`const`/multi-var
+  declarations got duplicate stubs; handler names could collide
+  (`HTTPDone` was `h_t_t_p_done`); raw strings were dedented; CRLF files got
+  mixed line endings; "+ handler" appended duplicate call actions (#61, #62).
+- Two `${}` bindings on one node clobbered each other, and runtime values
+  were lost on rebuild; changing a table's `title`/`pageSize` wiped its rows;
+  typing into an entry with a bound placeholder lost the text (#63).
+- Scene table panicked when rows shrank while on a later page; `cellTapped`
+  reported the wrong text on page 2+ and after filter/sort; short rows
+  shifted cells; form field label/help changes never reached the form; log
+  ignored `maxLines` changes and added a blank row for a trailing newline (#64).
+- `BarChart.AddHLine` lost its validation errors off the UI thread (#65).
+- The scene form `submit-text`/`cancel-text` props apply at initial build.
+- `vmexec.FireThen` re-checks cancellation on the run-less path; data race in
+  the handler-error test (#66).
+- The risor canary CI job tested the pinned v2.2.0 tag instead of the `v2`
+  branch head (#68).
+- `core.Version` was still 0.15.5 on v0.16.0..v0.17.0 (#68).
+
+## [0.17.0] - 2026-11-13
+
+### Fixed
+
+- File dialog lifecycle no longer races the picker's deferred-focus timers
+  with overlay dismissal (uidbz/fyne-addons kdefilepicker: destroyed flag
+  is now atomic and a dedicated mutex serializes the timers' canvas
+  operations against Dismiss). `go test -race ./gui/dialog/` is clean.
+
+### Added
+
 - **Scene data components: `form`, `field`, `table`, `log`.** The document
   layer can now express the interactive data-tool page, not just
   point-and-click pages. `form` renders its `field` children as one Fyne

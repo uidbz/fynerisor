@@ -1,7 +1,6 @@
 package scene_test
 
 import (
-	"bytes"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -19,9 +18,10 @@ import (
 func TestHandlerErrorVisibleInStatus(t *testing.T) {
 	a := newApp(t)
 	_, path := writeScene(t)
-	var status bytes.Buffer
+	// Status is called from the VM goroutine while the test polls it.
+	var status syncBuffer
 	fw := gui.NewWindow(a.NewWindow("scene"), gui.WithStrings(),
-		guiscene.WithScene(guiscene.Config{Status: func(s string) { status.WriteString(s + "\n") }}))
+		guiscene.WithScene(guiscene.Config{Status: func(s string) { _, _ = status.Write([]byte(s + "\n")) }}))
 	fw.LoadScript(`
 		require(["@scene", "@strings"])
 		let page = scene.Load("` + filepath.ToSlash(path) + `")

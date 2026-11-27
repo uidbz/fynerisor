@@ -3,7 +3,8 @@ package scene
 import (
 	"context"
 	"fmt"
-	"regexp"
+	"os"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -11,7 +12,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 
-	risor "github.com/deepnoodle-ai/risor/v2"
 	"github.com/deepnoodle-ai/risor/v2/pkg/object"
 	"github.com/deepnoodle-ai/risor/v2/pkg/op"
 
@@ -44,14 +44,15 @@ type Page struct {
 
 	values   *vmexec.Callback
 	bindings []bindingProp
+	exprs    exprCache
 }
 
 // bindingProp is one scene property whose string contains ${...}.
 type bindingProp struct {
-	node     string
-	prop     string
-	template string
-	kind     scenedoc.PropKind
+	node string
+	prop string
+	segs []segment
+	kind scenedoc.PropKind
 }
 
 type pendingCall struct {
@@ -115,14 +116,11 @@ func (p *Page) bind(ctx context.Context, m *object.Map) error {
 		if err != nil {
 			return err
 		}
-		// Handler failures must be visible in the app's own UI: GUI builds
-		// have no stderr, and a dead button with no message is how the
-		// platepilot silent-failure bug shipped. Route failures to Status.
-		if p.cfg.Status != nil {
-			cb.OnError(func(err error) {
-				p.cfg.Status("handler " + name + ": " + err.Error())
-			})
-		}
+		// Handler failures must be visible: GUI builds have no stderr, and a
+		// dead button with no message is how the platepilot silent-failure
+		// bug shipped. fail logs to the run's sink and shows the status.
+		label := "handler " + name
+		cb.OnError(func(err error) { p.fail(ctx, cb, label, err) })
 		p.handlers[name] = cb
 	}
 	p.bound = true
@@ -131,9 +129,7 @@ func (p *Page) bind(ctx context.Context, m *object.Map) error {
 			cb.FireThen(func(ctx context.Context) { p.refreshBindings(ctx) }, objectFromAny(call.evt))
 			continue
 		}
-		if p.cfg.Status != nil {
-			p.cfg.Status(fmt.Sprintf("page.Bind: no handler %q for a buffered action", call.handler))
-		}
+		p.fail(ctx, nil, "page.Bind", fmt.Errorf("no handler %q for a buffered action", call.handler))
 	}
 	p.pending = nil
 	return nil
@@ -177,7 +173,11 @@ func (p *Page) scanBindings() {
 			if !ok || !strings.Contains(str, "${") {
 				continue
 			}
-			out = append(out, bindingProp{node: n.ID, prop: prop, template: str, kind: kinds[prop]})
+			segs := parseTemplate(str)
+			if !slices.ContainsFunc(segs, func(s segment) bool { return s.expr }) {
+				continue
+			}
+			out = append(out, bindingProp{node: n.ID, prop: prop, segs: segs, kind: kinds[prop]})
 		}
 		return true
 	})
@@ -185,8 +185,6 @@ func (p *Page) scanBindings() {
 	p.bindings = out
 	p.mu.Unlock()
 }
-
-var bindingRe = regexp.MustCompile(`\$\{([^{}]+)\}`)
 
 func (p *Page) refreshBindings(ctx context.Context) {
 	p.mu.Lock()
@@ -198,84 +196,76 @@ func (p *Page) refreshBindings(ctx context.Context) {
 	}
 	obj, err := cb.Call()
 	if err != nil {
-		p.bindingError(err)
+		p.fail(ctx, cb, "page.BindValues", err)
 		return
 	}
 	m, ok := obj.(*object.Map)
 	if !ok {
-		p.bindingError(fmt.Errorf("page.BindValues must return a map, got %s", obj.Type()))
+		p.fail(ctx, cb, "page.BindValues", fmt.Errorf("page.BindValues must return a map, got %s", obj.Type()))
 		return
 	}
 	vals := make(map[string]any, len(m.Value()))
 	for k, v := range m.Value() {
 		gv, err := convert.ToGo(v)
 		if err != nil {
-			p.bindingError(fmt.Errorf("page.BindValues[%s]: %w", k, err))
+			p.fail(ctx, cb, "page.BindValues", fmt.Errorf("page.BindValues[%s]: %w", k, err))
 			continue
 		}
 		vals[k] = gv
 	}
-	type update struct {
-		id, prop string
-		value    any
-	}
-	var updates []update
+	// One update per node, so all of a node's bound props are applied
+	// together (render.View keeps them as runtime props).
+	var order []string
+	updates := make(map[string]map[string]any)
+	env := newBindEnv(vals)
 	for _, b := range binds {
-		v, err := resolveBinding(ctx, b.template, b.kind, vals)
+		v, err := p.exprs.resolve(ctx, b.segs, b.kind, env)
 		if err != nil {
-			p.bindingError(fmt.Errorf("binding %s.%s: %w", b.node, b.prop, err))
+			p.fail(ctx, cb, "page.BindValues", fmt.Errorf("binding %s.%s: %w", b.node, b.prop, err))
 			continue
 		}
-		updates = append(updates, update{id: b.node, prop: b.prop, value: v})
+		if updates[b.node] == nil {
+			updates[b.node] = make(map[string]any)
+			order = append(order, b.node)
+		}
+		updates[b.node][b.prop] = v
 	}
-	if len(updates) == 0 {
+	if len(order) == 0 {
 		return
 	}
 	_ = guithread.DoAndWaitContext(ctx, func() {
-		for _, u := range updates {
-			p.view.RuntimeSet(u.id, u.prop, u.value)
+		for _, id := range order {
+			p.view.RuntimeSetProps(id, updates[id])
 		}
 	})
 }
 
-func (p *Page) bindingError(err error) {
+// fail surfaces a script-side failure. It always goes to the run's error
+// sink (the window's stderr or error handler; process stderr without a run),
+// so console builds keep a full log even when the host has a status line,
+// and hosts without Config.Status still see it. When Status is set it also
+// gets the first line, since a status bar shows one line and panics carry a
+// multi-line stack trace. cb, when non-nil, names the failing callback in
+// the log. Quiet errors (VM busy, stopped run) are dropped.
+func (p *Page) fail(ctx context.Context, cb *vmexec.Callback, what string, err error) {
+	if err == nil || vmexec.Quiet(err) {
+		return
+	}
+	switch run := vmexec.FromContext(ctx); {
+	case cb != nil:
+		cb.Report(err)
+	case run != nil:
+		run.Report(what, err)
+	case ctx == nil || ctx.Err() == nil:
+		fmt.Fprintf(os.Stderr, "fynerisor: %s: %v\n", what, err)
+	}
 	if p.cfg.Status != nil {
-		p.cfg.Status("page.BindValues: " + err.Error())
+		msg := err.Error()
+		if i := strings.IndexAny(msg, "\r\n"); i >= 0 {
+			msg = msg[:i]
+		}
+		p.cfg.Status(what + ": " + msg)
 	}
-}
-
-func resolveBinding(ctx context.Context, template string, kind scenedoc.PropKind, vals map[string]any) (any, error) {
-	matches := bindingRe.FindAllStringSubmatchIndex(template, -1)
-	if len(matches) == 1 && matches[0][0] == 0 && matches[0][1] == len(template) {
-		v, err := risor.Eval(ctx, template[matches[0][2]:matches[0][3]], risor.WithEnv(vals))
-		if err != nil {
-			return nil, err
-		}
-		switch kind {
-		case scenedoc.PropNumber, scenedoc.PropInt, scenedoc.PropBool:
-			return v, nil
-		default:
-			if v == nil {
-				return "", nil
-			}
-			return fmt.Sprint(v), nil
-		}
-	}
-	var b strings.Builder
-	last := 0
-	for _, m := range matches {
-		b.WriteString(template[last:m[0]])
-		v, err := risor.Eval(ctx, template[m[2]:m[3]], risor.WithEnv(vals))
-		if err != nil {
-			return nil, err
-		}
-		if v != nil {
-			b.WriteString(fmt.Sprint(v))
-		}
-		last = m[1]
-	}
-	b.WriteString(template[last:])
-	return b.String(), nil
 }
 
 var pageAttrs = objattrs.Register(string(PageType), object.NewAttrRegistry[*Page](string(PageType)))
@@ -305,7 +295,7 @@ func init() {
 			return n, nil
 		})
 	pageAttrs.Define("BindValues").
-		Doc("Register a values closure for ${...} scene properties; it runs after every page handler. Example: page.BindValues(() => ({count})).").
+		Doc("Register a values closure for ${...} scene properties; it runs after every page.Bind handler and node.On listener. Example: page.BindValues(() => ({count})).").
 		Arg("values").Returns("nil").
 		Impl(func(p *Page, ctx context.Context, args ...object.Object) (object.Object, error) {
 			if len(args) != 1 {
@@ -346,7 +336,7 @@ func init() {
 			return object.NewList(out), nil
 		})
 	pageAttrs.Define("Bind").
-		Doc("Register named handlers for declarative call actions: page.Bind({toggleMusic: (evt) => {...}}).").
+		Doc("Register named handlers for declarative call actions; with let on_door_tapped = (evt) => {...}, call page.Bind({on_door_tapped}).").
 		Arg("handlers").Returns("nil").
 		Impl(func(p *Page, ctx context.Context, args ...object.Object) (object.Object, error) {
 			m, ok := args[0].(*object.Map)
@@ -732,6 +722,8 @@ func init() {
 			if err != nil {
 				return nil, err
 			}
+			label := "listener " + n.id + "." + event
+			cb.OnError(func(err error) { n.page.fail(ctx, cb, label, err) })
 			off := n.page.view.On(n.id, event, func(evt map[string]any) {
 				cb.FireThen(func(ctx context.Context) { n.page.refreshBindings(ctx) }, objectFromAny(evt))
 			})

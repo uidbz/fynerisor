@@ -349,7 +349,6 @@ func Specs() []scene.ComponentSpec {
 			Type: "form", Title: "Form", Category: "Input", Icon: "edit",
 			Doc: "Labeled input rows; its children are field nodes. Labels align across rows. With submit-text set, the form shows its own standard submit button row and emits submitted.", Kind: scene.Ordered,
 			DefaultPlace: defaultPlace(340, 240),
-			DefaultProps: map[string]any{"submit-text": ""},
 			Props: []scene.PropSpec{
 				p("submit-text", "Submit text", "Content", scene.PropString, ""),
 				p("cancel-text", "Cancel text", "Content", scene.PropString, ""),
@@ -378,7 +377,7 @@ func Specs() []scene.ComponentSpec {
 				p("columns", "Columns", "Data", scene.PropOptions, nil),
 				num("pageSize", "Rows per page", "Data", 10, 1, 1000),
 			},
-			Events: []scene.EventSpec{ev("cellTapped", "A cell was tapped; evt fields: row, col (page-local) and text.")},
+			Events: []scene.EventSpec{ev("cellTapped", "A cell was tapped; evt fields: text (the displayed cell), column, row and col (displayed position on the current page) and dataRow (index into the SetRows rows, for node.SetCell; it follows filtering and sorting).")},
 		},
 		{
 			Type: "log", Title: "Log", Category: "Data", Icon: "file",

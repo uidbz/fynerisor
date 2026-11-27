@@ -15,6 +15,7 @@ func Module() *object.Module {
 		"trim_prefix": object.NewBuiltin("strings.trim_prefix", trimPrefix),
 		"trim_suffix": object.NewBuiltin("strings.trim_suffix", trimSuffix),
 		"trim":        object.NewBuiltin("strings.trim", trim),
+		"trim_space":  object.NewBuiltin("strings.trim_space", trimSpace),
 		"to_lower":    object.NewBuiltin("strings.to_lower", toLower),
 		"to_upper":    object.NewBuiltin("strings.to_upper", toUpper),
 		"split":       object.NewBuiltin("strings.split", split),
@@ -94,9 +95,12 @@ func trim(ctx context.Context, args ...object.Object) (object.Object, error) {
 		return nil, err
 	}
 	if len(args) == 1 {
-		// One argument trims whitespace, matching Risor's stdlib strings.trim.
-		// Requiring a cutset here used to kill whole event handlers over a
-		// bare trim(s) call, and the error was invisible in GUI builds.
+		// One argument trims whitespace (same as strings.trim_space). This
+		// is a fynerisor convenience: Risor v2 has no strings module, and
+		// its string method "s".trim(chars) requires a cutset (whitespace
+		// is "s".trim_space()). Requiring a cutset here used to kill whole
+		// event handlers over a bare trim(s) call, and the error was
+		// invisible in GUI builds.
 		return object.NewString(strings.TrimSpace(s)), nil
 	}
 
@@ -106,6 +110,19 @@ func trim(ctx context.Context, args ...object.Object) (object.Object, error) {
 	}
 
 	return object.NewString(strings.Trim(s, cutset)), nil
+}
+
+func trimSpace(ctx context.Context, args ...object.Object) (object.Object, error) {
+	if len(args) != 1 {
+		return nil, object.Errorf("strings.trim_space: expected 1 argument, got %d", len(args))
+	}
+
+	s, err := object.AsString(args[0])
+	if err != nil {
+		return nil, err
+	}
+
+	return object.NewString(strings.TrimSpace(s)), nil
 }
 
 func toLower(ctx context.Context, args ...object.Object) (object.Object, error) {

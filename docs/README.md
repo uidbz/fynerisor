@@ -87,7 +87,7 @@ fynerisor enables building cross-platform desktop applications using Risor scrip
 
 ## Version
 
-**Current Version**: 0.15.5
+**Current Version**: 0.17.0
 **Risor Compatibility**: v2.2+ (arrow functions required)  
 **Fyne Compatibility**: v2.8+
 
@@ -1078,11 +1078,18 @@ Enable with `gui.WithStrings()`:
 
 ```js
 strings.replace_all(str, old, new)
+strings.trim(str)                              // Trim whitespace (same as trim_space)
+strings.trim(str, cutset)                      // Trim any of the chars in cutset from both ends
+strings.trim_space(str)
 strings.trim_prefix(str, prefix)
-strings.split(str, sep)
+strings.trim_suffix(str, suffix)
+strings.split(str, sep)                        // List of strings
 strings.join(list, sep)
 strings.to_lower(str)
 strings.to_upper(str)
+strings.contains(str, substr)                  // Bool
+strings.has_prefix(str, prefix)                // Bool
+strings.has_suffix(str, suffix)                // Bool
 ```
 
 ### Filepath Module

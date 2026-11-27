@@ -25,10 +25,13 @@ type formLive struct {
 }
 
 // formChild is the internal contract between form and field: field hands
-// over its assembled FormItem. It is looked up through render.UnwrapLive
-// because children arrive wrapped in style/hint wrappers.
+// over its assembled FormItem, and the form attaches a callback the field
+// calls when its label, help or input changes (nil detaches). It is looked
+// up through render.UnwrapLive because children arrive wrapped in
+// style/hint wrappers.
 type formChild interface {
 	formItem() (widget.FormItem, bool)
+	attach(changed func())
 }
 
 func newForm(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
@@ -84,9 +87,22 @@ func (l *formLive) items() []*widget.FormItem {
 	return items
 }
 
-func (l *formLive) sync() {
-	l.form.Items = l.items()
-	l.form.Refresh()
+func (l *formLive) sync() { setFormItems(l.form, l.items()) }
+
+// setFormItems replaces a form's rows. Fyne's Form keeps a row's rendered
+// input while its widget is unchanged, and the hint text lives in that
+// rendered input, so a changed hint would never show: rows are recreated
+// when any hint differs. Labels update in place on Refresh.
+func setFormItems(f *widget.Form, items []*widget.FormItem) {
+	for i, it := range items {
+		if i < len(f.Items) && f.Items[i].HintText != it.HintText {
+			f.Items = nil
+			f.Refresh()
+			break
+		}
+	}
+	f.Items = items
+	f.Refresh()
 }
 
 func (l *formLive) Insert(index int, child render.Live, p scene.Place) error {
@@ -95,6 +111,9 @@ func (l *formLive) Insert(index int, child render.Live, p scene.Place) error {
 	copy(l.children[index+1:], l.children[index:])
 	l.children[index] = child
 	render.SetSizeHint(child.Object(), p.MinW, p.MinH)
+	if fc, ok := render.UnwrapLive(child).(formChild); ok {
+		fc.attach(l.sync)
+	}
 	l.sync()
 	return nil
 }
@@ -103,6 +122,9 @@ func (l *formLive) Remove(child render.Live) error {
 	for i, c := range l.children {
 		if c == child {
 			l.children = append(l.children[:i], l.children[i+1:]...)
+			if fc, ok := render.UnwrapLive(child).(formChild); ok {
+				fc.attach(nil)
+			}
 			l.sync()
 			return nil
 		}
@@ -165,12 +187,14 @@ func (l *formLive) DropSpot(local fyne.Position) (render.DropSpot, bool) {
 
 // fieldLive is a labeled row. Inside a form it contributes its FormItem to
 // the parent; standalone it renders as its own one-row form, so a stray
-// field degrades to the same look instead of an unlabeled widget.
+// field degrades to the same look instead of an unlabeled widget. Its own
+// form stays empty while attached, so the input sits in one form only.
 type fieldLive struct {
 	bc          *render.BuildContext
 	form        *widget.Form
 	label, help string
 	child       render.Live
+	parent      func() // the enclosing form's sync, nil when standalone
 }
 
 func newField(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
@@ -187,8 +211,23 @@ func (l *fieldLive) Object() fyne.CanvasObject { return l.form }
 func (l *fieldLive) Update(n *scene.Node, _ scene.Fields) error {
 	l.label = l.bc.Str(n, "label", "")
 	l.help = l.bc.Str(n, "help", "")
-	l.sync()
+	l.changed()
 	return nil
+}
+
+func (l *fieldLive) attach(changed func()) {
+	l.parent = changed
+	l.sync()
+}
+
+// changed re-renders wherever the field's item is shown: the enclosing form
+// when attached, its own form otherwise.
+func (l *fieldLive) changed() {
+	if l.parent != nil {
+		l.parent()
+		return
+	}
+	l.sync()
 }
 
 func (l *fieldLive) Destroy() {}
@@ -202,11 +241,10 @@ func (l *fieldLive) formItem() (widget.FormItem, bool) {
 
 func (l *fieldLive) sync() {
 	items := []*widget.FormItem{}
-	if it, ok := l.formItem(); ok {
+	if it, ok := l.formItem(); ok && l.parent == nil {
 		items = append(items, &it)
 	}
-	l.form.Items = items
-	l.form.Refresh()
+	setFormItems(l.form, items)
 }
 
 func (l *fieldLive) Insert(_ int, child render.Live, p scene.Place) error {
@@ -215,14 +253,14 @@ func (l *fieldLive) Insert(_ int, child render.Live, p scene.Place) error {
 	}
 	l.child = child
 	render.SetSizeHint(child.Object(), p.MinW, p.MinH)
-	l.sync()
+	l.changed()
 	return nil
 }
 
 func (l *fieldLive) Remove(child render.Live) error {
 	if l.child == child {
 		l.child = nil
-		l.sync()
+		l.changed()
 	}
 	return nil
 }
@@ -233,7 +271,7 @@ func (l *fieldLive) SetPlace(child render.Live, p scene.Place) error {
 	if child == l.child {
 		render.SetSizeHint(child.Object(), p.MinW, p.MinH)
 	}
-	l.form.Refresh()
+	l.changed()
 	return nil
 }
 
@@ -263,38 +301,42 @@ type tableLive struct {
 }
 
 func newTable(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
-	pageSize := int(bc.Num(n, "pageSize", 10))
-	if pageSize < 1 {
-		pageSize = 10
-	}
-	tw := tablewidget.NewTableWidget(bc.Str(n, "title", ""), pageSize)
+	tw := tablewidget.NewTableWidget(bc.Str(n, "title", ""), tablePageSize(bc, n))
 	tw.SetErrorSink(func(what string, err error) {
 		bc.Statusf("table %s: %v", n.ID, err)
 	})
 	l := &tableLive{bc: bc, tw: tw, cols: bc.List(n, "columns"), id: n.ID}
 	tw.RowCount = func() int { return len(l.rows) }
 	tw.Data = l.page
-	tw.SetOnClick(func(row, col int) {
-		text := ""
-		if row >= 0 && row < len(l.rows) && col >= 0 && col < len(l.rows[row]) {
-			text = l.rows[row][col]
+	// The tapped cell knows what it displays (text) and, through the row
+	// IDs page() assigns, which source row it is — the displayed row is
+	// page-local and shifts with filtering and sorting.
+	tw.GetFlexTable().OnClick = func(c *tablewidget.TableCell) {
+		dataRow := -1
+		if r, err := strconv.Atoi(c.RowID()); err == nil {
+			dataRow = r
 		}
 		bc.Emit(l.id, "cellTapped", map[string]any{
-			"row": row, "col": col, "column": l.colName(col), "text": text,
+			"row": c.Id.Row, "col": c.Id.Col, "column": l.colName(c.Id.Col),
+			"text": c.Text(), "dataRow": dataRow,
 		})
-	})
+	}
 	return l, nil
+}
+
+// tablePageSize reads pageSize clamped to the spec range (1..1000).
+func tablePageSize(bc *render.BuildContext, n *scene.Node) int {
+	return min(max(int(bc.Num(n, "pageSize", 10)), 1), 1000)
 }
 
 func (l *tableLive) Object() fyne.CanvasObject { return l.tw.Instance }
 
-func (l *tableLive) Update(n *scene.Node, changed scene.Fields) error {
-	// Title and page size build the widget chrome; changing them rebuilds.
-	if changed["title"] || changed["pageSize"] {
-		return render.ErrRebuild
-	}
+func (l *tableLive) Update(n *scene.Node, _ scene.Fields) error {
+	// Title and page size update in place: a rebuild would drop the rows
+	// the script fed with SetRows.
+	l.tw.Title = l.bc.Str(n, "title", "")
 	l.cols = l.bc.List(n, "columns")
-	l.tw.Refresh()
+	l.tw.SetPageSize(tablePageSize(l.bc, n)) // refreshes
 	return nil
 }
 
@@ -310,9 +352,9 @@ func (l *tableLive) colName(col int) string {
 // columnNames resolves the column set for one page of TableData. Without
 // declared columns the data's own width gets numbered names, which keeps
 // AddStringRow's column alignment well-defined.
-func (l *tableLive) columnNames(row []string) []string {
-	out := make([]string, len(row))
-	for i := range row {
+func (l *tableLive) columnNames(width int) []string {
+	out := make([]string, width)
+	for i := range out {
 		if i < len(l.cols) {
 			out[i] = l.cols[i]
 		} else {
@@ -324,17 +366,31 @@ func (l *tableLive) columnNames(row []string) []string {
 
 // page builds one page of TableData (the TableWidget pulls it on Refresh).
 // Sorting operates per page snapshot, matching the classic script tables.
+// Every row gets its absolute index as row ID, so a tap can name the source
+// row after filtering or sorting, and rows are padded to one width so short
+// rows keep later columns aligned.
 func (l *tableLive) page(offset, limit int) *tablewidget.TableData {
 	td := tablewidget.NewTableData(l.id)
-	if offset < 0 {
-		offset = 0
-	}
+	offset = min(max(offset, 0), len(l.rows))
 	end := offset + limit
 	if limit < 1 || end > len(l.rows) {
 		end = len(l.rows)
 	}
-	for _, r := range l.rows[offset:end] {
-		td.AddStringRow(l.columnNames(r), r)
+	rows := l.rows[offset:end]
+	width := len(l.cols)
+	for _, r := range rows {
+		width = max(width, len(r))
+	}
+	if width == 0 {
+		return td
+	}
+	names := l.columnNames(width)
+	cells := make([]string, width)
+	for i, r := range rows {
+		clear(cells)
+		copy(cells, r)
+		td.AddStringRow(names, cells)
+		td.RowIds = append(td.RowIds, strconv.Itoa(offset+i))
 	}
 	return td
 }
@@ -373,10 +429,7 @@ type logLive struct {
 }
 
 func newLog(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
-	l := &logLive{bc: bc, max: int(bc.Num(n, "maxLines", 1000))}
-	if l.max < 1 {
-		l.max = 1000
-	}
+	l := &logLive{bc: bc, max: logMaxLines(bc, n)}
 	l.list = widget.NewList(
 		func() int { return len(l.lines) },
 		func() fyne.CanvasObject { return widget.NewLabel("") },
@@ -390,38 +443,54 @@ func newLog(bc *render.BuildContext, n *scene.Node) (render.Live, error) {
 	return l, nil
 }
 
+// logMaxLines reads maxLines clamped to the spec range (10..100000).
+func logMaxLines(bc *render.BuildContext, n *scene.Node) int {
+	return min(max(int(bc.Num(n, "maxLines", 1000)), 10), 100000)
+}
+
 func (l *logLive) Object() fyne.CanvasObject { return l.list }
 
 func (l *logLive) Update(n *scene.Node, changed scene.Fields) error {
-	if !changed["text"] {
-		return nil
+	l.max = logMaxLines(l.bc, n)
+	if changed["text"] {
+		l.setLines(l.bc.Str(n, "text", ""))
+	} else {
+		l.trim()
 	}
-	l.setLines(l.bc.Str(n, "text", ""))
 	l.list.Refresh()
 	return nil
 }
 
 func (l *logLive) Destroy() {}
 
+// splitLines splits text into lines; one trailing newline only ends the
+// last line, it does not add an empty one.
+func splitLines(text string) []string {
+	text = strings.TrimSuffix(text, "\n")
+	return strings.Split(text, "\n")
+}
+
 func (l *logLive) setLines(text string) {
 	if text == "" {
 		l.lines = nil
 		return
 	}
-	l.lines = strings.Split(text, "\n")
+	l.lines = splitLines(text)
+	l.trim()
+}
+
+// trim drops the oldest lines beyond max.
+func (l *logLive) trim() {
 	if over := len(l.lines) - l.max; over > 0 {
-		l.lines = l.lines[over:]
+		l.lines = l.lines[over:] // append reallocates, releasing the prefix
 	}
 }
 
-// AppendText appends one line (render.Appender).
+// AppendText appends one or more lines (render.Appender); a trailing
+// newline is optional.
 func (l *logLive) AppendText(text string) {
-	for _, line := range strings.Split(text, "\n") {
-		if len(l.lines) >= l.max {
-			l.lines = l.lines[1:]
-		}
-		l.lines = append(l.lines, line)
-	}
+	l.lines = append(l.lines, splitLines(text)...)
+	l.trim()
 	l.list.Refresh()
 	l.list.ScrollToBottom()
 }

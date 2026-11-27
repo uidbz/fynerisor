@@ -12,8 +12,9 @@ import (
 )
 
 // runHandlers rewrites a scene sidecar script for the editor workflow:
-// standalone on_<node>_<event> handlers, one page.Bind section at the bottom,
-// and a stub for every call action that has no handler yet.
+// standalone on_<node>_<event> handlers bound in page.Bind, and a stub for
+// every call action that has no handler yet. A script that does not parse is
+// left alone (with a warning); the document still gets its handler names.
 func runHandlers(argv []string) int {
 	fs := flag.NewFlagSet("handlers", flag.ContinueOnError)
 	fs.Usage = func() {
@@ -83,7 +84,7 @@ func runHandlers(argv []string) int {
 		}
 	}
 	if res.Source != string(src) {
-		if err := os.WriteFile(scriptPath, []byte(res.Source), 0o644); err != nil {
+		if err := handlers.WriteFile(scriptPath, []byte(res.Source)); err != nil {
 			fmt.Fprintf(os.Stderr, "fynerisor: write %s: %v\n", scriptPath, err)
 			return 1
 		}
@@ -94,7 +95,7 @@ func runHandlers(argv []string) int {
 		return 1
 	}
 	if !bytes.Equal(encoded, data) {
-		if err := os.WriteFile(path, encoded, 0o644); err != nil {
+		if err := handlers.WriteFile(path, encoded); err != nil {
 			fmt.Fprintf(os.Stderr, "fynerisor: write %s: %v\n", path, err)
 			return 1
 		}

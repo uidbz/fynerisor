@@ -210,7 +210,8 @@ is generated into [API.md](API.md#scene-components) from
 | Layout | `free`, `vbox`, `hbox`, `grid`, `gridwrap`, `stack`, `center`, `padded`, `border`, `hsplit`, `vsplit`, `scroll`, `card`, `tabs`, `accordion` |
 | Display | `label`, `text`, `markdown`, `image`, `icon`, `separator`, `progress`, `activity` |
 | Shapes | `rect`, `circle`, `line` |
-| Input | `button`, `hyperlink`, `entry`, `check`, `select`, `radio`, `slider` |
+| Input | `button`, `hyperlink`, `entry`, `check`, `select`, `radio`, `slider`, `form`, `field` |
+| Data | `table`, `log` |
 | Navigation | `hotspot`, `link`, `embed`, `slot` |
 | tie (tie-browser) | `tie.image`, `tie.gallery`, `tie.collection`, `tie.audio`, `tie.video`, `tie.document`, `tie.tags`, `tie.related` |
 
@@ -242,7 +243,7 @@ thread, in order, before script listeners for the same event.
     {"do": "navigate", "to": "../kitchen"},
     {"do": "hide", "node": "help"},
     {"do": "set", "node": "title", "prop": "text", "value": "Kitchen"},
-    {"do": "call", "handler": "toggleMusic"}
+    {"do": "call", "handler": "on_toggle_music_tapped"}
   ]
 }
 ```
@@ -270,7 +271,9 @@ the handlers are registered.
 | `doubleTapped`, `secondaryTapped` | hotspots, images, shapes |
 | `hoverIn`, `hoverOut` | hotspots, images, shapes (desktop pointer) |
 | `changed` | entry, check, select, radio, slider (coalesced by the widget) |
-| `submitted` | entry (Enter / Shift+Enter) |
+| `submitted` | entry (Enter / Shift+Enter), form (its submit button) |
+| `cancelled` | form (its cancel button) |
+| `cellTapped` | table; adds `row`/`col` (displayed position), `column`, `text` (the displayed cell) and `dataRow` (index into the `SetRows` rows, for `node.SetCell`) |
 | `itemTapped` | tie components (tie-browser) |
 | `selected` | tabs/collections that expose a selection |
 
@@ -342,8 +345,9 @@ the bottom. `fynerisor handlers` converts older inline `page.Bind` code. See
 
 Properties can contain `${name}` bindings. The sidecar registers a values
 closure with `page.BindValues(() => ({name}))`; the page re-evaluates it after
-every handler, so labels and other props update without `SetText` calls. See
-[HANDLERS.md](HANDLERS.md#bindings).
+every `page.Bind` handler and `node.On` listener, so labels and other props
+update without `SetText` calls (code running elsewhere, such as a timer, calls
+`page.RefreshBindings()`). See [HANDLERS.md](HANDLERS.md#bindings).
 
 ### Script API
 
@@ -352,7 +356,7 @@ Types and attributes are listed in [API.md](API.md#scene). Summary:
 | Object | Members |
 |---|---|
 | `scene` | `Load(ref)`, `Parse(json)`, `New()` |
-| `scene.Page` | `Root`, `Title`, `Node(id)`, `Find(filter)`, `Bind(handlers)`, `Values()` |
+| `scene.Page` | `Root`, `Title`, `Node(id)`, `Find(filter)`, `Bind(handlers)`, `BindValues(values)`, `RefreshBindings()`, `Values()` |
 | `scene.Node` | `ID`, `Type`, `Name`, `Props`, `Place`, `Children`, `Parent`, `Prop(name)`, `Set(name, value)`, `SetPlace(map)`, `SetName(name)`, `Show()`, `Hide()`, `On(event, fn)`, `Off(event)`, `SetContent(object)`; on `table`: `SetRows(rows)`, `SetCell(row, col, value)`; on `log`: `Append(text)` |
 | `scene.Doc` | `Title`, `Encode()`, `Validate()`, `Page()` |
 
@@ -364,11 +368,13 @@ fynerisor wrapper, so `page.Node("title").SetText("x")` works for a label and
 `page.Values()` reads the live input widgets, which makes forms easy:
 
 ```risor
+let on_run_tapped = (evt) => {
+    let v = page.Values()
+    print(sprintf("sample=%s threshold=%d", v.sample, v.threshold))
+}
+
 page.Bind({
-    run: (evt) => {
-        let v = page.Values()
-        print(sprintf("sample=%s threshold=%d", v.sample, v.threshold))
-    }
+    on_run_tapped,
 })
 ```
 
@@ -386,7 +392,14 @@ slots: declare a `table` (its `columns` prop) and feed it with
 `node.SetRows([[...], ...])` / `node.SetCell(row, col, value)`, or a `log` and
 append with `node.Append(text)`. Use
 `node.Set(prop, value)` for scene components. Runtime changes are not written
-back to the document; the designer edits the saved document.
+back to the document; the designer edits the saved document. A runtime value
+stays in effect when other properties of the node change later (another
+`node.Set`, a binding refresh) and when the node is rebuilt; a table keeps its
+rows when its `title` or `pageSize` changes.
+
+Handler, listener and binding failures are written to the run's error log
+(the window's stderr) and, when the host installed a status sink
+(`Config.Status`), their first line is shown there too.
 
 ## Assets
 

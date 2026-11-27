@@ -1,0 +1,88 @@
+{
+  "format": "fynerisor.scene/1",
+  "title": "Scene example",
+  "script": "page.risor",
+  "root": {
+    "id": "root",
+    "type": "free",
+    "place": {"x": 0, "y": 0, "w": 900, "h": 600},
+    "props": {
+      "designW": 900,
+      "designH": 600,
+      "scale": "fit",
+      "letterbox": "#101418"
+    },
+    "children": [
+      {
+        "id": "backdrop",
+        "type": "rect",
+        "locked": true,
+        "place": {"x": 0, "y": 0, "w": 900, "h": 600},
+        "props": {"fill": "#1e293b", "cornerRadius": 0}
+      },
+      {
+        "id": "title",
+        "type": "label",
+        "name": "Title",
+        "place": {"x": 60, "y": 50, "w": 500, "h": 60},
+        "props": {"text": "A scene page", "bold": true}
+      },
+      {
+        "id": "hint",
+        "type": "label",
+        "place": {"x": 60, "y": 110, "w": 620, "h": 80},
+        "props": {
+          "text": "The document is data. The button calls a handler bound in page.risor; the hotspot shows hover/click actions.",
+          "wrap": "word"
+        }
+      },
+      {
+        "id": "light",
+        "type": "circle",
+        "name": "Light",
+        "place": {"x": 660, "y": 70, "w": 60, "h": 60},
+        "props": {"fill": "#64748b"},
+        "on": {
+          "tapped": [
+            {"do": "toggle", "node": "help"},
+            {"do": "set", "node": "title", "prop": "text", "value": "Hotspot tapped"}
+          ]
+        }
+      },
+      {
+        "id": "hello",
+        "type": "button",
+        "place": {"x": 60, "y": 230, "w": 200, "h": 44},
+        "props": {"text": "Call the script", "importance": "high"},
+        "on": {"tapped": [{"do": "call", "handler": "hello"}]}
+      },
+      {
+        "id": "help",
+        "type": "label",
+        "place": {"x": 60, "y": 310, "w": 620, "h": 100},
+        "props": {
+          "text": "This label can be shown and hidden declaratively. The circle above toggles it and sets the title without any script.",
+          "wrap": "word"
+        }
+      },
+      {
+        "id": "door",
+        "type": "hotspot",
+        "name": "Decorative hotspot",
+        "place": {"x": 640, "y": 230, "w": 200, "h": 140},
+        "props": {"shape": "rect", "hoverFill": "#38bdf855", "stroke": "#38bdf8", "label": "Hotspot"},
+        "on": {
+          "tapped": [
+            {"do": "set", "node": "hint", "prop": "text", "value": "The hotspot sets this text at runtime."}
+          ]
+        }
+      },
+      {
+        "id": "footer",
+        "type": "label",
+        "place": {"x": 60, "y": 520, "w": 700, "h": 40},
+        "props": {"text": "Edit this page with fynerisor-designer page.scene.json"}
+      }
+    ]
+  }
+}

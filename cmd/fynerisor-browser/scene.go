@@ -153,18 +153,18 @@ func (p *BrowserEditorProvider) Open(page *browser.Page, br *browser.Browser) fy
 			br.SetStatus("Edit " + handler + " in " + script)
 		},
 		BeforeSave: func(doc *scene.Document) (bool, error) {
-			// Remote sidecars are served by the host, not by this editor.
-			if !strings.HasPrefix(page.URL, "file:") {
-				return false, nil
-			}
+			// ApplySidecar names empty call handlers on every path. Remote
+			// sidecars are served by the host, not rewritten by this editor
+			// (ErrRemoteSidecar); a missing sidecar is not an error either.
 			rep, changed, err := handlers.ApplySidecar(doc, page.URL)
-			if err != nil {
-				if errors.Is(err, os.ErrNotExist) || errors.Is(err, handlers.ErrRemoteSidecar) {
-					return false, nil
-				}
+			if err != nil && strings.HasPrefix(page.URL, "file:") &&
+				!errors.Is(err, os.ErrNotExist) && !errors.Is(err, handlers.ErrRemoteSidecar) {
 				return false, err
 			}
-			if len(rep.Created) > 0 || len(rep.Converted) > 0 {
+			switch {
+			case len(rep.Warnings) > 0:
+				br.SetStatus("handlers: " + rep.Warnings[0])
+			case len(rep.Created) > 0 || len(rep.Converted) > 0:
 				br.SetStatus(fmt.Sprintf("handlers: %d created, %d converted", len(rep.Created), len(rep.Converted)))
 			}
 			return changed, nil

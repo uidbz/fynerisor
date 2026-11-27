@@ -51,7 +51,8 @@ page.Node("title").SetText("hi")
 	if strings.Contains(out, "hello: (evt)") {
 		t.Fatalf("inline handler still present:\n%s", out)
 	}
-	if !strings.Contains(out, "page.Bind({\n    other: someFn,\n    hello,\n})") {
+	// The inline item becomes a shorthand in place; other items stay.
+	if !strings.Contains(out, "page.Bind({\n    hello,\n    other: someFn\n})") {
 		t.Fatalf("bindings section not rewritten:\n%s", out)
 	}
 	if len(rep.Converted) != 1 || rep.Converted[0] != "hello" {
@@ -210,7 +211,7 @@ func TestApplySidecar(t *testing.T) {
 	for _, want := range []string{
 		"let on_btn_tapped = (evt) => {",
 		"let old = (evt) => {}",
-		"page.Bind({\n    old,\n    on_btn_tapped,\n})",
+		"page.Bind({old, on_btn_tapped})",
 	} {
 		if !strings.Contains(string(got), want) {
 			t.Fatalf("missing %q in:\n%s", want, got)
